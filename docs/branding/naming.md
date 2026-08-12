@@ -37,12 +37,15 @@ Hopyard/Signalpost metaphor family was rejected ("beer plus trains").
 
 ## Actions on the human (time-sensitive once public)
 
-- [ ] Register `telecraft.dev` (primary) and `telecraft.io`.
-- [ ] Claim npm `telecraft` (placeholder publish).
-- [ ] Create the `telecraft-dev` GitHub org; file a GitHub Support
-      name-release request for the dormant `telecraft` handle in parallel
-      (renames redirect automatically if it's ever granted).
-- [ ] Rename the `amp-up` GitHub repo → `telecraft`.
+- [x] Register `telecraft.dev` — done 2026-08-12; live with the coming-soon
+      page (repo `telecraft-dev/telecraft.dev`, Pages via Actions, DNS on
+      Cloudflare). `telecraft.io` still optional.
+- [ ] Claim npm `telecraft` — placeholder staged; blocked on an interactive
+      `npm login`/2FA publish only the human can complete.
+- [x] GitHub org: `telecraft-dev` created (bare `telecraft` handle is
+      squatted; optional support name-release request still available).
+- [x] Main repo live at `telecraft-dev/telecraft`; planning foundation open
+      as PR #1.
 
 ## Identity direction (seed for `identity.md`)
 
