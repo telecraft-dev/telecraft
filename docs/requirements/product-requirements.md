@@ -22,6 +22,9 @@ in `traceability.md`.
   privileged. Vendor words in core interfaces are lint errors. (ADR-0001)
 - **REQ-005** The project is uniquely branded: a name that survives collision
   checks and a visual identity, decided before anything is published. (G0)
+- **REQ-006** Deployable air-gapped: no hard dependency on any SaaS or on a
+  specific git host. GitHub is the first-party forge integration, never an
+  assumption. (ADR-0019)
 
 ## 2. Governance
 
@@ -54,6 +57,12 @@ in `traceability.md`.
 - **REQ-016** Components are first-class: configured instances of catalogue
   types, named, versioned, ownable, and inherited by reference — never by
   copy. A change by the owning team re-renders every consumer. (ADR-0016)
+- **REQ-017** Authentication is pluggable — OIDC, SAML and basic auth
+  first-party; forge OAuth as a convenience. Authorization is derived from
+  ownership with one source of truth: generated forge code-ownership where
+  supported, a platform merge gate otherwise. Team roll-up is
+  ratio-plus-worst per finding kind, waivers always visible, never a single
+  blended number. (ADR-0017, ADR-0019)
 
 ## 3. Conformance (rung 1)
 
@@ -86,9 +95,10 @@ in `traceability.md`.
 - **REQ-032** The renderer exports exactly one artefact: plain otelcol YAML
   at a stable repo path (+ `supervisor.yaml` where served), stamped with the
   commit SHA, applier-agnostic. (ADR-0002, ADR-0013)
-- **REQ-033** The surface opens pull requests via a GitHub App; it never
-  writes to a cluster; hand-committed config is legitimate. (ADR-0003,
-  ADR-0014)
+- **REQ-033** The surface opens pull requests via the forge integration
+  (GitHub App first-party); it never writes to a cluster; hand-committed
+  config is legitimate; commits are attributable to the authenticated human
+  even without a forge account. (ADR-0003, ADR-0014, ADR-0019)
 - **REQ-034** Renderer hard rules: `opamp/<x>` extension naming, node-unique
   attribute via Downward API, untrusted-Hop attribute stripping generated
   automatically. (ADR-0007, ADR-0010)

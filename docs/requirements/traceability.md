@@ -12,13 +12,15 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-003 configs never binaries | ADR-0002 | P2 |
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
 | REQ-005 unique branding | G0 | P0 |
+| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019 | all |
 | REQ-010 component Catalogue | G2 | P2 |
 | REQ-011 team-scoped Allow-lists | G2 | P2 |
-| REQ-012 hierarchical Owners/Teams, roll-up | G1 | P1/P4 |
+| REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017 | P1/P4 |
 | REQ-013 Service Class ⊥ Sensitivity, cumulative floors | ADR-0007, ADR-0015, G3 | P1/P2 |
 | REQ-014 exemptions, grace | ADR-0004 | P1 |
 | REQ-015 universal ownership, finding routing | ADR-0016 | P1/P4 |
 | REQ-016 Components first-class, inherit by reference | ADR-0016 | P2 |
+| REQ-017 pluggable auth, ownership-derived authz | ADR-0017, ADR-0019 | P0/P4 |
 | REQ-020 the cross, seven outcomes + delivery status | ADR-0004 | P1/P3 |
 | REQ-021 library layout, strict load | (prior built code; port) | P1 |
 | REQ-022 Weaver/semconv vocabulary | ADR-0009 | P1/P5 |

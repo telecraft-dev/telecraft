@@ -1,6 +1,8 @@
 # ADR-0014: GitHub is the v1 host; authentication is a GitHub App with attributable actions
 
-- Status: accepted (seeded)
+- Status: accepted (seeded); amended by ADR-0019 — GitHub is the first-party
+  forge integration, not an assumption; air-gapped deployments authenticate
+  via ADR-0019 and attribute commits from identity claims
 - Date: 2026-08-12 (decided during prior shaping)
 
 ## Context

@@ -27,8 +27,8 @@ session.
 | **Requirement** | A versioned assertion (config and/or signal) with mandatory remediation text. A finding with no suggested fix is a complaint. |
 | **Component** | A configured instance of a catalogue type (receiver, processor, exporter, connector, extension): named, versioned, ownable. Blueprints compose Components; consumers inherit by reference, never by copy. |
 | **Blueprint** | A named, versioned composition of Components with a phase, the signals it produces, and the requirement ids it claims to satisfy. `satisfies` is a claim of intent, never of fact. |
-| **Owner** | The accountable party attached to every authored object (ADR-0016). The lowest unit of management; belongs to a Team. ⚠ hierarchy semantics in G1. |
-| ⚠ **Team** (G1) | A group of Owners and/or child Teams. Compliance rolls up the tree; roll-up semantics being pinned. |
+| **Owner** | The accountable party attached to every authored object (ADR-0016). The lowest unit of management; belongs to exactly one Team. |
+| **Team** | A group of Owners and/or child Teams, forming a strict tree (single parent). Compliance rolls up the subtree as ratio-plus-worst per finding kind, waivers always visible (ADR-0017). Supplied through a seam (`teams.yaml` first-party), never owned by the platform. |
 | ⚠ **Catalogue** (G2) | The machine-generated inventory of otelcol component types (from collector-contrib `metadata.yaml`) from which Components are configured and Allow-lists select. |
 | ⚠ **Allow-list** (G2) | The subset of the Catalogue a Team may use. Scoping and inheritance to be pinned. |
 | ⚠ **Palette** (G2/G7) | What the composer UI offers a given user: the Catalogue filtered by their Allow-list. |
