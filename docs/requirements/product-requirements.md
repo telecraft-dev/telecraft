@@ -1,0 +1,134 @@
+# Product requirements
+
+An open-source fleet and policy management platform for OpenTelemetry (working
+name "Amp-Up"; rename pending, `docs/branding/naming.md`). Carried from the
+prior shaping effort (`docs/research/2026-08-11-compiled-requirements-original.md`)
+under neutral terminology, extended with four new requirement areas, and
+renumbered. Each requirement cites its ADR or the grill session that will
+produce one; the traceability matrix lives in `traceability.md`.
+
+## 1. Product definition
+
+- **REQ-001** The platform models collection topologies graphically, generates
+  otelcol configurations, judges the estate's conformance, and optionally
+  delivers config — three separately-adoptable rungs: Conformance, Authoring,
+  Serving. Adopting a higher rung is never required to use a lower one.
+- **REQ-002** No component sits in the telemetry path. If the platform is
+  down, no telemetry stops flowing. (ADR-0002)
+- **REQ-003** The platform ships configurations, never binaries. (ADR-0002)
+- **REQ-004** The core is vendor-neutral; Elastic is the first plugin, never
+  privileged. Vendor words in core interfaces are lint errors. (ADR-0001)
+- **REQ-005** The project is uniquely branded: a name that survives collision
+  checks and a visual identity, decided before anything is published. (G0)
+
+## 2. Governance
+
+- **REQ-010** A machine-generated component Catalogue, sourced from
+  collector-contrib `metadata.yaml`, inventories every receiver, processor,
+  exporter, connector and extension with stability and supported signals.
+  Hand-curation of the component list is prohibited — it is the maintenance
+  burden that kills config libraries. (G2)
+- **REQ-011** Allow-lists select from the Catalogue per Team: only permitted
+  components are offered in the composer palette and accepted by the
+  renderer. Scoping, inheritance down the team tree, and default posture are
+  G2 decisions. (G2)
+- **REQ-012** Owners and Teams are hierarchical: an Owner is the lowest unit
+  of management and belongs to a Team; Teams nest. Compliance rolls up the
+  tree — "a team running N servers at criticality X must run these modules"
+  is expressible and reportable. (G1)
+- **REQ-013** Criticality Tier and Classification are two orthogonal
+  first-class axes with the adopter's own names and values. Tier floors are
+  cumulative and non-negotiable; elective additions sit above the floor and
+  the surface makes the two visually distinct. (ADR-0007, G3)
+- **REQ-014** Exemptions carry a mandatory owner and expiry; grace periods
+  shrink as criticality rises; waivers never replace the diagnosis. (ADR-0004)
+
+## 3. Conformance (rung 1)
+
+- **REQ-020** Applications are read twice — Declared and Observed — and the
+  cross produces the seven outcomes with a severity ordering; delivery status
+  (Intended × Declared) sits beside the verdict, per collector. (ADR-0004)
+- **REQ-021** The requirements library is a directory of files, one concern
+  per file, strictly validated at load, failing closed. (prior built code)
+- **REQ-022** Conformance vocabulary adopts semconv/Weaver: four-level
+  `requirement_level`, Weaver's finding taxonomy and severity split, custom
+  registries for adopter attributes, `registry infer` for onboarding.
+  (ADR-0009)
+- **REQ-023** Requirements never embed a backend query language. The
+  `AttributeNames` primitive is the sanctioned extension. (ADR-0009)
+- **REQ-024** A CI check mode evaluates once and exits non-zero on counting
+  failures. (prior built code)
+- **REQ-025** `library_drift` is detected: config in git that no longer
+  satisfies a raised tier is a finding owned by the repo. (ADR-0004)
+
+## 4. Authoring (rung 2)
+
+- **REQ-030** Blueprints are named, versioned bundles with phase-ordered
+  composition (detect → enrich → classify → protect → batch → export); the
+  renderer sorts by phase — union-merge is known to produce invalid orderings.
+  Component collisions are resolved and surfaced. (G3)
+- **REQ-031** A blueprint's `satisfies` list is intent, never fact; the UI
+  must not blur the two. (ADR-0004, G3)
+- **REQ-032** The renderer exports exactly one artefact: plain otelcol YAML at
+  a stable repo path (+ `supervisor.yaml` where served), stamped with the
+  commit SHA, applier-agnostic. (ADR-0002, ADR-0013)
+- **REQ-033** The surface opens pull requests via a GitHub App; it never
+  writes to a cluster; hand-committed config is legitimate. (ADR-0003,
+  ADR-0014)
+- **REQ-034** Renderer hard rules: `opamp/<x>` extension naming, node-unique
+  attribute via Downward API, untrusted-Hop attribute stripping generated
+  automatically. (ADR-0007, ADR-0010)
+- **REQ-035** Generated YAML is visible read-only in the UI — the escape
+  hatch is required for trust. (G7)
+- **REQ-036** The topology view survives scale: collectors are never drawn;
+  gateway on-ramp emitters (no collector at all) are representable. (ADR-0007)
+
+## 5. Serving (rung 3)
+
+- **REQ-040** A stateless OpAMP server reads git, matches reported attributes
+  against selectors, serves the config at that path, and stores nothing.
+  (ADR-0013)
+- **REQ-041** GitOps is a co-equal delivery path chosen per collector;
+  delivery path is a visible collector property. (ADR-0010)
+- **REQ-042** The server never serves an empty config map; first-boot
+  behaviour must not read as silent success. (ADR-0010, OQ-2)
+- **REQ-043** Staged rollout works across both delivery paths. (G4, OQ-1)
+- **REQ-044** `EstateProvider` ships two implementations day one (OpAMP
+  direct, ElasticFleet); a provider that cannot report a reading never looks
+  like a failure. (ADR-0008)
+
+## 6. Pipeline observability
+
+- **REQ-050** The platform visualises telemetry flow over the authored
+  topology: per-Stage/per-Hop throughput, volume, and freshness, joined from
+  collector self-telemetry (`otelcol.component.id`, `otelcol.pipeline.id`)
+  back to the config that produced it. (G6)
+- **REQ-051** The differentiator: from the Intended config at a SHA, derive an
+  Expectation of what telemetry should arrive, and check it. Green means "the
+  config worked", never merely "the config applied". (G5/G6)
+- **REQ-052** "Expected but never seen" is surfaced even though there is no
+  collector to attach it to; ungoverned (observed, never authored) is
+  surfaced without reading as failure. (G4/G5, OQ-2/OQ-3)
+- **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam — no
+  privileged side channel. (G6)
+
+## 7. Non-goals
+
+- **NG-1** Not a collector distribution, not an agent, nothing in the
+  telemetry path. (ADR-0002)
+- **NG-2** No enforcement through Elastic Fleet — permanently unavailable,
+  not deferred. Fleet is a console, not a source. (ADR-0008)
+- **NG-3** Profiles are out; logs, metrics, traces only. (ADR-0009)
+- **NG-4** No Helm/Kustomize rendering in v1 — known cost accepted.
+  (ADR-0011)
+- **NG-5** Drift detection is table stakes, never the pitch; the refuted
+  claims ("nobody alerts on missing data", "nobody checks a stream against a
+  declaration") are not reinstated. (ADR-0005, research 04)
+
+## 8. The binding engineering rule
+
+- **REQ-060** Reuse over build: a decision to build must defend itself in
+  writing by enumerating what the OTel, Kubernetes, GitOps and vendor
+  ecosystems already ship, pricing adoption against building. Prefer stable
+  upstream components; alpha dependencies are accepted only explicitly
+  (ADR-0010 is the one such acceptance).
