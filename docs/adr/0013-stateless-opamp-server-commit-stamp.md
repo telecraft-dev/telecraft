@@ -23,8 +23,9 @@ includes.
   at that path, remembering nothing. Removing the server loses delivery,
   never the record.
 - **The artefact carries its own identity**: every rendered config is stamped
-  `service.telemetry.resource: {ampup.commit: <sha>}` (key renamed with the
-  project — see `branding/naming.md`). The collector reports it back, so
+  `service.telemetry.resource: {telecraft.commit: <sha>}` (key follows the
+  project name, decided in `branding/naming.md`). The collector reports it
+  back, so
   "which commit is this running" is read *from* the collector, not remembered
   *about* it. This works identically for foreign collectors delivered by
   anything, and the stamp survives ElasticFleet's redaction.

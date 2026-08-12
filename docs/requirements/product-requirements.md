@@ -1,7 +1,7 @@
 # Product requirements
 
-An open-source fleet and policy management platform for OpenTelemetry (working
-name "Amp-Up"; rename pending, `docs/branding/naming.md`). Carried from the
+**Telecraft** — an open-source fleet and policy management platform for
+OpenTelemetry (named 2026-08-12, `docs/branding/naming.md`). Carried from the
 prior shaping effort (`docs/research/2026-08-11-compiled-requirements-original.md`)
 under neutral terminology, extended with four new requirement areas, and
 renumbered. Vocabulary per ADR-0015 (Tier = topology position; Service Class;
