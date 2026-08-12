@@ -16,7 +16,7 @@ with reason), `resolved-by-ADR-nnnn`. A question may not be silently dropped.
 | OQ-8 | Tenancy-to-git mapping: repo-per-team vs path-per-team for rendered artefacts. | scheduled-for-G1 | Gates G3's repo layout. |
 | OQ-9 | Component Catalogue mechanics: `metadata.yaml` coverage/stability, versioning against collector releases, whether the Catalogue is a seam. | scheduled-for-G2 | Research task R-1 blocks this. |
 | OQ-10 | Blueprint versioning and upgrade story; `satisfies` linkage to `library_drift`; phase-collision rules. | scheduled-for-G3 | |
-| OQ-11 | Scoring beyond binary: per-requirement binary aggregated to a per-application ratio — and now a per-team roll-up. Never a single estate-wide number? | scheduled-for-G1/G5 | |
+| OQ-11 | Scoring beyond binary: per-requirement binary aggregated to a per-service ratio — and now a per-team roll-up. Never a single estate-wide number? | scheduled-for-G1/G5 | |
 | OQ-12 | Evaluator cardinality and cost: attribute coverage across a large estate; correct semconv checks are per span/metric name, multiplying aggregations. | carried | Revisit when scale data exists; note in Phase 1 design. |
 | OQ-13 | Project name and visual identity. | scheduled-for-G0 | Blocks publishing; must land before G3. |
 | OQ-14 | UI surface inventory, navigation, canvas interaction model, tech stack. | scheduled-for-G7 (after P1–P4) | Existing console explicitly judged not good enough; fresh prototyping pass required. |

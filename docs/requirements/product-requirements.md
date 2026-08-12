@@ -4,8 +4,10 @@ An open-source fleet and policy management platform for OpenTelemetry (working
 name "Amp-Up"; rename pending, `docs/branding/naming.md`). Carried from the
 prior shaping effort (`docs/research/2026-08-11-compiled-requirements-original.md`)
 under neutral terminology, extended with four new requirement areas, and
-renumbered. Each requirement cites its ADR or the grill session that will
-produce one; the traceability matrix lives in `traceability.md`.
+renumbered. Vocabulary per ADR-0015 (Tier = topology position; Service Class;
+Sensitivity; Intended/Effective/Observed; Service). Each requirement cites its
+ADR or the grill session that will produce one; the traceability matrix lives
+in `traceability.md`.
 
 ## 1. Product definition
 
@@ -25,29 +27,40 @@ produce one; the traceability matrix lives in `traceability.md`.
 
 - **REQ-010** A machine-generated component Catalogue, sourced from
   collector-contrib `metadata.yaml`, inventories every receiver, processor,
-  exporter, connector and extension with stability and supported signals.
-  Hand-curation of the component list is prohibited — it is the maintenance
-  burden that kills config libraries. (G2)
+  exporter, connector and extension type with stability and supported
+  signals. Hand-curation of the component list is prohibited — it is the
+  maintenance burden that kills config libraries. (G2)
 - **REQ-011** Allow-lists select from the Catalogue per Team: only permitted
-  components are offered in the composer palette and accepted by the
+  component types are offered in the composer palette and accepted by the
   renderer. Scoping, inheritance down the team tree, and default posture are
   G2 decisions. (G2)
 - **REQ-012** Owners and Teams are hierarchical: an Owner is the lowest unit
   of management and belongs to a Team; Teams nest. Compliance rolls up the
-  tree — "a team running N servers at criticality X must run these modules"
-  is expressible and reportable. (G1)
-- **REQ-013** Criticality Tier and Classification are two orthogonal
-  first-class axes with the adopter's own names and values. Tier floors are
-  cumulative and non-negotiable; elective additions sit above the floor and
-  the surface makes the two visually distinct. (ADR-0007, G3)
+  tree — "a team running N servers at class C1 must run these modules" is
+  expressible and reportable. (G1)
+- **REQ-013** Service Class and Sensitivity are two orthogonal first-class
+  axes with the adopter's own names and values. Class floors are cumulative
+  and non-negotiable; elective additions sit above the floor and the surface
+  makes the two visually distinct. A Service Class is never rendered as
+  "Tier N". (ADR-0007, ADR-0015, G3)
 - **REQ-014** Exemptions carry a mandatory owner and expiry; grace periods
-  shrink as criticality rises; waivers never replace the diagnosis. (ADR-0004)
+  shrink as Service Class rises; waivers never replace the diagnosis.
+  (ADR-0004)
+- **REQ-015** Every authored object carries an owner (Component, Blueprint,
+  Tier, Hop, Path, Service, Requirement, Exemption). Findings route to the
+  owner of the object the finding is about. Collectors inherit ownership
+  from their Tier; exceptions are expressed by splitting the Tier.
+  (ADR-0016)
+- **REQ-016** Components are first-class: configured instances of catalogue
+  types, named, versioned, ownable, and inherited by reference — never by
+  copy. A change by the owning team re-renders every consumer. (ADR-0016)
 
 ## 3. Conformance (rung 1)
 
-- **REQ-020** Applications are read twice — Declared and Observed — and the
-  cross produces the seven outcomes with a severity ordering; delivery status
-  (Intended × Declared) sits beside the verdict, per collector. (ADR-0004)
+- **REQ-020** Services are read twice — Effective and Observed — and the
+  cross produces the seven outcomes with a severity ordering; delivery
+  status (Intended × Effective) sits beside the verdict, per collector.
+  (ADR-0004)
 - **REQ-021** The requirements library is a directory of files, one concern
   per file, strictly validated at load, failing closed. (prior built code)
 - **REQ-022** Conformance vocabulary adopts semconv/Weaver: four-level
@@ -59,18 +72,19 @@ produce one; the traceability matrix lives in `traceability.md`.
 - **REQ-024** A CI check mode evaluates once and exits non-zero on counting
   failures. (prior built code)
 - **REQ-025** `library_drift` is detected: config in git that no longer
-  satisfies a raised tier is a finding owned by the repo. (ADR-0004)
+  satisfies a raised Service Class floor is a finding owned by the repo.
+  (ADR-0004)
 
 ## 4. Authoring (rung 2)
 
-- **REQ-030** Blueprints are named, versioned bundles with phase-ordered
-  composition (detect → enrich → classify → protect → batch → export); the
-  renderer sorts by phase — union-merge is known to produce invalid orderings.
-  Component collisions are resolved and surfaced. (G3)
+- **REQ-030** Blueprints are named, versioned compositions of Components
+  with phase-ordered assembly (detect → enrich → classify → protect → batch
+  → export); the renderer sorts by phase — union-merge is known to produce
+  invalid orderings. Component collisions are resolved and surfaced. (G3)
 - **REQ-031** A blueprint's `satisfies` list is intent, never fact; the UI
   must not blur the two. (ADR-0004, G3)
-- **REQ-032** The renderer exports exactly one artefact: plain otelcol YAML at
-  a stable repo path (+ `supervisor.yaml` where served), stamped with the
+- **REQ-032** The renderer exports exactly one artefact: plain otelcol YAML
+  at a stable repo path (+ `supervisor.yaml` where served), stamped with the
   commit SHA, applier-agnostic. (ADR-0002, ADR-0013)
 - **REQ-033** The surface opens pull requests via a GitHub App; it never
   writes to a cluster; hand-committed config is legitimate. (ADR-0003,
@@ -81,13 +95,14 @@ produce one; the traceability matrix lives in `traceability.md`.
 - **REQ-035** Generated YAML is visible read-only in the UI — the escape
   hatch is required for trust. (G7)
 - **REQ-036** The topology view survives scale: collectors are never drawn;
-  gateway on-ramp emitters (no collector at all) are representable. (ADR-0007)
+  gateway on-ramp emitters (no collector at all) are representable as a Path
+  straight to a gateway Tier. (ADR-0007)
 
 ## 5. Serving (rung 3)
 
-- **REQ-040** A stateless OpAMP server reads git, matches reported attributes
-  against selectors, serves the config at that path, and stores nothing.
-  (ADR-0013)
+- **REQ-040** A stateless OpAMP server reads git, matches reported
+  attributes against selectors, serves the config at that path, and stores
+  nothing. (ADR-0013)
 - **REQ-041** GitOps is a co-equal delivery path chosen per collector;
   delivery path is a visible collector property. (ADR-0010)
 - **REQ-042** The server never serves an empty config map; first-boot
@@ -100,17 +115,17 @@ produce one; the traceability matrix lives in `traceability.md`.
 ## 6. Pipeline observability
 
 - **REQ-050** The platform visualises telemetry flow over the authored
-  topology: per-Stage/per-Hop throughput, volume, and freshness, joined from
+  topology: per-Tier/per-Hop throughput, volume, and freshness, joined from
   collector self-telemetry (`otelcol.component.id`, `otelcol.pipeline.id`)
   back to the config that produced it. (G6)
-- **REQ-051** The differentiator: from the Intended config at a SHA, derive an
-  Expectation of what telemetry should arrive, and check it. Green means "the
-  config worked", never merely "the config applied". (G5/G6)
+- **REQ-051** The differentiator: from the Intended config at a SHA, derive
+  an Expectation of what telemetry should arrive, and check it. Green means
+  "the config worked", never merely "the config applied". (G5/G6)
 - **REQ-052** "Expected but never seen" is surfaced even though there is no
   collector to attach it to; ungoverned (observed, never authored) is
   surfaced without reading as failure. (G4/G5, OQ-2/OQ-3)
-- **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam — no
-  privileged side channel. (G6)
+- **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam —
+  no privileged side channel. (G6)
 
 ## 7. Non-goals
 

@@ -1,6 +1,7 @@
 # ADR-0007: The topology model — Stage, Hop, Path; collectors are never drawn
 
 - Status: accepted (seeded)
+- Vocabulary note: written pre-ADR-0015 — read Stage as Tier, Criticality Tier as Service Class, Classification as Sensitivity, Declared as Effective, Application as Service
 - Date: 2026-08-12 (decided during prior shaping)
 
 ## Context

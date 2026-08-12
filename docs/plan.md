@@ -25,7 +25,7 @@ the exit gate passes.
 |---|---|---|---|---|
 | P1 | Blueprint composer, 3 variants rebuilt fresh (Catalogue / Requirement-first / Signal lanes) | Which mental model survives phase ordering + allow-lists? | G2 | G3, G7 |
 | P2 | Estate & team roll-up view | Does hierarchy roll-up read clearly? Where do ungoverned/can't-report sit without looking like failure? | G1 | G4, G5, G7 |
-| P3 | Topology canvas (Stages/Hops/Paths, selector-matched counts) | Does never-draw-collectors hold at realistic scale? Multiple Paths per app? | G3 | G6, G7 |
+| P3 | Topology canvas (Tiers/Hops/Paths, selector-matched counts) | Does never-draw-collectors hold at realistic scale? Multiple Paths per service? | G3 | G6, G7 |
 | P4 | Per-node observability cards (volume/freshness/shape + expectation states) | Is expectation-red legible next to delivery-red and conformance-red? | G5 | G6, G7 |
 | P5 (opt) | Rollout cohort progress | Can cohort-as-git-state be visualised across both paths? | G4 | G7 |
 

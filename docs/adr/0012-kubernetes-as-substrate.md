@@ -1,6 +1,7 @@
 # ADR-0012: Kubernetes is the control plane's substrate; no custom resource per collector
 
 - Status: accepted (seeded)
+- Vocabulary note: written pre-ADR-0015 — read Stage as Tier, Criticality Tier as Service Class, Classification as Sensitivity, Declared as Effective, Application as Service
 - Date: 2026-08-12 (decided during prior shaping)
 
 ## Context

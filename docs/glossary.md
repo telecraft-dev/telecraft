@@ -1,47 +1,50 @@
 # Glossary
 
 The ubiquitous language. Binding on code, docs, and UI — these are not
-synonyms to be varied for readability. Terms marked ⚠ are placeholders whose
-definitions will be pinned in the named grill session.
+synonyms to be varied for readability. Vocabulary aligned to industry/upstream
+usage by ADR-0015; the visual companion is `docs/terminology.html`. Terms
+marked ⚠ are placeholders whose definitions will be pinned in the named grill
+session.
 
-## Topology (ADR-0007)
+## Topology (ADR-0007, names per ADR-0015)
 
 | Term | Meaning |
 |---|---|
-| **Stage** | A position in the pipeline: edge, gateway, or any tier a design needs. Carries the policy applying to everything at that position. There will never be many. |
-| **Hop** | The directed edge between two Stages (or Stage → destination). First-class. Trust is a property of the Hop, not the Stage. |
-| **Path** | One application's route through the Stage graph. An application may have several; this is normal. A Path generates the delivery expectation. |
-| **Collector** | A running otelcol process. Derived and read-only: never drawn, matched into a Stage by selector, inherits that Stage's policy. |
-| **Estate** | The population of collectors, across all substrates. Never "the fleet". |
+| **Tier** | A position in the collection topology: edge, gateway, or any layer a design needs. An authored, ownable object carrying the policy for everything at that position. Matches industry usage ("gateway tier"). Never means criticality. |
+| **Hop** | The directed edge between two Tiers (or Tier → destination). First-class and ownable. Trust is a property of the Hop, not the Tier. |
+| **Path** | One Service's route through the Tier graph. A Service may have several; this is normal. A Path generates the delivery expectation. |
+| **Collector** | A running otelcol process. Derived and read-only: never drawn, never authored, never owned directly — matched into a Tier by selector, inheriting that Tier's policy and owner. Exceptions are expressed by splitting the Tier. |
+| **Estate** | The population of collectors, across all substrates. Deliberate deviation from industry "fleet" (ADR-0015): a bare "fleet" is permanently ambiguous beside the `ElasticFleet` integration. |
 | **Fleet** (capital F) | The Elastic product: Fleet Server plus the Fleet UI in Kibana. Never the estate. Appears only as the qualified implementation name `ElasticFleet`. |
 
-## Governance
+## Governance (ADR-0015, ADR-0016)
 
 | Term | Meaning |
 |---|---|
-| **Criticality Tier** | A service's centrally-assigned importance classification, driving its required floor. "Tier" means this and nothing else. Tiers are cumulative: Tier 1 is Tier 2 plus more. |
-| **Classification** | The orthogonal axis to Criticality: marks data sensitivity, drives routing and redaction. Adopter-named values. Never conflated with Criticality. |
-| **Application** | The governed unit: a service judged against its tier's requirements. |
+| **Service** | The governed unit, identified by `service.name`. Assigned a Service Class; judged against its requirements. (Formerly "Application".) |
+| **Service Class** | How much a Service matters: C1 > C2 > C3, adopter-renamable values. Drives the required floor. Cumulative: C1 = C2 plus more. Never rendered as "Tier N". |
+| **Sensitivity** | The orthogonal axis: what the data is (PII, finance…). Drives routing and redaction, never completeness. Service Class ⊥ Sensitivity, never conflated. (Formerly "Classification".) |
 | **Requirement** | A versioned assertion (config and/or signal) with mandatory remediation text. A finding with no suggested fix is a complaint. |
-| **Blueprint** | A named, versioned bundle of otelcol components with a phase, the signals it produces, and the requirement ids it claims to satisfy. `satisfies` is a claim of intent, never of fact. |
-| **Exemption** | A waiver for one requirement with mandatory owner and expiry. Waives the count, never the diagnosis. |
-| **Grace Period** | Tier-scoped onboarding window during which findings are waived. Shrinks as criticality rises. |
-| ⚠ **Owner** (G1) | The lowest unit of management. Belongs to a Team. |
-| ⚠ **Team** (G1) | A group of Owners and/or child Teams. Compliance rolls up the tree. |
-| ⚠ **Catalogue** (G2) | The machine-generated inventory of otelcol components (from collector-contrib `metadata.yaml`) from which allow-lists select. |
+| **Component** | A configured instance of a catalogue type (receiver, processor, exporter, connector, extension): named, versioned, ownable. Blueprints compose Components; consumers inherit by reference, never by copy. |
+| **Blueprint** | A named, versioned composition of Components with a phase, the signals it produces, and the requirement ids it claims to satisfy. `satisfies` is a claim of intent, never of fact. |
+| **Owner** | The accountable party attached to every authored object (ADR-0016). The lowest unit of management; belongs to a Team. ⚠ hierarchy semantics in G1. |
+| ⚠ **Team** (G1) | A group of Owners and/or child Teams. Compliance rolls up the tree; roll-up semantics being pinned. |
+| ⚠ **Catalogue** (G2) | The machine-generated inventory of otelcol component types (from collector-contrib `metadata.yaml`) from which Components are configured and Allow-lists select. |
 | ⚠ **Allow-list** (G2) | The subset of the Catalogue a Team may use. Scoping and inheritance to be pinned. |
 | ⚠ **Palette** (G2/G7) | What the composer UI offers a given user: the Catalogue filtered by their Allow-list. |
+| **Exemption** | A waiver for one requirement with mandatory owner and expiry. Waives the count, never the diagnosis. |
+| **Grace Period** | Service-Class-scoped onboarding window during which findings are waived. Shrinks as class rises. |
 
-## Readings and verdicts (ADR-0004)
+## Readings and verdicts (ADR-0004, names per ADR-0015)
 
 | Term | Meaning |
 |---|---|
-| **Intended** | The config in git, pinned to a commit SHA. Hand-committed configs included. |
-| **Declared** | The collector's own reported effective config — never what an applier holds. |
+| **Intended** | The config in git, pinned to a commit SHA. Hand-committed configs included. (This is what GitOps calls "declared" — we say Intended.) |
+| **Effective** | The collector's own reported running config — OpAMP's `EffectiveConfig`, adopted verbatim. Never what an applier holds. (Formerly "Declared".) |
 | **Observed** | Telemetry that landed in a backend over a window. |
 | **Known** | The per-reading flag keeping "we cannot see" distinct from "it is absent". Not knowing is a normal state. |
-| **Outcome** | One of: `compliant`, `not_configured`, `broken_pipeline`, `not_delivered`, `ungoverned`, `misconfigured`, `unknown`, plus `library_drift`. |
-| **Delivery status** | OpAMP `RemoteConfigStatus`, verbatim: `UNSET` / `APPLYING` / `APPLIED` / `FAILED`. Per collector, sits beside the conformance verdict. |
+| **Outcome** | One of: `compliant`, `not_configured`, `broken_pipeline`, `not_delivered`, `ungoverned`, `misconfigured`, `unknown`, plus `library_drift`. The cross is Effective × Observed, per requirement. |
+| **Delivery status** | OpAMP `RemoteConfigStatus`, verbatim: `UNSET` / `APPLYING` / `APPLIED` / `FAILED`. Intended × Effective, per collector, beside the conformance verdict. |
 | ⚠ **Expectation** (G5/G6) | What telemetry should arrive, derived from the Intended config at a SHA — the differentiator's object. |
 | ⚠ **Cohort** (G4) | The set of collectors a staged rollout step applies to. Whether it is git state is the open hypothesis. |
 
@@ -60,4 +63,5 @@ definitions will be pinned in the named grill session.
   (ADR-0001).
 - Seam names are domain terms; implementations are vendor-product-qualified:
   `ElasticFleet`, `Elasticsearch`, `GrafanaFleetManagement`.
+- A Service Class is never written "Tier N" (ADR-0015).
 - Every capitalised domain term in an ADR must appear here.
