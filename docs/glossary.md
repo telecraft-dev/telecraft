@@ -29,9 +29,12 @@ session.
 | **Blueprint** | A named, versioned composition of Components with a phase, the signals it produces, and the requirement ids it claims to satisfy. `satisfies` is a claim of intent, never of fact. |
 | **Owner** | The accountable party attached to every authored object (ADR-0016). The lowest unit of management; belongs to exactly one Team. |
 | **Team** | A group of Owners and/or child Teams, forming a strict tree (single parent). Compliance rolls up the subtree as ratio-plus-worst per finding kind, waivers always visible (ADR-0017). Supplied through a seam (`teams.yaml` first-party), never owned by the platform. |
-| ⚠ **Catalogue** (G2) | The machine-generated inventory of otelcol component types (from collector-contrib `metadata.yaml`) from which Components are configured and Allow-lists select. |
-| ⚠ **Allow-list** (G2) | The subset of the Catalogue a Team may use. Scoping and inheritance to be pinned. |
-| ⚠ **Palette** (G2/G7) | What the composer UI offers a given user: the Catalogue filtered by their Allow-list. |
+| **Catalogue** | The versioned inventory of otelcol component types — identity, per-signal stability, lifecycle — keyed `(class, type)`, one catalogue per collector release, machine-generated from upstream `metadata.yaml`. Installed catalogues are retained; a collector is judged against the catalogue for the version it runs. Adopter-authored entries layer on top. States what exists, never what may be used (that is the Allow-list). |
+| **Allow-list** | The subset of the Catalogue a Team may use, keyed `(class, type)`. Effective list = parent's effective list ∩ own, plus Grants; narrowing-only down the tree. Absent any list: the whole Catalogue. Authored in git. The only rule that hard-blocks (at render). |
+| **Grant** | An ancestor-authored, owned exception adding named Catalogue entries to a descendant Team's effective Allow-list. Applies to that subtree; narrowable below. Everything usable traces to the root list or a Grant. |
+| **Stability floor** | The minimum upstream stability a Service's components must meet, configured per (Service Class, Environment), evaluated per (component, signal actually used). Breach is a finding, never a block. |
+| **Palette** | What the composer offers a given user: Catalogue ∩ effective Allow-list, judged live by the shared evaluator. Allowed shown; floor-breaching greyed with the reason; non-allowed hidden. Pure presentation — enforces nothing. |
+| **Environment** | The test/staging/production dimension of a Service's deployment, aligned to `deployment.environment.name`. One Service, one owner, many Environments; each may bind a different Blueprint version. Adopter-defined open vocabulary; `production` is the distinguished value policy defaults attach to. Never called "path" (a Path is topology). |
 | **Exemption** | A waiver for one requirement with mandatory owner and expiry. Waives the count, never the diagnosis. |
 | **Grace Period** | Service-Class-scoped onboarding window during which findings are waived. Shrinks as class rises. |
 
