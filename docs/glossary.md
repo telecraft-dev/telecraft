@@ -10,7 +10,7 @@ session.
 
 | Term | Meaning |
 |---|---|
-| **Tier** | A position in the collection topology: edge, gateway, or any layer a design needs. An authored, ownable object carrying the policy for everything at that position. Matches industry usage ("gateway tier"). Never means criticality. |
+| **Tier** | A position in the collection topology: edge, gateway, or any layer a design needs. An authored, ownable object carrying the policy for everything at that position. Declares exactly one Environment and binds exactly one Blueprint version; the rendering unit — one rendered artefact per Tier (ADR-0025). Matches industry usage ("gateway tier"). Never means criticality. |
 | **Hop** | The directed edge between two Tiers (or Tier → destination). First-class and ownable. Trust is a property of the Hop, not the Tier. |
 | **Path** | One Service's route through the Tier graph. A Service may have several; this is normal. A Path generates the delivery expectation. |
 | **Collector** | A running otelcol process. Derived and read-only: never drawn, never authored, never owned directly — matched into a Tier by selector, inheriting that Tier's policy and owner. Exceptions are expressed by splitting the Tier. |
@@ -25,8 +25,8 @@ session.
 | **Service Class** | How much a Service matters: C1 > C2 > C3, adopter-renamable values. Drives the required floor. Cumulative: C1 = C2 plus more. Never rendered as "Tier N". |
 | **Sensitivity** | The orthogonal axis: what the data is (PII, finance…). Drives routing and redaction, never completeness. Service Class ⊥ Sensitivity, never conflated. (Formerly "Classification".) |
 | **Requirement** | A versioned assertion (config and/or signal) with mandatory remediation text. A finding with no suggested fix is a complaint. |
-| **Component** | A configured instance of a catalogue type (receiver, processor, exporter, connector, extension): named, versioned, ownable. Blueprints compose Components; consumers inherit by reference, never by copy. |
-| **Blueprint** | A named, versioned composition of Components with a phase, the signals it produces, and the requirement ids it claims to satisfy. `satisfies` is a claim of intent, never of fact. |
+| **Component** | A configured instance of a catalogue type (receiver, processor, exporter, connector, extension): named, integer-versioned, ownable. Two residences (ADR-0024): **shared** — a standalone file, id `<team>/<name>` — or **local** — declared inline in a Blueprint, owned by its owner, not referenceable outside it. Consumers inherit shared Components by reference, never by copy; references pin a version by default, `track: head` is opt-in (ADR-0026). |
+| **Blueprint** | A named, integer-versioned composition of Components, serialised as per-signal lanes (upstream signal names, explicitly ordered) plus collector-wide extensions (ADR-0024). Bound by exactly one Tier per version binding. Carries the requirement ids it claims to satisfy, version-stamped; `satisfies` is a claim of intent, never of fact. No phase concept — ordering is lane order, advised by evaluator findings. |
 | **Owner** | The accountable party attached to every authored object (ADR-0016). The lowest unit of management; belongs to exactly one Team. |
 | **Team** | A group of Owners and/or child Teams, forming a strict tree (single parent). Compliance rolls up the subtree as ratio-plus-worst per finding kind, waivers always visible (ADR-0017). Supplied through a seam (`teams.yaml` first-party), never owned by the platform. |
 | **Catalogue** | The versioned inventory of otelcol component types — identity, per-signal stability, lifecycle — keyed `(class, type)`, one catalogue per collector release, machine-generated from upstream `metadata.yaml`. Installed catalogues are retained; a collector is judged against the catalogue for the version it runs. Adopter-authored entries layer on top. States what exists, never what may be used (that is the Allow-list). |
@@ -34,7 +34,8 @@ session.
 | **Grant** | An ancestor-authored, owned exception adding named Catalogue entries to a descendant Team's effective Allow-list. Applies to that subtree; narrowable below. Everything usable traces to the root list or a Grant. |
 | **Stability floor** | The minimum upstream stability a Service's components must meet, configured per (Service Class, Environment), evaluated per (component, signal actually used). Breach is a finding, never a block. |
 | **Palette** | What the composer offers a given user: Catalogue ∩ effective Allow-list, judged live by the shared evaluator. Allowed shown; floor-breaching greyed with the reason; non-allowed hidden. Pure presentation — enforces nothing. |
-| **Environment** | The test/staging/production dimension of a Service's deployment, aligned to `deployment.environment.name`. One Service, one owner, many Environments; each may bind a different Blueprint version. Adopter-defined open vocabulary; `production` is the distinguished value policy defaults attach to. Never called "path" (a Path is topology). |
+| **Environment** | The test/staging/production dimension of a Service's deployment, aligned to `deployment.environment.name`. One Service, one owner, many Environments; per-Environment Blueprint bindings are realised through sibling Tiers, each Tier declaring one Environment (ADR-0025). Adopter-defined open vocabulary; `production` is the distinguished value policy defaults attach to. Never called "path" (a Path is topology). |
+| **Satellite repo** | An optional repo holding one Team subtree's authored content and rendered artefacts outside the primary estate repo (ADR-0027). The exception, not the path. Governance never moves: the team stays in the primary `teams.yaml`, the mapping is declared centrally, references run satellite→primary only. Verdicts are estate-public; content may be subtree-private. |
 | **Exemption** | A waiver for one requirement with mandatory owner and expiry. Waives the count, never the diagnosis. |
 | **Grace Period** | Service-Class-scoped onboarding window during which findings are waived. Shrinks as class rises. |
 
@@ -47,6 +48,7 @@ session.
 | **Observed** | Telemetry that landed in a backend over a window. |
 | **Known** | The per-reading flag keeping "we cannot see" distinct from "it is absent". Not knowing is a normal state. |
 | **Outcome** | One of: `compliant`, `not_configured`, `broken_pipeline`, `not_delivered`, `ungoverned`, `misconfigured`, `unknown`, plus `library_drift`. The cross is Effective × Observed, per requirement. |
+| **library_drift** | Passing the version you claim or pin while failing the current one — "the goalposts moved" (ADR-0026). One finding kind with a facet for what drifted: a Requirement (stale `satisfies`) or a Component (pin behind head). Distinct in diagnosis and remediation from "you never complied". |
 | **Delivery status** | OpAMP `RemoteConfigStatus`, verbatim: `UNSET` / `APPLYING` / `APPLIED` / `FAILED`. Intended × Effective, per collector, beside the conformance verdict. |
 | ⚠ **Expectation** (G5/G6) | What telemetry should arrive, derived from the Intended config at a SHA — the differentiator's object. |
 | ⚠ **Cohort** (G4) | The set of collectors a staged rollout step applies to. Whether it is git state is the open hypothesis. |
@@ -59,6 +61,7 @@ session.
 | **Served** | A collector receiving config from the platform's OpAMP server. |
 | **Foreign** | A collector whose config is delivered by anything else (GitOps, config management, a person). Legitimate, not lesser. |
 | **Delivery path** | Served or git-delivered — a visible property of each collector. |
+| **Forge adapter** | The seam over the git host's API (change proposals, review routing, attribution). Implementations vendor-qualified — GitHub App first (ADR-0014/0028). The mandatory floor beneath it is plain git transport (deploy key / token); governance never depends on a forge feature. |
 
 ## Rules of use
 

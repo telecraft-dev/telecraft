@@ -13,25 +13,25 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
 | REQ-005 unique branding | G0 | P0 |
 | REQ-006 air-gap deployable, no SaaS dependency | ADR-0019 | all |
-| REQ-010 component Catalogue | G2 | P2 |
-| REQ-011 team-scoped Allow-lists | G2 | P2 |
+| REQ-010 component Catalogue | ADR-0020 | P2 |
+| REQ-011 team-scoped Allow-lists | ADR-0021 | P2 |
 | REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017 | P1/P4 |
-| REQ-013 Service Class ⊥ Sensitivity, cumulative floors | ADR-0007, ADR-0015, G3 | P1/P2 |
+| REQ-013 Service Class ⊥ Sensitivity, cumulative floors | ADR-0007, ADR-0015, ADR-0023, ADR-0025 | P1/P2 |
 | REQ-014 exemptions, grace | ADR-0004 | P1 |
 | REQ-015 universal ownership, finding routing | ADR-0016 | P1/P4 |
-| REQ-016 Components first-class, inherit by reference | ADR-0016 | P2 |
+| REQ-016 Components first-class, inherit by reference | ADR-0016, ADR-0024, ADR-0026 | P2 |
 | REQ-017 pluggable auth, ownership-derived authz | ADR-0017, ADR-0019 | P0/P4 |
 | REQ-020 the cross, seven outcomes + delivery status | ADR-0004 | P1/P3 |
 | REQ-021 library layout, strict load | (prior built code; port) | P1 |
 | REQ-022 Weaver/semconv vocabulary | ADR-0009 | P1/P5 |
 | REQ-023 no query language; AttributeNames | ADR-0009 | P1 |
 | REQ-024 CI check mode | (prior built code; port) | P1 |
-| REQ-025 library_drift | ADR-0004 | P2 |
-| REQ-030 phase-ordered blueprints | G3 | P2 |
-| REQ-031 satisfies = intent | ADR-0004, G3 | P2 |
-| REQ-032 one artefact, SHA-stamped | ADR-0002, ADR-0013 | P2 |
-| REQ-033 PRs via GitHub App | ADR-0003, ADR-0014 | P2 |
-| REQ-034 renderer hard rules | ADR-0007, ADR-0010 | P2 |
+| REQ-025 library_drift | ADR-0004, ADR-0026 | P2 |
+| REQ-030 phase-ordered blueprints | ADR-0024 (ordering findings, phases dropped) | P2 |
+| REQ-031 satisfies = intent | ADR-0004, ADR-0026 | P2 |
+| REQ-032 one artefact, SHA-stamped | ADR-0002, ADR-0013, ADR-0027 | P2 |
+| REQ-033 PRs via GitHub App | ADR-0003, ADR-0014, ADR-0028 (forge-neutral) | P2 |
+| REQ-034 renderer hard rules | ADR-0007, ADR-0010, ADR-0022, ADR-0028 | P2 |
 | REQ-035 YAML escape hatch | G7 | P4 |
 | REQ-036 canvas survives scale | ADR-0007 | P4 |
 | REQ-040 stateless OpAMP server | ADR-0013 | P3 |

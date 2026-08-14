@@ -52,8 +52,11 @@ re-verify only what a session forks on.
   terminology; real seams; `Elasticsearch` as first `TelemetryProvider`; CI
   check mode; early **normaliser spike** (riskiest component, ADR-0005).
 - **P2 Catalogue + Authoring backend (headless)** — catalogue ingestion;
-  blueprint schema + allow-list validation; renderer with hard rules; GitHub
-  App PR flow. Testable entirely via git diffs.
+  blueprint schema + allow-list validation; renderer with hard rules; forge
+  adapter PR flow (GitHub App first, ADR-0028). Testable entirely via git
+  diffs. The estate source-set abstraction (primary + satellite repos,
+  ADR-0027) is modelled here from the start; satellite support itself lands
+  no earlier than P4 (its content gating needs the console).
 - **P3 Serving** — stateless OpAMP server, commit stamping, delivery status
   via the normaliser, both `EstateProvider` implementations, empty-config-map
   guard, bootstrap behaviour per G4.
