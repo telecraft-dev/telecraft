@@ -51,7 +51,6 @@ session.
 | **library_drift** | Passing the version you claim or pin while failing the current one — "the goalposts moved" (ADR-0026). One finding kind with a facet for what drifted: a Requirement (stale `satisfies`) or a Component (pin behind head). Distinct in diagnosis and remediation from "you never complied". |
 | **Delivery status** | OpAMP `RemoteConfigStatus`, verbatim: `UNSET` / `APPLYING` / `APPLIED` / `FAILED`. Intended × Effective, per collector, beside the conformance verdict. |
 | ⚠ **Expectation** (G5/G6) | What telemetry should arrive, derived from the Intended config at a SHA — the differentiator's object. |
-| ⚠ **Cohort** (G4) | The set of collectors a staged rollout step applies to. Whether it is git state is the open hypothesis. |
 
 ## Serving (ADR-0010, ADR-0013)
 
@@ -62,6 +61,16 @@ session.
 | **Foreign** | A collector whose config is delivered by anything else (GitOps, config management, a person). Legitimate, not lesser. |
 | **Delivery path** | Served or git-delivered — a visible property of each collector. |
 | **Forge adapter** | The seam over the git host's API (change proposals, review routing, attribution). Implementations vendor-qualified — GitHub App first (ADR-0014/0028). The mandatory floor beneath it is plain git transport (deploy key / token); governance never depends on a forge feature. |
+
+## Delivery & rollout (ADR-0029–0032)
+
+| Term | Meaning |
+|---|---|
+| **Rollout** | An opt-in authored object, owned by the Tier's owner, staging one Tier's rebinding from one Blueprint version to another. While active the Tier is dual-bound (*from* and *to*) and `rendered/` holds both artefacts at head. Stages advance by platform-proposed, human-merged PRs; halting is the withheld proposal; abort is a proposed PR. One active Rollout per Tier. The default remains the flat rebind — a Rollout is never mandatory ceremony. |
+| **Cohort** | The subset of one Tier's collector population a Rollout stage applies to — never a Tier itself. Specified as enumerated hosts, an attribute selector, and/or a fraction (stable hash over the Tier-matching identifying attributes); membership is a pure function computed at serve time, never stored. Advisory on the Foreign path: lag, never failure. |
+| **Unmatched artefact** | The distinguished, root-team-owned rendered config served to a collector matching no Tier selector: commit-stamped, self-telemetry on, no data pipelines, never empty (ADR-0010). Makes ungoverned-but-served maximally visible. Not the quarantine destination — that is data-level (ADR-0031). |
+| **`never_seen`** | A finding class attached to the Tier, not a conformance outcome: the Tier's selector has matched no collector in any reading. Neutral in v1 — excluded from compliance denominators, never red; gains expected-count teeth when G5 lands cardinality (OQ-5). |
+| **Quarantine destination** | The short-retention destination an authored gateway routing rule sends unrecognised `service.name` telemetry to; observed and flagged by the platform ("unknown sources arriving — onboard them"). A rendered governance pattern, never a platform runtime capability. Drains by onboarding, never by retention growth. |
 
 ## Rules of use
 
