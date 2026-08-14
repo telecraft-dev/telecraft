@@ -15,18 +15,18 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-006 air-gap deployable, no SaaS dependency | ADR-0019 | all |
 | REQ-010 component Catalogue | ADR-0020 | P2 |
 | REQ-011 team-scoped Allow-lists | ADR-0021 | P2 |
-| REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017 | P1/P4 |
+| REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017, ADR-0035 | P1/P4 |
 | REQ-013 Service Class ⊥ Sensitivity, cumulative floors | ADR-0007, ADR-0015, ADR-0023, ADR-0025 | P1/P2 |
-| REQ-014 exemptions, grace | ADR-0004 | P1 |
+| REQ-014 exemptions, grace | ADR-0004, ADR-0037 | P1 |
 | REQ-015 universal ownership, finding routing | ADR-0016 | P1/P4 |
 | REQ-016 Components first-class, inherit by reference | ADR-0016, ADR-0024, ADR-0026 | P2 |
 | REQ-017 pluggable auth, ownership-derived authz | ADR-0017, ADR-0019 | P0/P4 |
-| REQ-020 the cross, seven outcomes + delivery status | ADR-0004 | P1/P3 |
+| REQ-020 the cross, seven outcomes + delivery status | ADR-0004, ADR-0033 | P1/P3 |
 | REQ-021 library layout, strict load | (prior built code; port) | P1 |
-| REQ-022 Weaver/semconv vocabulary | ADR-0009 | P1/P5 |
-| REQ-023 no query language; AttributeNames | ADR-0009 | P1 |
+| REQ-022 Weaver/semconv vocabulary | ADR-0009, ADR-0034 | P1/P5 |
+| REQ-023 no query language; AttributeNames | ADR-0009, ADR-0034 | P1 |
 | REQ-024 CI check mode | (prior built code; port) | P1 |
-| REQ-025 library_drift | ADR-0004, ADR-0026 | P2 |
+| REQ-025 library_drift | ADR-0004, ADR-0026, ADR-0034 | P2 |
 | REQ-030 phase-ordered blueprints | ADR-0024 (ordering findings, phases dropped) | P2 |
 | REQ-031 satisfies = intent | ADR-0004, ADR-0026 | P2 |
 | REQ-032 one artefact, SHA-stamped | ADR-0002, ADR-0013, ADR-0027 | P2 |
@@ -36,12 +36,12 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-036 canvas survives scale | ADR-0007 | P4 |
 | REQ-040 stateless OpAMP server | ADR-0013 | P3 |
 | REQ-041 GitOps co-equal | ADR-0010 | P3 |
-| REQ-042 no empty config map; first boot | ADR-0010, G4 | P3 |
-| REQ-043 staged rollout, both paths | G4 | P5 |
-| REQ-044 two EstateProviders | ADR-0008 | P3 |
+| REQ-042 no empty config map; first boot | ADR-0010, ADR-0030 | P3 |
+| REQ-043 staged rollout, both paths | ADR-0029 | P5 |
+| REQ-044 two EstateProviders | ADR-0008, ADR-0036 | P3 |
 | REQ-050 flow visualisation | G6 | P5 |
-| REQ-051 Expectation engine | G5/G6 | P5 |
-| REQ-052 expected-but-never-seen; ungoverned | G4/G5 | P5 |
+| REQ-051 Expectation engine | ADR-0033, ADR-0034 (unit, tap); G6 engine | P5 |
+| REQ-052 expected-but-never-seen; ungoverned | ADR-0030, ADR-0031, ADR-0035 | P5 |
 | REQ-053 self-telemetry via TelemetryProvider | G6 | P5 |
 | REQ-060 reuse over build | ADR-0000 process + per-decision | all |
 
