@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminology · Two vocabularies, one platform</title>
+<style>
+:root {
+  --ink: #1a1f2b; --muted: #5b6472; --paper: #fdfcf9; --card: #ffffff;
+  --line: #d9d4c8; --accent: #0f6b5c; --accent-soft: #e3f0ed;
+  --otel: #b45309; --otel-soft: #fbeede;
+  --warn: #a03535; --warn-soft: #f9e7e7; --good: #2f6b3a;
+}
+* { box-sizing: border-box; }
+html { font-size: 17px; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif; line-height: 1.55; }
+main { max-width: 46rem; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+h1, h2, h3 { font-family: 'Gill Sans', 'Segoe UI', 'Helvetica Neue', sans-serif; line-height: 1.2; }
+h1 { font-size: 2rem; margin: 0 0 .3rem; }
+h2 { font-size: 1.35rem; margin-top: 2.6rem; border-bottom: 1px solid var(--line); padding-bottom: .3rem; }
+.kicker { font-family: 'Gill Sans', 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; color: var(--muted); }
+.lede { font-size: 1.12rem; color: var(--muted); margin-top: .2rem; }
+p { margin: .8rem 0; }
+a { color: var(--accent); }
+code, .term { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: .86em;
+  background: #f1efe8; padding: .08em .35em; border-radius: 4px; }
+.term-ours { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.term-otel { color: var(--otel); background: var(--otel-soft); font-weight: 600; }
+figure { margin: 1.6rem 0; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption { font-size: .85rem; color: var(--muted); margin-top: .5rem; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-size: .92rem; }
+th { font-family: 'Gill Sans', 'Segoe UI', sans-serif; text-align: left; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+th, td { padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.trap { background: var(--warn-soft); border-left: 4px solid var(--warn); padding: .7rem 1rem; margin: 1.3rem 0; border-radius: 0 6px 6px 0; }
+.trap strong { color: var(--warn); }
+.note { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: .7rem 1rem; margin: 1.3rem 0; border-radius: 0 6px 6px 0; }
+.pill { display: inline-block; font-family: 'Gill Sans', 'Segoe UI', sans-serif; font-size: .72rem; padding: .1rem .55rem; border-radius: 99px; letter-spacing: .04em; vertical-align: middle; }
+.pill-otel { background: var(--otel-soft); color: var(--otel); border: 1px solid var(--otel); }
+.pill-ours { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); }
+.footer-nudge { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .88rem; color: var(--muted); }
+.quiz { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem 1.3rem; margin: 1.4rem 0; }
+.quiz h3 { margin-top: 0; }
+.quiz .q { margin: 1.1rem 0 .4rem; font-weight: 600; }
+.quiz button.opt { display: block; width: 100%; text-align: left; margin: .35rem 0; padding: .55rem .8rem;
+  font: inherit; font-size: .92rem; background: var(--paper); border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+.quiz button.opt:hover { border-color: var(--accent); }
+.quiz button.opt.right { background: #e7f2e9; border-color: var(--good); }
+.quiz button.opt.wrong { background: var(--warn-soft); border-color: var(--warn); }
+.quiz .why { display: none; font-size: .85rem; color: var(--muted); margin: .3rem 0 0 .2rem; }
+@media print { body { background: #fff; } .quiz { display: none; } a { color: inherit; text-decoration: none; } }
+</style>
+</head>
+<body>
+<main>
+<p class="kicker">Project documentation · companion to <a href="glossary.md">glossary.md</a> · vocabulary per ADR-0015</p>
+<h1>Two vocabularies, one platform</h1>
+<p class="lede">Every word in this project comes from one of two dictionaries:
+<span class="pill pill-otel">OTel's words</span> — upstream OpenTelemetry terminology we adopt verbatim —
+and <span class="pill pill-ours">our words</span> — the project's own domain model, layered on top.
+The traps live where they collide.</p>
+
+<h2>1 · <span class="pill pill-otel">OTel's words</span> — inside one collector</h2>
+
+<p>OpenTelemetry defines three <span class="term term-otel">signals</span> — <strong>traces</strong>
+(what happened to one request, as a tree of <em>spans</em>), <strong>metrics</strong> (numbers
+aggregated over time), and <strong>logs</strong> (timestamped records).
+<a href="https://opentelemetry.io/docs/concepts/signals/">Signals docs</a>. Applications emit them
+via SDKs; a <span class="term term-otel">Collector</span> is the standalone process that receives,
+transforms, and forwards them.</p>
+
+<figure>
+<svg viewBox="0 0 860 330" font-family="Gill Sans, Segoe UI, sans-serif">
+  <rect x="15" y="15" width="830" height="300" rx="12" fill="#fff" stroke="#b45309" stroke-width="2"/>
+  <text x="35" y="45" font-size="17" font-weight="700" fill="#b45309">One Collector process (otelcol)</text>
+  <text x="35" y="66" font-size="12.5" fill="#5b6472">its config file declares components, then wires them into pipelines</text>
+  <rect x="35" y="82" width="790" height="102" rx="8" fill="#fdf8f2" stroke="#e5c9a5"/>
+  <text x="50" y="104" font-size="12.5" font-weight="700" fill="#8a5a13">pipeline: logs</text>
+  <rect x="50" y="115" width="130" height="52" rx="6" fill="#fbeede" stroke="#b45309"/>
+  <text x="115" y="136" font-size="13" text-anchor="middle" font-weight="700" fill="#7c3f07">receivers</text>
+  <text x="115" y="154" font-size="12" text-anchor="middle" fill="#1a1f2b">otlp · filelog</text>
+  <path d="M180 141 h38" stroke="#8a5a13" stroke-width="2" marker-end="url(#arr)"/>
+  <rect x="220" y="115" width="360" height="52" rx="6" fill="#fbeede" stroke="#b45309"/>
+  <text x="400" y="136" font-size="13" text-anchor="middle" font-weight="700" fill="#7c3f07">processors — order matters</text>
+  <text x="400" y="154" font-size="12" text-anchor="middle" fill="#1a1f2b">memory_limiter → k8sattributes → batch</text>
+  <path d="M580 141 h38" stroke="#8a5a13" stroke-width="2" marker-end="url(#arr)"/>
+  <rect x="620" y="115" width="185" height="52" rx="6" fill="#fbeede" stroke="#b45309"/>
+  <text x="712" y="136" font-size="13" text-anchor="middle" font-weight="700" fill="#7c3f07">exporters</text>
+  <text x="712" y="154" font-size="12" text-anchor="middle" fill="#1a1f2b">otlphttp/gateway</text>
+  <rect x="35" y="192" width="790" height="40" rx="8" fill="#fdf8f2" stroke="#e5c9a5" stroke-dasharray="4 4"/>
+  <text x="50" y="217" font-size="12.5" fill="#8a5a13">pipeline: metrics — same shape, its own wiring; a component can appear in several pipelines</text>
+  <rect x="35" y="248" width="790" height="52" rx="8" fill="#f4f2ec" stroke="#c9c2b2"/>
+  <text x="50" y="270" font-size="12.5" font-weight="700" fill="#5b6472">extensions — outside the data path</text>
+  <text x="50" y="289" font-size="12" fill="#5b6472">health_check · opamp (reports status &amp; effective config — cannot accept remote config by itself)</text>
+  <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8a5a13"/></marker></defs>
+</svg>
+<figcaption><strong>Inside one collector.</strong> A <span class="term term-otel">pipeline</span> is
+receivers → processors → exporters wired for <em>one signal, inside one process</em>. Processor order
+is meaningful (a redaction processor before an exporter and after it are different systems).
+<a href="https://opentelemetry.io/docs/collector/configuration/">Configuration docs</a>.</figcaption>
+</figure>
+
+<table>
+<tr><th>Word</th><th>Meaning</th></tr>
+<tr><td><span class="term term-otel">receiver</span></td><td>Gets data in — by listening (e.g. <code>otlp</code>) or by scraping/collecting (e.g. <code>filelog</code>, <code>hostmetrics</code>, <code>prometheus</code>).</td></tr>
+<tr><td><span class="term term-otel">processor</span></td><td>Transforms data in flight: batch, limit memory, add/strip attributes, redact, sample. Runs in declared order.</td></tr>
+<tr><td><span class="term term-otel">exporter</span></td><td>Sends data on — to a backend or to another collector.</td></tr>
+<tr><td><span class="term term-otel">connector</span></td><td>Both an exporter and a receiver: joins the end of one pipeline to the start of another (e.g. derive metrics from spans).</td></tr>
+<tr><td><span class="term term-otel">extension</span></td><td>Capability outside the data path: health endpoints, auth, the <code>opamp</code> reporting extension.</td></tr>
+<tr><td><span class="term term-otel">OTLP</span></td><td>The OpenTelemetry protocol — the wire format all three signals share.</td></tr>
+<tr><td><span class="term term-otel">resource</span></td><td>Attributes describing <em>the thing emitting</em> the telemetry (<code>service.name</code>, <code>k8s.pod.name</code>) — attached to everything the process emits.</td></tr>
+<tr><td><span class="term term-otel">semantic conventions</span></td><td>The standard <em>names</em> for attributes and metrics, with requirement levels (required / recommended / opt-in). What "well-formed telemetry" means. <a href="https://opentelemetry.io/docs/specs/semconv/">Semconv</a>.</td></tr>
+<tr><td><span class="term term-otel">OpAMP</span></td><td>The <em>control</em> protocol (Beta): a collector (or its Supervisor) phones a server, reports status + effective config, and can receive config. Transport, not policy. <a href="https://opentelemetry.io/docs/specs/opamp/">Spec</a>.</td></tr>
+<tr><td><span class="term term-otel">Supervisor</span></td><td>A separate process beside a collector that actually <em>applies</em> remote config and manages the collector's lifecycle. The in-process <code>opamp</code> extension only reports.</td></tr>
+</table>
+
+<h2>2 · <span class="pill pill-ours">Our words</span> — outside, across the estate</h2>
+
+<p>OTel's vocabulary stops at the edge of one process. This platform governs the <em>whole
+population</em> — so the domain model adds a second layer that deliberately never reuses an
+OTel word for a different thing.</p>
+
+<figure>
+<svg viewBox="0 0 860 360" font-family="Gill Sans, Segoe UI, sans-serif">
+  <rect x="15" y="40" width="150" height="64" rx="8" fill="#fff" stroke="#5b6472"/>
+  <text x="90" y="66" font-size="13" text-anchor="middle" font-weight="700">checkout-api</text>
+  <text x="90" y="84" font-size="11.5" text-anchor="middle" fill="#5b6472">pods on k8s</text>
+  <rect x="15" y="235" width="150" height="64" rx="8" fill="#fff" stroke="#5b6472"/>
+  <text x="90" y="261" font-size="13" text-anchor="middle" font-weight="700">storefront</text>
+  <text x="90" y="279" font-size="11.5" text-anchor="middle" fill="#5b6472">browser JS — runs no collector</text>
+  <rect x="230" y="20" width="180" height="130" rx="10" fill="#e3f0ed" stroke="#0f6b5c" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="320" y="44" font-size="14" text-anchor="middle" font-weight="700" fill="#0f6b5c">Tier: edge</text>
+  <text x="320" y="61" font-size="11" text-anchor="middle" fill="#0f6b5c">selector: node DaemonSet</text>
+  <rect x="248" y="72" width="64" height="28" rx="5" fill="#fff" stroke="#9db8b1"/>
+  <rect x="320" y="72" width="64" height="28" rx="5" fill="#fff" stroke="#9db8b1"/>
+  <rect x="248" y="106" width="64" height="28" rx="5" fill="#fff" stroke="#9db8b1"/>
+  <rect x="320" y="106" width="64" height="28" rx="5" fill="#fff" stroke="#9db8b1"/>
+  <text x="316" y="92" font-size="10" text-anchor="middle" fill="#8a958f">collectors ×214 — matched, never drawn</text>
+  <rect x="500" y="95" width="180" height="120" rx="10" fill="#e3f0ed" stroke="#0f6b5c" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="590" y="119" font-size="14" text-anchor="middle" font-weight="700" fill="#0f6b5c">Tier: gateway</text>
+  <text x="590" y="136" font-size="11" text-anchor="middle" fill="#0f6b5c">run by the data-flow team</text>
+  <rect x="518" y="146" width="64" height="28" rx="5" fill="#fff" stroke="#9db8b1"/>
+  <rect x="590" y="146" width="64" height="28" rx="5" fill="#fff" stroke="#9db8b1"/>
+  <text x="586" y="192" font-size="10" text-anchor="middle" fill="#8a958f">two listeners: trusted / untrusted</text>
+  <rect x="740" y="80" width="105" height="44" rx="8" fill="#fff" stroke="#5b6472"/>
+  <text x="792" y="107" font-size="12.5" text-anchor="middle">Elasticsearch</text>
+  <rect x="740" y="140" width="105" height="44" rx="8" fill="#fff" stroke="#5b6472"/>
+  <text x="792" y="167" font-size="12.5" text-anchor="middle">Prometheus</text>
+  <path d="M165 72 h55" stroke="#5b6472" stroke-width="1.5" marker-end="url(#arr2)"/>
+  <path d="M410 85 C 450 85, 460 120, 498 130" stroke="#0f6b5c" stroke-width="4" fill="none" marker-end="url(#arrG)"/>
+  <rect x="416" y="52" width="74" height="24" rx="12" fill="#0f6b5c"/>
+  <text x="453" y="68" font-size="12" text-anchor="middle" fill="#fff" font-weight="700">Hop · trusted</text>
+  <path d="M165 267 C 330 267, 420 200, 498 178" stroke="#0f6b5c" stroke-width="4" fill="none" stroke-dasharray="8 5" marker-end="url(#arrG)"/>
+  <rect x="300" y="278" width="102" height="24" rx="12" fill="#fff" stroke="#0f6b5c"/>
+  <text x="351" y="294" font-size="12" text-anchor="middle" fill="#0f6b5c" font-weight="700">Hop · untrusted</text>
+  <path d="M680 130 C 705 120, 710 105, 738 102" stroke="#0f6b5c" stroke-width="3" fill="none" marker-end="url(#arrG)"/>
+  <path d="M680 175 C 705 172, 710 165, 738 162" stroke="#0f6b5c" stroke-width="3" fill="none" marker-end="url(#arrG)"/>
+  <text x="20" y="340" font-size="12" fill="#a03535" font-weight="700">Path (checkout-api):  workload → edge Tier → gateway Tier → Elasticsearch</text>
+  <text x="20" y="357" font-size="12" fill="#a03535">Path (storefront):  workload → gateway Tier directly — the “on-ramp”: no collector of its own. Both are normal; one service may have several Paths.</text>
+  <defs>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#5b6472"/></marker>
+    <marker id="arrG" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#0f6b5c"/></marker>
+  </defs>
+</svg>
+<figcaption><strong>The authored topology.</strong> <span class="term term-ours">Tiers</span> are
+positions (edge, gateway — matching industry usage); the <span class="term term-ours">Hop</span> is
+the directed edge between them — a first-class object carrying trust; a
+<span class="term term-ours">Path</span> is one service's route across the graph. Running collectors
+are <em>derived</em>: matched into a Tier by selector, never drawn individually — that's why the
+canvas stays legible at 500 collectors.</figcaption>
+</figure>
+
+<table>
+<tr><th>Word</th><th>Meaning</th><th>Watch out</th></tr>
+<tr><td><span class="term term-ours">Tier</span></td><td>A position in the topology (edge, gateway). Authored, ownable; carries the policy for everything at that position.</td><td>Only ever topology. Criticality is <em>Service Class</em>, never "Tier 1".</td></tr>
+<tr><td><span class="term term-ours">Hop</span></td><td>The directed edge between two Tiers. First-class and ownable: it owns trust, and the delivery expectation crosses it.</td><td>In every competitor this is just a string — an endpoint typed into an exporter. Making it an object is the design's central bet.</td></tr>
+<tr><td><span class="term term-ours">Path</span></td><td>One service's route through the Tier graph. Several per service is normal.</td><td>Not "pipeline" — that word is taken (inside one collector).</td></tr>
+<tr><td><span class="term term-ours">Estate</span></td><td>The whole population of collectors, across every substrate (k8s, VMs, bare metal).</td><td>Deliberate deviation from industry "fleet": capital-F Fleet is Elastic's product (<code>ElasticFleet</code>), and we refuse the ambiguity.</td></tr>
+<tr><td><span class="term term-ours">Service</span></td><td>The governed unit, identified by <code>service.name</code> — OTel's own identity attribute.</td><td>Assigned a Service Class; judged against its requirements.</td></tr>
+<tr><td><span class="term term-ours">Service Class</span></td><td>How much a service matters: C1 &gt; C2 &gt; C3 (adopter-renamable). Drives the required floor. Cumulative: C1 = C2 + more.</td><td>Never written "Tier N" — that now means topology.</td></tr>
+<tr><td><span class="term term-ours">Sensitivity</span></td><td>The orthogonal axis: what the data is (PII, finance…). Drives routing and redaction, never completeness.</td><td>Service Class ⊥ Sensitivity — conflating "how much" with "who may see" is the classic governance bug.</td></tr>
+<tr><td><span class="term term-ours">Component</span></td><td>A configured instance of a catalogue type (receiver, processor, exporter, connector, extension): named, versioned, <em>ownable</em>. The gateway team owns the gateway exporter; Infosec owns the PII redactor.</td><td>Consumers inherit by <em>reference</em>, never by copy — the owning team's change re-renders every consumer.</td></tr>
+<tr><td><span class="term term-ours">Blueprint</span></td><td>A named, versioned <em>composition of Components</em> — possibly cross-team — with a phase (detect→enrich→classify→protect→batch→export) and a <code>satisfies</code> list of requirement ids: a claim of <em>intent</em>, never fact.</td><td>Composition is phase-<em>ordered</em>, not a set union — union-merge produces valid-looking configs with <code>memory_limiter</code> in the wrong place.</td></tr>
+<tr><td><span class="term term-ours">Owner / Team</span></td><td>Every authored object carries an owner, CODEOWNERS-style; owners belong to teams; teams nest; compliance rolls up.</td><td>Findings route to the owner of the <em>object</em>, not the file it renders into.</td></tr>
+</table>
+
+<h2>3 · The three readings — and why green must mean "worked"</h2>
+
+<table>
+<tr><th>Reading</th><th>Question</th><th>Source</th></tr>
+<tr><td><span class="term term-ours">Intended</span></td><td>What <em>should</em> this collector run?</td><td>Git, pinned to a commit SHA (what GitOps calls "declared" — we say Intended)</td></tr>
+<tr><td><span class="term term-ours">Effective</span></td><td>What does it <em>say</em> it is running?</td><td>The collector's own reported config — OpAMP's <code>EffectiveConfig</code>, adopted verbatim</td></tr>
+<tr><td><span class="term term-ours">Observed</span></td><td>What telemetry actually <em>arrived</em>?</td><td>The backend, over a window</td></tr>
+</table>
+
+<figure>
+<svg viewBox="0 0 860 300" font-family="Gill Sans, Segoe UI, sans-serif">
+  <text x="430" y="24" font-size="14" text-anchor="middle" font-weight="700">Effective × Observed — judged per requirement</text>
+  <text x="250" y="60" font-size="12.5" text-anchor="middle" fill="#5b6472">Observed: telemetry arrived</text>
+  <text x="620" y="60" font-size="12.5" text-anchor="middle" fill="#5b6472">Observed: nothing arrived</text>
+  <text x="60" y="130" font-size="12.5" fill="#5b6472">Effective:</text>
+  <text x="60" y="146" font-size="12.5" fill="#5b6472">config says yes</text>
+  <text x="60" y="230" font-size="12.5" fill="#5b6472">Effective:</text>
+  <text x="60" y="246" font-size="12.5" fill="#5b6472">config says no</text>
+  <rect x="150" y="80" width="200" height="90" rx="8" fill="#e7f2e9" stroke="#2f6b3a" stroke-width="2"/>
+  <text x="250" y="118" font-size="15" text-anchor="middle" font-weight="700" fill="#2f6b3a">compliant</text>
+  <text x="250" y="140" font-size="11.5" text-anchor="middle" fill="#2f6b3a">it works — the only honest green</text>
+  <rect x="520" y="80" width="200" height="90" rx="8" fill="#f9e7e7" stroke="#a03535" stroke-width="2"/>
+  <text x="620" y="112" font-size="15" text-anchor="middle" font-weight="700" fill="#a03535">broken_pipeline</text>
+  <text x="620" y="134" font-size="11.5" text-anchor="middle" fill="#a03535">configured, yet nothing lands —</text>
+  <text x="620" y="150" font-size="11.5" text-anchor="middle" fill="#a03535">the finding config-only tools can't produce</text>
+  <rect x="150" y="180" width="200" height="90" rx="8" fill="#fdf3dd" stroke="#8a5a13" stroke-width="2"/>
+  <text x="250" y="214" font-size="15" text-anchor="middle" font-weight="700" fill="#8a5a13">ungoverned</text>
+  <text x="250" y="236" font-size="11.5" text-anchor="middle" fill="#8a5a13">arriving, but nobody authored it —</text>
+  <text x="250" y="252" font-size="11.5" text-anchor="middle" fill="#8a5a13">passes, and is surfaced</text>
+  <rect x="520" y="180" width="200" height="90" rx="8" fill="#f4f2ec" stroke="#5b6472" stroke-width="2"/>
+  <text x="620" y="214" font-size="15" text-anchor="middle" font-weight="700" fill="#5b6472">not_configured</text>
+  <text x="620" y="236" font-size="11.5" text-anchor="middle" fill="#5b6472">requirement unmet, honestly absent</text>
+</svg>
+<figcaption><strong>The cross.</strong> Each cell has a different <em>owner</em> and a different
+remedy — that's the point. When a reading is missing the verdict is <code>unknown</code> /
+<code>not_delivered</code>, never a silent pass or fail. Delivery status (Intended × Effective,
+per <em>collector</em>) sits beside this, using OpAMP's own words: <code>APPLYING · APPLIED · FAILED</code>.</figcaption>
+</figure>
+
+<h2>4 · The traps — where the two dictionaries collide</h2>
+
+<div class="trap"><strong>“Tier”</strong> — here it means topology position (edge tier, gateway
+tier), matching industry usage. But the industry <em>also</em> says "Tier 1 app" for criticality —
+which is <span class="term term-ours">Service Class</span> in this project, written C1/C2/C3 and
+<em>never</em> "Tier 1". One edge-tier collector carries telemetry for C1, C2 and C3 services
+simultaneously — which is exactly why the two concepts must not share a name.</div>
+
+<div class="trap"><strong>“Declared”</strong> — GitOps vocabulary calls the <em>git side</em>
+"declared configuration". We therefore never use the word: the git side is
+<span class="term term-ours">Intended</span>, and the collector's reported running config is
+<span class="term term-ours">Effective</span> — OpAMP's own <code>EffectiveConfig</code>, adopted
+verbatim.</div>
+
+<div class="trap"><strong>“Pipeline”</strong> — an otelcol pipeline lives <em>inside one
+process</em>. The cross-collector route is a <span class="term term-ours">Path</span>. If you catch
+yourself saying "the pipeline from edge to gateway", the word you want is Path (or the specific
+<span class="term term-ours">Hop</span>).</div>
+
+<div class="trap"><strong>“Collector”</strong> — same word, two postures. To OTel it's the binary.
+To us it's a <em>derived, read-only</em> object: matched into a Tier by selector, inheriting the
+Tier's policy and owner, never drawn on the canvas, never individually authored. "A microservice
+with its own collector" = a Tier whose selector matches only that workload.</div>
+
+<div class="trap"><strong>“Fleet” / “agent”</strong> — capital-F Fleet is the Elastic product,
+only ever written <code>ElasticFleet</code>. The population is the
+<span class="term term-ours">Estate</span>. And we avoid calling collectors "agents" (Elastic
+Agent is a different product); the only "agent" is in OpAMP's own protocol messages.</div>
+
+<div class="trap"><strong>“Schema”</strong> — OTel schema URLs are a version-<em>migration</em>
+mechanism and cannot express a constraint. The thing that declares what telemetry should look like
+is the <span class="term term-otel">semantic conventions</span> registry (tooled by Weaver). Our
+conformance vocabulary builds on the latter, never the former.</div>
+
+<h2>5 · Check yourself</h2>
+
+<div class="quiz" data-quiz>
+<h3>Retrieval — no notes</h3>
+
+<div class="q" data-q>1 · A position in the topology — edge or gateway — is called a…</div>
+<button class="opt" data-right>Tier</button>
+<button class="opt">Class</button>
+<button class="opt">Path</button>
+<button class="opt">Hop</button>
+<p class="why">Tier = position (industry usage). Service Class is criticality; a Hop is the edge between two Tiers; a Path is a service's whole route.</p>
+
+<div class="q" data-q>2 · Inside one collector, receivers → processors → exporters wired for one signal is a…</div>
+<button class="opt" data-right>pipeline</button>
+<button class="opt">connector</button>
+<button class="opt">extension</button>
+<button class="opt">blueprint</button>
+<p class="why">That's the otelcol pipeline — always in-process, per signal. A connector joins two pipelines; extensions sit outside the data path; a Blueprint is our composition-of-Components object.</p>
+
+<div class="q" data-q>3 · The config a collector itself reports it is actually running is the ___ reading.</div>
+<button class="opt" data-right>Effective</button>
+<button class="opt">Intended</button>
+<button class="opt">Observed</button>
+<button class="opt">Declared</button>
+<p class="why">Effective — OpAMP's own word. "Declared" is GitOps vocabulary for the <em>git</em> side, which we call Intended; Observed is what landed in the backend.</p>
+
+<div class="q" data-q>4 · Config says logs should flow; the backend received none. The verdict is…</div>
+<button class="opt" data-right>broken_pipeline</button>
+<button class="opt">not_configured</button>
+<button class="opt">not_delivered</button>
+<button class="opt">ungoverned</button>
+<p class="why">Effective-yes × Observed-no = broken_pipeline — the flagship finding. not_delivered is when we <em>can't see</em> the effective side; ungoverned is the reverse cell (arriving but unauthored).</p>
+
+<div class="q" data-q>5 · Which of these is an <em>authored, ownable</em> object?</div>
+<button class="opt" data-right>Hop</button>
+<button class="opt">Collector</button>
+<button class="opt">Estate</button>
+<button class="opt">Verdict</button>
+<p class="why">Components, Blueprints, Tiers, Hops, Paths, Services are authored and carry owners. Collectors are derived by selector-match; the Estate is the population; verdicts are computed.</p>
+
+<div class="q" data-q>6 · The gateway team's exporter config, reused by reference inside your blueprint, is a…</div>
+<button class="opt" data-right>Component</button>
+<button class="opt">Blueprint</button>
+<button class="opt">Catalogue</button>
+<button class="opt">Palette</button>
+<p class="why">A Component: a configured, versioned, owned instance of a catalogue type — inherited by reference, so the gateway team's change re-renders every consumer. The Catalogue is the inventory of types; the Palette is what the UI offers you.</p>
+</div>
+
+<h2>Primary source</h2>
+<p>If you read one thing: the official
+<a href="https://opentelemetry.io/docs/collector/configuration/"><strong>Collector configuration
+docs</strong></a> — twenty minutes, and every <span class="pill pill-otel">OTel word</span> above
+appears in a real config. For our layer, the canonical reference is
+<a href="glossary.md"><code>docs/glossary.md</code></a> — binding on code and UI, with the rename
+record in <a href="adr/0015-vocabulary-alignment.md">ADR-0015</a>.</p>
+
+<p class="footer-nudge">This page is maintained alongside the glossary: a vocabulary change isn't
+done until both are updated.</p>
+
+<script>
+document.querySelectorAll('[data-quiz]').forEach(function (quiz) {
+  var groups = []; var current = null;
+  Array.from(quiz.children).forEach(function (el) {
+    if (el.hasAttribute && el.hasAttribute('data-q')) { current = { q: el, opts: [], why: null }; groups.push(current); }
+    else if (current && el.classList.contains('opt')) current.opts.push(el);
+    else if (current && el.classList.contains('why')) current.why = el;
+  });
+  groups.forEach(function (g) {
+    var shuffled = g.opts.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+    }
+    shuffled.forEach(function (opt) { quiz.insertBefore(opt, g.why); });
+    g.opts.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        g.opts.forEach(function (o) { if (o.hasAttribute('data-right')) o.classList.add('right'); });
+        if (!opt.hasAttribute('data-right')) opt.classList.add('wrong');
+        if (g.why) g.why.style.display = 'block';
+        g.opts.forEach(function (o) { o.disabled = true; });
+      });
+    });
+  });
+});
+</script>
+</main>
+</body>
+</html>
