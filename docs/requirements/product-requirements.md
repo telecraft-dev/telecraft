@@ -40,7 +40,7 @@ in `traceability.md`.
 - **REQ-012** Owners and Teams are hierarchical: an Owner is the lowest unit
   of management and belongs to a Team; Teams nest. Compliance rolls up the
   tree — "a team running N servers at class C1 must run these modules" is
-  expressible and reportable. (G1)
+  expressible and reportable. (ADR-0017, ADR-0035)
 - **REQ-013** Service Class and Sensitivity are two orthogonal first-class
   axes with the adopter's own names and values. Class floors are cumulative
   and non-negotiable; elective additions sit above the floor and the surface
@@ -48,7 +48,7 @@ in `traceability.md`.
   "Tier N". (ADR-0007, ADR-0015, G3)
 - **REQ-014** Exemptions carry a mandatory owner and expiry; grace periods
   shrink as Service Class rises; waivers never replace the diagnosis.
-  (ADR-0004)
+  (ADR-0004, ADR-0037)
 - **REQ-015** Every authored object carries an owner (Component, Blueprint,
   Tier, Hop, Path, Service, Requirement, Exemption). Findings route to the
   owner of the object the finding is about. Collectors inherit ownership
@@ -75,9 +75,9 @@ in `traceability.md`.
 - **REQ-022** Conformance vocabulary adopts semconv/Weaver: four-level
   `requirement_level`, Weaver's finding taxonomy and severity split, custom
   registries for adopter attributes, `registry infer` for onboarding.
-  (ADR-0009)
+  (ADR-0009, ADR-0034)
 - **REQ-023** Requirements never embed a backend query language. The
-  `AttributeNames` primitive is the sanctioned extension. (ADR-0009)
+  `AttributeNames` primitive is the sanctioned extension. (ADR-0009, ADR-0034)
 - **REQ-024** A CI check mode evaluates once and exits non-zero on counting
   failures. (prior built code)
 - **REQ-025** `library_drift` is detected: config in git that no longer
@@ -116,11 +116,11 @@ in `traceability.md`.
 - **REQ-041** GitOps is a co-equal delivery path chosen per collector;
   delivery path is a visible collector property. (ADR-0010)
 - **REQ-042** The server never serves an empty config map; first-boot
-  behaviour must not read as silent success. (ADR-0010, OQ-2)
-- **REQ-043** Staged rollout works across both delivery paths. (G4, OQ-1)
+  behaviour must not read as silent success. (ADR-0010, ADR-0030)
+- **REQ-043** Staged rollout works across both delivery paths. (ADR-0029)
 - **REQ-044** `EstateProvider` ships two implementations day one (OpAMP
   direct, ElasticFleet); a provider that cannot report a reading never looks
-  like a failure. (ADR-0008)
+  like a failure. (ADR-0008, ADR-0036)
 
 ## 6. Pipeline observability
 
@@ -130,10 +130,10 @@ in `traceability.md`.
   back to the config that produced it. (G6)
 - **REQ-051** The differentiator: from the Intended config at a SHA, derive
   an Expectation of what telemetry should arrive, and check it. Green means
-  "the config worked", never merely "the config applied". (G5/G6)
+  "the config worked", never merely "the config applied". (ADR-0033, ADR-0034, G6)
 - **REQ-052** "Expected but never seen" is surfaced even though there is no
   collector to attach it to; ungoverned (observed, never authored) is
-  surfaced without reading as failure. (G4/G5, OQ-2/OQ-3)
+  surfaced without reading as failure. (ADR-0030, ADR-0031, ADR-0035)
 - **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam —
   no privileged side channel. (G6)
 
