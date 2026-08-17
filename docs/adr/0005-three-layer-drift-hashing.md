@@ -1,6 +1,10 @@
 # ADR-0005: Drift is judged by a three-layer hash; the normaliser is allow-listed
 
-- Status: accepted (seeded)
+- Status: accepted (seeded); amended by ADR-0046 — layer 2 is a
+  per-delivery-path profile family, explicit defaults struck from the
+  cosmetic list, the Elastic Fleet path's blindness named as a bounded cost,
+  allow-list
+  entries are shapes never literals
 - Date: 2026-08-12 (decided during prior shaping)
 
 ## Context
