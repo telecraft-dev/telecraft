@@ -1,22 +1,31 @@
-// Command telecraft is the platform CLI. Its first capability is observe:
-// print the Observed readings for one Service over a trailing window,
-// through the TelemetryProvider seam.
+// Command telecraft is the platform CLI.
 //
-// Which backend answers is wiring inside internal/provider/ — this command
-// holds only neutral connection settings (ADR-0001). Not knowing is a normal
-// state (ADR-0008): degraded readings print with their cause and the command
-// still exits 0. Scripting against presence belongs to the evaluator, not
-// this printer.
+// observe prints the Observed readings for one Service over a trailing
+// window, through the TelemetryProvider seam. Which backend answers is
+// wiring inside internal/provider/ — this command holds only neutral
+// connection settings (ADR-0001). Not knowing is a normal state (ADR-0008):
+// degraded readings print with their cause and the command still exits 0.
+// Scripting against presence belongs to the evaluator, not this printer.
+//
+// palette prints one team's effective palette: the components of the active
+// Catalogue the team may use per the Allow-list policy (REQ-011, ADR-0021),
+// each with its provenance — the lists it survived, or the named Grant that
+// admitted it.
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/allowlist"
+	"github.com/telecraft-dev/telecraft/internal/catalogue"
+	"github.com/telecraft-dev/telecraft/internal/ownership"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
@@ -25,12 +34,28 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(args []string, stdout, stderr *os.File) int {
-	if len(args) < 1 || args[0] != "observe" {
-		fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) < 1 {
+		usage(stderr)
 		return 2
 	}
+	switch args[0] {
+	case "observe":
+		return runObserve(args[1:], stdout, stderr)
+	case "palette":
+		return runPalette(args[1:], stdout, stderr)
+	default:
+		usage(stderr)
+		return 2
+	}
+}
 
+func usage(stderr io.Writer) {
+	fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
+	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
+}
+
+func runObserve(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("observe", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
@@ -39,7 +64,7 @@ func run(args []string, stdout, stderr *os.File) int {
 	window := fs.Duration("window", 15*time.Minute, "trailing window the reading covers")
 	attrs := fs.String("attributes", "", "comma-separated attribute names to measure coverage for")
 	timeout := fs.Duration("timeout", 30*time.Second, "overall deadline for the readings")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if *service == "" {
@@ -99,6 +124,66 @@ func run(args []string, stdout, stderr *os.File) int {
 		fmt.Fprintf(stdout, "%s attribute names (%s): %s\n", kind, sampled, strings.Join(names.Names, ", "))
 	}
 	return 0
+}
+
+func runPalette(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("palette", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	team := fs.String("team", "", "team id to print the effective palette for (required)")
+	estate := fs.String("estate", "", "estate directory holding teams.yaml and the policy files (required)")
+	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact (required)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *team == "" || *estate == "" || *artefact == "" {
+		fmt.Fprintln(stderr, "palette: -team, -estate and -catalogue are required")
+		return 2
+	}
+
+	tree, err := ownership.LoadTeams(filepath.Join(*estate, ownership.TeamsFile))
+	if err != nil {
+		fmt.Fprintf(stderr, "palette: %v\n", err)
+		return 2
+	}
+	cat, err := catalogue.Load(*artefact)
+	if err != nil {
+		fmt.Fprintf(stderr, "palette: %v\n", err)
+		return 2
+	}
+	policy, err := allowlist.Load(*estate, tree, cat)
+	if err != nil {
+		fmt.Fprintf(stderr, "palette: %v\n", err)
+		return 2
+	}
+	pal, err := policy.EffectivePalette(ownership.TeamID(*team))
+	if err != nil {
+		fmt.Fprintf(stderr, "palette: %v\n", err)
+		return 2
+	}
+
+	fmt.Fprintf(stdout, "team       %s\n", pal.Team)
+	fmt.Fprintf(stdout, "catalogue  %s\n", pal.Catalogue)
+	fmt.Fprintf(stdout, "allowed    %d of %d components\n\n", len(pal.Entries), cat.Len())
+
+	width := 0
+	for _, e := range pal.Entries {
+		if l := len(componentKey(e)); l > width {
+			width = l
+		}
+	}
+	for _, e := range pal.Entries {
+		switch e.Origin {
+		case allowlist.OriginGrant:
+			fmt.Fprintf(stdout, "%-*s  grant %s (granted by %s to %s)\n", width, componentKey(e), e.Grant, e.GrantedBy, e.GrantedTo)
+		default:
+			fmt.Fprintf(stdout, "%-*s  %s\n", width, componentKey(e), e.Origin)
+		}
+	}
+	return 0
+}
+
+func componentKey(e allowlist.PaletteEntry) string {
+	return string(e.Component.Class) + "/" + e.Component.Type
 }
 
 func envOr(key, fallback string) string {
