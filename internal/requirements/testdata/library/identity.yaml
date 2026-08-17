@@ -1,0 +1,68 @@
+# Identity and correlation requirements.
+#
+# Telemetry that arrives without stable identity is close to worthless: it
+# cannot be attributed, correlated, routed or retained differentially. These
+# requirements assert on attribute COVERAGE rather than presence, because an
+# estate where 60% of records carry service.name is partially instrumented,
+# and a presence check would call it done.
+
+- id: service-name-on-logs
+  title: Logs carry a service name
+  description: >
+    Every log record identifies the Service that produced it. Coverage is set
+    just below 100% deliberately: a handful of records emitted during startup
+    before the resource is initialised is normal and should not raise a
+    finding.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  signal:
+    kind: logs
+    present: true
+    window: 24h
+    required_attributes:
+      - resource.attributes.service.name
+    attribute_coverage: 0.99
+  remediation: >
+    Set the service.name resource attribute in the SDK, or add a resource
+    processor to the collector serving this Service that upserts it. If
+    coverage is partial, some instances or some code paths are emitting
+    without the resource set.
+
+- id: environment-declared
+  title: Telemetry declares its deployment environment
+  description: >
+    Records identify which Environment they came from, so production data can
+    be separated from everything else at query time and in retention policy.
+  version: 1
+  requirement_level: recommended
+  owner: platform-observability
+  signal:
+    kind: logs
+    present: true
+    window: 24h
+    required_attributes:
+      - resource.attributes.deployment.environment.name
+    attribute_coverage: 0.95
+  remediation: >
+    Set the deployment.environment.name resource attribute, ideally from the
+    deployment pipeline rather than from a value baked into the image.
+
+- id: trace-correlation
+  title: Traces carry a service name
+  description: >
+    Spans identify their Service, without which a distributed trace renders
+    as a set of anonymous operations and cannot be attributed to an owner.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  signal:
+    kind: traces
+    present: true
+    window: 24h
+    required_attributes:
+      - resource.attributes.service.name
+    attribute_coverage: 0.99
+  remediation: >
+    Set service.name in the tracing SDK's resource. This is usually the same
+    single configuration line that fixes service-name-on-logs.

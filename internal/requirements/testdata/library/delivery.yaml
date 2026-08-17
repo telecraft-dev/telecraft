@@ -1,0 +1,88 @@
+# Signal delivery requirements.
+#
+# Each of these asserts on BOTH readings, which is what lets the evaluator
+# tell a broken pipeline apart from an uninstrumented Service. A requirement
+# with only a config assertion can be satisfied by a collector that delivers
+# nothing; one with only a signal assertion can fail without naming a cause.
+
+- id: logs-delivered
+  title: Logs are collected and delivered
+  description: >
+    The Service's logs reach a backend. Collection may be by file tail or by
+    OTLP: how the logs are gathered is the owner's choice, that they arrive
+    is not.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  config:
+    has_receiver: [filelog, otlp]
+  signal:
+    kind: logs
+    present: true
+    window: 24h
+    min_volume: 1
+  remediation: >
+    Add a filelog or otlp receiver to the collector serving this Service and
+    wire it into a logs pipeline. If a receiver is already present, the
+    pipeline is configured but not delivering: check the exporter queue and
+    the collector's own metrics for refused or dropped records.
+
+- id: traces-delivered
+  title: Distributed traces are delivered
+  description: >
+    The Service emits spans. Traces are what make a multi-service failure
+    diagnosable.
+  version: 1
+  requirement_level: recommended
+  owner: platform-observability
+  config:
+    has_receiver: [otlp]
+  signal:
+    kind: traces
+    present: true
+    window: 24h
+    min_volume: 1
+  remediation: >
+    Instrument the Service with an OpenTelemetry SDK or auto-instrumentation
+    agent and point it at the collector's OTLP receiver. Spans arriving with
+    no receiver configured means something is bypassing the managed
+    collector.
+
+- id: metrics-delivered
+  title: Service metrics are delivered
+  description: >
+    The Service emits metrics. Without them there is no baseline for
+    "normal", so no alert threshold can be set honestly.
+  version: 1
+  requirement_level: conditionally_required
+  owner: platform-observability
+  config:
+    has_receiver: [otlp, prometheus, hostmetrics]
+  signal:
+    kind: metrics
+    present: true
+    window: 24h
+    min_volume: 1
+  remediation: >
+    Enable metric export in the Service's SDK, or add a prometheus receiver
+    scraping its metrics endpoint.
+
+- id: traces-recent
+  title: Tracing is currently alive in production
+  description: >
+    Spans arrived in the last hour, not merely somewhere in the last day. A
+    daily window cannot tell you that tracing died this morning, and in
+    production that is the whole question. Scoped to production (ADR-0033):
+    a quiet staging environment overnight is normal, not a finding.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  signal:
+    kind: traces
+    present: true
+    window: 1h
+  remediation: >
+    Traces were seen recently enough to pass the daily check but not in the
+    last hour. Check whether the Service was deployed or restarted in that
+    window and whether instrumentation survived it.
