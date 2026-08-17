@@ -28,11 +28,11 @@ type Effective struct {
 type Pipeline struct {
 	// Name is the otelcol pipeline id: the signal, optionally qualified —
 	// "logs", "traces/backend".
-	Name string
+	Name string `yaml:"name"`
 
-	Receivers  []string
-	Processors []string
-	Exporters  []string
+	Receivers  []string `yaml:"receivers"`
+	Processors []string `yaml:"processors"`
+	Exporters  []string `yaml:"exporters"`
 }
 
 // componentsOf unions one component slot across every pipeline — the
