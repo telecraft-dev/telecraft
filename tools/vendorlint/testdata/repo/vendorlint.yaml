@@ -1,0 +1,23 @@
+# Fixture config for the lint self-test: a miniature of the real
+# vendorlint.yaml, exercised against the seeded violations in this tree.
+exclude:
+  - ignored/**
+scopes:
+  - name: core
+    include: [internal/**]
+    exclude: [internal/provider/**]
+    rules:
+      - pattern: (?i)(elastic|fleet|grafana)
+        message: vendor word in the neutral core (ADR-0001)
+  - name: provider
+    include: [internal/provider/**]
+    rules:
+      - pattern: \bFleet
+        allow: ["Elastic Fleet", ElasticFleet]
+        message: qualify the product (ADR-0001)
+  - name: docs
+    include: [docs/**]
+    rules:
+      - pattern: \bFleet\b
+        allow: ["Elastic Fleet", ElasticFleet]
+        message: a bare "Fleet" appears nowhere (ADR-0001)

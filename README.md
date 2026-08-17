@@ -26,11 +26,32 @@ dependency on any SaaS).
 
 ## Status
 
-Pre-alpha: design phase. The decision corpus lives in [`docs/`](docs/) —
-start with the [glossary](docs/glossary.md), the visual
-[terminology guide](docs/terminology.html), the
+Pre-alpha: the design corpus is complete and the build has started. Decisions
+live in [`docs/`](docs/) — start with the [glossary](docs/glossary.md), the
+visual [terminology guide](docs/terminology.html), the
 [requirements](docs/requirements/product-requirements.md) and the
-[ADRs](docs/adr/). The build plan is [`docs/plan.md`](docs/plan.md).
+[ADRs](docs/adr/). The build plan is [`docs/plan.md`](docs/plan.md); the
+backlog is the [issue tracker](https://github.com/telecraft-dev/telecraft/issues).
+
+## Repository layout
+
+| Path | What lives there |
+|---|---|
+| `cmd/` | Binaries (arrive with the first ported code) |
+| `internal/` | The neutral core — no vendor word appears here (ADR-0001) |
+| `internal/provider/` | Vendor implementations behind the core's seams, always product-qualified: `Elasticsearch`, `ElasticFleet` |
+| `console/` | The TypeScript/React console (arrives in Phase 4, ADR-0045) |
+| `tools/vendorlint/` | The ADR-0001 vendor-word lint; its scope globs in [`vendorlint.yaml`](vendorlint.yaml) are the core/provider boundary |
+| `docs/` | The decision corpus: glossary, requirements, ADRs, research, prototype verdicts |
+
+## Development
+
+Go 1.26+. Both CI checks run locally with:
+
+```sh
+go test ./...             # unit tests, including the lint's self-test
+go run ./tools/vendorlint # the vendor-word lint over code and docs
+```
 
 ## Licence
 

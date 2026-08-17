@@ -27,7 +27,7 @@ A three-layer scheme:
    *what* drifted.
 
 The normaliser is the single place known mutations are allow-listed (the
-Supervisor's injected extension; Fleet's redactions). It is the one genuinely
+Supervisor's injected extension; Elastic Fleet's redactions). It is the one genuinely
 new component in the drift path and where the bugs will live: a bug shows as
 permanent false drift or — worse — silent no-drift on a real change. It
 requires tests against every known mutation catalogued in the shaping spikes.

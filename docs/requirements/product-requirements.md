@@ -144,7 +144,7 @@ in `traceability.md`.
 - **NG-1** Not a collector distribution, not an agent, nothing in the
   telemetry path. (ADR-0002)
 - **NG-2** No enforcement through Elastic Fleet — permanently unavailable,
-  not deferred. Fleet is a console, not a source. (ADR-0008)
+  not deferred. Elastic Fleet is a console, not a source. (ADR-0008)
 - **NG-3** Profiles are out; logs, metrics, traces only. (ADR-0009)
 - **NG-4** No Helm/Kustomize rendering in v1 — known cost accepted.
   (ADR-0011)
