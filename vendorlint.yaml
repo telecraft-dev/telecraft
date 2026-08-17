@@ -1,0 +1,56 @@
+# The ADR-0001 vendor-word lint, run in CI on every pull request:
+#
+#   go run ./tools/vendorlint
+#
+# These scope globs ARE the neutral-core / provider boundary — change them
+# only with ADR-0001 in hand. Rules flag every pattern match unless the match
+# sits entirely inside a same-line `allow` match ("Elastic Fleet" permits the
+# "Fleet" within it; a bare "Fleet" stays an error).
+
+# Never scanned: the lint's own seeded fixtures, and gitignored local trees.
+exclude:
+  - tools/vendorlint/testdata/**
+  - .proto/**
+  - .teach/**
+  - .playwright-mcp/**
+
+scopes:
+  # The neutral core: every platform code path except the provider tree.
+  # Vendor words do not appear here at all — identifiers, strings or comments.
+  # Substring matching is deliberate: it catches CamelCase compounds like the
+  # historical `FleetProvider`.
+  - name: core
+    include: [cmd/**, internal/**, pkg/**]
+    exclude: [internal/provider/**]
+    rules:
+      - pattern: (?i)(elastic|kibana|fleet|grafana|loki|mimir|datadog|splunk|dynatrace|new ?relic|honeycomb|appdynamics|sumo ?logic|signalfx|chronosphere|coralogix|lightstep|wavefront)
+        message: vendor word in the neutral core (ADR-0001) — vendor-specific behaviour belongs under internal/provider/
+
+  # The provider tree: implementations are fully qualified with the vendor's
+  # product, never the company. A bare "Fleet" appears nowhere.
+  - name: provider
+    include: [internal/provider/**]
+    rules:
+      - pattern: \bFleet
+        allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement]
+        message: qualify the product — ElasticFleet, never Fleet (ADR-0001)
+      - pattern: \bElastic\b
+        allow: ["Elastic Fleet"]
+        message: name the product, never the company — Elasticsearch or ElasticFleet, never Elastic (ADR-0001)
+      - pattern: \bGrafana\b
+        allow: ["Grafana Fleet Management"]
+        message: name the product, never the company — GrafanaFleetManagement, never Grafana (ADR-0001)
+
+  # Normative docs follow the same naming discipline. The research corpus,
+  # prototype verdicts and branding notes are excluded: they record external
+  # reality (survey quotes, product names, collision sweeps) verbatim.
+  - name: docs
+    include: [README.md, docs/**]
+    exclude: [docs/research/**, docs/prototypes/**, docs/branding/**]
+    rules:
+      # The allow list also covers mention-not-use: naming the banned word in
+      # backticks, bold (a glossary headword), curly quotes, or the explicit
+      # "capital-F Fleet" construction is quoting it, not using it.
+      - pattern: \bFleet\b
+        allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement, "Datadog Fleet Automation", "Fleet Server", "`Fleet`", '\*\*Fleet\*\*', "“Fleet”", capital-F Fleet]
+        message: a bare "Fleet" appears nowhere — qualify with the vendor product (ADR-0001)
