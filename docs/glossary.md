@@ -15,7 +15,7 @@ session.
 | **Path** | One Service's route through the Tier graph. A Service may have several; this is normal. A Path generates the delivery expectation. |
 | **Collector** | A running otelcol process. Derived and read-only: never drawn, never authored, never owned directly — matched into a Tier by selector, inheriting that Tier's policy and owner. Exceptions are expressed by splitting the Tier. |
 | **Estate** | The population of collectors, across all substrates. Deliberate deviation from industry "fleet" (ADR-0015): a bare "fleet" is permanently ambiguous beside the `ElasticFleet` integration. |
-| **Fleet** (capital F) | The Elastic product: Fleet Server plus the Fleet UI in Kibana. Never the estate. Appears only as the qualified implementation name `ElasticFleet`. |
+| **Fleet** (capital F) | The Elastic product: Fleet Server plus its UI in Kibana. Never the estate. Appears only as the qualified implementation name `ElasticFleet`. |
 
 ## Governance (ADR-0015, ADR-0016)
 

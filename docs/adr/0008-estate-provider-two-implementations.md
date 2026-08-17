@@ -32,7 +32,7 @@ Contract disciplines:
 - An implementation that cannot find a collector returns `Declared{Known:
   false}`, never an error — not knowing is a normal state.
 - An implementation that can never report delivery status (ElasticFleet is
-  permanently `UNSET` — Fleet is monitoring-only, with no GA commitment and no
+  permanently `UNSET` — Elastic Fleet is monitoring-only, with no GA commitment and no
   "enforcement later") must be expressible **without that reading looking like
   a failure**.
 - The minimum-populated-set rule must cover freshness, not only presence: a
@@ -49,7 +49,7 @@ through it).
 ## Consequences
 
 - Enforcement via Elastic Fleet is permanently unavailable, not deferred:
-  Fleet redacts on key names, freezes agent identity at enrol time, and is a
+  Elastic Fleet redacts on key names, freezes agent identity at enrol time, and is a
   console, not a source. Any roadmap implying "read-only now, enforcement
   later" is unfounded.
 - The seam design is verified against a third implementation (Prometheus,
