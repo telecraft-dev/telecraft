@@ -39,10 +39,10 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-042 no empty config map; first boot | ADR-0010, ADR-0030 | P3 |
 | REQ-043 staged rollout, both paths | ADR-0029 | P5 |
 | REQ-044 two EstateProviders | ADR-0008, ADR-0036 | P3 |
-| REQ-050 flow visualisation | G6 | P5 |
-| REQ-051 Expectation engine | ADR-0033, ADR-0034 (unit, tap); G6 engine | P5 |
+| REQ-050 flow visualisation | ADR-0039, ADR-0040, ADR-0041 | P5 |
+| REQ-051 Expectation engine | ADR-0033, ADR-0034 (unit, tap); ADR-0038 (engine) | P5 |
 | REQ-052 expected-but-never-seen; ungoverned | ADR-0030, ADR-0031, ADR-0035 | P5 |
-| REQ-053 self-telemetry via TelemetryProvider | G6 | P5 |
+| REQ-053 self-telemetry via TelemetryProvider | ADR-0039 | P5 |
 | REQ-060 reuse over build | ADR-0000 process + per-decision | all |
 
 ## Prior shaping tickets → disposition
