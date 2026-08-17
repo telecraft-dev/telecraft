@@ -1,0 +1,53 @@
+# The fixture Blueprint: per-signal lanes in explicit order, local
+# Components inline, shared Components by pinned reference (ADR-0024,
+# ADR-0026). The traces pin on gateway-exporter is deliberately behind the
+# owner's head — that is library_drift territory, not a load-time finding.
+name: gateway-standard
+version: 4
+owner: gateway-owners
+satisfies:
+  - req-payment-completeness@3
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc: {}
+  - name: guard
+    class: processor
+    type: memory_limiter
+    version: 2
+    config:
+      check_interval: 1s
+      limit_mib: 512
+  - name: batcher
+    class: processor
+    type: batch
+    version: 1
+  - name: health
+    class: extension
+    type: health_check
+    version: 1
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: guard
+    - component: infosec/pii-redaction@3
+    - component: batcher
+    - component: data-flow/gateway-exporter@1
+  logs:
+    - component: otlp-in
+    - component: guard
+    - component: infosec/pii-redaction@3
+    - component: batcher
+    - component: data-flow/gateway-exporter
+      track: head
+  metrics:
+    - component: otlp-in
+    - component: guard
+    - component: batcher
+    - component: data-flow/gateway-exporter@2
+extensions:
+  - component: health

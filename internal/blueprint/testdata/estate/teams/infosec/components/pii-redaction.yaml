@@ -1,0 +1,14 @@
+# A shared Component owned by one team and consumed, by reference, from
+# another team's Blueprint (ADR-0016): id infosec/pii-redaction, derived
+# from the layout (ADR-0027).
+name: pii-redaction
+class: processor
+type: transform
+version: 3
+owner: pii-guardians
+config:
+  error_mode: ignore
+  log_statements:
+    - context: log
+      statements:
+        - replace_pattern(body, "\\b\\d{16}\\b", "****")

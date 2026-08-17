@@ -1,0 +1,7 @@
+name: gateway-exporter
+class: exporter
+type: otlphttp
+version: 2
+owner: gateway-owners
+config:
+  endpoint: https://gateway.internal:4318
