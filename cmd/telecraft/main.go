@@ -1,18 +1,23 @@
-// Command telecraft is the platform CLI. Its first capability is observe:
-// print the Observed readings for one Service over a trailing window,
-// through the TelemetryProvider seam.
+// Command telecraft is the platform CLI.
+//
+// observe prints the Observed readings for one Service over a trailing
+// window, through the TelemetryProvider seam. Not knowing is a normal state
+// (ADR-0008): degraded readings print with their cause and observe still
+// exits 0 — scripting against presence belongs to check, not this printer.
+//
+// check is the CI mode (REQ-024): evaluate the estate once, write one
+// machine-readable report, exit non-zero exactly when counting failures
+// exist. See check.go.
 //
 // Which backend answers is wiring inside internal/provider/ — this command
-// holds only neutral connection settings (ADR-0001). Not knowing is a normal
-// state (ADR-0008): degraded readings print with their cause and the command
-// still exits 0. Scripting against presence belongs to the evaluator, not
-// this printer.
+// holds only neutral connection settings (ADR-0001).
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -25,21 +30,32 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(args []string, stdout, stderr *os.File) int {
-	if len(args) < 1 || args[0] != "observe" {
-		fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
-		return 2
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) >= 1 {
+		switch args[0] {
+		case "observe":
+			return runObserve(args[1:], stdout, stderr)
+		case "check":
+			return runCheck(args[1:], stdout, stderr)
+		}
 	}
+	fmt.Fprintln(stderr, "usage: telecraft <observe|check> [flags]")
+	fmt.Fprintln(stderr, "  observe  print the Observed readings for one Service over a trailing window")
+	fmt.Fprintln(stderr, "  check    evaluate the estate once, print a machine-readable report, exit non-zero on counting failures")
+	return 2
+}
 
+func runObserve(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("observe", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
 	apiKey := fs.String("api-key", os.Getenv("TELECRAFT_TELEMETRY_API_KEY"), "telemetry backend API key (optional)")
 	service := fs.String("service", "", "service.name of the Service to read (required)")
+	environment := fs.String("environment", "", "narrow the reading to one Environment (optional)")
 	window := fs.Duration("window", 15*time.Minute, "trailing window the reading covers")
 	attrs := fs.String("attributes", "", "comma-separated attribute names to measure coverage for")
 	timeout := fs.Duration("timeout", 30*time.Second, "overall deadline for the readings")
-	if err := fs.Parse(args[1:]); err != nil {
+	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if *service == "" {
@@ -63,10 +79,13 @@ func run(args []string, stdout, stderr *os.File) int {
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	svc := telemetry.Service{Name: *service}
+	svc := telemetry.Service{Name: *service, Environment: *environment}
 	obs := tel.Observe(ctx, svc, *window, attributes)
 
 	fmt.Fprintf(stdout, "service   %s\n", svc.Name)
+	if svc.Environment != "" {
+		fmt.Fprintf(stdout, "env       %s\n", svc.Environment)
+	}
 	fmt.Fprintf(stdout, "provider  %s\n", tel.Name())
 	fmt.Fprintf(stdout, "window    %s\n", obs.Window)
 	fmt.Fprintf(stdout, "as_of     %s\n\n", obs.AsOf.UTC().Format(time.RFC3339))

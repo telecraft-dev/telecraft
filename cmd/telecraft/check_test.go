@@ -1,0 +1,250 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// writeFile drops one file into dir and returns its path.
+func writeFile(t *testing.T, dir, name, body string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// configOnlyLibrary asserts on Effective alone, so a check run needs no
+// telemetry backend at all.
+const configOnlyLibrary = `
+- id: logs-receiver-present
+  title: A logs receiver is configured
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  config:
+    has_receiver: [filelog, otlp]
+  remediation: add a filelog or otlp receiver
+`
+
+const signalOnlyLibrary = `
+- id: logs-delivered
+  title: Logs are delivered
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  signal:
+    kind: logs
+    present: true
+    window: 1h
+  remediation: wire a logs pipeline
+`
+
+const twoEnvEstate = `
+services:
+  - name: checkout
+    environments:
+      - name: staging
+        pipelines: []
+      - name: production
+        pipelines:
+          - name: logs
+            receivers: [filelog]
+            exporters: [otlphttp]
+`
+
+// runCheckCmd runs the check subcommand and decodes its report.
+func runCheckCmd(t *testing.T, args ...string) (int, checkReport, string) {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	code := run(append([]string{"check"}, args...), &stdout, &stderr)
+	var report checkReport
+	if stdout.Len() > 0 {
+		if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+			t.Fatalf("stdout is not one JSON report: %v\n%s", err, stdout.String())
+		}
+	}
+	return code, report, stderr.String()
+}
+
+func TestCheckUsageErrors(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := run(nil, &stdout, &stderr); code != 2 {
+		t.Errorf("no subcommand: exit %d, want 2", code)
+	}
+	if code := run([]string{"conform"}, &stdout, &stderr); code != 2 {
+		t.Errorf("unknown subcommand: exit %d, want 2", code)
+	}
+	if code, _, msg := runCheckCmd(t); code != 2 || !strings.Contains(msg, "-library and -estate") {
+		t.Errorf("missing flags: exit %d, stderr %q — want 2 naming the flags", code, msg)
+	}
+}
+
+// The deferred half of issue #8's acceptance criteria: a malformed or
+// unknown-field library file fails the run with a file-and-field error and a
+// non-zero exit.
+func TestCheckMalformedLibraryExitsNonZero(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	badFile := writeFile(t, libDir, "bad.yaml", `
+- id: broken
+  title: Broken
+  version: 1
+  owner: someone
+  siganl:
+    kind: logs
+  remediation: fix it
+`)
+	estate := writeFile(t, dir, "estate.yaml", twoEnvEstate)
+
+	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
+	if code != 2 {
+		t.Fatalf("exit %d, want 2 — a library that fails to load has judged nothing", code)
+	}
+	if !strings.Contains(msg, filepath.Base(badFile)) || !strings.Contains(msg, "siganl") {
+		t.Errorf("stderr %q should name the file and the unknown field", msg)
+	}
+}
+
+func TestCheckCleanEstateExitsZero(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines:
+          - name: logs
+            receivers: [filelog]
+            exporters: [otlphttp]
+`)
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
+	if code != 0 {
+		t.Fatalf("exit %d, want 0 — no counting failures exist\nstderr: %s", code, msg)
+	}
+	if report.Summary.CountingFailures != 0 || report.Summary.Rows != 1 || report.Summary.FailingRows != 0 {
+		t.Errorf("summary = %+v, want one clean row", report.Summary)
+	}
+	if len(report.Rows) != 1 || report.Rows[0].Worst != "compliant" {
+		t.Errorf("rows = %+v, want one compliant row", report.Rows)
+	}
+	if got := report.Rows[0].Score; got.Total != 1 || got.Passing != 1 || got.Ratio != 1.0 {
+		t.Errorf("score = %+v, want 1/1 passing", got)
+	}
+}
+
+// Criterion (REQ-024): check exits non-zero exactly when counting failures
+// exist. The same Service passes in production and fails in staging — two
+// independent rows in one report (ADR-0033), production leading, and the
+// staging failure alone drives the exit code.
+func TestCheckCountsFailuresPerRow(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeFile(t, dir, "estate.yaml", twoEnvEstate)
+
+	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — staging has a counting failure", code)
+	}
+	if len(report.Rows) != 2 {
+		t.Fatalf("rows = %d, want 2 — one per (Service, Environment)", len(report.Rows))
+	}
+	if report.Rows[0].Environment != "production" {
+		t.Errorf("row order %q then %q — production leads the report (ADR-0033)",
+			report.Rows[0].Environment, report.Rows[1].Environment)
+	}
+	if report.Rows[0].Worst != "compliant" || report.Rows[1].Worst != "misconfigured" {
+		t.Errorf("worst = %q/%q, want compliant production and misconfigured staging",
+			report.Rows[0].Worst, report.Rows[1].Worst)
+	}
+	if report.Summary.CountingFailures != 1 || report.Summary.FailingRows != 1 {
+		t.Errorf("summary = %+v, want exactly the staging failure", report.Summary)
+	}
+
+	// Narrowed to the passing lens, the same estate is clean — and the
+	// staging failure is still one command away, never silently gone.
+	code, report, _ = runCheckCmd(t, "-library", libDir, "-estate", estate, "-environment", "production")
+	if code != 0 || len(report.Rows) != 1 {
+		t.Errorf("production lens: exit %d with %d rows, want 0 with 1", code, len(report.Rows))
+	}
+	if code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-environment", "nowhere"); code != 2 {
+		t.Errorf("a lens matching no row must refuse to pass vacuously: exit %d, stderr %q", code, msg)
+	}
+}
+
+// An unreachable backend leaves signal requirements unknown — not passing,
+// so the gate fails rather than passing on blindness (ADR-0008 reported
+// honestly; the outcome and its cause are in the report).
+func TestCheckUnreachableBackendFailsTheGate(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeFile(t, libDir, "signal.yaml", signalOnlyLibrary)
+	estate := writeFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines: []
+`)
+
+	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-endpoint", "http://127.0.0.1:1", "-timeout", "5s")
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — an unknown outcome counts as a failure", code)
+	}
+	f := report.Rows[0].Findings[0]
+	if f.Outcome != "unknown" {
+		t.Errorf("outcome = %q, want unknown", f.Outcome)
+	}
+	if len(f.Detail) == 0 || !strings.Contains(strings.Join(f.Detail, "\n"), "unreachable") {
+		t.Errorf("detail %v should carry the provider's cause", f.Detail)
+	}
+}
+
+// An environments list matching nothing in the estate surfaces as an
+// authoring finding in the report — visible, never fatal, never silently
+// inapplicable (ADR-0033 §3).
+func TestCheckReportsAuthoringFindings(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeFile(t, libDir, "config.yaml", configOnlyLibrary)
+	writeFile(t, libDir, "scoped.yaml", `
+- id: never-applies
+  title: Scoped to an environment nobody declared
+  version: 1
+  requirement_level: recommended
+  owner: platform-observability
+  environments: [prod]
+  config:
+    has_receiver: [otlp]
+  remediation: fix the environments list
+`)
+	estate := writeFile(t, dir, "estate.yaml", twoEnvEstate)
+
+	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — the staging misconfiguration still counts", code)
+	}
+	if len(report.AuthoringFindings) != 1 || report.AuthoringFindings[0].Requirement != "never-applies" {
+		t.Fatalf("authoring findings = %+v, want the never-matching list surfaced", report.AuthoringFindings)
+	}
+	for _, row := range report.Rows {
+		for _, f := range row.Findings {
+			if f.Requirement == "never-applies" {
+				t.Errorf("never-applies produced a finding on %s/%s — it applies nowhere", row.Service, row.Environment)
+			}
+		}
+	}
+}
