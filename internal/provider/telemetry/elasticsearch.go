@@ -43,6 +43,7 @@ type Elasticsearch struct {
 
 	indices          map[requirements.SignalKind]string
 	serviceNameField string
+	environmentField string
 	attributePaths   []string
 	sampleSize       int
 
@@ -71,6 +72,12 @@ type ElasticsearchConfig struct {
 	// Default: resource.attributes.service.name (OTel-native mode).
 	ServiceNameField string
 
+	// EnvironmentField is the document field holding
+	// deployment.environment.name, used when a reading is narrowed to one
+	// Environment (ADR-0033). Default:
+	// resource.attributes.deployment.environment.name (OTel-native mode).
+	EnvironmentField string
+
 	// AttributePaths are the document field prefixes under which OTel
 	// attributes land; AttributeNames unions field names beneath them and
 	// strips the prefix to recover the attribute name. Defaults:
@@ -95,6 +102,9 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 	if cfg.ServiceNameField == "" {
 		cfg.ServiceNameField = "resource.attributes.service.name"
 	}
+	if cfg.EnvironmentField == "" {
+		cfg.EnvironmentField = "resource.attributes.deployment.environment.name"
+	}
 	if len(cfg.AttributePaths) == 0 {
 		cfg.AttributePaths = []string{"attributes.", "resource.attributes.", "scope.attributes."}
 	}
@@ -118,6 +128,7 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 		http:             &http.Client{Timeout: cfg.Timeout},
 		indices:          idx,
 		serviceNameField: cfg.ServiceNameField,
+		environmentField: cfg.EnvironmentField,
 		attributePaths:   cfg.AttributePaths,
 		sampleSize:       cfg.SampleSize,
 		now:              time.Now,
@@ -293,17 +304,21 @@ func (e *Elasticsearch) AttributeNames(ctx context.Context, service seam.Service
 // aggregation per requested attribute so coverage is measured in the same
 // round trip as presence.
 func (e *Elasticsearch) observeBody(service seam.Service, window time.Duration, attributes []string) map[string]any {
+	filter := []any{
+		map[string]any{"range": map[string]any{
+			"@timestamp": map[string]any{"gte": "now-" + dateMath(window)},
+		}},
+		map[string]any{"term": map[string]any{e.serviceNameField: service.Name}},
+	}
+	if service.Environment != "" {
+		filter = append(filter, map[string]any{"term": map[string]any{e.environmentField: service.Environment}})
+	}
 	body := map[string]any{
 		"size":             0,
 		"track_total_hits": true,
 		"query": map[string]any{
 			"bool": map[string]any{
-				"filter": []any{
-					map[string]any{"range": map[string]any{
-						"@timestamp": map[string]any{"gte": "now-" + dateMath(window)},
-					}},
-					map[string]any{"term": map[string]any{e.serviceNameField: service.Name}},
-				},
+				"filter": filter,
 			},
 		},
 	}

@@ -117,6 +117,31 @@ func TestElasticsearchObserveReading(t *testing.T) {
 
 // Criterion: an unreachable backend yields Known false readings — never a
 // crash, never a fabricated value.
+// Criterion (ADR-0033): a reading narrowed to one Environment filters on the
+// environment field, so the same Service in two environments yields
+// independent readings and cross-environment blending is impossible at the
+// source. An unscoped Service carries no environment filter — unchanged
+// behaviour for callers that predate the environment axis.
+func TestElasticsearchObserveEnvironmentScope(t *testing.T) {
+	var captured []byte
+	es, _ := newFake(t, func(w http.ResponseWriter, r *http.Request) {
+		body := make([]byte, r.ContentLength)
+		r.Body.Read(body)
+		captured = body
+		w.Write([]byte(msearchResponse(hitsOK(1), hitsOK(1), hitsOK(1))))
+	})
+
+	es.Observe(context.Background(), seam.Service{Name: "checkout", Environment: "production"}, time.Hour, nil)
+	if want := `"resource.attributes.deployment.environment.name":"production"`; !strings.Contains(string(captured), want) {
+		t.Errorf("environment-scoped request does not contain %s\nrequest: %s", want, captured)
+	}
+
+	es.Observe(context.Background(), seam.Service{Name: "checkout"}, time.Hour, nil)
+	if got := string(captured); strings.Contains(got, "deployment.environment.name") {
+		t.Errorf("unscoped request must carry no environment filter\nrequest: %s", got)
+	}
+}
+
 func TestElasticsearchObserveUnreachableBackend(t *testing.T) {
 	es, err := NewElasticsearch(ElasticsearchConfig{Endpoint: "http://127.0.0.1:1"})
 	if err != nil {

@@ -32,6 +32,14 @@ import (
 // service.name (ADR-0015).
 type Service struct {
 	Name string
+
+	// Environment narrows the reading to one Environment, matched on
+	// deployment.environment.name (ADR-0023). Empty means the reading is not
+	// narrowed. The verdict cross always narrows: verdicts never blend
+	// across environments (ADR-0033), and an unscoped reading of a Service
+	// running in several environments would let staging telemetry mask a
+	// production outage of the same signal.
+	Environment string
 }
 
 // Provider is the TelemetryProvider seam. Implementations live under
