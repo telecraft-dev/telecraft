@@ -27,3 +27,32 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./...
+
+  # The live TelemetryProvider verification (issue #10): the same gated
+  # suite demo.sh runs locally, against a real single-node Elasticsearch.
+  # A separate job so the plain test job stays Docker-free and fast.
+  telemetry-live:
+    name: TelemetryProvider live (Elasticsearch)
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.1.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        ports:
+          - 9200:9200
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go test ./internal/provider/telemetry/ -run Live -v -count=1
+        env:
+          TELECRAFT_TELEMETRY_LIVE_ENDPOINT: http://localhost:9200
