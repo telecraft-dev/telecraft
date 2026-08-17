@@ -126,16 +126,18 @@ in `traceability.md`.
 
 - **REQ-050** The platform visualises telemetry flow over the authored
   topology: per-Tier/per-Hop throughput, volume, and freshness, joined from
-  collector self-telemetry (`otelcol.component.id`, `otelcol.pipeline.id`)
-  back to the config that produced it. (G6)
+  collector self-telemetry back to the config that produced it. Join keys
+  per R-4: legacy datapoint attributes primary for metrics,
+  `otelcol.component.*` scope attributes for logs/traces.
+  (ADR-0039, ADR-0040, ADR-0041)
 - **REQ-051** The differentiator: from the Intended config at a SHA, derive
   an Expectation of what telemetry should arrive, and check it. Green means
-  "the config worked", never merely "the config applied". (ADR-0033, ADR-0034, G6)
+  "the config worked", never merely "the config applied". (ADR-0033, ADR-0034, ADR-0038)
 - **REQ-052** "Expected but never seen" is surfaced even though there is no
   collector to attach it to; ungoverned (observed, never authored) is
   surfaced without reading as failure. (ADR-0030, ADR-0031, ADR-0035)
 - **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam —
-  no privileged side channel. (G6)
+  no privileged side channel. (ADR-0039)
 
 ## 7. Non-goals
 
