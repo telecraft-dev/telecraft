@@ -235,6 +235,11 @@ func (e *Elasticsearch) AttributeNames(ctx context.Context, service seam.Service
 	path := fmt.Sprintf("/%s/_search?allow_no_indices=false&ignore_unavailable=false", e.indices[kind])
 	out, err := e.send(ctx, http.MethodPost, path, raw, "application/json")
 	if err != nil {
+		// Unlike _msearch, a missing index here surfaces as a whole-request
+		// 404 rather than a per-response error; give it the same cause.
+		if strings.Contains(err.Error(), "index_not_found") {
+			return unknown(e.signalCause(kind, json.RawMessage(err.Error())))
+		}
 		return unknown(err.Error())
 	}
 
