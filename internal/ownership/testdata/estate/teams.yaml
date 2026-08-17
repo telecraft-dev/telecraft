@@ -1,0 +1,20 @@
+# The fixture estate's team tree (ADR-0017), supplied through the teams.yaml
+# seam. Nesting is the tree: a team appears inside exactly one parent, so
+# multi-parent membership is not even writable without a duplicate id.
+teams:
+  - id: engineering
+    name: Engineering
+    teams:
+      - id: platform
+        name: Platform Engineering
+        owners: [platform-observability]
+        teams:
+          - id: data-flow
+            name: Data Flow
+            owners: [gateway-owners]
+      - id: infosec
+        name: Information Security
+        owners: [pii-guardians]
+      - id: product
+        name: Product
+        owners: [checkout-team]

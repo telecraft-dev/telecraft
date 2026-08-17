@@ -1,0 +1,3 @@
+- kind: blueprint
+  id: gateway-standard
+  owner: gateway-owners
