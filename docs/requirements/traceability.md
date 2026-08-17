@@ -12,10 +12,10 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-003 configs never binaries | ADR-0002 | P2 |
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
 | REQ-005 unique branding | G0 | P0 |
-| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019 | all |
+| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check) | all |
 | REQ-010 component Catalogue | ADR-0020 | P2 |
 | REQ-011 team-scoped Allow-lists | ADR-0021 | P2 |
-| REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017, ADR-0035 | P1/P4 |
+| REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017, ADR-0035, ADR-0042 (roll-up surfaces) | P1/P4 |
 | REQ-013 Service Class ⊥ Sensitivity, cumulative floors | ADR-0007, ADR-0015, ADR-0023, ADR-0025 | P1/P2 |
 | REQ-014 exemptions, grace | ADR-0004, ADR-0037 | P1 |
 | REQ-015 universal ownership, finding routing | ADR-0016 | P1/P4 |
@@ -32,8 +32,8 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-032 one artefact, SHA-stamped | ADR-0002, ADR-0013, ADR-0027 | P2 |
 | REQ-033 PRs via GitHub App | ADR-0003, ADR-0014, ADR-0028 (forge-neutral) | P2 |
 | REQ-034 renderer hard rules | ADR-0007, ADR-0010, ADR-0022, ADR-0028 | P2 |
-| REQ-035 YAML escape hatch | G7 | P4 |
-| REQ-036 canvas survives scale | ADR-0007 | P4 |
+| REQ-035 YAML escape hatch | ADR-0043 (resident read-only flyout) | P4 |
+| REQ-036 canvas survives scale | ADR-0007, ADR-0044 | P4 |
 | REQ-040 stateless OpAMP server | ADR-0013 | P3 |
 | REQ-041 GitOps co-equal | ADR-0010 | P3 |
 | REQ-042 no empty config map; first boot | ADR-0010, ADR-0030 | P3 |
@@ -41,7 +41,7 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-044 two EstateProviders | ADR-0008, ADR-0036 | P3 |
 | REQ-050 flow visualisation | ADR-0039, ADR-0040, ADR-0041 | P5 |
 | REQ-051 Expectation engine | ADR-0033, ADR-0034 (unit, tap); ADR-0038 (engine) | P5 |
-| REQ-052 expected-but-never-seen; ungoverned | ADR-0030, ADR-0031, ADR-0035 | P5 |
+| REQ-052 expected-but-never-seen; ungoverned | ADR-0030, ADR-0031, ADR-0035, ADR-0042 (Claim flow) | P5 |
 | REQ-053 self-telemetry via TelemetryProvider | ADR-0039 | P5 |
 | REQ-060 reuse over build | ADR-0000 process + per-decision | all |
 

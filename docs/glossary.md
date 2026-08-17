@@ -89,6 +89,17 @@ session.
 | **Self-telemetry destination** | The estate-level, adopter-declared endpoint every rendered artefact pushes internal telemetry (metrics + logs) to, resolved per Tier at render. A Tier's self-telemetry never depends on that Tier's own data pipelines; transiting another Tier as ordinary data is allowed, with shared fate reading as `Known: false`, never red (ADR-0039). |
 | **Incarnation** | One collector process start, identified by `service.instance.id` (fresh per restart, kept deliberately). Incarnation churn per Tier is the restart-rate reading; joining across restarts uses the substrate identity pattern, when the substrate offers one. |
 
+## Console (ADR-0042–0045)
+
+| Term | Meaning |
+|---|---|
+| **Workspace** | One of the console's four activity-first areas — Estate, Topology, Compose, Catalogue & Governance. Surfaces inside a Workspace are view-switchers over one model, never competing candidates; selection, filters and lens survive every switch. Objects are reached by global jump-to-object search, never by object-first navigation. |
+| **Shelf** | The Estate landing surface: a uniform grid of card faces (ADR-0041), grouped team-subtree sections × aligned Environment rows (production leading), ordered worst-severity-first from face summary fields alone. Defaults to the signed-in user's team subtree. Neutral cards sink to the tail but are never hidden; all-healthy sections collapse to a summary line — cards themselves never collapse. |
+| **Environment lens** | The global chrome control selecting the leading Environment, default `production` (ADR-0033). Emphasis and evaluation context, never a hard filter: multi-env surfaces keep every row visible; evaluation surfaces treat it as the selected context. Persisted per user; an explicit lens in a URL beats the preference. |
+| **Claim flow** | The onboarding flow from ungoverned collector(s) to governance (the OQ-3 CTA): herd-first multi-select, a suggested selector generalised over shared identity attributes (never enumerated instance ids), attach-to-existing-Tier or draft-new-Tier, exiting always as a user-attributed PR with the rendered impact preview. Distinct from quarantine routing, which is a Compose concern. |
+| **Canvas engine** | The shared pure library (model in, geometry out) rendering both canvases: band/row-constrained deterministic layout plus orthogonal Manhattan routing with per-signal bend offsets. Two vocabularies — composer graph and topology graph — one engine; semantic layout rules are invariants no interaction can violate (ADR-0044). |
+| **Presentation store** | The console's only non-git state: per-user presentation preferences (lens, collapsed sections, within-row canvas arrangement). Never model truth, fully loseable — losing it changes what leads, never what is asserted (ADR-0042 §7). |
+
 ## Rules of use
 
 - Upstream vocabulary is adopted verbatim; local synonyms are a lint error
