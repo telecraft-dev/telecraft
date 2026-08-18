@@ -8,6 +8,10 @@
 // rebuilds it with one full-state report — and dying with them, so a
 // collector that disconnects leaves the estate reading rather than going
 // quietly stale inside it.
+//
+// The package also versions the elastic-fleet Mutation profile
+// (elasticfleet.go): a reading path's catalogued mutations live with its
+// provider, never in core (ADR-0046 §3, ADR-0001).
 package estate
 
 import (

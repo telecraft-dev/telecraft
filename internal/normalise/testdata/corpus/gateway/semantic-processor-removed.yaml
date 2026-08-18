@@ -1,0 +1,37 @@
+# SEMANTIC change vs base.yaml: the untrusted-attribute strip processor is
+# gone from the traces pipeline (and the processor definition removed) — the
+# exact class of silent governance regression the check exists to catch.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+  batch:
+    send_batch_max_size: 16384
+exporters:
+  otlphttp/backend:
+    endpoint: https://ingest.example.com:443
+    headers:
+      x-api-token: tok-example-123
+service:
+  pipelines:
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - batch
+      exporters:
+        - otlphttp/backend
+    metrics:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - batch
+      exporters:
+        - otlphttp/backend

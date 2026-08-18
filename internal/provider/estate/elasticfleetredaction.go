@@ -8,10 +8,11 @@ import "strings"
 // the elastic-fleet Mutation profile a rotated redacted credential
 // therefore yields identical layer-2 digests — an accepted, bounded,
 // contract-tested cost (ADR-0046 §3). The rules live here, versioned with
-// the provider and never hard-coded in core, and the live contract test
-// (elasticfleet_live_test.go) holds them against the real API — an
-// Elastic Fleet release changing the list surfaces as a contract failure,
-// not estate-wide false drift.
+// the provider and never hard-coded in core; the elastic-fleet Mutation
+// profile (elasticfleetprofile.go) derives its pattern from this one
+// list, and the live contract test (elasticfleet_live_test.go) holds it
+// against the real API — an Elastic Fleet release changing the list
+// surfaces as a contract failure, not estate-wide false drift.
 //
 // Pinned to observed Elastic Fleet behaviour: fleet-server 9.6.x
 // (elastic-agent-libs redact.Redact, with routekey exempted at the

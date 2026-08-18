@@ -269,6 +269,7 @@ func TestDigestDiesWithTheConnection(t *testing.T) {
 	conn := fakeConn{1}
 
 	s.onMessage(context.Background(), conn, &protobufs.AgentToServer{
+		AgentDescription: description(gatewayAttrs()),
 		EffectiveConfig: &protobufs.EffectiveConfig{
 			ConfigMap: &protobufs.AgentConfigMap{ConfigMap: map[string]*protobufs.AgentConfigFile{
 				"": {Body: []byte("x")},
