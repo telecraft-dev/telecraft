@@ -1,0 +1,21 @@
+# The fixture estate's team tree (ADR-0017), supplied through the teams.yaml
+# seam: platform > data-flow gives CODEOWNERS an ancestor chain to project,
+# infosec a cross-team Component owner, product the Service whose Path
+# imposes the floor.
+teams:
+  - id: engineering
+    name: Engineering
+    teams:
+      - id: platform
+        name: Platform Engineering
+        owners: [platform-observability]
+        teams:
+          - id: data-flow
+            name: Data Flow
+            owners: [gateway-owners]
+      - id: infosec
+        name: Information Security
+        owners: [pii-guardians]
+      - id: product
+        name: Product
+        owners: [checkout-team]

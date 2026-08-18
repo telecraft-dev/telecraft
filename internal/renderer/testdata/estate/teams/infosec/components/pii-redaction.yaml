@@ -1,0 +1,15 @@
+# A shared Component consumed across teams by reference (ADR-0016). Its
+# catalogue type (processor/transform) is alpha for logs in the fixture
+# Catalogue, so routing logs through it in a production C1 Tier breaches
+# the beta floor — a finding, never a block (ADR-0023).
+name: pii-redaction
+class: processor
+type: transform
+version: 3
+owner: pii-guardians
+config:
+  error_mode: ignore
+  log_statements:
+    - context: log
+      statements:
+        - replace_pattern(body, "\\b\\d{16}\\b", "****")

@@ -1,0 +1,373 @@
+package renderer
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/telecraft-dev/telecraft/internal/allowlist"
+	"github.com/telecraft-dev/telecraft/internal/blueprint"
+	"github.com/telecraft-dev/telecraft/internal/catalogue"
+	"github.com/telecraft-dev/telecraft/internal/ownership"
+)
+
+// NodeEnvVar is the environment variable the rendered artefact reads its
+// node-unique identifying attribute from. The install guidance feeds it via
+// the Kubernetes Downward API (`spec.nodeName`), so one DaemonSet manifest
+// yields per-node identity (REQ-034, ADR-0010 rule 2).
+const NodeEnvVar = "TELECRAFT_NODE_NAME"
+
+// CommitAttribute is the resource attribute every rendered artefact is
+// stamped with, so "which commit is this running" is read from the
+// collector, never remembered about it (ADR-0013).
+const CommitAttribute = "telecraft.commit"
+
+// StripProcessorID is the rendered id of the generated processor that
+// strips the platform's attribute namespace from data arriving over an
+// untrusted Hop (REQ-034, ADR-0007). Identity is re-derived from the
+// receiving Tier's own config stamps, never rewritten into customer data
+// (ADR-0013).
+const StripProcessorID = "attributes/telecraft.untrusted-hop"
+
+// SupervisorStorageDir is the Supervisor's persistent-state directory in
+// rendered supervisor configs. Install guidance mounts a durable volume
+// there — an ephemeral directory mints a new identity per pod replacement
+// (ADR-0010 rule 3).
+const SupervisorStorageDir = "/var/lib/telecraft/supervisor"
+
+// Inputs is everything one render reads. Every field is required: the
+// renderer is a pure function of the authored trees, the active policy and
+// the commit under render — nothing here is optional or discovered.
+type Inputs struct {
+	Estate    blueprint.Estate
+	Topology  Topology
+	Policy    *allowlist.Policy
+	Catalogue *catalogue.Catalogue
+	Tree      ownership.Tree
+	Floors    FloorPolicy
+
+	// Commit is the SHA stamped into every artefact (ADR-0013).
+	Commit string
+}
+
+// Result is one successful render: the artefact tree, keyed by
+// repo-relative path, plus the policy findings the render surfaced.
+// Artefacts and findings arrive together — a floor breach is visible and
+// routed, never a reason to withhold the artefact (ADR-0022 §4).
+type Result struct {
+	Artefacts map[string][]byte
+	Findings  []Finding
+}
+
+// Render compiles every Tier's bound Blueprint to its rendered artefacts
+// and generates the code-ownership projection. It either returns the
+// complete artefact tree or refuses with every problem named: a partial
+// tree would leave `rendered/` inconsistent with the authored sources,
+// which is the invariant CI holds (ADR-0028 §2).
+//
+// Refusal has exactly two grounds. Mechanical invalidity: a binding or
+// reference that resolves to nothing, a rendered-id collision (ADR-0024
+// §5), a lane that would compile to a pipeline no collector accepts. And
+// the one policy hard block: a Blueprint using a catalogue type outside the
+// owning team's effective palette (ADR-0022 §3) — the escape hatch is a
+// Grant, never an override. Everything else the render notices — a floor
+// breach, a binding pinned off head — is a Finding in the Result.
+func Render(in Inputs) (Result, error) {
+	switch {
+	case in.Commit == "":
+		return Result{}, fmt.Errorf("no commit SHA — every artefact carries its own identity, so the stamp is not optional (ADR-0013)")
+	case in.Policy == nil:
+		return Result{}, fmt.Errorf("no allow-list policy — the render gate is the one place the hard block lives (ADR-0022 §3)")
+	case in.Catalogue == nil:
+		return Result{}, fmt.Errorf("no catalogue — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
+	}
+	if err := in.Floors.Validate(); err != nil {
+		return Result{}, err
+	}
+
+	res := Result{Artefacts: map[string][]byte{}}
+	var problems []string
+
+	for _, tier := range in.Topology.SortedTiers() {
+		artefact, supervisor, findings, tierProblems := renderTier(in, tier)
+		problems = append(problems, tierProblems...)
+		res.Findings = append(res.Findings, findings...)
+		if len(tierProblems) > 0 {
+			continue
+		}
+		res.Artefacts["rendered/"+tier.Team+"/"+tier.Name+".yaml"] = artefact
+		if supervisor != nil {
+			res.Artefacts["rendered/"+tier.Team+"/"+tier.Name+".supervisor.yaml"] = supervisor
+		}
+	}
+
+	res.Artefacts["CODEOWNERS"] = CodeOwners(in.Tree)
+
+	if len(problems) > 0 {
+		return Result{}, fmt.Errorf("render refused:\n  - %s", strings.Join(problems, "\n  - "))
+	}
+	return res, nil
+}
+
+// instance is one component instance placed in this Tier's artefact: the
+// resolved Component under its rendered id.
+type instance struct {
+	id   string
+	comp blueprint.Component
+}
+
+// renderedID computes the standard `type/name` id an instance renders under
+// (ADR-0024 §5): shared → `type/team.name`, local → `type/name`. Provenance
+// is in the id; collisions are a mechanical render error.
+func renderedID(c blueprint.Component) string {
+	if c.Team == "" {
+		return c.Type + "/" + c.Name
+	}
+	return c.Type + "/" + c.Team + "." + c.Name
+}
+
+// renderTier compiles one Tier. It returns the collector artefact, the
+// supervisor artefact (nil where the Tier is not served), the policy
+// findings, and the mechanical or hard-block problems that refuse the
+// render.
+func renderTier(in Inputs, tier Tier) (artefact, supervisor []byte, findings []Finding, problems []string) {
+	ctx := fmt.Sprintf("tier %q", tier.ID())
+
+	bp, ok := in.Estate.Blueprint(tier.Binding().ID())
+	if !ok {
+		return nil, nil, nil, []string{fmt.Sprintf("%s binds %s, but no Blueprint has that id — nothing can render in its place (ADR-0025)", ctx, tier.Binding())}
+	}
+	if bp.Version != tier.Binding().Version {
+		// The estate tree holds head content, so head is what renders; the
+		// stale pin is visible drift, never a silent substitution and never
+		// a block (ADR-0026).
+		findings = append(findings, Finding{KindBinding, tier.ID(), bp.ID(), "",
+			fmt.Sprintf("binds %s, but the Blueprint at head is version %d — head is what this tree can render; rebind in the same PR that reviews the diff (ADR-0026)", tier.Binding(), bp.Version)})
+	}
+
+	instances, resolveProblems := resolveInstances(in.Estate, bp, ctx)
+	problems = append(problems, resolveProblems...)
+	problems = append(problems, allowListProblems(in.Policy, bp, instances, ctx)...)
+	findings = append(findings, floorFindings(in, tier, bp)...)
+	if len(problems) > 0 {
+		return nil, nil, findings, problems
+	}
+
+	artefact, emitProblems := emitCollector(in, tier, bp, instances)
+	problems = append(problems, emitProblems...)
+	if len(problems) > 0 {
+		return nil, nil, findings, problems
+	}
+	if tier.Serving != nil {
+		supervisor = emitSupervisor(in, tier)
+	}
+	return artefact, supervisor, findings, problems
+}
+
+// resolveInstances resolves every lane entry of the Blueprint to a component
+// instance under its rendered id, refusing on a dangling reference or a
+// rendered-id collision (ADR-0024 §5). Load-time findings already told the
+// owner; the renderer's duty is to never emit a partial or ambiguous
+// artefact on top of them.
+func resolveInstances(est blueprint.Estate, bp blueprint.Blueprint, ctx string) (map[string]instance, []string) {
+	instances := map[string]instance{}
+	var problems []string
+
+	for _, l := range lanes(bp) {
+		for _, e := range l.entries {
+			ref := e.Reference()
+			c, ok := resolve(est, bp, ref)
+			if !ok {
+				problems = append(problems, fmt.Sprintf("%s: %s lane references %s, which nothing provides — a complete artefact cannot exist until the reference changes or the Component returns (ADR-0016)", ctx, l.name, ref))
+				continue
+			}
+			id := renderedID(c)
+			if prev, seen := instances[id]; seen {
+				if prev.comp.ID() != c.ID() {
+					problems = append(problems, fmt.Sprintf("%s: rendered id %q is claimed by both %s and %s — collisions are a mechanical render error (ADR-0024 §5)", ctx, id, prev.comp.ID(), c.ID()))
+				}
+				continue
+			}
+			instances[id] = instance{id: id, comp: c}
+		}
+	}
+
+	// The generated strip processor occupies its id unconditionally: an
+	// authored instance landing on it would be silently overwritten on the
+	// Tiers that need the strip, so it is reserved on every Tier.
+	if prev, seen := instances[StripProcessorID]; seen {
+		problems = append(problems, fmt.Sprintf("%s: rendered id %q is claimed by %s — that id is reserved for the generated untrusted-Hop strip (REQ-034)", ctx, StripProcessorID, prev.comp.ID()))
+	}
+	return instances, problems
+}
+
+// allowListProblems applies the one policy hard block (ADR-0022 §3): every
+// instance's catalogue type must sit inside the effective palette of the
+// team that owns the Component — the team that chose the type. For a shared
+// Component that is the owning team from the layout; a local Component is
+// implicitly the Blueprint's team (ADR-0024 §3).
+func allowListProblems(policy *allowlist.Policy, bp blueprint.Blueprint, instances map[string]instance, ctx string) []string {
+	var problems []string
+	for _, id := range sortedKeys(instances) {
+		c := instances[id].comp
+		team := c.Team
+		if team == "" {
+			team = bp.Team
+		}
+		allowed, err := policy.Allows(ownership.TeamID(team), c.Class, c.Type)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: %v", ctx, err))
+			continue
+		}
+		if !allowed {
+			problems = append(problems, fmt.Sprintf("%s: Component %s uses %s/%s, outside team %q's effective palette — the render refuses, and the escape hatch is a Grant, fast and auditable (ADR-0021, ADR-0022 §3)", ctx, c.ID(), c.Class, c.Type, team))
+		}
+	}
+	return problems
+}
+
+// floorFindings judges the bound Blueprint against the cumulative stability
+// floors (ADR-0023): at the Tier's declared Environment crossed with the
+// strictest Service Class among Services whose Paths traverse the Tier
+// (ADR-0025 §4), per (component, signal) — and only for signals the
+// Blueprint actually routes through the component. A breach is a
+// violation-grade finding routed onward, never a block (ADR-0022 §4): a
+// routine catalogue activation must not freeze config work.
+func floorFindings(in Inputs, tier Tier, bp blueprint.Blueprint) []Finding {
+	traversing := in.Topology.Traversing(tier.ID())
+	if len(traversing) == 0 {
+		return nil
+	}
+	classes := make([]ServiceClass, 0, len(traversing))
+	for _, s := range traversing {
+		classes = append(classes, s.Class)
+	}
+	strictest, err := in.Floors.Strictest(classes)
+	if err != nil {
+		// Floors.Validate passed, so this only trips on a Service class the
+		// policy does not rank; surface it as a finding on the Tier rather
+		// than judging with a guess.
+		return []Finding{{KindFloor, tier.ID(), bp.ID(), "",
+			fmt.Sprintf("cannot derive judgement strictness: %v", err)}}
+	}
+	floor, ok := in.Floors.FloorFor(strictest, tier.Environment)
+	if !ok {
+		return nil
+	}
+
+	imposers := make([]string, 0, len(traversing))
+	for _, s := range traversing {
+		if s.Class == strictest {
+			imposers = append(imposers, s.ID())
+		}
+	}
+
+	var out []Finding
+	for _, s := range blueprint.Signals {
+		for _, e := range bp.Lane(s) {
+			c, ok := resolve(in.Estate, bp, e.Reference())
+			if !ok {
+				continue // already a mechanical refusal
+			}
+			entry, ok := in.Catalogue.Lookup(c.Class, c.Type)
+			if !ok {
+				continue // already refused by the allow-list gate
+			}
+			level, supported := entry.StabilityFor(string(s))
+			if !supported {
+				continue // nothing is judged on capability it isn't using
+			}
+			rank, onLadder := ladder[level]
+			if !onLadder {
+				continue // lifecycle is an orthogonal axis, not a rung (ADR-0023 §6)
+			}
+			if rank < ladder[floor] {
+				out = append(out, Finding{KindFloor, tier.ID(), bp.ID(), string(s),
+					fmt.Sprintf("routes %s through %s (%s/%s), which is %s for %s — below the %s floor for Service Class %s in %s, imposed by %s (ADR-0023, ADR-0025 §4)",
+						s, c.ID(), c.Class, c.Type, level, s, floor, strictest, tier.Environment, strings.Join(imposers, ", "))})
+			}
+		}
+	}
+	return out
+}
+
+// lane pairs a lane name with its entries, extensions included, for uniform
+// iteration over a loaded Blueprint.
+type namedLane struct {
+	name    string
+	entries []blueprint.Entry
+}
+
+func lanes(bp blueprint.Blueprint) []namedLane {
+	out := make([]namedLane, 0, len(blueprint.Signals)+1)
+	for _, s := range blueprint.Signals {
+		out = append(out, namedLane{string(s), bp.Lane(s)})
+	}
+	out = append(out, namedLane{blueprint.ExtensionsLane, bp.Extensions})
+	return out
+}
+
+// resolve finds the Component a reference points at: the Blueprint's own
+// locals for a bare name, the estate's shared Components otherwise —
+// content at head, matching internal/blueprint's resolution.
+func resolve(est blueprint.Estate, bp blueprint.Blueprint, r blueprint.Reference) (blueprint.Component, bool) {
+	if r.Local() {
+		return bp.Local(r.Name)
+	}
+	return est.Component(r.ID())
+}
+
+// pipeline is one compiled signal pipeline: the lane's entries split to the
+// sides a collector understands, in authored order — the renderer never
+// re-sorts (ADR-0024 §2).
+type pipeline struct {
+	receivers  []string
+	processors []string
+	exporters  []string
+}
+
+// compileLane splits one signal lane into pipeline sides. Receivers,
+// processors and exporters go to their own side. A connector's side is its
+// authored position: before the first processor or exporter it feeds the
+// pipeline (receiver side); after, it drains it (exporter side) — the
+// explicitly ordered lane is the authority on direction, like everything
+// else about ordering. An extension cannot compile into a signal lane; the
+// load already raised the finding, the renderer refuses.
+func compileLane(est blueprint.Estate, bp blueprint.Blueprint, name string, entries []blueprint.Entry, ctx string) (pipeline, []string) {
+	var p pipeline
+	var problems []string
+	sourceSide := true
+	for _, e := range entries {
+		c, ok := resolve(est, bp, e.Reference())
+		if !ok {
+			continue // already a mechanical refusal from resolveInstances
+		}
+		id := renderedID(c)
+		switch c.Class {
+		case catalogue.Receiver:
+			p.receivers = append(p.receivers, id)
+		case catalogue.Processor:
+			sourceSide = false
+			p.processors = append(p.processors, id)
+		case catalogue.Exporter:
+			sourceSide = false
+			p.exporters = append(p.exporters, id)
+		case catalogue.Connector:
+			if sourceSide {
+				p.receivers = append(p.receivers, id)
+			} else {
+				p.exporters = append(p.exporters, id)
+			}
+		case catalogue.Extension:
+			problems = append(problems, fmt.Sprintf("%s: %s lane references %s, an extension — extensions are collector-wide and cannot compile into a pipeline (ADR-0024 §2)", ctx, name, c.ID()))
+		}
+	}
+	if len(entries) > 0 {
+		if len(p.receivers) == 0 {
+			problems = append(problems, fmt.Sprintf("%s: the %s lane compiles to a pipeline with no receiver side — no collector accepts it, so the artefact cannot exist (REQ-032)", ctx, name))
+		}
+		if len(p.exporters) == 0 {
+			problems = append(problems, fmt.Sprintf("%s: the %s lane compiles to a pipeline with no exporter side — no collector accepts it, so the artefact cannot exist (REQ-032)", ctx, name))
+		}
+	}
+	return p, problems
+}
