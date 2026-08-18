@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet } from '@tanstack/react-router'
 import { api } from '../api/client'
+import { demoMode } from '../api/demo'
+import { DemoBanner } from './DemoBanner'
 import { JumpToObject } from './JumpToObject'
 import { LensControl } from './LensControl'
 
@@ -51,14 +53,20 @@ export function AppShell() {
               {me.data.name}
             </span>
           )}
-          <button
-            type="button"
-            className="sign-out"
-            data-testid="sign-out"
-            onClick={() => signOut.mutate()}
-          >
-            Sign out
-          </button>
+          {/* The demo has no session to end, so it says what it is
+              instead (issue #50). */}
+          {demoMode ? (
+            <DemoBanner />
+          ) : (
+            <button
+              type="button"
+              className="sign-out"
+              data-testid="sign-out"
+              onClick={() => signOut.mutate()}
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </header>
       <main className="workspace-body">

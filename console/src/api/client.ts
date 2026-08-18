@@ -22,6 +22,7 @@ import type {
   ProposalRef,
   TopologyPayload,
 } from './types'
+import { demoApi, demoMode } from './demo'
 
 /** A 401: no session, or one the estate no longer knows. The auth gate
  * turns this into the sign-in surface; nothing else retries it. */
@@ -62,7 +63,12 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   return (await res.json()) as T
 }
 
-export const api = {
+/**
+ * The live client: the documented platform API over HTTP. Demo mode swaps
+ * it for a build-time snapshot of the same documents (see api/demo.ts) —
+ * the console's surfaces consume the contract, never the transport.
+ */
+export const liveApi = {
   me: () => get<Me>('/api/v1/me'),
   authProviders: () => get<AuthProviderInfo[]>('/api/v1/auth/providers'),
   login: (provider: string, username: string, secret: string) =>
@@ -140,3 +146,10 @@ export const api = {
     return { proposal: (await res.json()) as ProposalRef }
   },
 }
+
+/**
+ * The client every surface consumes. On an instance it is the live API; in
+ * the static demo it is the snapshot-backed client, which answers the same
+ * shapes and ends every write path at an explanatory notice (issue #50).
+ */
+export const api: typeof liveApi = demoMode ? (demoApi as typeof liveApi) : liveApi
