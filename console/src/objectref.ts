@@ -5,7 +5,7 @@ import type { ObjectKind, ObjectRef } from './api/types'
 // serving the activity that reads it, carried in the `object` search param
 // so every selection is URL-addressable (ADR-0042 §3.5).
 
-const KINDS: readonly ObjectKind[] = ['tier', 'service', 'blueprint', 'component', 'team']
+const KINDS: readonly ObjectKind[] = ['tier', 'service', 'blueprint', 'component', 'team', 'entry']
 
 /** Encodes a ref for the `object` search param, for example `tier:data-flow/gateway`. */
 export function formatObjectRef(ref: ObjectRef): string {
@@ -28,8 +28,8 @@ export type WorkspacePath = '/estate' | '/topology' | '/compose' | '/catalogue'
 /**
  * The Workspace an object kind deep-links into: Tiers summon their card on
  * the shelf, Services trace their Paths on the canvas (ADR-0044 §4),
- * Blueprints open in Compose, Components in Catalogue & Governance, and a
- * team lands on its shelf section.
+ * Blueprints open in Compose, Components and Catalogue entries in
+ * Catalogue & Governance, and a team lands on its shelf section.
  */
 export function workspaceFor(kind: ObjectKind): WorkspacePath {
   switch (kind) {
@@ -42,6 +42,8 @@ export function workspaceFor(kind: ObjectKind): WorkspacePath {
     case 'blueprint':
       return '/compose'
     case 'component':
+      return '/catalogue'
+    case 'entry':
       return '/catalogue'
   }
 }

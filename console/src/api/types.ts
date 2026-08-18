@@ -14,8 +14,12 @@ export interface Me {
   team: string
 }
 
-/** The authored-object kinds jump-to-object can reach (ADR-0042 §1). */
-export type ObjectKind = 'tier' | 'service' | 'blueprint' | 'component' | 'team'
+/**
+ * The object kinds jump-to-object can reach (ADR-0042 §1): the authored
+ * objects, plus `entry` — a Catalogue entry, keyed `class/type` (ADR-0020
+ * §3), browsable and deep-linkable though machine-generated, never authored.
+ */
+export type ObjectKind = 'tier' | 'service' | 'blueprint' | 'component' | 'team' | 'entry'
 
 export interface ObjectRef {
   kind: ObjectKind
@@ -26,7 +30,8 @@ export interface ObjectRef {
 /** GET /api/v1/objects — the jump-to-object index. */
 export interface IndexedObject extends ObjectRef {
   name: string
-  team: string
+  /** Owning team — absent for Catalogue entries, which nobody owns. */
+  team?: string
   environment?: Environment
 }
 
@@ -221,6 +226,28 @@ export interface BlueprintSummary {
   team: string
   /** Component references per signal pipeline, renderer order. */
   pipelines: Record<string, string[]>
+  /**
+   * The Catalogue key each pipeline item instantiates, so composer palette
+   * items deep-link to their Catalogue entries (ADR-0042 §1).
+   */
+  components?: Record<string, CatalogueKey>
+}
+
+/**
+ * A component class: upstream `status.class`, adopted verbatim — only the
+ * five pipeline classes enter a Catalogue (ADR-0020 §2).
+ */
+export type ComponentClass = 'receiver' | 'processor' | 'exporter' | 'extension' | 'connector'
+
+/** The Catalogue primary key (ADR-0020 §3): `type` alone collapses real components. */
+export interface CatalogueKey {
+  class: ComponentClass
+  type: string
+}
+
+/** Renders the key in its authored `class/type` form — also the `entry` object id. */
+export function formatCatalogueKey(key: CatalogueKey): string {
+  return `${key.class}/${key.type}`
 }
 
 /** GET /api/v1/catalogue — governed Components for browsing (ADR-0020). */
@@ -229,6 +256,128 @@ export interface CatalogueComponent {
   name: string
   version: number
   team: string
-  class: 'receiver' | 'processor' | 'exporter' | 'extension' | 'connector'
+  class: ComponentClass
   type: string
+}
+
+/**
+ * An upstream stability level, adopted verbatim: the maturity ladder is
+ * development < alpha < beta < stable; deprecated and unmaintained are
+ * lifecycle end-states, not rungs.
+ */
+export type StabilityLevel =
+  | 'development'
+  | 'alpha'
+  | 'beta'
+  | 'stable'
+  | 'deprecated'
+  | 'unmaintained'
+
+/** The closed six-level vocabulary, ladder order first, for filter controls. */
+export const STABILITY_LEVELS: readonly StabilityLevel[] = [
+  'development',
+  'alpha',
+  'beta',
+  'stable',
+  'deprecated',
+  'unmaintained',
+]
+
+/**
+ * One Catalogue entry: identity, per-signal stability and lifecycle of a
+ * component type (ADR-0020). It states what exists — never what may be used
+ * (that is the Allow-list) and never a configured instance (that is a
+ * governed Component).
+ */
+export interface CatalogueEntry extends CatalogueKey {
+  /** The historical type alias, resolving on every lookup (ADR-0020 §3). */
+  deprecatedType?: string
+  displayName?: string
+  description?: string
+  /** Adopter-authored entries are first-class, marked apart (ADR-0020 §10). */
+  source: 'upstream' | 'adopter'
+  /** Per-signal stability; the signal vocabulary is open (ADR-0020 §1). */
+  stability: Record<string, StabilityLevel>
+  /** The upstream deprecation notice per deprecated signal — ready-made remediation. */
+  deprecation?: Record<string, { date: string; migration: string }>
+}
+
+/** One installed catalogue version (ADR-0020 §9: retained, never replaced). */
+export interface CatalogueVersionInfo {
+  /** The collector release tag the catalogue is pinned to, e.g. `v0.158.0`. */
+  version: string
+  /** Whether this is the designated active catalogue authoring judges against. */
+  active: boolean
+  /** Entry count, for the version picker. */
+  components: number
+  source: { repository: string; ref: string; commit?: string }
+}
+
+/** GET /api/v1/catalogue/versions — the installed catalogues, active designated. */
+export interface CatalogueVersionsPayload {
+  active: string
+  versions: CatalogueVersionInfo[]
+}
+
+/** An Owner in the team tree (ADR-0016), as governance authoring needs it. */
+export interface OwnerDoc {
+  id: string
+  name: string
+  team: string
+}
+
+/**
+ * One Team's declared Allow-list, in its authored shape (ADR-0021 §5):
+ * entries are `class/type-pattern` shapes, an exact name being the
+ * degenerate pattern.
+ */
+export interface AllowListDoc {
+  team: string
+  owner: string
+  allow: string[]
+}
+
+/** One Grant in its authored shape: an ancestor-authored scoped exception (ADR-0021 §3). */
+export interface GrantDoc {
+  id: string
+  owner: string
+  team: string
+  adds: string[]
+}
+
+/**
+ * GET /api/v1/governance — the authored, git-resident Allow-list policy
+ * (ADR-0021 §5), plus the Owners governance edits attribute to. The console
+ * derives each team's effective palette from this and the active catalogue.
+ */
+export interface GovernancePayload {
+  owners: OwnerDoc[]
+  allowLists: AllowListDoc[]
+  grants: GrantDoc[]
+}
+
+/**
+ * POST /api/v1/governance/proposals — a governance edit exiting as a PR via
+ * the forge adapter (ADR-0042 §6): the complete edited policy, proposed;
+ * the console proposes, the PR decides. The server validates fail-closed
+ * exactly as loading does and answers 422 with the problems named.
+ */
+export interface GovernanceProposalRequest {
+  title: string
+  summary?: string
+  allowLists: AllowListDoc[]
+  grants: GrantDoc[]
+}
+
+/** The opened proposal, mirroring the forge seam: opaque id, URL, branch. */
+export interface ProposalRef {
+  id: string
+  url: string
+  branch: string
+}
+
+/** The proposal outcome: opened, or refused with the load problems named. */
+export interface ProposalOutcome {
+  proposal?: ProposalRef
+  problems?: string[]
 }

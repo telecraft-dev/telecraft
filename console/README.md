@@ -49,19 +49,23 @@ backend (`tools/fixture-backend.mjs`) implements this contract over the
 fixture estate; the platform binary replaces it when the API endpoint
 lands there.
 
-All endpoints are `GET`, returning JSON. The TypeScript shapes live in
-`src/api/types.ts`.
+All endpoints are `GET` except the one proposal exit, returning JSON. The
+TypeScript shapes live in `src/api/types.ts`.
 
 | Endpoint | Returns |
 |---|---|
 | `/api/v1/me` | The signed-in user: id, name, and team (the shelf's resting scope). |
-| `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team. |
+| `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team, plus the active catalogue's entries (kind `entry`, id `class/type`, no team — nobody owns them). |
 | `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, and one ADR-0041 card face per Tier. |
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
 | `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. |
-| `/api/v1/blueprints` | Blueprint summaries with per-signal component lanes in renderer order. |
+| `/api/v1/blueprints` | Blueprint summaries with per-signal component lanes in renderer order, plus the Catalogue key each lane item instantiates, so composer palette items deep-link to their Catalogue entries. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
+| `/api/v1/catalogue/versions` | The installed catalogue versions (ADR-0020 §9: retained, never replaced), each with its entry count and source, and which one is active. |
+| `/api/v1/catalogue/entries?version=` | One retained catalogue version's entries: `(class, type)` identity with the `deprecated_type` alias, display name, source (`upstream` or `adopter`), per-signal stability, and per-signal deprecation notices. An unknown version is a 404, never an empty list. |
+| `/api/v1/governance` | The authored, git-resident Allow-list policy (ADR-0021 §5): Owners, Allow-lists and Grants in their authored shapes. The console derives each team's effective palette — with total provenance — from this plus the active catalogue (`src/governance/effective.ts`, the same derived-presentation pattern as the roll-up). |
+| `POST /api/v1/governance/proposals` | The one write: a governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal — opaque id, URL, branch — mirroring the forge seam (`internal/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 1`): three bands as enum states plus worst-finding
@@ -103,3 +107,13 @@ Search params are validated by the router (ADR-0045 §3):
   (ADR-0042 §3.4); the lens is never one of these filters.
 - `lane`: the signal lane a Blueprint-shaped who-acts chip lands on in
   Compose (ADR-0042 §3.3).
+- `view` (Catalogue & Governance): `browse` (the default), `palette`, or
+  `governance` — view-switchers over one model, like the Estate's.
+- `version`: the catalogue version browsed; absent means the active one.
+- `stability`, `signal`: the browse filters — together they filter on the
+  named signal at the named level.
+- `team` (palette view): the team whose effective palette shows; absent
+  means the signed-in user's team.
+- `request`: a `class/type` entry prefilling a Grant draft in the
+  governance view — the browse-and-request door from a non-allowed
+  palette row (ADR-0042 §1).
