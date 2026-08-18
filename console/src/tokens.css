@@ -1,0 +1,42 @@
+/*
+ * Design tokens (ADR-0045 §4): the console ships structurally complete and
+ * visually token-driven, so the branding pass swaps these values and never
+ * touches markup. Fonts are the system stack: nothing external to bundle,
+ * nothing external to fetch (ADR-0019, ADR-0045 §5).
+ *
+ * Hue is enhancement, never load-bearing (ADR-0041 §2): band states render
+ * as glyphs and words first; the severity colours only reinforce them.
+ */
+:root {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --colour-bg: #f6f7f8;
+  --colour-surface: #ffffff;
+  --colour-surface-raised: #fcfcfd;
+  --colour-border: #d6d9dd;
+  --colour-text: #1c2126;
+  --colour-text-muted: #5b636b;
+  --colour-accent: #2a5d8f;
+  --colour-accent-contrast: #ffffff;
+
+  --colour-severity-violation: #a4262c;
+  --colour-severity-advisory: #8a6116;
+  --colour-severity-ok: #2e6b3f;
+  --colour-severity-neutral: #6b7280;
+
+  --colour-ungoverned-band: #f3eddf;
+  --colour-dimmed: rgba(28, 33, 38, 0.25);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --radius-1: 4px;
+  --radius-2: 8px;
+
+  --card-width: 232px;
+  --card-height: 148px;
+}

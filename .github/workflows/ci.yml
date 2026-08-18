@@ -76,3 +76,28 @@ jobs:
           FORGE_APP_ID: ${{ secrets.FORGE_APP_ID }}
           FORGE_INSTALLATION_ID: ${{ secrets.FORGE_INSTALLATION_ID }}
           FORGE_APP_PRIVATE_KEY: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
+
+  # The console (issue #25, ADR-0045): typecheck, unit tests, build, the
+  # zero-CDN check over the built bundle, and the Playwright suite against
+  # the fixture backend. The air-gap check lives here beside the
+  # vendor-word lint, not in a doc (ADR-0045 §5).
+  console:
+    name: Console (ADR-0045)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:zero-cdn
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e

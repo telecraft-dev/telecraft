@@ -1,0 +1,45 @@
+import { Link, Outlet } from '@tanstack/react-router'
+import { JumpToObject } from './JumpToObject'
+import { LensControl } from './LensControl'
+
+// Navigation is activity-first: the four Workspaces are the only top-level
+// entries (ADR-0042 §1). Switching Workspaces keeps the lens (one global
+// chrome control) and drops the object selection, which belongs to the
+// Workspace that read it.
+const WORKSPACES = [
+  { to: '/estate', label: 'Estate', testid: 'nav-estate' },
+  { to: '/topology', label: 'Topology', testid: 'nav-topology' },
+  { to: '/compose', label: 'Compose', testid: 'nav-compose' },
+  { to: '/catalogue', label: 'Catalogue & Governance', testid: 'nav-catalogue' },
+] as const
+
+export function AppShell() {
+  return (
+    <div className="shell">
+      <header className="chrome">
+        <span className="brand">Telecraft</span>
+        <nav className="workspaces" aria-label="Workspaces">
+          {WORKSPACES.map((ws) => (
+            <Link
+              key={ws.to}
+              to={ws.to}
+              search={(prev) => ({ lens: prev.lens })}
+              data-testid={ws.testid}
+              className="workspace-link"
+              activeProps={{ className: 'workspace-link active', 'aria-current': 'page' }}
+            >
+              {ws.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="chrome-controls">
+          <LensControl />
+          <JumpToObject />
+        </div>
+      </header>
+      <main className="workspace-body">
+        <Outlet />
+      </main>
+    </div>
+  )
+}

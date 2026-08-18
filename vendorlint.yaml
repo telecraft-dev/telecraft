@@ -50,6 +50,16 @@ scopes:
         allow: ["Grafana Fleet Management"]
         message: name the product, never the company — GrafanaFleetManagement, never Grafana (ADR-0001)
 
+  # The console is neutral core too (ADR-0001, ADR-0045): vendor words do
+  # not appear in its sources, fixtures, or tooling. Build output is
+  # excluded as generated; node_modules is never walked.
+  - name: console
+    include: [console/**]
+    exclude: [console/dist/**, console/playwright-report/**, console/test-results/**]
+    rules:
+      - pattern: (?i)(elastic|kibana|fleet|grafana|loki|mimir|datadog|splunk|dynatrace|new ?relic|honeycomb|appdynamics|sumo ?logic|signalfx|chronosphere|coralogix|lightstep|wavefront)
+        message: vendor word in the console (ADR-0001) — the console is neutral core (ADR-0045)
+
   # Normative docs follow the same naming discipline. The research corpus,
   # prototype verdicts and branding notes are excluded: they record external
   # reality (survey quotes, product names, collision sweeps) verbatim.

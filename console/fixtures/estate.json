@@ -1,0 +1,179 @@
+{
+  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1.",
+  "me": {
+    "id": "demo-user",
+    "name": "Demo user",
+    "team": "data-flow"
+  },
+  "environments": ["production", "staging"],
+  "teams": {
+    "id": "engineering",
+    "name": "Engineering",
+    "teams": [
+      {
+        "id": "platform",
+        "name": "Platform Engineering",
+        "teams": [{ "id": "data-flow", "name": "Data Flow" }]
+      },
+      { "id": "infosec", "name": "Information Security" },
+      { "id": "product", "name": "Product" }
+    ]
+  },
+  "cards": [
+    {
+      "contractVersion": 1,
+      "tier": "data-flow/edge",
+      "name": "edge",
+      "team": "data-flow",
+      "environment": "production",
+      "serviceClass": "C1",
+      "bands": {
+        "delivery": { "state": "ok", "worstSeverity": "none" },
+        "expectation": { "state": "ok", "worstSeverity": "none" },
+        "conformance": { "state": "ok", "worstSeverity": "none" }
+      },
+      "findingCounts": {},
+      "population": { "matched": 14, "floor": 12, "floorSource": "derived" }
+    },
+    {
+      "contractVersion": 1,
+      "tier": "data-flow/gateway",
+      "name": "gateway",
+      "team": "data-flow",
+      "environment": "production",
+      "serviceClass": "C1",
+      "bands": {
+        "delivery": { "state": "ok", "worstSeverity": "none" },
+        "expectation": {
+          "state": "finding",
+          "worstSeverity": "advisory",
+          "worstFinding": "unbacked arrival claim on the logs lane"
+        },
+        "conformance": {
+          "state": "finding",
+          "worstSeverity": "violation",
+          "worstFinding": "checkout misses the C1 floor in production"
+        }
+      },
+      "findingCounts": { "expectation": 1, "conformance": 1 },
+      "population": { "matched": 3, "floor": 3, "floorSource": "derived" }
+    },
+    {
+      "contractVersion": 1,
+      "tier": "data-flow/gateway-staging",
+      "name": "gateway-staging",
+      "team": "data-flow",
+      "environment": "staging",
+      "serviceClass": "C1",
+      "bands": {
+        "delivery": { "state": "pending_settle", "worstSeverity": "none" },
+        "expectation": { "state": "unknown", "worstSeverity": "none" },
+        "conformance": { "state": "not_applicable", "worstSeverity": "none" }
+      },
+      "findingCounts": {},
+      "population": { "matched": 1, "floorSource": "absent" }
+    },
+    {
+      "contractVersion": 1,
+      "tier": "product/storefront-edge",
+      "name": "storefront-edge",
+      "team": "product",
+      "environment": "production",
+      "bands": {
+        "delivery": { "state": "ok", "worstSeverity": "none" },
+        "expectation": { "state": "ok", "worstSeverity": "none" },
+        "conformance": { "state": "ok", "worstSeverity": "none" }
+      },
+      "findingCounts": {},
+      "population": { "matched": 6, "floor": 6, "floorSource": "declared" }
+    }
+  ],
+  "topology": {
+    "sources": [{ "id": "internet", "name": "internet" }],
+    "hops": [
+      {
+        "from": "internet",
+        "to": "data-flow/gateway",
+        "trusted": false,
+        "signals": ["traces", "logs", "metrics"]
+      },
+      {
+        "from": "data-flow/edge",
+        "to": "data-flow/gateway",
+        "trusted": true,
+        "signals": ["traces", "logs", "metrics"]
+      }
+    ],
+    "paths": [
+      {
+        "service": "product/checkout",
+        "through": ["data-flow/edge", "data-flow/gateway"]
+      },
+      {
+        "service": "product/checkout",
+        "through": ["data-flow/gateway-staging"]
+      }
+    ]
+  },
+  "services": [
+    {
+      "id": "product/checkout",
+      "name": "checkout",
+      "team": "product",
+      "serviceClass": "C1"
+    }
+  ],
+  "blueprints": [
+    {
+      "id": "data-flow/gateway-standard",
+      "name": "gateway-standard",
+      "version": 4,
+      "team": "data-flow",
+      "pipelines": {
+        "traces": [
+          "otlp-in",
+          "guard",
+          "infosec/pii-redaction@3",
+          "batcher",
+          "data-flow/gateway-exporter@2"
+        ],
+        "logs": [
+          "otlp-in",
+          "guard",
+          "infosec/pii-redaction@3",
+          "batcher",
+          "data-flow/gateway-exporter@2"
+        ],
+        "metrics": ["otlp-in", "guard", "batcher", "data-flow/gateway-exporter@2"]
+      }
+    },
+    {
+      "id": "data-flow/edge-standard",
+      "name": "edge-standard",
+      "version": 2,
+      "team": "data-flow",
+      "pipelines": {
+        "traces": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"],
+        "logs": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"]
+      }
+    }
+  ],
+  "catalogue": [
+    {
+      "id": "infosec/pii-redaction",
+      "name": "pii-redaction",
+      "version": 3,
+      "team": "infosec",
+      "class": "processor",
+      "type": "transform"
+    },
+    {
+      "id": "data-flow/gateway-exporter",
+      "name": "gateway-exporter",
+      "version": 2,
+      "team": "data-flow",
+      "class": "exporter",
+      "type": "otlphttp"
+    }
+  ]
+}
