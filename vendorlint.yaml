@@ -25,6 +25,15 @@ scopes:
     rules:
       - pattern: (?i)(elastic|kibana|fleet|grafana|loki|mimir|datadog|splunk|dynatrace|new ?relic|honeycomb|appdynamics|sumo ?logic|signalfx|chronosphere|coralogix|lightstep|wavefront)
         message: vendor word in the neutral core (ADR-0001) — vendor-specific behaviour belongs under internal/provider/
+      # The forge seam stays neutral too (issue #18 AC; ADR-0028 §4): no
+      # forge's name or types outside the adapter. Go module paths live on
+      # the forge's host — `github.com/` is the module namespace, not a
+      # forge type — and the generated code-ownership projection may name
+      # the dialect it is written in (ADR-0028 §4: a cache in the
+      # configured forge's dialect).
+      - pattern: (?i)(github|gitlab|gitea|forgejo|bitbucket|codeberg|azure ?devops)
+        allow: [github\.com/, GitHub dialect]
+        message: forge vendor word in the neutral core (ADR-0028 §4) — forge-specific behaviour belongs under internal/provider/forge/
 
   # The provider tree: implementations are fully qualified with the vendor's
   # product, never the company. A bare "Fleet" appears nowhere.

@@ -18,6 +18,7 @@ func TestSeededViolations(t *testing.T) {
 		`docs/example.md:5: [docs] "Fleet": a bare "Fleet" appears nowhere (ADR-0001)`,
 		`internal/core/estate.go:3: [core] "Fleet": vendor word in the neutral core (ADR-0001)`,
 		`internal/core/estate.go:5: [core] "elastic": vendor word in the neutral core (ADR-0001)`,
+		`internal/core/estate.go:9: [core] "GitHub": forge vendor word in the neutral core (ADR-0028 §4)`,
 		`internal/provider/telemetry/telemetry.go:3: [provider] "Fleet": qualify the product (ADR-0001)`,
 	}
 	got := make([]string, len(result.Findings))
