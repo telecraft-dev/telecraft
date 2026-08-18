@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Self-hosted, like every other asset (ADR-0045 §5). Naming it here
+         also stops the browser's default /favicon.ico request, which a
+         static host answers with a 404. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Telecraft console</title>
   </head>
   <body>

@@ -14,12 +14,24 @@ import type {
   ComposeVerdict,
   Environment,
   EstatePayload,
+  Finding,
   GovernancePayload,
   IndexedObject,
   Me,
+  PlatformApi,
+  Provenance,
+  Proposal,
   ProposalOutcome,
+  RolloutProgress,
   TeamNode,
   TopologyPayload,
+} from './types'
+import { CARD_CONTRACT_VERSION } from './types'
+import type {
+  BlueprintDoc as Draft,
+  ClaimContext,
+  ClaimRequest,
+  GovernanceProposalRequest,
 } from './types'
 
 /**
@@ -86,6 +98,7 @@ interface Snapshot {
       paths: TopologyPayload['paths']
     }
     services: { id: string; name: string; team: string; serviceClass?: string }[]
+    rollouts?: RolloutProgress[]
     blueprints: BlueprintDoc[]
     catalogue: CatalogueComponent[]
     owners: GovernancePayload['owners']
@@ -194,13 +207,20 @@ function objects(s: Snapshot): IndexedObject[] {
   return out
 }
 
+/** The drawer for a Tier with nothing to report: empty, and honestly so. */
+function emptyDrawer(tier: string): CardDrawer {
+  const findings: Finding[] = []
+  const provenance: Provenance[] = []
+  return { contractVersion: CARD_CONTRACT_VERSION, tier, findings, provenance }
+}
+
 /**
  * The demo client. Every read answers from the snapshot; the two
  * continuous evaluators — the composer's validate and the claim flow's
  * preview — run in the browser against the same estate documents the
  * server would judge with, so those surfaces stay live rather than canned.
  */
-export const demoApi = {
+export const demoApi: PlatformApi = {
   me: async (): Promise<Me> => {
     const s = await snapshot()
     return { ...s.estate.me, editableTeams: subtree(s.estate.teams, s.estate.me.team) }
@@ -208,7 +228,10 @@ export const demoApi = {
 
   authProviders: async (): Promise<AuthProviderInfo[]> => [],
 
-  login: async (): Promise<Me> => {
+  // The write paths keep the contract's signatures and ignore the
+  // arguments: a stub that quietly dropped a parameter would let the demo
+  // client drift from the API it stands in for.
+  login: async (_provider: string, _username: string, _secret: string): Promise<Me> => {
     throw new DemoWriteError('signing in')
   },
 
@@ -230,8 +253,10 @@ export const demoApi = {
 
   drawer: async (tier: string): Promise<CardDrawer> => {
     const s = await snapshot()
+    const found = s.estate.drawers[tier]
+    if (found) return found
     // A Tier with nothing to report answers empty, honestly.
-    return s.estate.drawers[tier] ?? { contractVersion: 1, tier, findings: [], provenance: [] }
+    return emptyDrawer(tier)
   },
 
   collectors: async (): Promise<CollectorRow[]> => (await snapshot()).estate.collectors,
@@ -286,6 +311,13 @@ export const demoApi = {
     return found.components
   },
 
+  /**
+   * The rollout ledger (ADR-0029). A snapshot taken before the estate had
+   * a Rollout carries none, which is an empty ledger rather than a
+   * failure — the surface says so itself.
+   */
+  rollouts: async (): Promise<RolloutProgress[]> => (await snapshot()).estate.rollouts ?? [],
+
   governance: async (): Promise<GovernancePayload> => {
     const s = await snapshot()
     return {
@@ -307,13 +339,19 @@ export const demoApi = {
     return previewClaim(s.estate, request)
   },
 
-  propose: async (): Promise<never> => {
+  propose: async (
+    _draft: Draft,
+    _environment: string,
+    _claim?: ClaimContext,
+  ): Promise<Proposal> => {
     throw new DemoWriteError('proposing this Blueprint')
   },
 
-  claim: async (): Promise<ClaimOutcome> => ({ problems: refusal('claiming these collectors') }),
+  claim: async (_request: ClaimRequest): Promise<ClaimOutcome> => ({
+    problems: refusal('claiming these collectors'),
+  }),
 
-  proposeGovernance: async (): Promise<ProposalOutcome> => ({
+  proposeGovernance: async (_request: GovernanceProposalRequest): Promise<ProposalOutcome> => ({
     problems: refusal('proposing this policy change'),
   }),
 }

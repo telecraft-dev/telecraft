@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it } from 'vitest'
+import type { BlueprintDoc } from '../src/api/types'
+import { CARD_CONTRACT_VERSION } from '../src/api/types'
 import { demoApi, DemoWriteError } from '../src/api/demo'
 
 // Demo mode (issue #50): the console answering from a build-time snapshot
@@ -58,7 +60,7 @@ describe('demo mode read paths (issue #50)', () => {
   it('answers a Tier with no drawer honestly rather than inventing findings', async () => {
     const drawer = await demoApi.drawer('nobody/nothing')
     expect(drawer).toEqual({
-      contractVersion: 1,
+      contractVersion: CARD_CONTRACT_VERSION,
       tier: 'nobody/nothing',
       findings: [],
       provenance: [],
@@ -97,17 +99,29 @@ describe('demo mode read paths (issue #50)', () => {
 
 describe('demo mode write paths end at the notice, never at a pull request', () => {
   it('refuses the composer’s proposal exit', async () => {
-    await expect(demoApi.propose()).rejects.toBeInstanceOf(DemoWriteError)
+    const draft = snapshot.estate.blueprints[0] as BlueprintDoc
+    await expect(demoApi.propose(draft, 'production')).rejects.toBeInstanceOf(DemoWriteError)
   })
 
   it('refuses the claim exit in the fail-closed problems shape', async () => {
-    const outcome = await demoApi.claim()
+    const outcome = await demoApi.claim({
+      selector: { 'deployment.environment': 'production' },
+      environment: 'production',
+      team: 'data-flow',
+      mode: 'attach',
+      tier: 'data-flow/gateway',
+      title: 'Claim the legacy aggregators',
+    })
     expect(outcome.proposal).toBeUndefined()
     expect(outcome.problems?.[0]).toMatch(/read-only demo/)
   })
 
   it('refuses a governance proposal in the fail-closed problems shape', async () => {
-    const outcome = await demoApi.proposeGovernance()
+    const outcome = await demoApi.proposeGovernance({
+      title: 'Widen the data-flow palette',
+      allowLists: snapshot.estate.allowLists,
+      grants: snapshot.estate.grants,
+    })
     expect(outcome.proposal).toBeUndefined()
     expect(outcome.problems?.[0]).toMatch(/read-only demo/)
   })

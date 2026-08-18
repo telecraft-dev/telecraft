@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/allowlist"
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
@@ -13,6 +14,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
 // face projects one Tier's card face. The three bands read from the
@@ -43,6 +45,8 @@ func (b *builder) face(v *tierView) CardFace {
 		},
 		FindingCounts: counts,
 		Population:    b.populationLine(v),
+		Signals:       b.signalRows(),
+		Churn:         b.churn(),
 	}
 	if len(waived) > 0 {
 		face.WaivedCounts = waived
@@ -118,18 +122,76 @@ func (b *builder) conformanceBand(v *tierView) Band {
 }
 
 // populationLine is ADR-0035's output verbatim: the matched count, the
-// resolved floor and where the floor came from.
+// resolved floor, where the floor came from, and which of the two sibling
+// states holds — never_seen and under_populated are different situations
+// with different fixes, so the line names one rather than ranking them.
 func (b *builder) populationLine(v *tierView) Population {
 	floor := inventory.ResolveFloor(v.population.Derived, v.population.Declared)
-	line := Population{Matched: len(v.matched), FloorSource: string(floor.Source)}
+	line := Population{
+		Matched:     len(v.matched),
+		FloorSource: string(floor.Source),
+		State:       PopulationOK,
+	}
 	if floor.Source == inventory.FloorAbsent {
 		line.FloorSource = "absent"
-		return line
+	} else {
+		min := floor.Min
+		line.Floor = &min
 	}
-	min := floor.Min
-	line.Floor = &min
+
+	// The state and its date come from the population judgement, not from
+	// re-deriving them here: whatever inventory decided is what the face
+	// carries.
+	for _, f := range v.popFinds {
+		switch f.Class {
+		case inventory.NeverSeen:
+			line.State = PopulationNeverSeen
+			line.StaleConfig = f.StaleConfig
+		case inventory.UnderPopulated:
+			line.State = PopulationUnderPopulated
+		default:
+			continue
+		}
+		if !f.Since.IsZero() {
+			line.Since = f.Since.UTC().Format(time.RFC3339)
+		}
+	}
 	return line
 }
+
+// signalRows are the per-signal matrix rows. The metering seam derives
+// these on read from a live backend (ADR-0040); an estate that declares no
+// flow readings carries them Known false with the cause said out loud,
+// which is the honest neutral the contract exists to express — never a
+// zero standing in for "we cannot see" (ADR-0008).
+func (b *builder) signalRows() []SignalRow {
+	asOf := b.now.UTC().Format(time.RFC3339)
+	unknown := Reading{Known: false, AsOf: asOf, Cause: flowCause}
+	out := make([]SignalRow, 0, len(telemetry.Signals()))
+	for _, kind := range telemetry.Signals() {
+		out = append(out, SignalRow{
+			Signal:    string(kind),
+			Volume:    VolumeReading{Reading: unknown},
+			Freshness: FreshnessReading{Reading: unknown},
+			Shape:     ShapeReading{Reading: unknown},
+		})
+	}
+	return out
+}
+
+// churn is the Tier's restart rate, unknown for the same reason.
+func (b *builder) churn() ChurnReading {
+	return ChurnReading{
+		Reading: Reading{Known: false, AsOf: b.now.UTC().Format(time.RFC3339), Cause: flowCause},
+	}
+}
+
+// flowCause is why the metering readings are absent from a snapshot: they
+// are derived on read from a telemetry backend, and an estate declares its
+// arrivals, not its flow (ADR-0040).
+const flowCause = "the estate's readings file declares no flow readings — " +
+	"volume, freshness and shape are derived on read from a telemetry backend (ADR-0040), " +
+	"which a snapshot has none of"
 
 // provenance feeds the "why?" popover: claim, the config lines that implied
 // it, and the SHA judged against — fed, never reconstructed (ADR-0041 §3).

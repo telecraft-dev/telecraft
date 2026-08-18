@@ -17,6 +17,7 @@ import type {
   GovernanceProposalRequest,
   IndexedObject,
   Me,
+  PlatformApi,
   Proposal,
   ProposalOutcome,
   ProposalRef,
@@ -69,7 +70,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
  * it for a build-time snapshot of the same documents (see api/demo.ts) —
  * the console's surfaces consume the contract, never the transport.
  */
-export const liveApi = {
+export const liveApi: PlatformApi = {
   me: () => get<Me>('/api/v1/me'),
   authProviders: () => get<AuthProviderInfo[]>('/api/v1/auth/providers'),
   login: (provider: string, username: string, secret: string) =>
@@ -155,4 +156,4 @@ export const liveApi = {
  * the static demo it is the snapshot-backed client, which answers the same
  * shapes and ends every write path at an explanatory notice (issue #50).
  */
-export const api: typeof liveApi = demoMode ? (demoApi as typeof liveApi) : liveApi
+export const api: PlatformApi = demoMode ? demoApi : liveApi
