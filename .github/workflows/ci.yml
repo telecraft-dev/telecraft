@@ -101,3 +101,47 @@ jobs:
       - run: npm run check:zero-cdn
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
+
+  # The public demo's two halves (issue #50), built here so they cannot
+  # regress: `telecraft snapshot` producing the platform API's documents
+  # from a real estate through the real evaluators, and the console built
+  # in demo mode reading one. The estate under internal/console/testdata is
+  # the small one; telecraft-dev/estate-demo runs the same two commands
+  # over the curated one on every push and deploys the result.
+  demo:
+    name: Demo snapshot and bundle (issue #50)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - run: npm ci
+        working-directory: console
+      - run: npm run build:demo
+        working-directory: console
+      # The zero-CDN rule holds on the demo bundle exactly as on the
+      # instance bundle (ADR-0045 §5). It runs over the built console
+      # before the snapshot is placed beside it: the snapshot is estate
+      # data — endpoints and module paths the console prints and never
+      # fetches — not a bundled artefact.
+      - run: npm run check:zero-cdn
+        working-directory: console
+      - name: Generate a snapshot over the fixture estate and load it
+        run: |
+          go run ./cmd/telecraft snapshot \
+            -estate internal/console/testdata/estate \
+            -catalogue internal/console/testdata/estate/catalogues/catalogue-v1.0.0.json \
+            -library internal/console/testdata/estate/requirements \
+            -exemptions internal/console/testdata/estate/exemptions \
+            -rows internal/console/testdata/estate/rows.yaml \
+            -readings internal/console/testdata/estate/readings.yaml \
+            -commit 1111111111111111111111111111111111111111 \
+            -team data-flow \
+            -out console/dist/demo-snapshot.json
+          node -e "const s=require('./console/dist/demo-snapshot.json'); if (!s.estate.cards.length) throw new Error('the snapshot carries no cards')"
