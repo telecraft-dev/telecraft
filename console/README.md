@@ -57,6 +57,8 @@ All endpoints are `GET`, returning JSON. The TypeScript shapes live in
 | `/api/v1/me` | The signed-in user: id, name, and team (the shelf's resting scope). |
 | `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team. |
 | `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, and one ADR-0041 card face per Tier. |
+| `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
+| `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. |
 | `/api/v1/blueprints` | Blueprint summaries with per-signal component lanes in renderer order. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
@@ -64,7 +66,10 @@ All endpoints are `GET`, returning JSON. The TypeScript shapes live in
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 1`): three bands as enum states plus worst-finding
 labels, shelf summary fields, and the population line. Hue appears
-nowhere in the contract.
+nowhere in the contract. The face also carries optional waived counts
+per kind (`waivedCounts`), an additive shelf summary field the roll-up
+reads: an Exemption waives the count, never the diagnosis, and waived
+counts ride every roll-up level (ADR-0017, ADR-0037).
 
 ## Zero-CDN rule
 
@@ -89,3 +94,12 @@ Search params are validated by the router (ADR-0045 §3):
   `tier:data-flow/gateway` (see `src/objectref.ts`).
 - `scope`: the shelf scope, either the signed-in user's team subtree
   (`team`, the default) or the whole estate (`estate`).
+- `view`: the Estate view-switcher, one of `shelf` (the default),
+  `rollup` (the tree-table roll-up), or `list` (the flat filter-first
+  list). Switching preserves selection, filters, and lens (ADR-0042
+  §3.1).
+- `tier`, `team`, `env`: the flat list's explicit filters. A collector
+  count anywhere is a door that lands here with `tier` pre-filled
+  (ADR-0042 §3.4); the lens is never one of these filters.
+- `lane`: the signal lane a Blueprint-shaped who-acts chip lands on in
+  Compose (ADR-0042 §3.3).
