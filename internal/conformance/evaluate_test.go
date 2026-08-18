@@ -172,12 +172,15 @@ func TestCrossProducesAllSevenOutcomes(t *testing.T) {
 
 // Criterion: the severity ordering. Broken pipelines lead — configured with
 // intent and silently not working — and unknown outranks ungoverned because
-// not being able to see is worse than seeing something unexpected.
+// not being able to see is worse than seeing something unexpected. Library
+// drift — the eighth outcome, judged from the Intended reading, never by the
+// cross (ADR-0026) — sits just below misconfigured: the same failed
+// assertion, but the subject did comply before the bar moved.
 func TestSeverityOrdering(t *testing.T) {
-	want := []Outcome{BrokenPipeline, NotConfigured, NotDelivered, Misconfigured, Unknown, Ungoverned, Compliant}
+	want := []Outcome{BrokenPipeline, NotConfigured, NotDelivered, Misconfigured, LibraryDrift, Unknown, Ungoverned, Compliant}
 	got := Outcomes()
-	if len(got) != 7 {
-		t.Fatalf("Outcomes() returned %d outcomes, want the seven", len(got))
+	if len(got) != 8 {
+		t.Fatalf("Outcomes() returned %d outcomes, want the eight", len(got))
 	}
 	for i, o := range got {
 		if o != want[i] {

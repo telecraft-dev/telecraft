@@ -18,6 +18,11 @@
 // but useless. Waivers (exemption, grace — ADR-0037) are applied after the
 // diagnosis, never instead of it: a waived finding keeps its outcome and its
 // detail and gives up only its count.
+//
+// One outcome in the vocabulary never comes from the cross: library_drift is
+// judged from the Intended reading — the config in git — by internal/drift
+// (ADR-0004, ADR-0026). It lives here so every finding, whichever reading
+// produced it, ranks on one severity ordering.
 package conformance
 
 import (
@@ -60,15 +65,27 @@ const (
 	// treated as a pass or a failure (ADR-0008: not knowing is a normal
 	// state, and it is reported as itself).
 	Unknown Outcome = "unknown"
+
+	// LibraryDrift: the config in git passes the requirement version it
+	// claims or pins but fails the current one — the goalposts moved and
+	// the subject has not caught up (ADR-0026 §6). The one per-requirement
+	// outcome the Effective × Observed cross never produces: it is judged
+	// from the Intended reading by the drift detection (internal/drift,
+	// ADR-0004), owned by the repo, and its remediation is the version
+	// diff — review what moved and open a PR, never re-instrument.
+	LibraryDrift Outcome = "library_drift"
 )
 
-// Outcomes returns the seven outcomes in severity order, worst first.
+// Outcomes returns the eight outcomes in severity order, worst first: the
+// seven the cross produces (ADR-0004) plus library_drift, judged from the
+// Intended reading (ADR-0026).
 func Outcomes() []Outcome {
 	return []Outcome{
 		BrokenPipeline,
 		NotConfigured,
 		NotDelivered,
 		Misconfigured,
+		LibraryDrift,
 		Unknown,
 		Ungoverned,
 		Compliant,
@@ -78,7 +95,7 @@ func Outcomes() []Outcome {
 func (o Outcome) Valid() bool {
 	switch o {
 	case Compliant, NotConfigured, BrokenPipeline, NotDelivered,
-		Ungoverned, Misconfigured, Unknown:
+		Ungoverned, Misconfigured, Unknown, LibraryDrift:
 		return true
 	}
 	return false
@@ -97,15 +114,20 @@ func (o Outcome) Passing() bool {
 // platform produces: someone configured this with intent and it is silently
 // not working, and nobody would otherwise know. Unknown outranks ungoverned
 // because not being able to see is worse than seeing something unexpected.
+// Library drift sits just below misconfigured: both fail the current
+// assertion, but a drifted subject did comply once — the bar moved under it
+// (ADR-0026 §6) — which is a gentler diagnosis than never having complied.
 func (o Outcome) Severity() int {
 	switch o {
 	case BrokenPipeline:
-		return 6
+		return 7
 	case NotConfigured:
-		return 5
+		return 6
 	case NotDelivered:
-		return 4
+		return 5
 	case Misconfigured:
+		return 4
+	case LibraryDrift:
 		return 3
 	case Unknown:
 		return 2
