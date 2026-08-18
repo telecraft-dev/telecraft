@@ -122,3 +122,78 @@ test('the "why?" popover shows provenance and its trace action lights the canvas
     page.getByTestId('topology-canvas').locator('.canvas-node.kind-tier.dimmed'),
   ).toHaveCount(1)
 })
+
+// The issue #35 acceptance criteria: the per-signal matrix under the
+// reading bands (P4 variant D), the three reds distinguishable without
+// hue, and reduction presented rather than judged (ADR-0040, ADR-0041).
+
+test('every card carries the per-signal matrix under its reading bands', async ({ page }) => {
+  await page.goto('/estate?scope=estate')
+
+  const matrix = page.getByTestId('matrix-data-flow/gateway')
+  await expect(matrix).toBeVisible()
+  await expect(matrix.locator('tbody tr')).toHaveCount(3)
+
+  // Volume, freshness and shape on the traces lane, read from the
+  // contract rather than computed in the browser.
+  const traces = page.getByTestId('matrix-data-flow/gateway-traces')
+  await expect(traces).toContainText('1M → 100k')
+  await expect(traces).toContainText('90% reduction')
+  await expect(traces).toContainText('30s')
+
+  // Reduction is presented and never graded: the row raises no error
+  // reading (ADR-0040 §3).
+  await expect(page.getByTestId('errors-data-flow/gateway-traces')).toHaveCount(0)
+
+  // The error-rate readings are the meter's only reds, and they are their
+  // own cell.
+  await expect(page.getByTestId('errors-data-flow/gateway-metrics')).toContainText('100 refused')
+})
+
+test('an unread lane is last-known-plus-age, never a metered zero', async ({ page }) => {
+  await page.goto('/estate?scope=estate')
+
+  // The staging Tier has reported no self-telemetry at its serving SHA:
+  // every lane says so, and none of them says nothing flowed.
+  const staging = page.getByTestId('matrix-data-flow/gateway-staging-logs')
+  await expect(staging.locator('.cell-volume')).toHaveText('—')
+  await expect(staging.locator('.cell-volume')).toHaveAttribute(
+    'title',
+    /no self-telemetry has reported at the serving SHA yet/,
+  )
+
+  // A known-empty lane is a different reading, and reads differently: the
+  // gateway's logs lane is silent, not unreadable (ADR-0008).
+  const silent = page.getByTestId('matrix-data-flow/gateway-logs')
+  await expect(silent.locator('.cell-freshness')).toHaveText('silent')
+})
+
+test('the three reds stay distinct by band position and glyph, not by hue', async ({ page }) => {
+  await page.goto(`/estate?${GATEWAY}`)
+
+  // Band order is fixed on every card, so position identifies the kind.
+  const bands = page.getByTestId('card-data-flow/gateway').locator('.card-bands .band')
+  await expect(bands).toHaveCount(3)
+  await expect(bands.nth(0)).toContainText('Delivery')
+  await expect(bands.nth(1)).toContainText('Expectation')
+  await expect(bands.nth(2)).toContainText('Conformance')
+
+  // Expectation-red beside conformance-red: two findings, each named,
+  // neither swallowing the other — and delivery reading ok beside them
+  // is the differentiator P4 tested (applied, conforming, expected logs
+  // never landed).
+  await expect(bands.nth(0)).toContainText('ok')
+  await expect(bands.nth(1)).toContainText('finding')
+  await expect(bands.nth(2)).toContainText('finding')
+
+  // The glyph carries the severity where hue only reinforces it.
+  await expect(bands.nth(1).locator('.band-glyph')).toHaveText('▲')
+  await expect(bands.nth(2).locator('.band-glyph')).toHaveText('✗')
+})
+
+test('the card panel shows the flow readings and the restart rate', async ({ page }) => {
+  await page.goto(`/estate?${GATEWAY}`)
+  const flow = page.getByTestId('panel-flow')
+  await expect(flow).toBeVisible()
+  await expect(flow).toContainText('Restarts: 4 incarnations')
+})

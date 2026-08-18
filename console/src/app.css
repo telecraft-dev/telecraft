@@ -395,6 +395,63 @@ button {
   color: var(--colour-severity-neutral);
 }
 
+/* The per-signal matrix under the bands (P4 variant D): the reading
+   skeleton, one row per signal lane, on every card at the same height. */
+
+.signal-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  color: var(--colour-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.signal-matrix th {
+  font-weight: 500;
+  text-align: left;
+  vertical-align: top;
+  padding: 1px 0;
+}
+
+.signal-matrix td {
+  padding: 1px 0 1px var(--space-2);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.signal-matrix .cell-volume {
+  font-family: var(--font-mono);
+  color: var(--colour-text);
+  width: 100%;
+}
+
+.signal-matrix .cell-freshness,
+.signal-matrix .cell-shape {
+  text-align: right;
+}
+
+.cell-note,
+.cell-errors {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.9em;
+}
+
+/* Reduction is presented, never graded: it takes the muted colour every
+   other neutral reading takes (ADR-0040 §3). */
+.cell-note {
+  color: var(--colour-text-muted);
+}
+
+/* The error-rate readings are the only reds the meter sources. */
+.cell-errors {
+  color: var(--colour-severity-violation);
+}
+
+.panel-flow .signal-matrix {
+  font-size: 0.8rem;
+}
+
 .card-foot {
   display: flex;
   justify-content: space-between;

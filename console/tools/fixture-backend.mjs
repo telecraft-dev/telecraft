@@ -140,7 +140,7 @@ const api = {
   '/api/v1/drawer': (url) => {
     const tier = url.searchParams.get('tier') ?? ''
     return (
-      estate.drawers[tier] ?? { contractVersion: 1, tier, findings: [], provenance: [] }
+      estate.drawers[tier] ?? { contractVersion: 2, tier, findings: [], provenance: [] }
     )
   },
   // Per-collector detail, served flat: list surfaces are its only home
