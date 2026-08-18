@@ -18,6 +18,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { claimContextProblems, previewClaim, submitClaim, ungovernedSummary } from './claims.mjs'
 import { propose, validate } from './evaluator.mjs'
 
 const args = process.argv.slice(2)
@@ -121,6 +122,9 @@ const api = {
     environments: estate.environments,
     teams: estate.teams,
     cards: estate.cards,
+    // Ungoverned collectors in view (ADR-0031 §2): the dedicated band's
+    // counts — concern, never failure, in no compliance denominator.
+    ungoverned: ungovernedSummary(estate),
   }),
   // The on-demand drawer (ADR-0041 §3): findings with who-acts routing and
   // why-provenance. A Tier without a seeded drawer answers empty, honestly.
@@ -400,6 +404,32 @@ const server = createServer(async (req, res) => {
     return
   }
 
+  // The claim flow (ADR-0042 §6): preview is the continuous impact call;
+  // the exit opens a PR authoring the Tier binding via the forge seam —
+  // fail closed with the problems named (422), generalise-never-enumerate
+  // enforced server-side.
+  if (
+    (url.pathname === '/api/v1/claims/preview' || url.pathname === '/api/v1/claims') &&
+    req.method === 'POST'
+  ) {
+    if (!sessionOf(req)) {
+      sendJSON(res, 401, { error: 'sign in to use this API' })
+      return
+    }
+    const body = await readBody(req)
+    if (url.pathname === '/api/v1/claims/preview') {
+      sendJSON(res, 200, previewClaim(estate, body))
+      return
+    }
+    const outcome = submitClaim(estate, body)
+    if (outcome.problems) {
+      sendJSON(res, 422, { problems: outcome.problems })
+      return
+    }
+    sendJSON(res, 200, outcome.proposal)
+    return
+  }
+
   // The composing endpoints (ADR-0022 §1): one evaluator behind both — the
   // composer's continuous advisory call, and the proposal exit with
   // enforcement on. A blocked proposal answers 409, fail closed
@@ -414,9 +444,24 @@ const server = createServer(async (req, res) => {
       return
     }
     const body = await readBody(req)
+    // A claim context riding the proposal (the draft-new-Tier path,
+    // ADR-0042 §6) is judged by the claim rulebook first: the same
+    // refusals /api/v1/claims gives, so enumeration cannot arrive by the
+    // back door.
+    if (url.pathname === '/api/v1/proposals' && body.claim !== undefined) {
+      const problems = claimContextProblems(estate, body.claim)
+      if (problems.length > 0) {
+        sendJSON(res, 422, { error: problems.join('; ') })
+        return
+      }
+    }
     try {
       const run = url.pathname === '/api/v1/validate' ? validate : propose
-      sendJSON(res, 200, run(estate, activeCatalogue().components, body.draft, body.environment))
+      sendJSON(
+        res,
+        200,
+        run(estate, activeCatalogue().components, body.draft, body.environment, body.claim),
+      )
     } catch (err) {
       sendJSON(res, err.status ?? 400, { error: err.message })
     }
