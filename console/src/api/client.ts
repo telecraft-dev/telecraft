@@ -1,16 +1,18 @@
 import type {
   AuthProviderInfo,
-  BlueprintSummary,
+  BlueprintDoc,
   CardDrawer,
   CatalogueComponent,
   CatalogueEntry,
   CatalogueVersionsPayload,
   CollectorRow,
+  ComposeVerdict,
   EstatePayload,
   GovernancePayload,
   GovernanceProposalRequest,
   IndexedObject,
   Me,
+  Proposal,
   ProposalOutcome,
   ProposalRef,
   TopologyPayload,
@@ -46,7 +48,8 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     throw new UnauthenticatedError(path)
   }
   if (!res.ok) {
-    throw new Error(`${path}: ${res.status} ${res.statusText}`)
+    const payload = (await res.json().catch(() => undefined)) as { error?: string } | undefined
+    throw new Error(payload?.error ?? `${path}: ${res.status} ${res.statusText}`)
   }
   if (res.status === 204) {
     return undefined as T
@@ -65,12 +68,18 @@ export const api = {
   drawer: (tier: string) => get<CardDrawer>(`/api/v1/drawer?tier=${encodeURIComponent(tier)}`),
   collectors: () => get<CollectorRow[]>('/api/v1/collectors'),
   topology: () => get<TopologyPayload>('/api/v1/topology'),
-  blueprints: () => get<BlueprintSummary[]>('/api/v1/blueprints'),
+  blueprints: () => get<BlueprintDoc[]>('/api/v1/blueprints'),
   catalogue: () => get<CatalogueComponent[]>('/api/v1/catalogue'),
   catalogueVersions: () => get<CatalogueVersionsPayload>('/api/v1/catalogue/versions'),
   catalogueEntries: (version: string) =>
     get<CatalogueEntry[]>(`/api/v1/catalogue/entries?version=${encodeURIComponent(version)}`),
   governance: () => get<GovernancePayload>('/api/v1/governance'),
+  /** The one evaluator, called continuously as the user edits (ADR-0022 §2). */
+  validate: (draft: BlueprintDoc, environment: string) =>
+    post<ComposeVerdict>('/api/v1/validate', { draft, environment }),
+  /** The composer's PR exit through the forge adapter — fail closed (ADR-0028). */
+  propose: (draft: BlueprintDoc, environment: string) =>
+    post<Proposal>('/api/v1/proposals', { draft, environment }),
 
   /**
    * A governance edit exits as a PR via the forge adapter (ADR-0042 §6). A

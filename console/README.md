@@ -74,12 +74,14 @@ URL the user arrived on survives the round trip.
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
 | `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. Each Tier carries its selector-matched collector count, derived Service Class, and the served/git delivery split — collectors are matched into a Tier by selector and appear only as these numbers, never as nodes (ADR-0007). |
-| `/api/v1/blueprints` | Blueprint summaries with per-signal component lanes in renderer order, plus the Catalogue key each lane item instantiates, so composer palette items deep-link to their Catalogue entries. |
+| `/api/v1/blueprints` | Blueprint schema v1 documents (ADR-0024): per-signal lanes of ordered Component references, local Components, the collector-wide extensions block, the bound Tier, version-stamped `satisfies` claims, and the Catalogue key each lane item instantiates, so lane items deep-link to their Catalogue entries. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
 | `/api/v1/catalogue/versions` | The installed catalogue versions (ADR-0020 §9: retained, never replaced), each with its entry count and source, and which one is active. |
 | `/api/v1/catalogue/entries?version=` | One retained catalogue version's entries: `(class, type)` identity with the `deprecated_type` alias, display name, source (`upstream` or `adopter`), per-signal stability, and per-signal deprecation notices. An unknown version is a 404, never an empty list. |
 | `/api/v1/governance` | The authored, git-resident Allow-list policy (ADR-0021 §5): Owners, Allow-lists and Grants in their authored shapes. The console derives each team's effective palette — with total provenance — from this plus the active catalogue (`src/governance/effective.ts`, the same derived-presentation pattern as the roll-up). |
-| `POST /api/v1/governance/proposals` | The one write: a governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal — opaque id, URL, branch — mirroring the forge seam (`internal/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
+| `POST /api/v1/governance/proposals` | A governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal — opaque id, URL, branch — mirroring the forge seam (`internal/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
+| `POST /api/v1/validate` | The one evaluator (ADR-0022 §1): the open draft plus its Environment in; findings, palette verdicts (show, grey with reason, hidden-with-count), requirement verdicts (claimed beside met, never blended), the save gate, and the rendered-artefact preview out. Stateless; the composer calls it on every interaction, judging with the same authored governance policy and active catalogue the endpoints above serve. |
+| `POST /api/v1/proposals` | The composer exit (ADR-0043 §6): the draft becomes a change proposal through the forge adapter, render-in-PR and user-attributed (ADR-0028, ADR-0014). Enforcement is on: an allow-list violation answers 409 and no proposal opens, fail closed. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 1`): three bands as enum states plus worst-finding
@@ -121,6 +123,11 @@ Search params are validated by the router (ADR-0045 §3):
   (ADR-0042 §3.4); the lens is never one of these filters.
 - `lane`: the signal lane a Blueprint-shaped who-acts chip lands on in
   Compose (ADR-0042 §3.3).
+- `surface` (Compose): the surface switcher over the one open Blueprint
+  (ADR-0043 §1) — `composer` (the default), `requirements`, or `canvas`.
+  Switching never loses the draft.
+- `yaml`: whether the resident read-only YAML flyout is open (REQ-035);
+  it rides every Compose surface.
 - `view` (Catalogue & Governance): `browse` (the default), `palette`, or
   `governance` — view-switchers over one model, like the Estate's.
 - `version`: the catalogue version browsed; absent means the active one.

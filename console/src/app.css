@@ -965,6 +965,438 @@ button {
   font-size: 0.8em;
 }
 
+.compose-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.compose-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.compose-header h2 {
+  margin: 0;
+}
+
+.yaml-toggle {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  cursor: pointer;
+}
+
+.yaml-toggle.open {
+  outline: 2px solid var(--colour-accent);
+}
+
+/* The save area: the one hard block reads different in kind from every
+   warning (ADR-0022 §3, P1 verdict) — a banner and a disabled Save, never
+   another strip entry. */
+
+.save-area {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.save-area > button {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--colour-accent);
+  border-radius: var(--radius-1);
+  background: var(--colour-accent);
+  color: var(--colour-accent-contrast);
+  cursor: pointer;
+}
+
+.save-area > button:disabled {
+  border-color: var(--colour-border);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-muted);
+  cursor: not-allowed;
+}
+
+.save-blocked {
+  flex-basis: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--colour-severity-violation);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
+.save-blocked p {
+  margin: 0 0 var(--space-1);
+}
+
+.save-error {
+  color: var(--colour-severity-violation);
+  margin: 0;
+}
+
+.proposal {
+  flex-basis: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-severity-ok);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
+.proposal p {
+  margin: 0;
+}
+
+/* The flyout pushes the surface aside rather than covering it (REQ-035). */
+
+.compose-work {
+  flex: 1;
+  display: flex;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.compose-surface {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.yaml-flyout {
+  width: 380px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-2);
+  background: var(--colour-surface);
+  padding: var(--space-3);
+}
+
+.flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flyout-head h3 {
+  margin: 0;
+}
+
+.yaml-pre {
+  flex: 1;
+  overflow: auto;
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* A · Composer: palette left, lanes right, findings strip below. */
+
+.composer {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.palette {
+  width: 250px;
+  flex-shrink: 0;
+}
+
+.palette h3 {
+  margin-top: 0;
+}
+
+.palette-group h4 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 0.8rem;
+  color: var(--colour-text-muted);
+}
+
+.palette-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.palette-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  cursor: grab;
+  text-align: left;
+}
+
+/* Greyed teaches the policy; it is a verdict with a reason, not a trap
+   (ADR-0022 §5): the entry stays interactive and a breaching add raises a
+   finding, never a wall. */
+.palette-entry.greyed {
+  opacity: 0.55;
+}
+
+.palette-label {
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.palette-meta {
+  color: var(--colour-text-muted);
+  font-size: 0.75em;
+}
+
+.palette-grant {
+  color: var(--colour-accent);
+  font-size: 0.75em;
+}
+
+.palette-deprecated {
+  color: var(--colour-severity-advisory);
+  font-size: 0.75em;
+}
+
+.palette-reason {
+  color: var(--colour-text-muted);
+  font-size: 0.75em;
+  font-style: italic;
+}
+
+.palette-hidden {
+  color: var(--colour-text-muted);
+  font-size: 0.8rem;
+}
+
+.composer-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.claims-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.claims-label {
+  color: var(--colour-text-muted);
+  font-size: 0.85rem;
+}
+
+.claim-chip {
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  font-size: 0.8rem;
+}
+
+.lane-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.floor-chip,
+.stability-chip {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-sans);
+}
+
+.lane-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.lane-entry.flagged {
+  outline: 1px solid var(--colour-severity-advisory);
+}
+
+.lane-remove {
+  border: none;
+  background: none;
+  color: var(--colour-text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.9em;
+}
+
+.lane-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  color: var(--colour-text-muted);
+  font-size: 0.8rem;
+}
+
+.findings-strip {
+  border-top: 1px solid var(--colour-border);
+  padding-top: var(--space-2);
+}
+
+.findings-strip h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9rem;
+}
+
+.findings-strip ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-2);
+}
+
+.compose-finding {
+  padding: var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-left: 3px solid var(--colour-severity-advisory);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  font-size: 0.85rem;
+}
+
+.compose-finding.severity-violation {
+  border-left-color: var(--colour-severity-violation);
+}
+
+.compose-finding.blocking {
+  border: 2px solid var(--colour-severity-violation);
+}
+
+.compose-finding .finding-head {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.finding-lane {
+  font-family: var(--font-mono);
+  color: var(--colour-text-muted);
+}
+
+/* B · Requirement-first */
+
+.requirements-surface .coverage {
+  margin: 0 0 var(--space-1);
+}
+
+.coverage-bar {
+  width: 320px;
+  height: 8px;
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  border: 1px solid var(--colour-border);
+  margin-bottom: var(--space-3);
+}
+
+.coverage-fill {
+  height: 100%;
+  border-radius: var(--radius-1);
+  background: var(--colour-severity-ok);
+}
+
+.requirements-table {
+  border-collapse: collapse;
+  background: var(--colour-surface);
+}
+
+.requirements-table th,
+.requirements-table td {
+  border: 1px solid var(--colour-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.requirements-table th {
+  color: var(--colour-text-muted);
+  font-weight: 500;
+}
+
+.req-id {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.req-summary {
+  margin: var(--space-1) 0 0;
+  color: var(--colour-text-muted);
+}
+
+.verdict-cell.unmet {
+  color: var(--colour-severity-violation);
+}
+
+.verdict-cell.met {
+  color: var(--colour-severity-ok);
+}
+
+/* D · Node canvas */
+
+.compose-canvas {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  min-height: 420px;
+}
+
+.canvas-node.compose {
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.canvas-node.compose.flagged {
+  outline: 1px solid var(--colour-severity-advisory);
+}
+
+.canvas-edge.signal-traces {
+  stroke: var(--colour-signal-traces);
+}
+
+.canvas-edge.signal-logs {
+  stroke: var(--colour-signal-logs);
+}
+
+.canvas-edge.signal-metrics {
+  stroke: var(--colour-signal-metrics);
+}
+
+.canvas-edge.signal-profiles {
+  stroke: var(--colour-signal-profiles);
+}
+
 /* Catalogue & Governance */
 
 .catalogue-layout {

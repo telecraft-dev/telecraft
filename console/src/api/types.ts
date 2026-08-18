@@ -10,6 +10,8 @@ export type Environment = string
 export interface Me {
   id: string
   name: string
+  /** Attribution address: proposals name the acting human (ADR-0014). */
+  email: string
   /** The user's team id: the shelf's resting scope (ADR-0042 §2). */
   team: string
   /**
@@ -253,21 +255,6 @@ export interface TopologyPayload {
   paths: TopologyPath[]
 }
 
-/** GET /api/v1/blueprints — Blueprint summaries for the Compose workspace. */
-export interface BlueprintSummary {
-  id: string
-  name: string
-  version: number
-  team: string
-  /** Component references per signal pipeline, renderer order. */
-  pipelines: Record<string, string[]>
-  /**
-   * The Catalogue key each pipeline item instantiates, so composer palette
-   * items deep-link to their Catalogue entries (ADR-0042 §1).
-   */
-  components?: Record<string, CatalogueKey>
-}
-
 /**
  * A component class: upstream `status.class`, adopted verbatim — only the
  * five pipeline classes enter a Catalogue (ADR-0020 §2).
@@ -283,6 +270,140 @@ export interface CatalogueKey {
 /** Renders the key in its authored `class/type` form — also the `entry` object id. */
 export function formatCatalogueKey(key: CatalogueKey): string {
   return `${key.class}/${key.type}`
+}
+
+/** The upstream signal names, in the lanes' fixed reading order (ADR-0024 §2). */
+export const SIGNAL_ORDER = ['traces', 'logs', 'metrics', 'profiles'] as const
+export type Signal = (typeof SIGNAL_ORDER)[number]
+
+/**
+ * GET /api/v1/blueprints — Blueprint schema v1 documents (ADR-0024): the
+ * domain document the Compose Workspace opens and edits. Lane entries are
+ * Component references — a bare name is a local Component, `team/name@pin`
+ * a shared one; the lists are explicitly ordered and never re-sorted.
+ */
+export interface BlueprintDoc {
+  id: string
+  name: string
+  /** Explicit monotonic version, bumped in the same PR as the change (ADR-0024 §7). */
+  version: number
+  team: string
+  /** The Tier the Blueprint is bound to (ADR-0025): the evaluation context. */
+  tier?: string
+  /** Local Components by bare name, each the Catalogue key it instantiates (ADR-0024 §3). */
+  locals: Record<string, CatalogueKey>
+  /** Per-signal lanes of ordered Component references (ADR-0024 §2). */
+  lanes: Record<string, string[]>
+  /** The collector-wide extensions block (ADR-0024 §2). */
+  extensions: string[]
+  /**
+   * Version-stamped requirement claims (`req-id@3`, ADR-0026 §4): intent,
+   * never fact — the UI must not blur the two (REQ-031).
+   */
+  satisfies: string[]
+  /**
+   * The Catalogue key each lane item instantiates — shared references
+   * included — so composer lane items deep-link to their Catalogue entries
+   * (ADR-0042 §1).
+   */
+  components?: Record<string, CatalogueKey>
+}
+
+/** How the evaluator judged one palette entry's presence (ADR-0021 §3). */
+export type PaletteOrigin = 'default-allow' | 'allow-list' | 'grant'
+
+/**
+ * One palette entry, judged for the evaluation context (ADR-0022 §5):
+ * allowed shown, floor-breaching greyed with the reason, non-allowed hidden
+ * (counted in `ComposePalette.hidden`, never listed). Pure presentation of
+ * the evaluator's verdicts — the palette enforces nothing.
+ */
+export interface PaletteEntry {
+  key: string
+  label: string
+  class: ComponentClass
+  type: string
+  /** `type` entries add a fresh local Component; `shared` a pinned reference (ADR-0024). */
+  residence: 'type' | 'shared'
+  /** The signals the entry supports; click-add targets all of them (ADR-0043 §4). */
+  signals: string[]
+  /** Upstream stability per signal — the per-(component, signal) chips (ADR-0023). */
+  stability: Record<string, string>
+  /** What an add gesture inserts: the pinned reference for shared entries. */
+  add: { ref?: string; signals: string[] }
+  state: 'allowed' | 'greyed'
+  /** The greyed reason, for example `alpha on traces — below this Service's C1 floor`. */
+  reason?: string
+  origin: PaletteOrigin
+  /** Grant provenance when origin is `grant` — the audit chain is total (ADR-0021 §3). */
+  grant?: { id: string; grantedBy: string; grantedTo: string }
+  deprecated?: { migration: string }
+}
+
+export interface ComposePalette {
+  entries: PaletteEntry[]
+  /** The admitted count behind "N components hidden by your allow-list". */
+  hidden: number
+}
+
+/** The finding kinds the engine raises while composing (ADR-0022, ADR-0024 §6). */
+export type ComposeFindingKind = 'reference' | 'allow-list' | 'floor' | 'lifecycle' | 'ordering'
+
+/** One live finding on the open draft; only `allow-list` ever blocks. */
+export interface ComposeFinding {
+  id: string
+  kind: ComposeFindingKind
+  severity: Severity
+  lane?: string
+  ref?: string
+  summary: string
+  remediation: string
+}
+
+/**
+ * One requirement verdict for the Requirement-first surface: `claimed` is
+ * the draft's `satisfies` intent, `met` the engine's judgement — carried
+ * side by side, never blended (REQ-031, ADR-0026 §5).
+ */
+export interface RequirementVerdict {
+  id: string
+  version: number
+  summary: string
+  remediation: string
+  claimed: boolean
+  claimedVersion?: number
+  met: boolean
+  /** The one-click suggestion: what to add, and to which lanes. */
+  suggestion: { ref?: string; type?: string; signals: string[] }
+}
+
+/**
+ * POST /api/v1/validate — the one evaluator (ADR-0022 §1): the open draft
+ * plus its evaluation context in, every verdict out. Stateless and
+ * continuous; Save calls the same rulebook with enforcement on.
+ */
+export interface ComposeVerdict {
+  /** The evaluation context echoed back: the lens as context (ADR-0042 §4). */
+  context: { team: string; environment: Environment; serviceClass?: string; floor?: string }
+  findings: ComposeFinding[]
+  palette: ComposePalette
+  requirements: RequirementVerdict[]
+  /** The one hard block: an allow-list violation disables Save (ADR-0022 §3). */
+  save: { blocked: boolean; reasons: string[] }
+  /** The rendered-artefact preview for the read-only flyout (REQ-035). */
+  yaml: string
+}
+
+/**
+ * POST /api/v1/proposals — the composer exit (ADR-0043 §6): a change
+ * proposal through the forge adapter, render-in-PR, user-attributed
+ * (ADR-0028, ADR-0014). The console proposes, the PR decides.
+ */
+export interface Proposal {
+  id: string
+  url: string
+  branch: string
+  attributedTo: string
 }
 
 /** GET /api/v1/catalogue — governed Components for browsing (ADR-0020). */

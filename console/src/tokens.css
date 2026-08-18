@@ -34,10 +34,12 @@
   --colour-trace-2: #1f7a72;
   --colour-trace-3: #9a5b24;
 
-  /* Simulate dots, one hue per signal group (ADR-0044 §5). */
+  /* One hue per signal: simulate dots (ADR-0044 §5) and the composer
+     canvas's per-signal edges share it. Distinct, never load-bearing. */
   --colour-signal-traces: #2a5d8f;
   --colour-signal-logs: #1f7a72;
   --colour-signal-metrics: #9a5b24;
+  --colour-signal-profiles: #7a4a92;
 
   --space-1: 4px;
   --space-2: 8px;

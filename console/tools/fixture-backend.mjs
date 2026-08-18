@@ -18,6 +18,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { propose, validate } from './evaluator.mjs'
 
 const args = process.argv.slice(2)
 const argValue = (flag) => {
@@ -396,6 +397,29 @@ const server = createServer(async (req, res) => {
       return
     }
     await handleProposal(req, res)
+    return
+  }
+
+  // The composing endpoints (ADR-0022 §1): one evaluator behind both — the
+  // composer's continuous advisory call, and the proposal exit with
+  // enforcement on. A blocked proposal answers 409, fail closed
+  // (ADR-0028 §3). The evaluator judges with the same authored governance
+  // policy /api/v1/governance serves and the active catalogue's entries.
+  if (
+    (url.pathname === '/api/v1/validate' || url.pathname === '/api/v1/proposals') &&
+    req.method === 'POST'
+  ) {
+    if (!sessionOf(req)) {
+      sendJSON(res, 401, { error: 'sign in to use this API' })
+      return
+    }
+    const body = await readBody(req)
+    try {
+      const run = url.pathname === '/api/v1/validate' ? validate : propose
+      sendJSON(res, 200, run(estate, activeCatalogue().components, body.draft, body.environment))
+    } catch (err) {
+      sendJSON(res, err.status ?? 400, { error: err.message })
+    }
     return
   }
 

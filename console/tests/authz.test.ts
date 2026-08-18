@@ -10,6 +10,7 @@ describe('canActOn', () => {
   const me: Me = {
     id: 'jo@example.com',
     name: 'Jo Author',
+    email: 'jo@example.com',
     team: 'data-flow',
     editableTeams: ['data-flow', 'edge'],
   }

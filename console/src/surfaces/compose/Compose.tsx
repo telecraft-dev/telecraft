@@ -1,22 +1,32 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { useState } from 'react'
 import { api } from '../../api/client'
-import { formatCatalogueKey } from '../../api/types'
+import type { BlueprintDoc, Me, PaletteEntry, RequirementVerdict } from '../../api/types'
 import { canActOn } from '../../auth/authz'
+import { useLens } from '../../chrome/LensControl'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
+import type { ComposeSurface } from '../../router'
+import { Composer } from './Composer'
+import { NodeCanvas } from './NodeCanvas'
+import { Requirements } from './Requirements'
+import { YamlFlyout } from './YamlFlyout'
+import { addEntry, addSuggestion, removeEntry } from './draft'
 
 /**
- * The Compose Workspace: Blueprint authoring (ADR-0042 §1, ADR-0043).
- * The scaffold lists Blueprints and shows the selected Blueprint's
- * per-signal lanes in renderer order; the composer surfaces build on this
- * shell against the same URL-addressable selection. A Blueprint-shaped
- * who-acts chip lands here at the offending lane (ADR-0042 §3.3), carried
- * in the `lane` search param.
+ * The Compose Workspace (ADR-0043): three surfaces over the one open
+ * Blueprint — A · Composer, B · Requirement-first, D · Node canvas —
+ * switched without losing state, with the read-only YAML flyout resident on
+ * all three (REQ-035). One validation engine re-judges every interaction
+ * (ADR-0022): the workspace holds the draft and the verdict; the surfaces
+ * are projections. The exit is a change proposal through the forge adapter
+ * (ADR-0028) — save proposes, the PR decides; the console never writes
+ * live state.
  *
  * Whether a Blueprint is yours to author is the ownership tree's answer,
- * not the surface's (ADR-0019 §2): authoring is offered exactly when the
- * owning team is in the signed-in user's editableTeams, and the composer
- * surfaces (ADR-0043) gate their controls on the same answer.
+ * not the surface's (ADR-0019 §2): the editing gestures and Save are
+ * offered exactly when the owning team is in the signed-in user's
+ * editableTeams; otherwise the same surfaces render honestly read-only.
  */
 export function Compose() {
   const blueprints = useQuery({ queryKey: ['blueprints'], queryFn: api.blueprints })
@@ -63,62 +73,186 @@ export function Compose() {
           ))}
         </ul>
       </section>
-      {chosen && (
-        <section className="compose-detail" data-testid="compose-detail">
-          <h2>
-            {chosen.name} <span className="item-meta">v{chosen.version}</span>
-          </h2>
-          {me.data &&
-            (canActOn(me.data, chosen.team) ? (
-              <p className="authoring editable" data-testid="compose-authoring">
-                Yours to author: {chosen.team} is in your remit.
-              </p>
-            ) : (
-              <p className="authoring readonly" data-testid="compose-authoring">
-                Read-only: owned by {chosen.team}. Changes route through its owners.
-              </p>
-            ))}
-          {Object.entries(chosen.pipelines).map(([signal, lane]) => (
-            <div
-              key={signal}
-              className={signal === search.lane ? 'signal-lane offending' : 'signal-lane'}
-              data-testid={`lane-${signal}`}
-            >
-              <h3>{signal}</h3>
-              <ol className="lane-components">
-                {lane.map((component, i) => {
-                  // A palette item deep-links to its Catalogue entry
-                  // (ADR-0042 §1): the key it instantiates rides the
-                  // Blueprint summary.
-                  const key = chosen.components?.[component]
-                  return (
-                    <li key={`${component}-${i}`}>
-                      {key ? (
-                        <Link
-                          to="/catalogue"
-                          search={(prev) => ({
-                            lens: prev.lens,
-                            object: formatObjectRef({
-                              kind: 'entry',
-                              id: formatCatalogueKey(key),
-                            }),
-                          })}
-                          className="lane-entry-link"
-                          data-testid={`lane-entry-${signal}-${component}`}
-                        >
-                          {component}
-                        </Link>
-                      ) : (
-                        component
-                      )}
-                    </li>
-                  )
-                })}
-              </ol>
-            </div>
-          ))}
-        </section>
-      )}
+      {chosen && <Workspace key={chosen.id} doc={chosen} me={me.data} />}
     </div>
+  )
+}
+
+const SURFACES: { surface: ComposeSurface; label: string; testid: string }[] = [
+  { surface: 'composer', label: 'Composer', testid: 'view-composer' },
+  { surface: 'requirements', label: 'Requirement-first', testid: 'view-requirements' },
+  { surface: 'canvas', label: 'Node canvas', testid: 'view-canvas' },
+]
+
+function Workspace({ doc, me }: { doc: BlueprintDoc; me: Me | undefined }) {
+  const [draft, setDraft] = useState(doc)
+  const lens = useLens()
+  const search = useSearch({ strict: false })
+  const navigate = useNavigate()
+
+  // The one evaluator call, re-run on every interaction and lens change
+  // (ADR-0022 §2); the previous verdict holds while the next one loads so
+  // the surfaces never flicker empty.
+  const verdict = useQuery({
+    queryKey: ['validate', draft, lens],
+    queryFn: () => api.validate(draft, lens),
+    placeholderData: keepPreviousData,
+  })
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(doc)
+  // A content change lands with its version bump in the same PR
+  // (ADR-0024 §7): the proposal carries the next monotonic version.
+  const proposed: BlueprintDoc = dirty ? { ...draft, version: doc.version + 1 } : draft
+  const proposal = useMutation({ mutationFn: () => api.propose(proposed, lens) })
+
+  const editable = me !== undefined && canActOn(me, doc.team)
+  const surface: ComposeSurface = search.surface ?? 'composer'
+  const yamlOpen = search.yaml === true
+  const closeYaml = () =>
+    void navigate({ to: '/compose', search: (prev) => ({ ...prev, yaml: undefined }) })
+
+  const onAdd = (entry: PaletteEntry, signals: string[]) =>
+    setDraft((d) => addEntry(d, entry, signals))
+  const onRemove = (signal: string, index: number) =>
+    setDraft((d) => removeEntry(d, signal, index))
+  const onSuggest = (row: RequirementVerdict) =>
+    setDraft((d) => addSuggestion(d, row, verdict.data?.palette.entries ?? []))
+
+  const blocked = verdict.data?.save.blocked ?? false
+
+  return (
+    <section className="compose-detail" data-testid="compose-detail">
+      <header className="compose-header">
+        <h2>
+          {doc.name}{' '}
+          <span className="item-meta">
+            v{doc.version}
+            {dirty ? ' · edited' : ''}
+          </span>
+        </h2>
+        <nav className="view-switcher" aria-label="Compose surfaces">
+          {SURFACES.map(({ surface: s, label, testid }) => (
+            <Link
+              key={s}
+              to="/compose"
+              search={(prev) => ({ ...prev, surface: s })}
+              className={s === surface ? 'scope-link active' : 'scope-link'}
+              data-testid={testid}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <button
+          type="button"
+          className={yamlOpen ? 'yaml-toggle open' : 'yaml-toggle'}
+          data-testid="yaml-toggle"
+          aria-expanded={yamlOpen}
+          onClick={() =>
+            void navigate({
+              to: '/compose',
+              search: (prev) => ({ ...prev, yaml: yamlOpen ? undefined : true }),
+            })
+          }
+        >
+          YAML
+        </button>
+      </header>
+
+      {/* Ownership decides the affordance (ADR-0019 §2): honest either way. */}
+      {me &&
+        (editable ? (
+          <p className="authoring editable" data-testid="compose-authoring">
+            Yours to author: {doc.team} is in your remit.
+          </p>
+        ) : (
+          <p className="authoring readonly" data-testid="compose-authoring">
+            Read-only: owned by {doc.team}. Changes route through its owners.
+          </p>
+        ))}
+
+      {editable && (
+        <div className="save-area">
+          {blocked && (
+            <div className="save-blocked" data-testid="save-blocked">
+              <p>
+                <strong>Save is disabled</strong> — {verdict.data?.save.reasons.join('; ')}. The
+                allow-list violation is the one rule that blocks (ADR-0022 §3); everything else
+                stays a finding.
+              </p>
+              <Link
+                to="/catalogue"
+                search={(prev) => ({ lens: prev.lens })}
+                className="who-acts"
+                data-testid="request-grant"
+              >
+                Request a Grant in Governance
+              </Link>
+            </div>
+          )}
+          <button
+            type="button"
+            data-testid="save-button"
+            disabled={blocked || proposal.isPending || verdict.data === undefined}
+            onClick={() => proposal.mutate()}
+          >
+            Save — propose v{proposed.version} as a PR
+          </button>
+          {proposal.isError && (
+            <p className="save-error" data-testid="save-error">
+              {proposal.error.message}
+            </p>
+          )}
+          {proposal.data && (
+            <div className="proposal" data-testid="proposal">
+              <p>
+                Change proposal{' '}
+                <a href={proposal.data.url} data-testid="proposal-url">
+                  {proposal.data.id}
+                </a>{' '}
+                opened on branch <code data-testid="proposal-branch">{proposal.data.branch}</code>{' '}
+                through the forge adapter, render-in-PR (ADR-0028) — the console proposes, the PR
+                decides.
+              </p>
+              <p className="item-meta" data-testid="proposal-attribution">
+                Attributed to {proposal.data.attributedTo} (ADR-0014).
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="compose-work">
+        {/* Click-off closes the resident flyout without swallowing the click (P1 verdict). */}
+        <div
+          className="compose-surface"
+          onClickCapture={yamlOpen ? closeYaml : undefined}
+        >
+          {surface === 'composer' && (
+            <Composer
+              draft={draft}
+              verdict={verdict.data}
+              offendingLane={search.lane}
+              editable={editable}
+              onAdd={onAdd}
+              onRemove={onRemove}
+            />
+          )}
+          {surface === 'requirements' && (
+            <Requirements verdict={verdict.data} editable={editable} onSuggest={onSuggest} />
+          )}
+          {surface === 'canvas' && (
+            <NodeCanvas
+              draft={draft}
+              verdict={verdict.data}
+              editable={editable}
+              onAdd={onAdd}
+              onRemove={onRemove}
+            />
+          )}
+        </div>
+        {yamlOpen && <YamlFlyout yaml={verdict.data?.yaml} onClose={closeYaml} />}
+      </div>
+    </section>
   )
 }
