@@ -133,11 +133,14 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 		t.Errorf("pull request author is %q (%s), want the App's bot identity", pr.User.Login, pr.User.Type)
 	}
 
-	// The branch commit is authored by the acting human and committed by
-	// the App bot — attribution without a forge account (ADR-0019 §3).
+	// The branch commit carries the App's verified bot identity — GitHub
+	// signs a bot commit only when it carries no custom author or
+	// committer — and the acting human as Co-authored-by, git-level
+	// attribution without a forge account (ADR-0014, ADR-0019 §3).
 	sha := branchSHA(t, ctx, g, branch)
 	var commit struct {
-		Author struct {
+		Message string `json:"message"`
+		Author  struct {
 			Name  string `json:"name"`
 			Email string `json:"email"`
 		} `json:"author"`
@@ -151,14 +154,17 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 	if err := g.api(ctx, http.MethodGet, g.repoPath("/git/commits/"+sha), nil, &commit); err != nil {
 		t.Fatal(err)
 	}
-	if commit.Author.Name != "Jo Live-Contract" || commit.Author.Email != "jo.live@example.com" {
-		t.Errorf("commit author = %+v, want the acting human (ADR-0014)", commit.Author)
+	if !strings.HasSuffix(commit.Author.Name, "[bot]") {
+		t.Errorf("commit author = %+v, want the App's bot identity — a custom author forfeits the signature", commit.Author)
 	}
-	if commit.Committer.Name == "Jo Live-Contract" {
-		t.Errorf("committer = %q, want the App's bot identity, not the human", commit.Committer.Name)
+	if !strings.HasSuffix(commit.Committer.Name, "[bot]") {
+		t.Errorf("committer = %q, want the App's bot identity", commit.Committer.Name)
 	}
 	if !commit.Verification.Verified {
 		t.Error("commit is not signature-verified — the App rung of the ladder promises verified attribution (ADR-0028 §4)")
+	}
+	if !strings.Contains(commit.Message, "Co-authored-by: Jo Live-Contract <jo.live@example.com>") {
+		t.Errorf("commit message does not co-author the acting human (ADR-0014):\n%s", commit.Message)
 	}
 
 	// The proposal carries the rendered artefact next to the authored file.

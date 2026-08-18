@@ -20,21 +20,30 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	seam "github.com/telecraft-dev/telecraft/internal/forge"
 )
 
 // GitHubApp is the first-party Forge implementation (ADR-0014): the
 // platform authenticates as a GitHub App — never a personal or shared
-// token — and writes commits authored by the acting human, committed by
-// the App's bot identity. GitHub verifies the bot's signature on those
-// commits, so the attribution ladder rung is "verified" (ADR-0028 §4).
+// token — and writes commits under the App's bot identity, which GitHub
+// signs and marks verified, with the acting human attributed as
+// Co-authored-by (ADR-0028 §4's "verifiable bot identity").
 //
-// The client speaks the REST v3 API directly: mint a short-lived App JWT,
-// exchange it for an installation token, then drive the git-data and
+// The commit itself is written through the GraphQL createCommitOnBranch
+// mutation, deliberately: GitHub signs a bot's commit only when the
+// request carries no custom author and no custom committer, so the
+// mutation — which accepts neither — is the one door to verified commits.
+// The git-data commit endpoint was tried first and taught the lesson: a
+// custom author is silently copied into the committer and the signature
+// is forfeited. Human authorship therefore rides as a Co-authored-by
+// trailer — git-level attribution that survives clones and renders as
+// authorship — plus the proposal-body footer Submit stamps (ADR-0014).
+//
+// Everything else is the REST v3 API: mint a short-lived App JWT,
+// exchange it for an installation token, then drive the refs and
 // pull-request endpoints. No GitHub SDK — the dependency would be larger
-// than the eight calls Propose makes.
+// than the handful of calls Propose makes.
 type GitHubApp struct {
 	owner string
 	repo  string
@@ -147,10 +156,11 @@ func (g *GitHubApp) Capabilities() seam.Capabilities {
 	}
 }
 
-// Propose implements the seam: move the change's branch to a commit
-// authored by the acting human (committed and signed by the App bot,
-// ADR-0014), then open the pull request — or refresh the one the branch
-// already carries, which is how a red render check is retried in place.
+// Propose implements the seam: reset the change's branch onto the base,
+// write one signed bot commit carrying every file change with the acting
+// human as co-author (ADR-0014), then open the pull request — or refresh
+// the one the branch already carries, which is how a red render check is
+// retried in place.
 func (g *GitHubApp) Propose(ctx context.Context, change seam.Change) (seam.Proposal, error) {
 	base := change.Base
 	if base == "" {
@@ -173,96 +183,88 @@ func (g *GitHubApp) Propose(ctx context.Context, change seam.Change) (seam.Propo
 	}
 	baseSHA := ref.Object.SHA
 
-	var baseCommit struct {
-		Tree struct {
-			SHA string `json:"sha"`
-		} `json:"tree"`
-	}
-	if err := g.api(ctx, http.MethodGet, g.repoPath("/git/commits/"+baseSHA), nil, &baseCommit); err != nil {
+	if err := g.moveBranch(ctx, change.Branch, baseSHA); err != nil {
 		return seam.Proposal{}, err
 	}
+	if err := g.createCommit(ctx, change, baseSHA); err != nil {
+		return seam.Proposal{}, err
+	}
+	return g.ensureProposal(ctx, change, base)
+}
 
-	entries, err := g.treeEntries(ctx, change.Files)
-	if err != nil {
-		return seam.Proposal{}, err
+// createCommit writes the change's one commit through createCommitOnBranch:
+// the only commit shape GitHub signs for an App — no custom author, no
+// custom committer, the bot's verified identity on both — with the acting
+// human attributed as Co-authored-by (ADR-0014). The branch sits at
+// expectedHead; the mutation refuses to land on anything else, so a
+// concurrent move cannot be silently overwritten.
+func (g *GitHubApp) createCommit(ctx context.Context, change seam.Change, expectedHead string) error {
+	paths := make([]string, 0, len(change.Files))
+	for path := range change.Files {
+		paths = append(paths, path)
 	}
-	var tree struct {
-		SHA string `json:"sha"`
-	}
-	if err := g.api(ctx, http.MethodPost, g.repoPath("/git/trees"), map[string]any{
-		"base_tree": baseCommit.Tree.SHA,
-		"tree":      entries,
-	}, &tree); err != nil {
-		return seam.Proposal{}, err
+	sort.Strings(paths)
+
+	additions := []map[string]string{}
+	deletions := []map[string]string{}
+	for _, path := range paths {
+		if content := change.Files[path]; content == nil {
+			deletions = append(deletions, map[string]string{"path": path})
+		} else {
+			additions = append(additions, map[string]string{
+				"path":     path,
+				"contents": base64.StdEncoding.EncodeToString(content),
+			})
+		}
 	}
 
 	message := change.Message
 	if message == "" {
 		message = change.Title
 	}
-	var commit struct {
-		SHA string `json:"sha"`
+	headline, body, _ := strings.Cut(message, "\n")
+	body = strings.TrimSpace(body)
+	if body != "" {
+		body += "\n\n"
 	}
-	if err := g.api(ctx, http.MethodPost, g.repoPath("/git/commits"), map[string]any{
-		"message": message,
-		"tree":    tree.SHA,
-		"parents": []string{baseSHA},
-		// The author is the acting human (ADR-0014); the committer is left
-		// to default to the App's bot identity, which GitHub signs and
-		// verifies.
-		"author": map[string]string{
-			"name":  change.Author.Name,
-			"email": change.Author.Email,
-			"date":  g.now().UTC().Format(time.RFC3339),
+	body += fmt.Sprintf("Co-authored-by: %s <%s>", change.Author.Name, change.Author.Email)
+
+	const mutation = `mutation($input: CreateCommitOnBranchInput!) {
+		createCommitOnBranch(input: $input) { commit { oid } }
+	}`
+	var out struct {
+		CreateCommitOnBranch struct {
+			Commit struct {
+				OID string `json:"oid"`
+			} `json:"commit"`
+		} `json:"createCommitOnBranch"`
+	}
+	err := g.graphQL(ctx, mutation, map[string]any{
+		"input": map[string]any{
+			"branch": map[string]string{
+				"repositoryNameWithOwner": g.owner + "/" + g.repo,
+				"branchName":              change.Branch,
+			},
+			"expectedHeadOid": expectedHead,
+			"message":         map[string]string{"headline": headline, "body": body},
+			"fileChanges": map[string]any{
+				"additions": additions,
+				"deletions": deletions,
+			},
 		},
-	}, &commit); err != nil {
-		return seam.Proposal{}, err
+	}, &out)
+	if err != nil {
+		return err
 	}
-
-	if err := g.moveBranch(ctx, change.Branch, commit.SHA); err != nil {
-		return seam.Proposal{}, err
+	if out.CreateCommitOnBranch.Commit.OID == "" {
+		return errors.New("github: createCommitOnBranch returned no commit")
 	}
-	return g.ensureProposal(ctx, change, base)
-}
-
-// treeEntries builds the git-data tree entries for the change, in stable
-// path order. Text rides inline; non-UTF-8 content goes through a blob;
-// a nil content deletes the path.
-func (g *GitHubApp) treeEntries(ctx context.Context, files map[string][]byte) ([]map[string]any, error) {
-	paths := make([]string, 0, len(files))
-	for path := range files {
-		paths = append(paths, path)
-	}
-	sort.Strings(paths)
-
-	entries := make([]map[string]any, 0, len(paths))
-	for _, path := range paths {
-		entry := map[string]any{"path": path, "mode": "100644", "type": "blob"}
-		switch content := files[path]; {
-		case content == nil:
-			entry["sha"] = nil
-		case utf8.Valid(content):
-			entry["content"] = string(content)
-		default:
-			var blob struct {
-				SHA string `json:"sha"`
-			}
-			if err := g.api(ctx, http.MethodPost, g.repoPath("/git/blobs"), map[string]string{
-				"content":  base64.StdEncoding.EncodeToString(content),
-				"encoding": "base64",
-			}, &blob); err != nil {
-				return nil, err
-			}
-			entry["sha"] = blob.SHA
-		}
-		entries = append(entries, entry)
-	}
-	return entries, nil
+	return nil
 }
 
 // moveBranch creates the branch at sha, or force-moves it when it already
-// exists — the branch is the draft, every propose is its newest render
-// (ADR-0028 §1: re-rendered on every push).
+// exists — the branch is the draft, reset onto the base before every
+// propose lands its fresh commit (ADR-0028 §1: re-rendered on every push).
 func (g *GitHubApp) moveBranch(ctx context.Context, branch, sha string) error {
 	err := g.api(ctx, http.MethodPost, g.repoPath("/git/refs"), map[string]any{
 		"ref": "refs/heads/" + branch,
@@ -375,6 +377,42 @@ func (g *GitHubApp) api(ctx context.Context, method, path string, in, out any) e
 		return err
 	}
 	return g.do(ctx, method, path, token, in, out)
+}
+
+// graphQL makes one installation-authenticated GraphQL call. GraphQL
+// reports failure in-band — HTTP 200 with an errors array — so the
+// envelope is checked here and data is decoded into out only on success.
+func (g *GitHubApp) graphQL(ctx context.Context, query string, variables map[string]any, out any) error {
+	token, err := g.installationToken(ctx)
+	if err != nil {
+		return err
+	}
+	var envelope struct {
+		Data   json.RawMessage `json:"data"`
+		Errors []struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := g.do(ctx, http.MethodPost, "/graphql", token, map[string]any{
+		"query":     query,
+		"variables": variables,
+	}, &envelope); err != nil {
+		return err
+	}
+	if len(envelope.Errors) > 0 {
+		msgs := make([]string, 0, len(envelope.Errors))
+		for _, e := range envelope.Errors {
+			msgs = append(msgs, strings.TrimSpace(e.Type+" "+e.Message))
+		}
+		return fmt.Errorf("github: graphql: %s", strings.Join(msgs, "; "))
+	}
+	if out != nil {
+		if err := json.Unmarshal(envelope.Data, out); err != nil {
+			return fmt.Errorf("github: graphql: decoding data: %w", err)
+		}
+	}
+	return nil
 }
 
 // apiError is a non-2xx REST answer. Callers branch on Status — 422 on a
