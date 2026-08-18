@@ -5,7 +5,9 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,6 +18,10 @@ import (
 // check mode (REQ-024) judges against real Observed readings.
 type Estate struct {
 	Rows []EstateRow
+
+	// Grace is the estate's Service-Class → onboarding-window table
+	// (REQ-014). Empty means no Grace Periods apply.
+	Grace GracePolicy
 }
 
 // EstateRow is one row of the estate — one Service in one Environment — with
@@ -24,6 +30,55 @@ type Estate struct {
 type EstateRow struct {
 	Row
 	Effective Effective
+
+	// Class and Onboarded carry the Service's Class and onboarding date,
+	// the two inputs of the Grace computation (REQ-014). Both are Service
+	// attributes, identical on every row of the same Service; empty and
+	// zero mean no Grace Period ever applies to this Service.
+	Class     string
+	Onboarded time.Time
+}
+
+// GraceEntry maps one Service Class to its onboarding window.
+type GraceEntry struct {
+	Class  string
+	Window time.Duration
+}
+
+// GracePolicy is the authored Grace table, ordered highest class first. The
+// loader enforces the REQ-014 shape on it — windows shrink (never grow) as
+// class rises — so a table that quietly gave the most critical class the
+// longest forgiveness cannot load.
+type GracePolicy []GraceEntry
+
+// WindowFor returns the onboarding window for a class, and whether the
+// table defines one.
+func (p GracePolicy) WindowFor(class string) (time.Duration, bool) {
+	for _, e := range p {
+		if e.Class == class {
+			return e.Window, true
+		}
+	}
+	return 0, false
+}
+
+// until returns when the row's Grace Period ends, and whether now falls
+// inside it. The window runs from the onboarding date for the class's
+// duration; outside it — including before onboarding, and for a row with no
+// class or no onboarding date — nothing is waived.
+func (p GracePolicy) until(row EstateRow, now time.Time) (time.Time, bool) {
+	if row.Class == "" || row.Onboarded.IsZero() {
+		return time.Time{}, false
+	}
+	window, ok := p.WindowFor(row.Class)
+	if !ok {
+		return time.Time{}, false
+	}
+	end := row.Onboarded.Add(window)
+	if now.Before(row.Onboarded) || !now.Before(end) {
+		return time.Time{}, false
+	}
+	return end, true
 }
 
 // Environments returns every Environment the estate declares, sorted and
@@ -42,11 +97,18 @@ func (e Estate) Environments() []string {
 	return out
 }
 
-// estateFile is the authored shape: services, each deployed to one or more
-// environments, each deployment reporting its pipelines.
+// estateFile is the authored shape: an optional grace table, then services,
+// each deployed to one or more environments, each deployment reporting its
+// pipelines.
 type estateFile struct {
+	Grace []struct {
+		Class  string                `yaml:"class"`
+		Window requirements.Duration `yaml:"window"`
+	} `yaml:"grace"`
 	Services []struct {
 		Name         string `yaml:"name"`
+		Class        string `yaml:"class"`
+		Onboarded    Date   `yaml:"onboarded"`
 		Environments []struct {
 			Name      string     `yaml:"name"`
 			Pipelines []Pipeline `yaml:"pipelines"`
@@ -78,11 +140,42 @@ func LoadEstate(path string) (Estate, error) {
 
 	var estate Estate
 	var problems []string
+
+	// The grace table is authored highest class first, and grace shrinks as
+	// class rises (REQ-014) — so windows must never shrink going down it.
+	seenClass := map[string]bool{}
+	for _, g := range file.Grace {
+		switch {
+		case g.Class == "":
+			problems = append(problems, "a grace entry has no class")
+			continue
+		case seenClass[g.Class]:
+			problems = append(problems, fmt.Sprintf("grace table lists class %q twice", g.Class))
+			continue
+		}
+		seenClass[g.Class] = true
+		if g.Window.Std() <= 0 {
+			problems = append(problems, fmt.Sprintf("grace window for class %q must be positive", g.Class))
+			continue
+		}
+		if prev := len(estate.Grace) - 1; prev >= 0 && g.Window.Std() < estate.Grace[prev].Window {
+			problems = append(problems, fmt.Sprintf("grace window for class %q (%s) is shorter than class %q's (%s) — grace shrinks as class rises, and the table is ordered highest class first (REQ-014)",
+				g.Class, g.Window.Std(), estate.Grace[prev].Class, estate.Grace[prev].Window))
+		}
+		estate.Grace = append(estate.Grace, GraceEntry{Class: g.Class, Window: g.Window.Std()})
+	}
+
 	seenRow := map[Row]bool{}
 	for _, svc := range file.Services {
 		if svc.Name == "" {
 			problems = append(problems, "a service has no name")
 			continue
+		}
+		if svc.Class != "" && !seenClass[svc.Class] {
+			problems = append(problems, fmt.Sprintf("service %q has class %q, which the grace table does not define — a class the table cannot place is almost always a typo", svc.Name, svc.Class))
+		}
+		if !svc.Onboarded.IsZero() && svc.Class == "" {
+			problems = append(problems, fmt.Sprintf("service %q has an onboarded date but no class — Grace Periods are Service-Class-scoped (REQ-014)", svc.Name))
 		}
 		if len(svc.Environments) == 0 {
 			problems = append(problems, fmt.Sprintf("service %q is deployed to no environment — a Service with no row is judged by nobody", svc.Name))
@@ -116,6 +209,8 @@ func LoadEstate(path string) (Estate, error) {
 				// including one reporting no pipelines at all, which is a
 				// collector reporting an empty config, not a blind spot.
 				Effective: Effective{Known: true, Pipelines: env.Pipelines},
+				Class:     svc.Class,
+				Onboarded: svc.Onboarded.Std(),
 			})
 		}
 	}

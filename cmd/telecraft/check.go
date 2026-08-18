@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/conformance"
+	"github.com/telecraft-dev/telecraft/internal/ownership"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
@@ -31,11 +32,19 @@ import (
 // environment would pass estates failing everywhere else. -environment
 // narrows the run to one lens; the report always orders production rows
 // first, the default lens (ADR-0033).
+//
+// Waivers (exemptions via -exemptions, Grace via the estate's grace table)
+// are applied after the diagnosis (ADR-0004, ADR-0037): a waived finding
+// keeps its outcome and detail in the report, gives up only its count, and
+// rides the row score's and summary's waived totals so a green built on
+// exemptions cannot look like a clean green.
 func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	library := fs.String("library", "", "requirements library directory (required)")
 	estatePath := fs.String("estate", "", "estate file — services and their per-environment effective config (required)")
+	exemptionsDir := fs.String("exemptions", "", "exemptions directory — authored waivers (optional; ADR-0037)")
+	ownershipDir := fs.String("ownership", "", "estate ownership directory holding teams.yaml and the authored objects — needed only to resolve team-scoped exemptions")
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
 	apiKey := fs.String("api-key", os.Getenv("TELECRAFT_TELEMETRY_API_KEY"), "telemetry backend API key (optional)")
 	environment := fs.String("environment", "", "narrow the check to one Environment (default: every row in the estate)")
@@ -57,6 +66,45 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
+	}
+
+	// Waivers loosen the exit code, so their inputs fail closed too: an
+	// exemptions directory that fails to load is exit 2, never a run that
+	// silently counted findings someone believes are waived.
+	waivers := conformance.Waivers{Grace: estate.Grace}
+	if *exemptionsDir != "" {
+		waivers.Exemptions, err = conformance.LoadExemptions(*exemptionsDir)
+		if err != nil {
+			fmt.Fprintf(stderr, "check: %v\n", err)
+			return 2
+		}
+	}
+	if *ownershipDir != "" {
+		own, err := ownership.Load(*ownershipDir)
+		if err != nil {
+			fmt.Fprintf(stderr, "check: %v\n", err)
+			return 2
+		}
+		waivers.InSubtree = func(service, team string) (bool, error) {
+			subtree, err := own.Tree.Subtree(ownership.TeamID(team))
+			if err != nil {
+				return false, err
+			}
+			svc, authored := own.Objects[ownership.Ref{Kind: ownership.KindService, ID: service}]
+			if !authored {
+				// A Service the ownership model does not know sits provably
+				// in no subtree; the waiver stays unapplied — the strict
+				// direction, and the finding remains visible either way.
+				return false, nil
+			}
+			ownerTeam := own.Tree.Owners[svc.Owner].Team
+			for _, id := range subtree {
+				if id == ownerTeam {
+					return true, nil
+				}
+			}
+			return false, nil
+		}
 	}
 
 	rows := estate.Rows
@@ -105,13 +153,25 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 			Message:     f.Message,
 		})
 	}
+	for _, f := range conformance.ExemptionFindings(waivers.Exemptions, lib, report.EvaluatedAt) {
+		report.AuthoringFindings = append(report.AuthoringFindings, authoringReport{
+			Requirement: f.RequirementID,
+			Exemption:   f.ExemptionID,
+			Message:     f.Message,
+		})
+	}
 
 	for _, row := range rows {
 		ev := gatherEvidence(ctx, tel, row, lib, attrs)
 		verdict := conformance.Evaluate(row.Row, lib, ev, report.EvaluatedAt)
+		if err := waivers.Apply(&verdict, row, report.EvaluatedAt); err != nil {
+			fmt.Fprintf(stderr, "check: %v\n", err)
+			return 2
+		}
 		rr := renderRow(verdict)
 		report.Rows = append(report.Rows, rr)
 		report.Summary.Rows++
+		report.Summary.Waived += rr.Score.Waived
 		report.Summary.CountingFailures += rr.Score.Failing
 		if rr.Score.Failing > 0 {
 			report.Summary.FailingRows++
@@ -198,28 +258,35 @@ type scoreReport struct {
 }
 
 type findingReport struct {
-	Requirement string   `json:"requirement"`
-	Title       string   `json:"title"`
-	Level       string   `json:"requirement_level"`
-	Owner       string   `json:"owner"`
-	Outcome     string   `json:"outcome"`
-	Severity    int      `json:"severity"`
-	Waived      string   `json:"waived,omitempty"`
-	Detail      []string `json:"detail,omitempty"`
-	Remediation string   `json:"remediation"`
+	Requirement  string   `json:"requirement"`
+	Title        string   `json:"title"`
+	Level        string   `json:"requirement_level"`
+	Owner        string   `json:"owner"`
+	Outcome      string   `json:"outcome"`
+	Severity     int      `json:"severity"`
+	Waived       string   `json:"waived,omitempty"`
+	WaiverReason string   `json:"waiver_reason,omitempty"`
+	Detail       []string `json:"detail,omitempty"`
+	Remediation  string   `json:"remediation"`
 }
 
 // authoringReport is a visible-but-not-fatal authoring finding (ADR-0033
-// §3): reported in every run, never part of the exit code.
+// §3, ADR-0037 §3): reported in every run, never part of the exit code.
+// Exemption findings carry both the exemption's id and the requirement it
+// names.
 type authoringReport struct {
 	Requirement string `json:"requirement"`
+	Exemption   string `json:"exemption,omitempty"`
 	Message     string `json:"message"`
 }
 
+// The summary carries the waived total beside the failure counts, so a gate
+// green on exemptions is visibly green on exemptions (ADR-0017, ADR-0037).
 type summaryReport struct {
 	Rows             int `json:"rows"`
 	FailingRows      int `json:"failing_rows"`
 	CountingFailures int `json:"counting_failures"`
+	Waived           int `json:"waived"`
 }
 
 func renderRow(v conformance.Verdict) rowReport {
@@ -238,15 +305,16 @@ func renderRow(v conformance.Verdict) rowReport {
 	}
 	for _, f := range v.Findings {
 		rr.Findings = append(rr.Findings, findingReport{
-			Requirement: f.Requirement.ID,
-			Title:       f.Requirement.Title,
-			Level:       string(f.Requirement.Level),
-			Owner:       f.Requirement.Owner,
-			Outcome:     string(f.Outcome),
-			Severity:    f.Outcome.Severity(),
-			Waived:      string(f.Waived),
-			Detail:      f.Detail,
-			Remediation: f.Requirement.Remediation,
+			Requirement:  f.Requirement.ID,
+			Title:        f.Requirement.Title,
+			Level:        string(f.Requirement.Level),
+			Owner:        f.Requirement.Owner,
+			Outcome:      string(f.Outcome),
+			Severity:     f.Outcome.Severity(),
+			Waived:       string(f.Waived),
+			WaiverReason: f.WaiverReason,
+			Detail:       f.Detail,
+			Remediation:  f.Requirement.Remediation,
 		})
 	}
 	return rr

@@ -59,7 +59,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-environment env] [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
-	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-environment env] [-endpoint URL] [-api-key KEY]")
+	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 }
 
