@@ -61,6 +61,17 @@ type Provider interface {
 	// (REQ-023, ADR-0034 §4). An implementation that can only approximate
 	// (e.g. by sampling records) must say so via Truncated, never silently.
 	AttributeNames(ctx context.Context, service Service, kind requirements.SignalKind, window time.Duration) AttributeNames
+
+	// ObserveSelf reads the collector self-telemetry that arrived for one
+	// Tier over the trailing window (REQ-053, ADR-0039): presence and
+	// volume per internal signal, the commit stamps observed, and the raw
+	// component-identity attribute combinations, verbatim. tier is the
+	// team-qualified Tier id, matched on the telecraft.tier resource stamp
+	// every rendered artefact bakes into its own telemetry (ADR-0039 §5).
+	// This is the only door self-telemetry readings come through — the
+	// platform reads them from the adopter's backend like any other
+	// telemetry, never over a privileged side channel.
+	ObserveSelf(ctx context.Context, tier string, window time.Duration) SelfObserved
 }
 
 // Observed is one Service's reading across all signals. AsOf and Window

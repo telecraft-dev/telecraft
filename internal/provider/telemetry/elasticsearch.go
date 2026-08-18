@@ -44,8 +44,12 @@ type Elasticsearch struct {
 	indices          map[requirements.SignalKind]string
 	serviceNameField string
 	environmentField string
+	tierField        string
+	commitField      string
 	attributePaths   []string
 	sampleSize       int
+	identityLimit    int
+	commitLimit      int
 
 	// now stamps AsOf onto every reading; tests pin it.
 	now func() time.Time
@@ -78,11 +82,28 @@ type ElasticsearchConfig struct {
 	// resource.attributes.deployment.environment.name (OTel-native mode).
 	EnvironmentField string
 
+	// TierField and CommitField are the document fields holding the
+	// telecraft.tier and telecraft.commit resource stamps the renderer
+	// bakes into every artefact's self-telemetry — the (Tier, SHA) reading
+	// join (ADR-0039 §5). Defaults:
+	// resource.attributes.telecraft.{tier,commit} (OTel-native mode).
+	TierField   string
+	CommitField string
+
 	// AttributePaths are the document field prefixes under which OTel
 	// attributes land; AttributeNames unions field names beneath them and
 	// strips the prefix to recover the attribute name. Defaults:
 	// attributes., resource.attributes., scope.attributes.
 	AttributePaths []string
+
+	// IdentityLimit caps how many distinct component-identity attribute
+	// combinations ObserveSelf reads per signal, and CommitLimit how many
+	// distinct commit stamps; readings beyond a cap are reported Truncated,
+	// never silently dropped. Defaults 500 and 50 — an estate Tier holds
+	// tens of components and a window holds a handful of serving SHAs, so
+	// hitting either cap is itself a signal worth surfacing.
+	IdentityLimit int
+	CommitLimit   int
 
 	// SampleSize caps how many records AttributeNames inspects; a window
 	// holding more is reported Truncated, never silently approximated.
@@ -105,11 +126,23 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 	if cfg.EnvironmentField == "" {
 		cfg.EnvironmentField = "resource.attributes.deployment.environment.name"
 	}
+	if cfg.TierField == "" {
+		cfg.TierField = "resource.attributes.telecraft.tier"
+	}
+	if cfg.CommitField == "" {
+		cfg.CommitField = "resource.attributes.telecraft.commit"
+	}
 	if len(cfg.AttributePaths) == 0 {
 		cfg.AttributePaths = []string{"attributes.", "resource.attributes.", "scope.attributes."}
 	}
 	if cfg.SampleSize <= 0 {
 		cfg.SampleSize = 200
+	}
+	if cfg.IdentityLimit <= 0 {
+		cfg.IdentityLimit = 500
+	}
+	if cfg.CommitLimit <= 0 {
+		cfg.CommitLimit = 50
 	}
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 30 * time.Second
@@ -129,8 +162,12 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 		indices:          idx,
 		serviceNameField: cfg.ServiceNameField,
 		environmentField: cfg.EnvironmentField,
+		tierField:        cfg.TierField,
+		commitField:      cfg.CommitField,
 		attributePaths:   cfg.AttributePaths,
 		sampleSize:       cfg.SampleSize,
+		identityLimit:    cfg.IdentityLimit,
+		commitLimit:      cfg.CommitLimit,
 		now:              time.Now,
 	}, nil
 }
