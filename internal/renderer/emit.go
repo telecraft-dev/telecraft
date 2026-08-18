@@ -60,7 +60,7 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 			problems = append(problems, fmt.Sprintf("%s: extensions block references %s, a %s — only extensions are collector-wide (ADR-0024 §2)", ctx, c.ID(), c.Class))
 			continue
 		}
-		id := renderedID(c)
+		id := RenderedID(c)
 		if !seenExt[id] {
 			seenExt[id] = true
 			serviceExtensions = append(serviceExtensions, id)
