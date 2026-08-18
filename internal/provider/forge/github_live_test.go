@@ -145,7 +145,8 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 			Email string `json:"email"`
 		} `json:"author"`
 		Committer struct {
-			Name string `json:"name"`
+			Name  string `json:"name"`
+			Email string `json:"email"`
 		} `json:"committer"`
 		Verification struct {
 			Verified bool `json:"verified"`
@@ -157,12 +158,13 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 	if !strings.HasSuffix(commit.Author.Name, "[bot]") {
 		t.Errorf("commit author = %+v, want the App's bot identity — a custom author forfeits the signature", commit.Author)
 	}
-	// The committer of a GitHub-signed commit is GitHub's own web-flow
-	// signer identity ("GitHub <noreply@github.com>") — the same committer
-	// web-interface commits carry. What matters is that it is the forge's
-	// verified machinery, never the human.
-	if commit.Committer.Name != "GitHub" && !strings.HasSuffix(commit.Committer.Name, "[bot]") {
-		t.Errorf("committer = %q, want the forge's signing identity, never the human", commit.Committer.Name)
+	// The committer of a createCommitOnBranch commit is GitHub's own
+	// web-flow signing identity ("GitHub <noreply@github.com>") — the same
+	// committer web-interface commits carry, and never the App bot. Pinned
+	// exactly: any other committer means the commit did not go through the
+	// signing path.
+	if commit.Committer.Name != "GitHub" || commit.Committer.Email != "noreply@github.com" {
+		t.Errorf("committer = %q <%s>, want GitHub's web-flow signing identity", commit.Committer.Name, commit.Committer.Email)
 	}
 	if !commit.Verification.Verified {
 		t.Error("commit is not signature-verified — the App rung of the ladder promises verified attribution (ADR-0028 §4)")

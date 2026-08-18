@@ -26,9 +26,10 @@ import (
 
 // GitHubApp is the first-party Forge implementation (ADR-0014): the
 // platform authenticates as a GitHub App — never a personal or shared
-// token — and writes commits under the App's bot identity, which GitHub
-// signs and marks verified, with the acting human attributed as
-// Co-authored-by (ADR-0028 §4's "verifiable bot identity").
+// token — and writes commits authored by the App's bot identity,
+// GitHub-signed and marked verified (the committer is GitHub's web-flow
+// signing identity, as on web-interface commits), with the acting human
+// attributed as Co-authored-by (ADR-0028 §4's "verifiable bot identity").
 //
 // The commit itself is written through the GraphQL createCommitOnBranch
 // mutation, deliberately: GitHub signs a bot's commit only when the
@@ -194,8 +195,9 @@ func (g *GitHubApp) Propose(ctx context.Context, change seam.Change) (seam.Propo
 
 // createCommit writes the change's one commit through createCommitOnBranch:
 // the only commit shape GitHub signs for an App — no custom author, no
-// custom committer, the bot's verified identity on both — with the acting
-// human attributed as Co-authored-by (ADR-0014). The branch sits at
+// custom committer; the commit lands authored by the App's bot identity
+// and committed by GitHub's own web-flow signing identity — with the
+// acting human attributed as Co-authored-by (ADR-0014). The branch sits at
 // expectedHead; the mutation refuses to land on anything else, so a
 // concurrent move cannot be silently overwritten.
 func (g *GitHubApp) createCommit(ctx context.Context, change seam.Change, expectedHead string) error {
