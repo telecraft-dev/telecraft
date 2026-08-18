@@ -272,3 +272,39 @@ func TestABuildWithoutACommitIsRefused(t *testing.T) {
 		t.Fatal("a snapshot was built with no commit to stamp claims and provenance with")
 	}
 }
+
+func TestTheFaceCarriesTheVersionTwoContract(t *testing.T) {
+	card := cardFor(t, build(t), "data-flow/gateway")
+
+	if card.ContractVersion != 2 {
+		t.Errorf("contract version = %d, want 2 — the per-signal matrix, population state and churn (ADR-0041 §4)", card.ContractVersion)
+	}
+	if len(card.Signals) != 3 {
+		t.Fatalf("signal rows = %d, want one per signal the seam covers", len(card.Signals))
+	}
+	for _, row := range card.Signals {
+		// The estate declares arrivals, not flow: the metering readings are
+		// derived on read from a backend a snapshot has none of, so they
+		// must say "cannot see" rather than stand a zero in for it.
+		if row.Volume.Known || row.Freshness.Known || row.Shape.Known {
+			t.Errorf("%s row claims a known flow reading the estate never declared", row.Signal)
+		}
+		if row.Volume.Cause == "" || row.Volume.AsOf == "" {
+			t.Errorf("%s volume reading carries no cause or no as-of — an unknown is still a statement with a timestamp (ADR-0036 §2)", row.Signal)
+		}
+	}
+	if card.Churn.Known {
+		t.Error("the churn reading claims to be known without a backend to derive it from")
+	}
+}
+
+func TestThePopulationStateNamesWhichSiblingHolds(t *testing.T) {
+	card := cardFor(t, build(t), "data-flow/gateway")
+	// Three collectors against a declared floor of three: nothing is short.
+	if card.Population.State != console.PopulationOK {
+		t.Errorf("population state = %q, want ok — the Tier meets its floor", card.Population.State)
+	}
+	if card.Population.StaleConfig {
+		t.Error("a populated Tier is flagged as stale config")
+	}
+}

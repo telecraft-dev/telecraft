@@ -28,8 +28,10 @@ import (
 )
 
 // ContractVersion is the ADR-0041 card contract the faces in this snapshot
-// satisfy. It travels with every face and drawer.
-const ContractVersion = 1
+// satisfy. It travels with every face and drawer, and a bump is a visible,
+// reviewable event rather than silent field drift (ADR-0041 §4). v2 added
+// the per-signal matrix rows, the population state and the churn reading.
+const ContractVersion = 2
 
 // Meta stamps a snapshot with what it was built from, so a stale demo is
 // visibly stale rather than quietly wrong (ADR-0013's discipline applied
@@ -124,10 +126,89 @@ const (
 )
 
 // Population is the face's population line: ADR-0035's outputs verbatim.
+// never_seen and under_populated are siblings, never degrees of each other
+// (§5), so the state names which one holds rather than encoding a rank.
 type Population struct {
 	Matched     int    `json:"matched"`
 	Floor       *int   `json:"floor,omitempty"`
 	FloorSource string `json:"floorSource"`
+
+	// State is ok, never_seen or under_populated.
+	State string `json:"state"`
+
+	// Since is the shortfall onset, or the start of watching on a neutral
+	// never_seen; omitted when there is nothing to date.
+	Since string `json:"since,omitempty"`
+
+	// StaleConfig marks the aged never_seen: an authored Tier nothing ever
+	// used, a candidate for deletion (ADR-0035 §7).
+	StaleConfig bool `json:"staleConfig,omitempty"`
+}
+
+// The population states, verbatim from ADR-0035's outputs.
+const (
+	PopulationOK             = "ok"
+	PopulationNeverSeen      = "never_seen"
+	PopulationUnderPopulated = "under_populated"
+)
+
+// Reading is what every per-signal reading carries: whether it is known,
+// why not when it is not, and the instant it was taken — so
+// last-known-plus-age renders from the contract rather than from client
+// guessing (ADR-0040, ADR-0041 §2).
+type Reading struct {
+	Known bool   `json:"known"`
+	Cause string `json:"cause,omitempty"`
+	AsOf  string `json:"asOf"`
+}
+
+// VolumeReading is one lane's flow through the Tier (ADR-0040 §2, §3). The
+// reduction is a figure, never a grade: a filter dropping ninety per cent
+// is doing its job.
+type VolumeReading struct {
+	Reading
+	In            int64 `json:"in"`
+	Out           int64 `json:"out"`
+	Reduction     int64 `json:"reduction"`
+	Refused       int64 `json:"refused"`
+	SendFailed    int64 `json:"sendFailed"`
+	EnqueueFailed int64 `json:"enqueueFailed"`
+	Truncated     bool  `json:"truncated,omitempty"`
+}
+
+// FreshnessReading is one lane's freshness. A silent lane is a known-empty
+// window, which is not the same as not knowing.
+type FreshnessReading struct {
+	Reading
+	Newest     string `json:"newest,omitempty"`
+	AgeSeconds *int64 `json:"ageSeconds,omitempty"`
+	Silent     bool   `json:"silent,omitempty"`
+}
+
+// ShapeReading is one lane's shape summary: how many required attributes
+// the records should carry, and how many are missing (ADR-0034).
+type ShapeReading struct {
+	Reading
+	Required int    `json:"required"`
+	Missing  int    `json:"missing"`
+	Summary  string `json:"summary,omitempty"`
+}
+
+// SignalRow is one lane of the per-signal matrix — the skeleton under the
+// reading bands.
+type SignalRow struct {
+	Signal    string           `json:"signal"`
+	Volume    VolumeReading    `json:"volume"`
+	Freshness FreshnessReading `json:"freshness"`
+	Shape     ShapeReading     `json:"shape"`
+}
+
+// ChurnReading is the Tier's restart rate: incarnations in the window
+// (ADR-0040 §4).
+type ChurnReading struct {
+	Reading
+	Incarnations int  `json:"incarnations"`
+	Truncated    bool `json:"truncated,omitempty"`
 }
 
 // CardFace is the ADR-0041 face payload for one Tier.
@@ -142,6 +223,14 @@ type CardFace struct {
 	FindingCounts   map[string]int  `json:"findingCounts"`
 	WaivedCounts    map[string]int  `json:"waivedCounts,omitempty"`
 	Population      Population      `json:"population"`
+
+	// Signals are the per-signal matrix rows, in stable signal order, and
+	// Churn the Tier's restart rate — the readings the metering seam
+	// derives on read (ADR-0040). A demo estate that declares none carries
+	// them Known false with the cause said out loud: not knowing is a
+	// normal state, reported as itself (ADR-0008).
+	Signals []SignalRow  `json:"signals"`
+	Churn   ChurnReading `json:"churn"`
 }
 
 // ObjectRef deep-links one authored object — the who-acts routing target.
