@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/telecraft-dev/telecraft/internal/catalogue"
 )
 
 // writeLibraryFile drops one file into dir, creating parents, and returns
@@ -435,5 +437,229 @@ teams:
 	f := report.Rows[1].Findings[0]
 	if f.Waived != "exempt" {
 		t.Errorf("finding = %+v — checkout's team sits under engineering, so the subtree exemption covers it", f)
+	}
+}
+
+// driftSource writes an authored estate root whose blueprint pins a shared
+// component behind the owning team's head and carries a stale-but-passing
+// satisfies claim, plus files, and returns the root.
+func driftSource(t *testing.T, dir string, files map[string]string) string {
+	t.Helper()
+	root := filepath.Join(dir, "source")
+	base := map[string]string{
+		"teams.yaml":                         renderTeams,
+		"teams/pipelines/tiers/gateway.yaml": renderTier,
+	}
+	for rel, content := range files {
+		base[rel] = content
+	}
+	for rel, content := range base {
+		writeLibraryFile(t, root, rel, content)
+	}
+	return root
+}
+
+// Criteria (#19): library_drift is distinct from every row outcome in the
+// report — its own repo-owned section, never a row's finding — and check
+// mode counts each finding at library_drift's severity, driving the exit
+// code. The stale-but-passing claim rides beside it as housekeeping,
+// visible and never counted (ADR-0026 §6).
+func TestCheckLibraryDriftIsDistinctAndCounted(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", `
+- id: logs-receiver-present
+  title: A logs receiver is configured
+  version: 2
+  requirement_level: required
+  owner: platform-observability
+  config:
+    has_receiver: [filelog, otlp]
+  remediation: add a filelog or otlp receiver
+`)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines:
+          - name: logs
+            receivers: [filelog]
+            exporters: [otlphttp]
+`)
+	source := driftSource(t, dir, map[string]string{
+		"teams/pipelines/components/std-batch.yaml": `
+name: std-batch
+class: processor
+type: batch
+version: 3
+owner: pipelines-lead
+`,
+		"teams/pipelines/blueprints/flow.yaml": `
+name: flow
+version: 1
+owner: pipelines-lead
+satisfies: [logs-receiver-present@1]
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+  - name: to-out
+    class: exporter
+    type: otlphttp
+    version: 1
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: pipelines/std-batch@1
+    - component: to-out
+`,
+	})
+	cataloguePath := renderCatalogue(t)
+
+	// The two flags go together: floors judge against the active Catalogue.
+	if code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-source", source); code != 2 {
+		t.Fatalf("-source without -catalogue: exit %d, stderr %q — want 2", code, msg)
+	}
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-source", source, "-catalogue", cataloguePath)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — the behind-head pin is a counting failure\nstderr: %s", code, msg)
+	}
+
+	// The rows are untouched: drift is the repo's, never a row's.
+	if len(report.Rows) != 1 || report.Rows[0].Worst != "compliant" || report.Summary.FailingRows != 0 {
+		t.Errorf("rows = %+v — library_drift must never appear as a row outcome", report.Rows)
+	}
+	if len(report.LibraryDrift) != 1 {
+		t.Fatalf("library_drift = %+v, want exactly the pinned-reference finding", report.LibraryDrift)
+	}
+	f := report.LibraryDrift[0]
+	if f.Outcome != "library_drift" || f.Facet != "component" {
+		t.Errorf("outcome/facet = %s/%s, want library_drift/component", f.Outcome, f.Facet)
+	}
+	if f.Severity != 3 {
+		t.Errorf("severity = %d, want library_drift's rung just below misconfigured", f.Severity)
+	}
+	if f.Blueprint != "pipelines/flow" || f.Team != "pipelines" || f.Owner != "pipelines-lead" {
+		t.Errorf("routing = %+v, want the consuming Blueprint's owning team", f)
+	}
+	if !strings.Contains(f.Message, "pipelines/std-batch@1") || f.Remediation == "" {
+		t.Errorf("finding = %+v, want the pin named and a remediation carried", f)
+	}
+	if report.Summary.LibraryDrift != 1 || report.Summary.CountingFailures != 1 {
+		t.Errorf("summary = %+v, want the drift finding counted once and broken out", report.Summary)
+	}
+
+	// The stale-but-passing claim is housekeeping beside the findings.
+	if len(report.Housekeeping) != 1 || !strings.Contains(report.Housekeeping[0].Message, "logs-receiver-present@1") {
+		t.Errorf("housekeeping = %+v, want the stale stamp nudged for re-stamping", report.Housekeeping)
+	}
+}
+
+// A committed artefact under the default production floor (ADR-0023 §3)
+// surfaces as Tier-scoped library_drift, and -environment narrows it the
+// same way it narrows rows.
+func TestCheckFloorDriftNarrowsWithEnvironment(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines:
+          - name: logs
+            receivers: [filelog]
+            exporters: [otlphttp]
+      - name: staging
+        pipelines:
+          - name: logs
+            receivers: [filelog]
+            exporters: [otlphttp]
+`)
+	source := driftSource(t, dir, map[string]string{
+		"teams/pipelines/blueprints/flow.yaml": `
+name: flow
+version: 1
+owner: pipelines-lead
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+  - name: scrubber
+    class: processor
+    type: transform
+    version: 1
+  - name: to-out
+    class: exporter
+    type: otlphttp
+    version: 1
+pipelines:
+  logs:
+    - component: otlp-in
+    - component: scrubber
+    - component: to-out
+`,
+		"teams/pipelines/services/checkout.yaml": `
+owner: checkout-team
+class: C1
+paths:
+  - through: [pipelines/gateway]
+`,
+		"rendered/pipelines/gateway.yaml": `
+service:
+  telemetry:
+    resource:
+      telecraft.commit: 8b7df143d91c716ecfa5fc1730022f6b421b05cd
+`,
+	})
+
+	beta := map[string]catalogue.Level{"traces": catalogue.Beta, "metrics": catalogue.Beta, "logs": catalogue.Beta}
+	cat := &catalogue.Catalogue{
+		FormatVersion: catalogue.FormatVersion,
+		Source:        catalogue.Source{Repository: "example.com/otelcol", Ref: "v0.158.0"},
+		Components: []catalogue.Component{
+			{Class: catalogue.Receiver, Type: "otlp", Module: "example.com/otelcol/receiver/otlp", Stability: beta},
+			{Class: catalogue.Processor, Type: "transform", Module: "example.com/otelcol/processor/transform",
+				Stability: map[string]catalogue.Level{"traces": catalogue.Beta, "logs": catalogue.Alpha}},
+			{Class: catalogue.Exporter, Type: "otlphttp", Module: "example.com/otelcol/exporter/otlphttp", Stability: beta},
+		},
+	}
+	cataloguePath, _, err := cat.Write(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-source", source, "-catalogue", cataloguePath)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — the committed artefact sits below the raised bar\nstderr: %s", code, msg)
+	}
+	if len(report.LibraryDrift) != 1 {
+		t.Fatalf("library_drift = %+v, want the floor drift on the production Tier", report.LibraryDrift)
+	}
+	f := report.LibraryDrift[0]
+	if f.Facet != "requirement" || f.Tier != "pipelines/gateway" || f.Environment != "production" || f.Lane != "logs" {
+		t.Errorf("finding = %+v, want the Requirement facet on pipelines/gateway production logs", f)
+	}
+	if !strings.Contains(f.Message, "8b7df143d91c716ecfa5fc1730022f6b421b05cd") {
+		t.Errorf("message %q should carry the artefact's own commit stamp (ADR-0013)", f.Message)
+	}
+
+	// The staging lens sees no production drift; the production lens keeps it.
+	code, report, _ = runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-source", source, "-catalogue", cataloguePath, "-environment", "staging")
+	if code != 0 || len(report.LibraryDrift) != 0 || report.Summary.LibraryDrift != 0 {
+		t.Errorf("staging lens: exit %d with drift %+v — Tier-scoped drift narrows with the lens", code, report.LibraryDrift)
+	}
+	code, report, _ = runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-source", source, "-catalogue", cataloguePath, "-environment", "production")
+	if code != 1 || len(report.LibraryDrift) != 1 {
+		t.Errorf("production lens: exit %d with drift %+v, want the finding kept", code, report.LibraryDrift)
 	}
 }
