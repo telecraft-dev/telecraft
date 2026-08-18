@@ -856,3 +856,34 @@ export interface ClaimContext {
   team: string
   environment: Environment
 }
+
+/**
+ * The platform API as one type: what every surface consumes, and what any
+ * client must implement in full. The live client speaks HTTP to an
+ * instance; the demo client answers from a build-time snapshot (issue
+ * #50). Declaring the contract here is what keeps the swap honest — a
+ * client that drifts from it fails to compile, rather than failing in a
+ * surface at runtime.
+ */
+export interface PlatformApi {
+  me(): Promise<Me>
+  authProviders(): Promise<AuthProviderInfo[]>
+  login(provider: string, username: string, secret: string): Promise<Me>
+  logout(): Promise<void>
+  objects(): Promise<IndexedObject[]>
+  estate(): Promise<EstatePayload>
+  drawer(tier: string): Promise<CardDrawer>
+  collectors(): Promise<CollectorRow[]>
+  topology(): Promise<TopologyPayload>
+  blueprints(): Promise<BlueprintDoc[]>
+  catalogue(): Promise<CatalogueComponent[]>
+  catalogueVersions(): Promise<CatalogueVersionsPayload>
+  catalogueEntries(version: string): Promise<CatalogueEntry[]>
+  governance(): Promise<GovernancePayload>
+  rollouts(): Promise<RolloutProgress[]>
+  validate(draft: BlueprintDoc, environment: string): Promise<ComposeVerdict>
+  propose(draft: BlueprintDoc, environment: string, claim?: ClaimContext): Promise<Proposal>
+  claimPreview(request: ClaimPreviewRequest): Promise<ClaimPreview>
+  claim(request: ClaimRequest): Promise<ClaimOutcome>
+  proposeGovernance(request: GovernanceProposalRequest): Promise<ProposalOutcome>
+}
