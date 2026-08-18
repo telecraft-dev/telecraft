@@ -1,13 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
-import { api } from '../../api/client'
 import { BAND_ORDER, type CardFace, type EstatePayload, type TeamNode } from '../../api/types'
 import { useLens } from '../../chrome/LensControl'
 import { cardStanding, orderCards, sectionAllHealthy, totalFindings } from '../../estate/order'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
-import { CardFaceView, CardPanel } from './card'
+import { CardFaceView } from './card'
 
 interface Section {
   team: TeamNode
@@ -40,18 +38,20 @@ function subtree(root: TeamNode, id: string): TeamNode | undefined {
  * The Estate landing surface (ADR-0042 §2): team-subtree sections crossed
  * with aligned Environment rows, cards ordered worst-severity-first from
  * face summary fields alone. Scope rests on the signed-in user's team
- * subtree; one click widens to the estate.
+ * subtree; one click widens to the estate. The lens leads and emphasises
+ * its row — emphasis, never a filter: every row stays visible (§4).
  */
-export function Shelf() {
-  const estate = useQuery({ queryKey: ['estate'], queryFn: api.estate })
+export function Shelf({
+  payload,
+  selectedTier,
+}: {
+  payload: EstatePayload
+  selectedTier?: string
+}) {
   const search = useSearch({ strict: false })
   const { me, store } = usePresentation()
   const lens = useLens()
 
-  if (estate.isPending) return <p className="surface-status">Loading the estate…</p>
-  if (estate.isError) return <p className="surface-status">The estate payload failed to load.</p>
-
-  const payload = estate.data
   const selected = parseObjectRef(search.object)
   const scope = search.scope ?? 'team'
 
@@ -70,48 +70,38 @@ export function Shelf() {
   // names another Environment — emphasis, never a filter (ADR-0042 §4).
   const environments = [lens, ...payload.environments.filter((env) => env !== lens)]
 
-  const selectedCard =
-    selected?.kind === 'tier'
-      ? payload.cards.find((card) => card.tier === selected.id)
-      : undefined
-
   return (
-    <div className="shelf-layout">
-      <section className="shelf" data-testid="shelf">
-        <header className="shelf-header">
-          <h1>Estate</h1>
-          <div className="shelf-scope">
-            <Link
-              to="/estate"
-              search={(prev) => ({ lens: prev.lens, scope: 'team' as const })}
-              className={scope === 'team' ? 'scope-link active' : 'scope-link'}
-              data-testid="scope-team"
-            >
-              My team
-            </Link>
-            <Link
-              to="/estate"
-              search={(prev) => ({ lens: prev.lens, scope: 'estate' as const })}
-              className={scope === 'estate' ? 'scope-link active' : 'scope-link'}
-              data-testid="scope-estate"
-            >
-              Whole estate
-            </Link>
-          </div>
-        </header>
-        {visible.map(({ team, cards }) => (
-          <ShelfSection
-            key={team.id}
-            team={team}
-            cards={cards}
-            environments={environments}
-            store={store}
-            selectedTier={selectedCard?.tier}
-          />
-        ))}
-      </section>
-      {selectedCard && <CardPanel card={selectedCard} />}
-    </div>
+    <section className="shelf" data-testid="shelf">
+      <div className="shelf-scope">
+        <Link
+          to="/estate"
+          search={(prev) => ({ ...prev, scope: 'team' as const })}
+          className={scope === 'team' ? 'scope-link active' : 'scope-link'}
+          data-testid="scope-team"
+        >
+          My team
+        </Link>
+        <Link
+          to="/estate"
+          search={(prev) => ({ ...prev, scope: 'estate' as const })}
+          className={scope === 'estate' ? 'scope-link active' : 'scope-link'}
+          data-testid="scope-estate"
+        >
+          Whole estate
+        </Link>
+      </div>
+      {visible.map(({ team, cards }) => (
+        <ShelfSection
+          key={team.id}
+          team={team}
+          cards={cards}
+          environments={environments}
+          lens={lens}
+          store={store}
+          selectedTier={selectedTier}
+        />
+      ))}
+    </section>
   )
 }
 
@@ -119,12 +109,14 @@ function ShelfSection({
   team,
   cards,
   environments,
+  lens,
   store,
   selectedTier,
 }: {
   team: TeamNode
   cards: CardFace[]
   environments: EstatePayload['environments']
+  lens: string
   store: ReturnType<typeof usePresentation>['store']
   selectedTier?: string
 }) {
@@ -161,7 +153,11 @@ function ShelfSection({
           const row = orderCards(cards.filter((card) => card.environment === env))
           if (row.length === 0) return null
           return (
-            <div key={env} className="environment-row" data-environment={env}>
+            <div
+              key={env}
+              className={env === lens ? 'environment-row lens-leading' : 'environment-row lens-muted'}
+              data-environment={env}
+            >
               <h3 className="environment-label">{env}</h3>
               <div className="card-row">
                 {row.map((card) => (

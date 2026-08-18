@@ -7,7 +7,9 @@ import { formatObjectRef, parseObjectRef } from '../../objectref'
  * The Compose Workspace: Blueprint authoring (ADR-0042 §1, ADR-0043).
  * The scaffold lists Blueprints and shows the selected Blueprint's
  * per-signal lanes in renderer order; the composer surfaces build on this
- * shell against the same URL-addressable selection.
+ * shell against the same URL-addressable selection. A Blueprint-shaped
+ * who-acts chip lands here at the offending lane (ADR-0042 §3.3), carried
+ * in the `lane` search param.
  */
 export function Compose() {
   const blueprints = useQuery({ queryKey: ['blueprints'], queryFn: api.blueprints })
@@ -59,7 +61,11 @@ export function Compose() {
             {chosen.name} <span className="item-meta">v{chosen.version}</span>
           </h2>
           {Object.entries(chosen.pipelines).map(([signal, lane]) => (
-            <div key={signal} className="signal-lane">
+            <div
+              key={signal}
+              className={signal === search.lane ? 'signal-lane offending' : 'signal-lane'}
+              data-testid={`lane-${signal}`}
+            >
               <h3>{signal}</h3>
               <ol className="lane-components">
                 {lane.map((component, i) => (

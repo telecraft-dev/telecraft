@@ -176,27 +176,38 @@ button {
   color: var(--colour-text-muted);
 }
 
-/* Shelf */
+/* Estate Workspace */
 
-.shelf-layout,
+.estate-layout,
 .topology-layout {
   display: flex;
   height: 100%;
 }
 
-.shelf {
+.estate-main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: var(--space-4) var(--space-5);
   overflow: auto;
 }
 
-.shelf-header {
+.estate-header {
   display: flex;
   align-items: baseline;
   gap: var(--space-4);
 }
 
-.shelf-header h1,
+.view-switcher {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.shelf {
+  flex: 1;
+}
+
+.estate-header h1,
 .topology-header h1,
 .compose-list h1,
 .catalogue-layout h1 {
@@ -207,6 +218,7 @@ button {
 .shelf-scope {
   display: flex;
   gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .scope-link {
@@ -255,6 +267,19 @@ button {
   margin-bottom: var(--space-3);
 }
 
+/* The lens emphasises its Environment's row and never filters the rest
+ * (ADR-0042 §4): muted rows stay fully present and readable. */
+
+.environment-row.lens-muted,
+.collector-table tr.lens-muted td {
+  opacity: 0.6;
+}
+
+.environment-row.lens-leading .environment-label {
+  color: var(--colour-text);
+  font-weight: 600;
+}
+
 .environment-label {
   font-size: 0.85rem;
   font-weight: 500;
@@ -279,8 +304,24 @@ button {
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-2);
   background: var(--colour-surface);
+  text-align: left;
+}
+
+.card-select {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   cursor: pointer;
   text-align: left;
+}
+
+.count-door {
+  color: var(--colour-accent);
+  text-decoration: underline;
 }
 
 .card-face.selected {
@@ -424,6 +465,203 @@ button {
 
 .panel-bands .band {
   flex-wrap: wrap;
+}
+
+/* Drawer findings (ADR-0041 §3) */
+
+.panel-findings h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 0.9rem;
+}
+
+.panel-findings .surface-status {
+  padding: 0;
+}
+
+.findings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.finding {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--colour-surface-raised);
+  font-size: 0.85rem;
+}
+
+.finding.severity-violation {
+  border-color: var(--colour-severity-violation);
+}
+
+.finding p {
+  margin: 0 0 var(--space-1);
+}
+
+.finding-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.finding-kind {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.finding-severity {
+  color: var(--colour-text-muted);
+}
+
+.dampening {
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  color: var(--colour-text-muted);
+  font-size: 0.85em;
+}
+
+.finding-remediation {
+  color: var(--colour-text-muted);
+}
+
+.who-acts {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-accent);
+  border-radius: var(--radius-1);
+  color: var(--colour-accent);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+/* The "why?" provenance popover (ADR-0042 §5) */
+
+.why {
+  position: relative;
+  display: inline-block;
+}
+
+.why-button {
+  border: 0;
+  background: none;
+  color: var(--colour-accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+.why-popover {
+  position: absolute;
+  right: 0;
+  top: 1.4em;
+  z-index: 1;
+  width: min(340px, 80vw);
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-2);
+  padding: var(--space-3);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.why-popover p {
+  margin: 0 0 var(--space-2);
+}
+
+.why-claim {
+  font-weight: 600;
+}
+
+.why-lines {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.why-lines code,
+.why-sha code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--colour-surface-raised);
+  padding: 0 var(--space-1);
+}
+
+.why-file {
+  display: block;
+  color: var(--colour-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.why-sha {
+  color: var(--colour-text-muted);
+}
+
+/* Roll-up (ADR-0017) */
+
+.rollup-kind .band-glyph {
+  margin-left: var(--space-1);
+}
+
+.rollup-kind.severity-violation .band-glyph {
+  color: var(--colour-severity-violation);
+}
+
+.rollup-kind.severity-advisory .band-glyph {
+  color: var(--colour-severity-advisory);
+}
+
+.rollup-waived {
+  display: block;
+  color: var(--colour-text-muted);
+  font-size: 0.85em;
+}
+
+.rollup-empty {
+  color: var(--colour-text-muted);
+}
+
+.rollup-all {
+  color: var(--colour-text-muted);
+  font-size: 0.9em;
+}
+
+/* Flat list */
+
+.flat-filters {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.flat-filters label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-muted);
+}
+
+.flat-filters select {
+  font: inherit;
+}
+
+.collector-table tbody tr {
+  cursor: pointer;
+}
+
+.collector-table tr.selected td {
+  background: var(--colour-surface-raised);
 }
 
 /* Topology */
@@ -581,6 +819,14 @@ button {
 .signal-lane h3 {
   margin-bottom: var(--space-1);
   font-size: 0.9rem;
+}
+
+/* A who-acts chip lands on the offending lane (ADR-0042 §3.3). */
+
+.signal-lane.offending {
+  outline: 2px solid var(--colour-severity-advisory);
+  outline-offset: var(--space-1);
+  border-radius: var(--radius-1);
 }
 
 .lane-components {
