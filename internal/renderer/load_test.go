@@ -26,6 +26,9 @@ func TestFixtureTopologyLoads(t *testing.T) {
 	if gateway.Serving == nil || gateway.Serving.Endpoint == "" {
 		t.Error("gateway is served and must carry the OpAMP endpoint")
 	}
+	if gateway.MinExpected != 2 {
+		t.Errorf("gateway min_expected = %d — the declared population floor rides the Tier (ADR-0035 §2)", gateway.MinExpected)
+	}
 	if !gateway.Untrusted() {
 		t.Error("the internet Hop declares no trust level — it must fail safe to untrusted")
 	}
@@ -204,5 +207,39 @@ selector:
 	_, err := LoadTopology(root)
 	if err == nil || !strings.Contains(err.Error(), "empty key or value") {
 		t.Fatalf("a selector with an empty value loaded: %v", err)
+	}
+}
+
+// A negative min_expected is not a floor; zero is the way to declare none
+// (ADR-0035 §2).
+func TestNegativeMinExpectedFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "teams/pipelines/tiers/gateway.yaml", `
+owner: pipelines-lead
+environment: production
+blueprint: pipelines/flow@1
+selector:
+  telecraft.tier: gateway
+min_expected: -1
+`)
+	_, err := LoadTopology(root)
+	if err == nil || !strings.Contains(err.Error(), "negative min_expected") {
+		t.Fatalf("a negative min_expected loaded: %v", err)
+	}
+}
+
+// A declared floor over a selector-less Tier could never be met: nothing
+// is ever matched into the Tier to count (ADR-0035, ADR-0007).
+func TestMinExpectedWithoutSelectorFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "teams/pipelines/tiers/gateway.yaml", `
+owner: pipelines-lead
+environment: production
+blueprint: pipelines/flow@1
+min_expected: 12
+`)
+	_, err := LoadTopology(root)
+	if err == nil || !strings.Contains(err.Error(), "min_expected but no selector") {
+		t.Fatalf("a floor without a selector loaded: %v", err)
 	}
 }
