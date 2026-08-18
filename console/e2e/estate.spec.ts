@@ -62,10 +62,11 @@ test('the lens changes emphasis and evaluation context without removing rows', a
 }) => {
   await page.goto('/estate?lens=production')
   const rows = page.locator('.environment-row')
-  const before = await rows.count()
   await expect(
     page.getByTestId('section-data-flow').locator('.environment-row').first(),
   ).toHaveAttribute('data-environment', 'production')
+  // Counted only after the shelf has rendered, or the baseline reads 0.
+  const before = await rows.count()
   await page.getByTestId('lens-control').selectOption('staging')
   // Emphasis moved: staging leads and carries the emphasis class...
   const first = page.getByTestId('section-data-flow').locator('.environment-row').first()
