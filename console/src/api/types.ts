@@ -12,6 +12,24 @@ export interface Me {
   name: string
   /** The user's team id: the shelf's resting scope (ADR-0042 §2). */
   team: string
+  /**
+   * The teams whose objects this user may author changes to: their team
+   * and every team beneath it, derived server-side from the ownership
+   * tree (ADR-0019 §2, ADR-0016/0017). Surfaces offer authoring actions
+   * exactly on objects owned inside this set.
+   */
+  editableTeams: string[]
+}
+
+/**
+ * GET /api/v1/auth/providers — how sign-in works on this instance
+ * (REQ-017, ADR-0019 §1). A `password` provider renders as a credential
+ * form; a `redirect` provider renders as a link to
+ * `/api/v1/auth/{name}/start`.
+ */
+export interface AuthProviderInfo {
+  name: string
+  flow: 'password' | 'redirect'
 }
 
 /**
@@ -181,12 +199,29 @@ export interface EstatePayload {
   cards: CardFace[]
 }
 
-/** A Tier as the topology canvas draws it. */
+/** The served vs git-delivered split: delivery path is a visible property
+ * of a collector (ADR-0007), aggregated to Tier grain for the canvas. */
+export interface DeliverySplit {
+  served: number
+  git: number
+}
+
+/**
+ * A Tier as the topology canvas draws it: the authored node plus its
+ * selector-matched counts. Collectors are never drawn — they are matched
+ * into a Tier by selector and appear only as these numbers (ADR-0007);
+ * the count is a door to the flat list (ADR-0042 §3.4).
+ */
 export interface TopologyTier {
   id: string
   name: string
   team: string
   environment: Environment
+  /** Derived strictness, mirrored from the card face (ADR-0025). */
+  serviceClass?: string
+  /** Selector-matched collector count. */
+  matched: number
+  delivery: DeliverySplit
 }
 
 /** An ungoverned arrival source: sits in the dedicated band (ADR-0044 §2). */

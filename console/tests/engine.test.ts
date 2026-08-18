@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { edgePath, layout } from '../src/engine/layout'
+import { MARGIN, chainMotionPath, edgePath, layout, routeChain } from '../src/engine/layout'
 import type { EngineModel } from '../src/engine/types'
 
 // The engine is a pure library, model in, geometry out, unit-testable
@@ -51,6 +51,12 @@ describe('layout', () => {
     }
   })
 
+  it('never lets an arrangement offset push a node left of the margin', () => {
+    const arranged = layout({ ...model, arrangement: { gateway: -10_000 } })
+    const gateway = arranged.nodes.find((n) => n.id === 'gateway')!
+    expect(gateway.x).toBe(MARGIN)
+  })
+
   it('keeps a node in its band whatever arrangement offset is stored', () => {
     const arranged = layout({ ...model, arrangement: { gateway: 400 } })
     const plain = layout(model)
@@ -97,6 +103,47 @@ describe('layout', () => {
         edges: [{ id: 'e', from: 'edge', to: 'ghost', signal: 'traces' }],
       }),
     ).toThrow(/unknown node/)
+  })
+})
+
+describe('routeChain', () => {
+  it('routes a Path chain as one orthogonal polyline per consecutive pair', () => {
+    const geometry = layout(model)
+    const segments = routeChain(geometry, ['internet', 'gateway'], 0)
+    expect(segments).toHaveLength(1)
+    for (const segment of segments) {
+      for (let i = 0; i + 1 < segment.length; i++) {
+        const a = segment[i]!
+        const b = segment[i + 1]!
+        expect(a.x === b.x || a.y === b.y).toBe(true)
+      }
+    }
+  })
+
+  it('keeps two Paths on distinct corridors via their offsets', () => {
+    const geometry = layout(model)
+    expect(routeChain(geometry, ['edge', 'gateway'], -3)).not.toEqual(
+      routeChain(geometry, ['edge', 'gateway'], 3),
+    )
+  })
+
+  it('routes a single-node chain to nothing: a gateway on-ramp Path has no Hop to draw', () => {
+    const geometry = layout(model)
+    expect(routeChain(geometry, ['gateway'], 0)).toEqual([])
+  })
+
+  it('refuses a chain naming an unknown node', () => {
+    const geometry = layout(model)
+    expect(() => routeChain(geometry, ['edge', 'ghost'], 0)).toThrow(/unknown node/)
+  })
+})
+
+describe('chainMotionPath', () => {
+  it('joins a chain into one continuous motion path', () => {
+    const geometry = layout(model)
+    const motion = chainMotionPath(routeChain(geometry, ['edge', 'gateway'], 0))
+    expect(motion.startsWith('M ')).toBe(true)
+    expect(motion.indexOf('M', 1)).toBe(-1)
   })
 })
 

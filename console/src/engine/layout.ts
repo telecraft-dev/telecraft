@@ -15,10 +15,10 @@ import type {
 // is a function of its band and nothing else, and the ungoverned band sits
 // above every Environment row whatever order the model lists them in.
 
-export const NODE_WIDTH = 180
-export const NODE_HEIGHT = 64
+export const NODE_WIDTH = 208
+export const NODE_HEIGHT = 76
 const NODE_GAP = 72
-const MARGIN = 48
+export const MARGIN = 48
 const BAND_PADDING = 36
 const BAND_HEIGHT = NODE_HEIGHT + 2 * BAND_PADDING
 const CHANNEL_INSET = 18
@@ -56,11 +56,17 @@ export function layout(model: EngineModel): Geometry {
     const band = bandById.get(node.band)!
     const index = countPerBand.get(node.band) ?? 0
     countPerBand.set(node.band, index + 1)
+    // An arrangement offset moves a node along its band only, and never
+    // left of the canvas margin: within-row rearrangement is the whole
+    // licence the presentation store has (ADR-0044 §3, ADR-0042 §7).
     nodes.push({
       id: node.id,
       band: node.band,
       label: node.label,
-      x: MARGIN + index * (NODE_WIDTH + NODE_GAP) + (model.arrangement?.[node.id] ?? 0),
+      x: Math.max(
+        MARGIN,
+        MARGIN + index * (NODE_WIDTH + NODE_GAP) + (model.arrangement?.[node.id] ?? 0),
+      ),
       y: band.y + BAND_PADDING,
       width: NODE_WIDTH,
       height: NODE_HEIGHT,
@@ -136,4 +142,37 @@ export function edgePath(edge: RoutedEdge): string {
   return edge.points
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
     .join(' ')
+}
+
+/**
+ * Routes a chain of nodes — a Path's Tiers in order — as one orthogonal
+ * polyline per consecutive pair, each nudged by `offset` so several traced
+ * Paths stay visually distinct on shared corridors (ADR-0044 §4). A
+ * single-node chain (a gateway on-ramp Path straight to one Tier,
+ * ADR-0007) has no pairs and routes to nothing: the caller marks the node
+ * instead.
+ */
+export function routeChain(geometry: Geometry, through: string[], offset: number): Point[][] {
+  const nodeById = new Map(geometry.nodes.map((n) => [n.id, n]))
+  const segments: Point[][] = []
+  for (let i = 0; i + 1 < through.length; i++) {
+    const from = nodeById.get(through[i]!)
+    const to = nodeById.get(through[i + 1]!)
+    if (!from || !to) {
+      throw new Error(`engine chain: ${through[i]}→${through[i + 1]} names an unknown node`)
+    }
+    segments.push(route(from, to, offset))
+  }
+  return segments
+}
+
+/**
+ * Joins a chain's segments into one continuous SVG motion path, for
+ * cosmetic simulate dots born at a receiver and traversing the full chain
+ * (ADR-0044 §5). The short connectors between segments pass behind the
+ * node they hand over at; drawn edges stay per-segment and orthogonal.
+ */
+export function chainMotionPath(segments: Point[][]): string {
+  const points = segments.flat()
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
 }

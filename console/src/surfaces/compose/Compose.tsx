@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { api } from '../../api/client'
 import { formatCatalogueKey } from '../../api/types'
+import { canActOn } from '../../auth/authz'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 
 /**
@@ -11,9 +12,15 @@ import { formatObjectRef, parseObjectRef } from '../../objectref'
  * shell against the same URL-addressable selection. A Blueprint-shaped
  * who-acts chip lands here at the offending lane (ADR-0042 §3.3), carried
  * in the `lane` search param.
+ *
+ * Whether a Blueprint is yours to author is the ownership tree's answer,
+ * not the surface's (ADR-0019 §2): authoring is offered exactly when the
+ * owning team is in the signed-in user's editableTeams, and the composer
+ * surfaces (ADR-0043) gate their controls on the same answer.
  */
 export function Compose() {
   const blueprints = useQuery({ queryKey: ['blueprints'], queryFn: api.blueprints })
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
 
@@ -61,6 +68,16 @@ export function Compose() {
           <h2>
             {chosen.name} <span className="item-meta">v{chosen.version}</span>
           </h2>
+          {me.data &&
+            (canActOn(me.data, chosen.team) ? (
+              <p className="authoring editable" data-testid="compose-authoring">
+                Yours to author: {chosen.team} is in your remit.
+              </p>
+            ) : (
+              <p className="authoring readonly" data-testid="compose-authoring">
+                Read-only: owned by {chosen.team}. Changes route through its owners.
+              </p>
+            ))}
           {Object.entries(chosen.pipelines).map(([signal, lane]) => (
             <div
               key={signal}
