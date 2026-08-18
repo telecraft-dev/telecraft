@@ -189,26 +189,36 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 		Capabilities: serverCapabilities,
 	}
 
-	if ec := msg.GetEffectiveConfig(); ec != nil {
-		digest := digestOf(ec)
-		if prev, ok := s.digests.Load(conn); !ok || prev != digest {
-			// Layer 1 changed: this branch is where the drift path's
-			// one-parse-per-changed-collector hangs when it lands
-			// (ADR-0005 layer 2). The digest itself is all that is kept.
-			s.digests.Store(conn, digest)
-		}
-	}
-
 	desc := msg.GetAgentDescription()
 	if desc == nil {
 		// Stateless means no per-connection attribute memory (ADR-0032):
 		// a message without the description cannot be matched, so ask for
-		// full state — the layer-1 digest keeps the re-report cheap.
+		// full state. Any effective config riding this message is
+		// deliberately not digested — a report the server cannot act on is
+		// not remembered, and the full-state re-report arrives with the
+		// description.
 		resp.Flags = uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState)
 		return resp
 	}
 
 	match := s.snapshot.Load().Match(attributesOf(desc))
+
+	if ec := msg.GetEffectiveConfig(); ec != nil {
+		digest := digestOf(ec)
+		if prev, ok := s.digests.Load(conn); !ok || prev != digest {
+			// Layer 1 changed: the one-parse-per-changed-collector moment
+			// (ADR-0005 layer 2). The delivery status — Intended ×
+			// Effective under the served path's profile (ADR-0004) — is
+			// computed here and logged, never stored; the digest itself is
+			// all that is kept.
+			s.digests.Store(conn, digest)
+			if st, err := deliveryStatus(match, msg); err != nil {
+				s.logf("delivery status for %s: %v", servedName(match), err)
+			} else {
+				s.logf("delivery status for %s: %s", servedName(match), st.Summary())
+			}
+		}
+	}
 	remote, err := remoteConfig(match.Artefact)
 	if err != nil {
 		// Never an empty config map (REQ-042, ADR-0010 rule 6): serving

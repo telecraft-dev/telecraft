@@ -22,6 +22,10 @@
 // artefacts from git to connected collectors, matched by Tier selector,
 // never an empty config map. See serve.go.
 //
+// delivery prints one collector's delivery status — the Intended ×
+// Effective cross via the normaliser (ADR-0004, ADR-0005), computed
+// identically for both delivery paths (REQ-041). See delivery.go.
+//
 // Which backend answers is wiring inside internal/provider/ — this command
 // holds only neutral connection settings (ADR-0001).
 package main
@@ -63,6 +67,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runRender(args[1:], stdout, stderr)
 	case "serve":
 		return runServe(args[1:], stdout, stderr)
+	case "delivery":
+		return runDelivery(args[1:], stdout, stderr)
 	default:
 		usage(stderr)
 		return 2
@@ -75,6 +81,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
 	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
+	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
 }
 
 func runObserve(args []string, stdout, stderr io.Writer) int {
