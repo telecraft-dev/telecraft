@@ -1,16 +1,21 @@
 // Command telecraft is the platform CLI.
 //
 // observe prints the Observed readings for one Service over a trailing
-// window, through the TelemetryProvider seam. Which backend answers is
-// wiring inside internal/provider/ — this command holds only neutral
-// connection settings (ADR-0001). Not knowing is a normal state (ADR-0008):
-// degraded readings print with their cause and the command still exits 0.
-// Scripting against presence belongs to the evaluator, not this printer.
+// window, through the TelemetryProvider seam. Not knowing is a normal state
+// (ADR-0008): degraded readings print with their cause and observe still
+// exits 0 — scripting against presence belongs to check, not this printer.
+//
+// check is the CI mode (REQ-024): evaluate the estate once, write one
+// machine-readable report, exit non-zero exactly when counting failures
+// exist. See check.go.
 //
 // palette prints one team's effective palette: the components of the active
 // Catalogue the team may use per the Allow-list policy (REQ-011, ADR-0021),
 // each with its provenance — the lists it survived, or the named Grant that
 // admitted it.
+//
+// Which backend answers is wiring inside internal/provider/ — this command
+// holds only neutral connection settings (ADR-0001).
 package main
 
 import (
@@ -42,6 +47,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "observe":
 		return runObserve(args[1:], stdout, stderr)
+	case "check":
+		return runCheck(args[1:], stdout, stderr)
 	case "palette":
 		return runPalette(args[1:], stdout, stderr)
 	default:
@@ -51,7 +58,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func usage(stderr io.Writer) {
-	fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
+	fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-environment env] [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
+	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 }
 
@@ -61,6 +69,7 @@ func runObserve(args []string, stdout, stderr io.Writer) int {
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
 	apiKey := fs.String("api-key", os.Getenv("TELECRAFT_TELEMETRY_API_KEY"), "telemetry backend API key (optional)")
 	service := fs.String("service", "", "service.name of the Service to read (required)")
+	environment := fs.String("environment", "", "narrow the reading to one Environment (optional)")
 	window := fs.Duration("window", 15*time.Minute, "trailing window the reading covers")
 	attrs := fs.String("attributes", "", "comma-separated attribute names to measure coverage for")
 	timeout := fs.Duration("timeout", 30*time.Second, "overall deadline for the readings")
@@ -88,10 +97,13 @@ func runObserve(args []string, stdout, stderr io.Writer) int {
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	svc := telemetry.Service{Name: *service}
+	svc := telemetry.Service{Name: *service, Environment: *environment}
 	obs := tel.Observe(ctx, svc, *window, attributes)
 
 	fmt.Fprintf(stdout, "service   %s\n", svc.Name)
+	if svc.Environment != "" {
+		fmt.Fprintf(stdout, "env       %s\n", svc.Environment)
+	}
 	fmt.Fprintf(stdout, "provider  %s\n", tel.Name())
 	fmt.Fprintf(stdout, "window    %s\n", obs.Window)
 	fmt.Fprintf(stdout, "as_of     %s\n\n", obs.AsOf.UTC().Format(time.RFC3339))
