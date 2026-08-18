@@ -1,0 +1,8 @@
+# The C1 Service whose Path traverses edge and gateway: adding this Path
+# is what tightens both Tiers' judgement to the C1 floor — strictness is
+# derived from traversal, never hand-maintained (ADR-0025 §4).
+owner: checkout-team
+class: C1
+paths:
+  - through: [data-flow/edge, data-flow/gateway]
+  - through: [data-flow/gateway-staging]

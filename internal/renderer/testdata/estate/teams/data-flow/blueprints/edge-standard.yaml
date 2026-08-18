@@ -1,0 +1,30 @@
+name: edge-standard
+version: 1
+owner: gateway-owners
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc: {}
+  - name: batcher
+    class: processor
+    type: batch
+    version: 1
+  - name: to-gateway
+    class: exporter
+    type: otlphttp
+    version: 1
+    config:
+      endpoint: https://gateway.internal:4318
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: batcher
+    - component: to-gateway
+  logs:
+    - component: otlp-in
+    - component: batcher
+    - component: to-gateway
