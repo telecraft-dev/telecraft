@@ -98,7 +98,86 @@ export interface CardFace {
   bands: Record<BandName, Band>
   /** Finding counts per kind (a shelf summary field). */
   findingCounts: Record<string, number>
+  /**
+   * Waived finding counts per kind: an Exemption waives the count, never
+   * the diagnosis, and waived counts ride every roll-up level
+   * (ADR-0017, ADR-0037).
+   */
+  waivedCounts?: Record<string, number>
   population: Population
+}
+
+/** How dampening currently holds a finding (ADR-0035 §3, ADR-0037). */
+export type DampeningState = 'none' | 'dampened' | 'waived'
+
+/**
+ * The who-acts routing target: the surface that can act on a finding,
+ * as an object deep-link (ADR-0042 §3.3). Blueprint-shaped findings land
+ * in Compose at the offending lane, grant-shaped in Governance,
+ * delivery-shaped on the Tier in Topology. Inspect stays; action travels.
+ */
+export interface WhoActs {
+  target: ObjectRef
+  /** The offending signal lane, for Blueprint-shaped findings. */
+  lane?: string
+  label: string
+}
+
+/** A drawer finding: a finding without remediation is a complaint (ADR-0041 §3). */
+export interface Finding {
+  id: string
+  kind: string
+  severity: Severity
+  dampening: DampeningState
+  summary: string
+  remediation: string
+  whoActs: WhoActs
+}
+
+/** One config line implying a derived value (ADR-0041 §3). */
+export interface ProvenanceLine {
+  file: string
+  line: number
+  text: string
+}
+
+/**
+ * A "why?" derivation as structured provenance: claim, the config lines
+ * that implied it, and the SHA judged against — fed, never reconstructed
+ * (ADR-0041 §3). Spatial derivations carry a trace action (ADR-0042 §5).
+ */
+export interface Provenance {
+  /** Which face value this explains, for example `service-class` or `band:conformance`. */
+  key: string
+  claim: string
+  lines: ProvenanceLine[]
+  sha: string
+  /** The optional travel action: trace this Service's Paths on the canvas. */
+  trace?: { service: string }
+}
+
+/** GET /api/v1/drawer?tier= — the on-demand drawer payload (ADR-0041 §3). */
+export interface CardDrawer {
+  contractVersion: 1
+  tier: string
+  findings: Finding[]
+  provenance: Provenance[]
+}
+
+/**
+ * GET /api/v1/collectors — per-collector detail, which lives in list
+ * surfaces only (ADR-0042 §3.4): collector counts elsewhere are doors to
+ * the flat list.
+ */
+export interface CollectorRow {
+  id: string
+  tier: string
+  team: string
+  environment: Environment
+  state: 'reporting' | 'stale' | 'never_seen'
+  version: string
+  /** Last-known reading time, so last-known-plus-age renders (ADR-0040). */
+  lastSeen?: string
 }
 
 export interface TeamNode {

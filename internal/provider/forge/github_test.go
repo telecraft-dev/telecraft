@@ -101,14 +101,10 @@ func (f *fakeAPI) server(t *testing.T) *httptest.Server {
 			reply(w, http.StatusOK, map[string]any{"default_branch": "main"})
 		case "GET /git/ref/heads/main":
 			reply(w, http.StatusOK, map[string]any{"object": map[string]any{"sha": "basesha"}})
-		case "GET /git/commits/basesha":
-			reply(w, http.StatusOK, map[string]any{"tree": map[string]any{"sha": "basetree"}})
-		case "POST /git/blobs":
-			reply(w, http.StatusCreated, map[string]any{"sha": "blobsha"})
-		case "POST /git/trees":
-			reply(w, http.StatusCreated, map[string]any{"sha": "newtree"})
-		case "POST /git/commits":
-			reply(w, http.StatusCreated, map[string]any{"sha": "newcommit"})
+		case "POST /graphql":
+			reply(w, http.StatusOK, map[string]any{"data": map[string]any{
+				"createCommitOnBranch": map[string]any{"commit": map[string]any{"oid": "newcommit"}},
+			}})
 		case "POST /git/refs":
 			f.mu.Lock()
 			exists := f.branch != ""
@@ -219,10 +215,26 @@ func testChange() seam.Change {
 	}
 }
 
+// commitInput digs the createCommitOnBranch input out of the i-th
+// recorded GraphQL call.
+func commitInput(t *testing.T, api *fakeAPI, i int) map[string]any {
+	t.Helper()
+	calls := api.sent("POST", "/graphql")
+	if len(calls) <= i {
+		t.Fatalf("saw %d graphql calls, want at least %d", len(calls), i+1)
+	}
+	vars, _ := calls[i]["variables"].(map[string]any)
+	input, _ := vars["input"].(map[string]any)
+	if input == nil {
+		t.Fatalf("graphql call %d carries no input: %v", i, calls[i])
+	}
+	return input
+}
+
 // TestProposeOpensPullRequest drives the full first-proposal flow against
-// the scripted API and pins what leaves the adapter: a commit authored by
-// the acting human, a tree carrying authored and rendered files, a pull
-// request against the default branch.
+// the scripted API and pins what leaves the adapter: one signed-shape bot
+// commit carrying authored and rendered files with the acting human as
+// co-author, a pull request against the default branch.
 func TestProposeOpensPullRequest(t *testing.T) {
 	api := &fakeAPI{t: t}
 	srv := api.server(t)
@@ -236,27 +248,49 @@ func TestProposeOpensPullRequest(t *testing.T) {
 		t.Errorf("proposal = %+v", got)
 	}
 
-	commits := api.sent("POST", "/repos/telecraft-dev/estate-fixture/git/commits")
-	if len(commits) != 1 {
-		t.Fatalf("saw %d commit creations, want 1", len(commits))
+	// The branch is reset onto the base, and the commit lands only if the
+	// head is still there.
+	refs := api.sent("POST", "/repos/telecraft-dev/estate-fixture/git/refs")
+	if len(refs) != 1 || refs[0]["sha"] != "basesha" {
+		t.Errorf("ref creation = %v, want the branch created at the base head", refs)
 	}
-	author, _ := commits[0]["author"].(map[string]any)
-	if author["name"] != "Jo Author" || author["email"] != "jo@example.com" {
-		t.Errorf("commit author = %v, want the acting human (ADR-0014)", author)
+	input := commitInput(t, api, 0)
+	if input["expectedHeadOid"] != "basesha" {
+		t.Errorf("expectedHeadOid = %v, want the base head", input["expectedHeadOid"])
 	}
-	if _, committerSet := commits[0]["committer"]; committerSet {
-		t.Error("committer was set explicitly; it must default to the app's bot identity")
+	branch, _ := input["branch"].(map[string]any)
+	if branch["repositoryNameWithOwner"] != "telecraft-dev/estate-fixture" || branch["branchName"] != "draft/tier" {
+		t.Errorf("commit branch = %v", branch)
 	}
 
-	trees := api.sent("POST", "/repos/telecraft-dev/estate-fixture/git/trees")
-	if len(trees) != 1 {
-		t.Fatalf("saw %d tree creations, want 1", len(trees))
+	// The mutation carries no custom author and no custom committer — the
+	// exact condition GitHub signs a bot commit under; the acting human
+	// rides as Co-authored-by instead (ADR-0014). This is the regression
+	// guard for the git-data lesson: a custom author forfeits the
+	// signature and is silently copied into the committer.
+	raw, _ := json.Marshal(input)
+	if strings.Contains(string(raw), `"author"`) || strings.Contains(string(raw), `"committer"`) {
+		t.Errorf("commit input carries custom identity fields — GitHub will not sign it:\n%s", raw)
 	}
-	entries, _ := trees[0]["tree"].([]any)
+	message, _ := input["message"].(map[string]any)
+	if message["headline"] != "Raise the gold tier" {
+		t.Errorf("message headline = %v", message["headline"])
+	}
+	body, _ := message["body"].(string)
+	if !strings.Contains(body, "Co-authored-by: Jo Author <jo@example.com>") {
+		t.Errorf("message body does not co-author the acting human (ADR-0014): %q", body)
+	}
+
+	fileChanges, _ := input["fileChanges"].(map[string]any)
+	additions, _ := fileChanges["additions"].([]any)
 	contents := map[string]string{}
-	for _, e := range entries {
-		entry := e.(map[string]any)
-		contents[entry["path"].(string)], _ = entry["content"].(string)
+	for _, a := range additions {
+		add := a.(map[string]any)
+		decoded, err := base64.StdEncoding.DecodeString(add["contents"].(string))
+		if err != nil {
+			t.Fatalf("addition contents not base64: %v", err)
+		}
+		contents[add["path"].(string)] = string(decoded)
 	}
 	if contents["teams/payments/tiers/gold.yaml"] != "tier: gold\n" {
 		t.Errorf("authored file content = %q", contents["teams/payments/tiers/gold.yaml"])
@@ -299,6 +333,9 @@ func TestProposeRefreshesExistingProposal(t *testing.T) {
 	if n := len(api.sent("PATCH", "/repos/telecraft-dev/estate-fixture/git/refs/heads/draft/tier")); n != 1 {
 		t.Errorf("saw %d ref force-moves, want 1", n)
 	}
+	if n := len(api.sent("POST", "/graphql")); n != 2 {
+		t.Errorf("saw %d commit mutations, want 2 — one per propose", n)
+	}
 	if n := len(api.sent("POST", "/repos/telecraft-dev/estate-fixture/pulls")); n != 1 {
 		t.Errorf("saw %d pull-request creations, want 1 — the second propose must refresh, not duplicate", n)
 	}
@@ -312,8 +349,8 @@ func TestProposeRefreshesExistingProposal(t *testing.T) {
 	}
 }
 
-// TestProposeDeletesWithNilContent: a nil file content becomes a tree
-// entry with a null sha — the git-data deletion shape.
+// TestProposeDeletesWithNilContent: a nil file content becomes a
+// fileChanges deletion, never an addition.
 func TestProposeDeletesWithNilContent(t *testing.T) {
 	api := &fakeAPI{t: t}
 	srv := api.server(t)
@@ -325,21 +362,15 @@ func TestProposeDeletesWithNilContent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entries, _ := api.sent("POST", "/repos/telecraft-dev/estate-fixture/git/trees")[0]["tree"].([]any)
-	var deletion map[string]any
-	for _, e := range entries {
-		if entry := e.(map[string]any); entry["path"] == "rendered/payments/stale.yaml" {
-			deletion = entry
+	fileChanges, _ := commitInput(t, api, 0)["fileChanges"].(map[string]any)
+	deletions, _ := fileChanges["deletions"].([]any)
+	if len(deletions) != 1 || deletions[0].(map[string]any)["path"] != "rendered/payments/stale.yaml" {
+		t.Errorf("deletions = %v, want exactly the nil-content path", deletions)
+	}
+	for _, a := range fileChanges["additions"].([]any) {
+		if a.(map[string]any)["path"] == "rendered/payments/stale.yaml" {
+			t.Errorf("deleted path also appears in additions: %v", a)
 		}
-	}
-	if deletion == nil {
-		t.Fatal("no tree entry for the deleted path")
-	}
-	if sha, present := deletion["sha"]; !present || sha != nil {
-		t.Errorf("deletion entry = %v, want an explicit null sha", deletion)
-	}
-	if _, hasContent := deletion["content"]; hasContent {
-		t.Errorf("deletion entry carries content: %v", deletion)
 	}
 }
 

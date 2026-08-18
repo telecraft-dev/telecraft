@@ -8,7 +8,7 @@ import { AuthGate } from './auth/AuthGate'
 import { AppShell } from './chrome/AppShell'
 import { Catalogue } from './surfaces/catalogue/Catalogue'
 import { Compose } from './surfaces/compose/Compose'
-import { Shelf } from './surfaces/estate/Shelf'
+import { Estate } from './surfaces/estate/Estate'
 import { FlowCanvas } from './surfaces/topology/FlowCanvas'
 
 // Every surface state is URL-addressable — workspace, selection, lens
@@ -49,17 +49,34 @@ const indexRoute = createRoute({
   },
 })
 
+/** The Estate view-switchers: one model, complementary representations (ADR-0042 §1). */
+export type EstateView = 'shelf' | 'rollup' | 'list'
+
 export interface EstateSearch {
   /** Shelf scope: the user's team subtree by default, one click widens (ADR-0042 §2). */
   scope?: 'team' | 'estate'
+  /** The Estate view: the shelf lands; roll-up and the flat list switch in place. */
+  view?: EstateView
+  /** Flat-list pre-filter: the Tier a collector count opened (ADR-0042 §3.4). */
+  tier?: string
+  /** Flat-list filters — explicit filters stay available; the lens never is one. */
+  team?: string
+  env?: string
 }
 
 const estateRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/estate',
-  component: Shelf,
+  component: Estate,
   validateSearch: (search: Record<string, unknown>): EstateSearch => ({
     scope: search.scope === 'estate' ? 'estate' : search.scope === 'team' ? 'team' : undefined,
+    view:
+      search.view === 'rollup' || search.view === 'list' || search.view === 'shelf'
+        ? search.view
+        : undefined,
+    tier: typeof search.tier === 'string' ? search.tier : undefined,
+    team: typeof search.team === 'string' ? search.team : undefined,
+    env: typeof search.env === 'string' ? search.env : undefined,
   }),
 })
 
@@ -69,10 +86,18 @@ const topologyRoute = createRoute({
   component: FlowCanvas,
 })
 
+export interface ComposeSearch {
+  /** The signal lane a who-acts chip lands on (ADR-0042 §3.3). */
+  lane?: string
+}
+
 const composeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/compose',
   component: Compose,
+  validateSearch: (search: Record<string, unknown>): ComposeSearch => ({
+    lane: typeof search.lane === 'string' ? search.lane : undefined,
+  }),
 })
 
 const catalogueRoute = createRoute({

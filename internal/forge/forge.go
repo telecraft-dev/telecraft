@@ -23,9 +23,13 @@ import "context"
 // and email come from the authenticated identity's claims, so attribution
 // survives without a forge account (ADR-0019 §3).
 type Identity struct {
-	// Name and Email author the commit. Both are required: an
+	// Name and Email attribute the commit. Both are required: an
 	// unattributable change is the shared-service-account failure ADR-0014
-	// exists to prevent, and Submit refuses it.
+	// exists to prevent, and Submit refuses it. The attribution shape is
+	// the adapter's choice per forge — the git author where the forge
+	// permits it alongside a verifiable bot identity, a co-author trailer
+	// where the forge signs only untouched bot commits — but the human is
+	// always on the commit itself, never only in proposal metadata.
 	Name  string
 	Email string
 

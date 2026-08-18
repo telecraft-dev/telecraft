@@ -183,7 +183,7 @@ func withAttribution(body string, author Identity, forgeName string) string {
 	if author.Handle != "" {
 		who = fmt.Sprintf("%s (@%s)", who, author.Handle)
 	}
-	footer := fmt.Sprintf("Proposed by %s via %s; the commits carry this authorship (ADR-0014).", who, forgeName)
+	footer := fmt.Sprintf("Proposed by %s via %s; the commits attribute this change to them (ADR-0014).", who, forgeName)
 	if body == "" {
 		return footer
 	}
