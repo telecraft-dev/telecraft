@@ -50,6 +50,7 @@ export function FlatList({
 
   const setFilter = (key: 'tier' | 'team' | 'env', value: string) =>
     void navigate({
+      from: '/estate',
       to: '/estate',
       search: (prev) => ({ ...prev, [key]: value === '' ? undefined : value }),
     })
@@ -128,6 +129,7 @@ export function FlatList({
                 .join(' ')}
               onClick={() =>
                 void navigate({
+                  from: '/estate',
                   to: '/estate',
                   search: (prev) => ({
                     ...prev,
