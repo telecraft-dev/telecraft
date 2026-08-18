@@ -15,6 +15,10 @@ npm run backend    # the fixture backend on http://127.0.0.1:4700
 npm run dev        # the console on http://localhost:5173, proxying /api
 ```
 
+The fixture backend signs in with `demo@example.com` / `demo-password`
+(it prints this at start-up). The platform binary verifies PBKDF2 hashes
+from the estate's `users.yaml` instead; `telecraft passwd` authors them.
+
 Checks, as CI runs them:
 
 ```sh
@@ -49,12 +53,18 @@ backend (`tools/fixture-backend.mjs`) implements this contract over the
 fixture estate; the platform binary replaces it when the API endpoint
 lands there.
 
-All endpoints are `GET`, returning JSON. The TypeScript shapes live in
-`src/api/types.ts`.
+Endpoints are `GET` unless marked, returning JSON. The TypeScript shapes
+live in `src/api/types.ts`. Everything outside `/api/v1/auth/` wants a
+session; a 401 renders the sign-in surface in place of the shell, and the
+URL the user arrived on survives the round trip.
 
 | Endpoint | Returns |
 |---|---|
-| `/api/v1/me` | The signed-in user: id, name, and team (the shelf's resting scope). |
+| `/api/v1/auth/providers` | How sign-in works on this instance (REQ-017, ADR-0019): each provider's name and flow, `password` or `redirect`. Answers signed out. |
+| `/api/v1/auth/login` (POST) | Signs in with a password provider: `{provider, username, secret}` in, the session cookie and the `me` payload out. |
+| `/api/v1/auth/{name}/start` | Begins a redirect provider's round trip (OIDC; SAML when it lands); `return_to` names the path to resume. |
+| `/api/v1/auth/logout` (POST) | Ends the session. |
+| `/api/v1/me` | The signed-in user: id, name, team (the shelf's resting scope), and `editableTeams` — the team subtree the ownership tree derives their authoring rights from (ADR-0019 §2). Surfaces offer authoring actions exactly on objects owned inside that set. |
 | `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team. |
 | `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, and one ADR-0041 card face per Tier. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. |
