@@ -349,6 +349,9 @@ func servedName(m Match) string {
 	if m.Unmatched {
 		return "the Unmatched artefact"
 	}
+	if m.Cohort {
+		return "tier " + m.Tier + " (cohort of rollout " + m.Rollout + ", @next artefact)"
+	}
 	return "tier " + m.Tier
 }
 

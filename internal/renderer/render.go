@@ -115,9 +115,23 @@ func Render(in Inputs) (Result, error) {
 		if len(tierProblems) > 0 {
 			continue
 		}
-		res.Artefacts["rendered/"+tier.Team+"/"+tier.Name+".yaml"] = artefact
+		res.Artefacts[ArtefactPath(tier)] = artefact
 		if supervisor != nil {
 			res.Artefacts["rendered/"+tier.Team+"/"+tier.Name+".supervisor.yaml"] = supervisor
+		}
+
+		// A Tier with an active Rollout is dual-bound (ADR-0029 §3,
+		// amending ADR-0025 §1): the Rollout spec is an authored input, so
+		// the `@next` artefact — the *to* binding's render — is a
+		// deterministic output beside the base artefact, both at head.
+		if r, ok := in.Topology.RolloutFor(tier.ID()); ok {
+			next, nextFindings, nextProblems := renderNext(in, tier, r)
+			problems = append(problems, nextProblems...)
+			res.Findings = append(res.Findings, nextFindings...)
+			if len(nextProblems) > 0 {
+				continue
+			}
+			res.Artefacts[NextArtefactPath(tier)] = next
 		}
 	}
 
@@ -151,16 +165,52 @@ func RenderedID(c blueprint.Component) string {
 	return c.Type + "/" + c.Team + "." + c.Name
 }
 
+// ArtefactPath is the repo-relative path of a Tier's rendered collector
+// artefact — the stable estate path of ADR-0027.
+func ArtefactPath(t Tier) string {
+	return "rendered/" + t.Team + "/" + t.Name + ".yaml"
+}
+
+// NextArtefactPath is the repo-relative path of a dual-bound Tier's *to*
+// artefact while a Rollout is active (ADR-0029 §3). It exists exactly when
+// the Rollout does, and is retired with it.
+func NextArtefactPath(t Tier) string {
+	return "rendered/" + t.Team + "/" + t.Name + "@next.yaml"
+}
+
 // renderTier compiles one Tier. It returns the collector artefact, the
 // supervisor artefact (nil where the Tier is not served), the policy
 // findings, and the mechanical or hard-block problems that refuse the
 // render.
 func renderTier(in Inputs, tier Tier) (artefact, supervisor []byte, findings []Finding, problems []string) {
-	ctx := fmt.Sprintf("tier %q", tier.ID())
+	artefact, findings, problems = renderBound(in, tier, fmt.Sprintf("tier %q", tier.ID()))
+	if len(problems) > 0 {
+		return nil, nil, findings, problems
+	}
+	if tier.Serving != nil {
+		supervisor = emitSupervisor(in, tier)
+	}
+	return artefact, supervisor, findings, problems
+}
 
+// renderNext compiles the `@next` artefact of a Tier with an active Rollout:
+// the same render as the base artefact, under the Rollout's *to* binding
+// (ADR-0029 §3). The *to* Blueprint is judged like any bound one — floors,
+// the allow-list hard block, the stale-pin finding all apply, because this
+// config is about to run in this Tier.
+func renderNext(in Inputs, tier Tier, r Rollout) ([]byte, []Finding, []string) {
+	next := tier
+	next.Blueprint = r.To
+	next.binding = r.ToBinding()
+	return renderBound(in, next, fmt.Sprintf("tier %q (rollout %q, to artefact)", tier.ID(), r.ID()))
+}
+
+// renderBound compiles one Tier under its current binding — the shared leg
+// of the base and `@next` renders.
+func renderBound(in Inputs, tier Tier, ctx string) (artefact []byte, findings []Finding, problems []string) {
 	bp, ok := in.Estate.Blueprint(tier.Binding().ID())
 	if !ok {
-		return nil, nil, nil, []string{fmt.Sprintf("%s binds %s, but no Blueprint has that id — nothing can render in its place (ADR-0025)", ctx, tier.Binding())}
+		return nil, nil, []string{fmt.Sprintf("%s binds %s, but no Blueprint has that id — nothing can render in its place (ADR-0025)", ctx, tier.Binding())}
 	}
 	if bp.Version != tier.Binding().Version {
 		// The estate tree holds head content, so head is what renders; the
@@ -175,18 +225,15 @@ func renderTier(in Inputs, tier Tier) (artefact, supervisor []byte, findings []F
 	problems = append(problems, allowListProblems(in.Policy, bp, instances, ctx)...)
 	findings = append(findings, floorFindings(in, tier, bp)...)
 	if len(problems) > 0 {
-		return nil, nil, findings, problems
+		return nil, findings, problems
 	}
 
 	artefact, emitProblems := emitCollector(in, tier, bp, instances)
 	problems = append(problems, emitProblems...)
 	if len(problems) > 0 {
-		return nil, nil, findings, problems
+		return nil, findings, problems
 	}
-	if tier.Serving != nil {
-		supervisor = emitSupervisor(in, tier)
-	}
-	return artefact, supervisor, findings, problems
+	return artefact, findings, problems
 }
 
 // resolveInstances resolves every lane entry of the Blueprint to a component

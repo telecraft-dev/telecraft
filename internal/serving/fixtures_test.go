@@ -105,6 +105,13 @@ environment: production
 blueprint: pipelines/flow@1
 `)
 
+	return root, renderFixture(t, root)
+}
+
+// renderFixture renders the authored estate at root and writes the
+// rendered tree beside it, exactly the shape the server fetches from git.
+func renderFixture(t *testing.T, root string) renderer.Result {
+	t.Helper()
 	est, findings, err := blueprint.Load(root)
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +132,7 @@ blueprint: pipelines/flow@1
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err = renderer.Render(renderer.Inputs{
+	res, err := renderer.Render(renderer.Inputs{
 		Estate:        est,
 		Topology:      topo,
 		Policy:        policy,
@@ -141,7 +148,7 @@ blueprint: pipelines/flow@1
 	for rel, content := range res.Artefacts {
 		writeFile(t, root, rel, string(content))
 	}
-	return root, res
+	return res
 }
 
 // fixtureCatalogue round-trips a small Catalogue through the real artefact
