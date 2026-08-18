@@ -1,6 +1,10 @@
 package conformance
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/telecraft-dev/telecraft/internal/requirements"
+)
 
 // Effective is one row's Effective reading: the collector's own reported
 // running config — OpAMP's EffectiveConfig, adopted verbatim (ADR-0004,
@@ -33,6 +37,17 @@ type Pipeline struct {
 	Receivers  []string `yaml:"receivers"`
 	Processors []string `yaml:"processors"`
 	Exporters  []string `yaml:"exporters"`
+}
+
+// SatisfiesConfig judges this reading against one config assertion — the
+// same checker the cross uses on the Effective reading, exposed so the
+// drift detection can run it against the Intended one (ADR-0004: "same
+// checker as the declared config assertion, run against the intended
+// YAML"). The reading must be Known; an unavailable reading has nothing to
+// judge and belongs to the cross's evaluability rules, not this method.
+func (e Effective) SatisfiesConfig(a *requirements.ConfigAssertion) (bool, []string) {
+	ok, _, detail := checkConfig(a, e)
+	return ok, detail
 }
 
 // componentsOf unions one component slot across every pipeline — the

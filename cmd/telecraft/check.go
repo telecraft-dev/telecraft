@@ -10,9 +10,13 @@ import (
 	"sort"
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/blueprint"
+	"github.com/telecraft-dev/telecraft/internal/catalogue"
 	"github.com/telecraft-dev/telecraft/internal/conformance"
+	"github.com/telecraft-dev/telecraft/internal/drift"
 	"github.com/telecraft-dev/telecraft/internal/ownership"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
+	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
@@ -38,6 +42,15 @@ import (
 // keeps its outcome and detail in the report, gives up only its count, and
 // rides the row score's and summary's waived totals so a green built on
 // exemptions cannot look like a clean green.
+//
+// With -source and -catalogue, the run also judges the authored estate for
+// library_drift (REQ-025, ADR-0026): config in git that passes the version
+// it claims or pins while failing the current bar. Those findings are
+// repo-owned, never a row's — they land in their own report section,
+// distinct from every cross outcome and from delivery divergence, and each
+// counts toward the exit code at library_drift's severity. Floors come from
+// the shipped ADR-0023 §3 defaults until the authored floor-policy file
+// exists.
 func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -45,6 +58,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	estatePath := fs.String("estate", "", "estate file — services and their per-environment effective config (required)")
 	exemptionsDir := fs.String("exemptions", "", "exemptions directory — authored waivers (optional; ADR-0037)")
 	ownershipDir := fs.String("ownership", "", "estate ownership directory holding teams.yaml and the authored objects — needed only to resolve team-scoped exemptions")
+	source := fs.String("source", "", "authored estate root holding teams/ and rendered/ — enables library_drift detection (REQ-025; needs -catalogue)")
+	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact — enables library_drift detection (needs -source)")
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
 	apiKey := fs.String("api-key", os.Getenv("TELECRAFT_TELEMETRY_API_KEY"), "telemetry backend API key (optional)")
 	environment := fs.String("environment", "", "narrow the check to one Environment (default: every row in the estate)")
@@ -54,6 +69,10 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	if *library == "" || *estatePath == "" {
 		fmt.Fprintln(stderr, "check: -library and -estate are required")
+		return 2
+	}
+	if (*source == "") != (*artefact == "") {
+		fmt.Fprintln(stderr, "check: -source and -catalogue go together — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
 		return 2
 	}
 
@@ -66,6 +85,18 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
+	}
+
+	// The drift detection is pure repo judgement, so it runs — and fails
+	// closed — before any backend is touched.
+	var driftReport *drift.Report
+	if *source != "" {
+		rep, err := detectDrift(*source, *artefact, lib)
+		if err != nil {
+			fmt.Fprintf(stderr, "check: %v\n", err)
+			return 2
+		}
+		driftReport = &rep
 	}
 
 	// Waivers loosen the exit code, so their inputs fail closed too: an
@@ -178,6 +209,39 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	if driftReport != nil {
+		for _, f := range driftReport.Findings {
+			// -environment narrows Tier-scoped drift the same way it
+			// narrows rows; Blueprint-scoped drift has no Environment and
+			// is repo-wide under any lens.
+			if *environment != "" && f.Environment != "" && f.Environment != *environment {
+				continue
+			}
+			report.LibraryDrift = append(report.LibraryDrift, driftFindingReport{
+				Facet:       string(f.Facet),
+				Team:        f.Team,
+				Owner:       f.Owner,
+				Tier:        f.Tier,
+				Environment: f.Environment,
+				Blueprint:   f.Blueprint,
+				Lane:        f.Lane,
+				Outcome:     string(conformance.LibraryDrift),
+				Severity:    conformance.LibraryDrift.Severity(),
+				Message:     f.Message,
+				Remediation: f.Remediation,
+			})
+			report.Summary.LibraryDrift++
+			report.Summary.CountingFailures++
+		}
+		for _, n := range driftReport.Nudges {
+			report.Housekeeping = append(report.Housekeeping, housekeepingReport{
+				Blueprint: n.Blueprint,
+				Owner:     n.Owner,
+				Message:   n.Message,
+			})
+		}
+	}
+
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(report); err != nil {
@@ -231,6 +295,37 @@ func attributesIn(lib requirements.Library) []string {
 	return out
 }
 
+// detectDrift loads the authored estate and the current bar and runs the
+// library_drift detection (REQ-025, ADR-0026). Load findings from the
+// blueprint trees are not re-reported here — they are load-time findings
+// with their own routing, surfaced by the render path.
+func detectDrift(source, artefact string, lib requirements.Library) (drift.Report, error) {
+	est, _, err := blueprint.Load(source)
+	if err != nil {
+		return drift.Report{}, err
+	}
+	topo, err := renderer.LoadTopology(source)
+	if err != nil {
+		return drift.Report{}, err
+	}
+	cat, err := catalogue.Load(artefact)
+	if err != nil {
+		return drift.Report{}, err
+	}
+	rendered, err := drift.LoadRendered(source)
+	if err != nil {
+		return drift.Report{}, err
+	}
+	return drift.Detect(drift.Inputs{
+		Estate:    est,
+		Topology:  topo,
+		Catalogue: cat,
+		Floors:    renderer.DefaultFloors(),
+		Library:   lib,
+		Rendered:  rendered,
+	})
+}
+
 // The report is the machine-readable contract (REQ-024): one JSON document
 // on stdout. summary.counting_failures > 0 is exactly the non-zero exit.
 type checkReport struct {
@@ -238,7 +333,40 @@ type checkReport struct {
 	Provider          string            `json:"provider"`
 	Rows              []rowReport       `json:"rows"`
 	AuthoringFindings []authoringReport `json:"authoring_findings,omitempty"`
-	Summary           summaryReport     `json:"summary"`
+
+	// LibraryDrift is the repo's own section (REQ-025): library_drift
+	// findings are owned by authored config, never by a row, and share
+	// nothing with delivery divergence (ADR-0004, ADR-0026). Housekeeping
+	// carries the stale-but-passing claim nudges — visible, never counted.
+	LibraryDrift []driftFindingReport `json:"library_drift,omitempty"`
+	Housekeeping []housekeepingReport `json:"housekeeping,omitempty"`
+
+	Summary summaryReport `json:"summary"`
+}
+
+// driftFindingReport is one library_drift finding: the facet slices the
+// one finding kind (ADR-0026 §7), the severity is the outcome's rung in
+// the shared ordering, and the routing names the owning team.
+type driftFindingReport struct {
+	Facet       string `json:"facet"`
+	Team        string `json:"team"`
+	Owner       string `json:"owner"`
+	Tier        string `json:"tier,omitempty"`
+	Environment string `json:"environment,omitempty"`
+	Blueprint   string `json:"blueprint"`
+	Lane        string `json:"lane,omitempty"`
+	Outcome     string `json:"outcome"`
+	Severity    int    `json:"severity"`
+	Message     string `json:"message"`
+	Remediation string `json:"remediation"`
+}
+
+// housekeepingReport is one stale-claim nudge (ADR-0026 §6): not an
+// outcome, never in the exit code.
+type housekeepingReport struct {
+	Blueprint string `json:"blueprint"`
+	Owner     string `json:"owner"`
+	Message   string `json:"message"`
 }
 
 type rowReport struct {
@@ -282,11 +410,14 @@ type authoringReport struct {
 
 // The summary carries the waived total beside the failure counts, so a gate
 // green on exemptions is visibly green on exemptions (ADR-0017, ADR-0037).
+// library_drift findings ride counting_failures and are broken out beside
+// it, so a gate red on drift alone is visibly red on drift.
 type summaryReport struct {
 	Rows             int `json:"rows"`
 	FailingRows      int `json:"failing_rows"`
 	CountingFailures int `json:"counting_failures"`
 	Waived           int `json:"waived"`
+	LibraryDrift     int `json:"library_drift"`
 }
 
 func renderRow(v conformance.Verdict) rowReport {

@@ -77,7 +77,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-environment env] [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
-	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
+	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
 	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
