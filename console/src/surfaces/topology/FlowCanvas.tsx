@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { useState } from 'react'
 import {
   BaseEdge,
   Handle,
@@ -12,38 +13,103 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { api } from '../../api/client'
-import type { TopologyPayload } from '../../api/types'
-import { edgePath, layout } from '../../engine/layout'
-import type { EngineModel } from '../../engine/types'
+import type { TopologyPayload, TopologyTier } from '../../api/types'
+import {
+  MARGIN,
+  chainMotionPath,
+  edgePath,
+  layout,
+  routeChain,
+} from '../../engine/layout'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
 import { CardPanel } from '../estate/card'
+import { buildTopologyModel, pathHopPairs, pathTierIds, servicePaths } from './model'
 
 // The topology flow canvas: xyflow is the interaction substrate (pan,
-// zoom, node lifecycle); the engine owns every coordinate (ADR-0045 §2).
-// Edges derive from Hops exactly as the model records them — never
-// hand-drawn (ADR-0044 §3) — so each xyflow edge simply draws the
-// engine's routed polyline.
+// zoom, node lifecycle, constrainable drag); the engine owns every
+// coordinate (ADR-0045 §2). Edges derive from the model's Hops, exactly
+// as the Paths traverse them — never hand-drawn (ADR-0044 §3): the shell
+// only draws the engine's routed polylines, and no gesture creates one.
+// Tier nodes carry selector-matched counts, never collectors (ADR-0007);
+// the count is a door to the flat list (ADR-0042 §3.4).
+
+/** The distinct trace-overlay palette cycle; tokens carry the colours. */
+const TRACE_COLOURS = 4
+
+/** Fixed-locale count formatting so a large population reads at a glance. */
+function formatCount(n: number): string {
+  return n.toLocaleString('en-US')
+}
 
 type CanvasNode = Node<{
   label: string
   kind: 'tier' | 'source'
+  tier?: TopologyTier
   dimmed: boolean
   chosen: boolean
+  /** The first traced Path this node sits on, for the overlay tint. */
+  traceIndex?: number
 }>
 
-type CanvasEdge = Edge<{ path: string; dimmed: boolean; trusted: boolean }>
+type CanvasEdge = Edge<{
+  path: string
+  dimmed: boolean
+  trusted: boolean
+  /** Set on trace overlays: the Path index the overlay renders. */
+  traceIndex?: number
+}>
+
+type JourneyEdge = Edge<{ path: string; signals: string[]; journey: number }>
 
 function EngineNodeView({ data }: NodeProps<CanvasNode>) {
+  const trace =
+    data.traceIndex !== undefined ? ` on-trace trace-path-${data.traceIndex % TRACE_COLOURS}` : ''
   return (
     <div
       className={`canvas-node kind-${data.kind}${data.dimmed ? ' dimmed' : ''}${
         data.chosen ? ' chosen' : ''
-      }`}
+      }${trace}`}
     >
-      <Handle type="target" position={Position.Left} className="canvas-handle" />
-      <span>{data.label}</span>
-      <Handle type="source" position={Position.Right} className="canvas-handle" />
+      {/* Handles exist so xyflow can anchor derived edges; they are never
+          connectable — no gesture draws an edge (ADR-0044 §3). */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="canvas-handle"
+        isConnectable={false}
+      />
+      <header className="canvas-node-head">
+        <span className="canvas-node-name">{data.label}</span>
+        {data.tier?.serviceClass && (
+          <span className="card-class">{data.tier.serviceClass}</span>
+        )}
+      </header>
+      {data.tier && (
+        <div className="canvas-node-counts">
+          {/* The matched count is a door to the flat list, pre-filtered
+              (ADR-0042 §3.4) — never a reason to draw a collector. */}
+          <Link
+            to="/estate"
+            search={(prev) => ({ ...prev, view: 'list' as const, tier: data.tier!.id })}
+            className="count-door nodrag"
+            data-testid={`node-collectors-${data.tier.id}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {formatCount(data.tier.matched)} matched
+          </Link>
+          <span className="canvas-node-split">
+            {formatCount(data.tier.delivery.served)} served ·{' '}
+            {formatCount(data.tier.delivery.git)} git
+          </span>
+        </div>
+      )}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="canvas-handle"
+        isConnectable={false}
+      />
     </div>
   )
 }
@@ -58,35 +124,51 @@ function BandNodeView({ data }: NodeProps<Node<{ label: string; bandKind: string
 
 function EngineEdgeView({ data }: EdgeProps<CanvasEdge>) {
   if (!data) return null
+  const overlay =
+    data.traceIndex !== undefined
+      ? ` trace-overlay trace-path-${data.traceIndex % TRACE_COLOURS}`
+      : ''
   return (
     <BaseEdge
       path={data.path}
-      className={`canvas-edge${data.dimmed ? ' dimmed' : ''}${data.trusted ? '' : ' untrusted'}`}
+      className={`canvas-edge${data.dimmed ? ' dimmed' : ''}${
+        data.trusted ? '' : ' untrusted'
+      }${overlay}`}
     />
   )
 }
 
-const nodeTypes = { engineNode: EngineNodeView, band: BandNodeView }
-const edgeTypes = { engineEdge: EngineEdgeView }
-
-/** The Hops on a Service's Paths, as `from→to` pairs. */
-function pathHops(payload: TopologyPayload, service: string): Set<string> {
-  const pairs = new Set<string>()
-  for (const path of payload.paths.filter((p) => p.service === service)) {
-    for (let i = 0; i + 1 < path.through.length; i++) {
-      pairs.add(`${path.through[i]}→${path.through[i + 1]}`)
-    }
-  }
-  return pairs
+/**
+ * Cosmetic simulate (ADR-0044 §5): per-journey dots born at a receiver
+ * traversing the full chain, signal groups staggered. Pure animation over
+ * the engine's geometry — it reads no config and persists nothing.
+ */
+function JourneyEdgeView({ data }: EdgeProps<JourneyEdge>) {
+  if (!data) return null
+  return (
+    <g className="journey">
+      {data.signals.map((signal, i) => (
+        <circle key={signal} r="4" className={`journey-dot signal-${signal}`}>
+          <animateMotion
+            dur="4s"
+            repeatCount="indefinite"
+            begin={`${data.journey * 0.6 + i * 0.2}s`}
+            path={data.path}
+          />
+        </circle>
+      ))}
+    </g>
+  )
 }
 
-/** The Tiers on a Service's Paths. */
-function pathTiers(payload: TopologyPayload, service: string): Set<string> {
-  const tiers = new Set<string>()
-  for (const path of payload.paths.filter((p) => p.service === service)) {
-    for (const tier of path.through) tiers.add(tier)
-  }
-  return tiers
+const nodeTypes = { engineNode: EngineNodeView, band: BandNodeView }
+const edgeTypes = { engineEdge: EngineEdgeView, journey: JourneyEdgeView }
+
+/** A Path's legend label: its Tier names in order, on-ramps called out. */
+function pathLabel(payload: TopologyPayload, through: string[]): string {
+  const name = (id: string) => payload.tiers.find((t) => t.id === id)?.name ?? id
+  if (through.length === 1) return `straight to ${name(through[0]!)}`
+  return through.map(name).join(' → ')
 }
 
 export function FlowCanvas() {
@@ -95,6 +177,12 @@ export function FlowCanvas() {
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
   const { store } = usePresentation()
+  // Simulate is a cosmetic toggle: component state only, nothing in the
+  // URL and nothing in the presentation store — it changes nothing
+  // persistent (ADR-0044 §5).
+  const [simulate, setSimulate] = useState(false)
+  // Bumped after a drag persists, so the engine re-derives from the store.
+  const [, setArrangementVersion] = useState(0)
 
   if (topology.isPending) return <p className="surface-status">Loading the topology…</p>
   if (topology.isError) return <p className="surface-status">The topology payload failed to load.</p>
@@ -104,35 +192,14 @@ export function FlowCanvas() {
   const tracedService = selected?.kind === 'service' ? selected.id : undefined
   const chosenTier = selected?.kind === 'tier' ? selected.id : undefined
 
-  const model: EngineModel = {
-    bands: [
-      ...(payload.sources.length > 0
-        ? [{ id: 'ungoverned', kind: 'ungoverned' as const, label: 'ungoverned arrivals' }]
-        : []),
-      ...payload.environments.map((env) => ({
-        id: env,
-        kind: 'environment' as const,
-        label: env,
-      })),
-    ],
-    nodes: [
-      ...payload.sources.map((s) => ({ id: s.id, band: 'ungoverned', label: s.name })),
-      ...payload.tiers.map((t) => ({ id: t.id, band: t.environment, label: t.name })),
-    ],
-    edges: payload.hops.flatMap((hop) =>
-      hop.signals.map((signal) => ({
-        id: `${hop.from}→${hop.to}:${signal}`,
-        from: hop.from,
-        to: hop.to,
-        signal,
-      })),
-    ),
-    arrangement: store.load().arrangement['topology'],
-  }
+  const arrangement = store.load().arrangement['topology']
+  const model = buildTopologyModel(payload, arrangement)
   const geometry = layout(model)
 
-  const traced = tracedService ? pathTiers(payload, tracedService) : undefined
-  const tracedPairs = tracedService ? pathHops(payload, tracedService) : undefined
+  const tracedPaths = tracedService ? servicePaths(payload, tracedService) : []
+  const traced = tracedService ? pathTierIds(tracedPaths) : undefined
+  const tracedPairs = tracedService ? pathHopPairs(tracedPaths) : undefined
+  const tierById = new Map(payload.tiers.map((t) => [t.id, t]))
   const sourceIds = new Set(payload.sources.map((s) => s.id))
 
   const bandNodes: Node[] = geometry.bands.map((band) => ({
@@ -153,15 +220,31 @@ export function FlowCanvas() {
     position: { x: node.x, y: node.y },
     width: node.width,
     height: node.height,
-    draggable: false,
+    // Drag rearranges within the row or band only (ADR-0044 §3): the
+    // extent pins the engine's y, so no gesture can move a node out of
+    // its Environment row — the picture must not lie about the estate.
+    // Nothing is connectable: edges are never hand-drawn.
+    draggable: true,
+    connectable: false,
+    extent: [
+      [MARGIN, node.y],
+      [1e6, node.y + node.height],
+    ],
     data: {
       label: node.label,
       kind: sourceIds.has(node.id) ? 'source' : 'tier',
+      tier: tierById.get(node.id),
       dimmed: traced !== undefined && !traced.has(node.id) && !sourceIds.has(node.id),
       chosen: node.id === chosenTier,
+      traceIndex:
+        traced !== undefined && traced.has(node.id)
+          ? tracedPaths.findIndex((p) => p.through.includes(node.id))
+          : undefined,
     },
   }))
 
+  // Every drawn edge is one of the engine's routed polylines for a model
+  // Hop; there is no gesture that creates one (ADR-0044 §3).
   const edges: CanvasEdge[] = geometry.edges.map((edge) => {
     const hop = payload.hops.find((h) => h.from === edge.from && h.to === edge.to)
     return {
@@ -176,6 +259,50 @@ export function FlowCanvas() {
       },
     }
   })
+
+  // Trace overlays: each of the Service's Paths rides its own offset
+  // corridor, so multiple Paths stay distinct (P3; ADR-0044 §4). A
+  // single-Tier Path (a gateway on-ramp, ADR-0007) has no segments; its
+  // node carries the tint and the legend names it.
+  const overlays: CanvasEdge[] = tracedPaths.flatMap((path, i) => {
+    const offset = (i - (tracedPaths.length - 1) / 2) * 6
+    return routeChain(geometry, path.through, offset).map((segment, j) => ({
+      id: `trace:${i}:${j}`,
+      source: path.through[j]!,
+      target: path.through[j + 1]!,
+      type: 'engineEdge' as const,
+      data: {
+        path: chainMotionPath([segment]),
+        dimmed: false,
+        trusted: true,
+        traceIndex: i,
+      },
+    }))
+  })
+
+  // Simulate journeys: one per Path with at least one Hop, dots per
+  // signal group of its first Hop.
+  const journeys: JourneyEdge[] = simulate
+    ? payload.paths.flatMap((path, i) => {
+        if (path.through.length < 2) return []
+        const first = payload.hops.find(
+          (h) => h.from === path.through[0] && h.to === path.through[1],
+        )
+        return [
+          {
+            id: `journey:${path.service}:${i}`,
+            source: path.through[0]!,
+            target: path.through[path.through.length - 1]!,
+            type: 'journey' as const,
+            data: {
+              path: chainMotionPath(routeChain(geometry, path.through, 0)),
+              signals: first?.signals ?? ['traces'],
+              journey: i,
+            },
+          },
+        ]
+      })
+    : []
 
   const services = [...new Set(payload.paths.map((p) => p.service))]
   const panelCard =
@@ -212,17 +339,38 @@ export function FlowCanvas() {
                 {service}
               </button>
             ))}
+            <button
+              type="button"
+              data-testid="simulate-toggle"
+              className={simulate ? 'trace-button active' : 'trace-button'}
+              aria-pressed={simulate}
+              onClick={() => setSimulate(!simulate)}
+            >
+              Simulate flow
+            </button>
           </div>
+          {tracedService && (
+            <div className="trace-legend" data-testid="trace-legend">
+              {tracedPaths.map((path, i) => (
+                <span
+                  key={path.through.join('→')}
+                  className={`trace-path-chip trace-path-${i % TRACE_COLOURS}`}
+                  data-testid={`trace-path-${i}`}
+                >
+                  {pathLabel(payload, path.through)}
+                </span>
+              ))}
+            </div>
+          )}
         </header>
         <div className="topology-canvas" data-testid="topology-canvas">
           <ReactFlow
             nodes={[...bandNodes, ...nodes]}
-            edges={edges}
+            edges={[...edges, ...overlays, ...journeys]}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             fitView
             minZoom={0.2}
-            nodesDraggable={false}
             nodesConnectable={false}
             edgesFocusable={false}
             proOptions={{ hideAttribution: true }}
@@ -235,6 +383,24 @@ export function FlowCanvas() {
                   object: formatObjectRef({ kind: 'tier', id: node.id }),
                 }),
               })
+            }}
+            onNodeDragStop={(_event, node) => {
+              // Within-row arrangement persists per user (ADR-0042 §7):
+              // presentation only, never model truth, fully loseable.
+              const placed = geometry.nodes.find((n) => n.id === node.id)
+              if (!placed) return
+              const base = placed.x - (arrangement?.[node.id] ?? 0)
+              const current = store.load()
+              store.save({
+                arrangement: {
+                  ...current.arrangement,
+                  topology: {
+                    ...current.arrangement['topology'],
+                    [node.id]: Math.round(node.position.x - base),
+                  },
+                },
+              })
+              setArrangementVersion((v) => v + 1)
             }}
           />
         </div>
