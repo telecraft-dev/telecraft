@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 
 	"github.com/telecraft-dev/telecraft/internal/renderer"
+	"github.com/telecraft-dev/telecraft/internal/rollout"
 )
 
 // Snapshot is the first of ADR-0032's two caches: the estate repo at
@@ -52,11 +53,19 @@ type Snapshot struct {
 }
 
 // entry is one Tier's line in the selector index: the selector authored on
-// the Tier and the rendered artefact bytes served on a match.
+// the Tier, the rendered artefact bytes served on a match, and — while a
+// Rollout is active on the Tier — the `@next` artefact and the Rollout
+// whose cohort function decides who receives it (ADR-0029).
 type entry struct {
 	tier     string
 	selector map[string]string
 	artefact []byte
+
+	// next is the *to* artefact of the Tier's active Rollout; nil when the
+	// Tier is single-bound. rollout names the Rollout, and its spec is
+	// what membership is computed from — per connect, never stored (§4).
+	next    []byte
+	rollout renderer.Rollout
 }
 
 // LoadSnapshot compiles the estate checkout at root into a Snapshot,
@@ -78,16 +87,26 @@ func LoadSnapshot(root, commit string) (*Snapshot, error) {
 			// only by the git-delivered path (REQ-041).
 			continue
 		}
-		rel := "rendered/" + tier.Team + "/" + tier.Name + ".yaml"
-		artefact, err := readArtefact(root, rel)
+		artefact, err := readArtefact(root, renderer.ArtefactPath(tier))
 		if err != nil {
 			return nil, fmt.Errorf("tier %q: %w", tier.ID(), err)
 		}
-		snap.entries = append(snap.entries, entry{
+		e := entry{
 			tier:     tier.ID(),
 			selector: tier.Selector,
 			artefact: artefact,
-		})
+		}
+		if r, ok := topo.RolloutFor(tier.ID()); ok {
+			// A dual-bound Tier serves both artefacts (ADR-0029 §3): a
+			// missing or empty @next would turn cohort members' serves
+			// into lies, so it fails the snapshot like any other artefact.
+			e.next, err = readArtefact(root, renderer.NextArtefactPath(tier))
+			if err != nil {
+				return nil, fmt.Errorf("tier %q has an active rollout %q but no servable @next artefact — the dual render emits it, so this estate needs a re-render (ADR-0029 §3): %w", tier.ID(), r.ID(), err)
+			}
+			e.rollout = r
+		}
+		snap.entries = append(snap.entries, e)
 	}
 
 	snap.unmatched, err = readArtefact(root, renderer.UnmatchedArtefactPath)
@@ -126,6 +145,13 @@ type Match struct {
 	// Unmatched marks a collector matching no selector: it receives the
 	// Unmatched artefact and becomes maximally visible, never silent.
 	Unmatched bool
+
+	// Rollout names the matched Tier's active Rollout, when one is; Cohort
+	// reports whether this collector is in its active cohort — in which
+	// case Artefact is the `@next` artefact, the *to* binding's render
+	// (ADR-0029 §4).
+	Rollout string
+	Cohort  bool
 }
 
 // Match resolves reported identifying attributes to the artefact this head
@@ -149,6 +175,16 @@ func (s *Snapshot) Match(attrs map[string]string) Match {
 	}
 	if won == nil {
 		return Match{Artefact: s.unmatched, Unmatched: true}
+	}
+	if won.next != nil {
+		// The Tier is dual-bound: cohort membership decides which artefact
+		// this collector receives, computed here per connect as a pure
+		// function of (head, attributes) — never stored, identical on
+		// every replica (ADR-0029 §4, ADR-0032 §2).
+		if rollout.Member(won.rollout, attrs) {
+			return Match{Tier: won.tier, Artefact: won.next, Rollout: won.rollout.ID(), Cohort: true}
+		}
+		return Match{Tier: won.tier, Artefact: won.artefact, Rollout: won.rollout.ID()}
 	}
 	return Match{Tier: won.tier, Artefact: won.artefact}
 }
