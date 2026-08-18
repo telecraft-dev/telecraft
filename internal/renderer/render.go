@@ -34,6 +34,17 @@ const StripProcessorID = "attributes/telecraft.untrusted-hop"
 // (ADR-0010 rule 3).
 const SupervisorStorageDir = "/var/lib/telecraft/supervisor"
 
+// UnmatchedArtefactPath is the repo path of the Unmatched artefact
+// (ADR-0030): the distinguished, root-team-owned rendered config the server
+// serves to a collector matching no Tier selector — never an empty config
+// map (ADR-0010 rule 6). The renderer emits it unconditionally.
+const UnmatchedArtefactPath = "rendered/_estate/unmatched.yaml"
+
+// UnmatchedAttribute is the resource attribute the Unmatched artefact
+// labels its collectors with: governed-by-nobody, maximally visible —
+// not-knowing is a rendered, visible state, never an absence (ADR-0030).
+const UnmatchedAttribute = "telecraft.unmatched"
+
 // Inputs is everything one render reads. Every field is required: the
 // renderer is a pure function of the authored trees, the active policy and
 // the commit under render — nothing here is optional or discovered.
@@ -99,6 +110,11 @@ func Render(in Inputs) (Result, error) {
 			res.Artefacts["rendered/"+tier.Team+"/"+tier.Name+".supervisor.yaml"] = supervisor
 		}
 	}
+
+	// The Unmatched artefact renders unconditionally (ADR-0030): the root
+	// team owns one governance artefact by convention, and the server must
+	// always have something non-empty to serve an unmatched collector.
+	res.Artefacts[UnmatchedArtefactPath] = emitUnmatched(in)
 
 	res.Artefacts["CODEOWNERS"] = CodeOwners(in.Tree)
 

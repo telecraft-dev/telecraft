@@ -521,3 +521,46 @@ pipelines:
 		t.Fatalf("a receiverless lane did not refuse the render: %v", err)
 	}
 }
+
+// The Unmatched artefact (ADR-0030): rendered unconditionally at its
+// distinguished path, commit-stamped, labelled governed-by-nobody,
+// self-telemetry only — no data pipelines, no receivers, no exporters —
+// and non-empty by construction (ADR-0010 rule 6).
+func TestUnmatchedArtefactRendersUnconditionally(t *testing.T) {
+	res, err := Render(fixtureInputs(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, ok := res.Artefacts[UnmatchedArtefactPath]
+	if !ok {
+		t.Fatalf("no %s artefact — the renderer emits it unconditionally (ADR-0030)", UnmatchedArtefactPath)
+	}
+	if len(raw) == 0 {
+		t.Fatal("the Unmatched artefact is empty — it exists to be the non-empty thing the server serves (ADR-0010 rule 6)")
+	}
+
+	var doc map[string]any
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("the Unmatched artefact is not valid YAML: %v", err)
+	}
+	for _, section := range []string{"receivers", "processors", "exporters", "connectors"} {
+		if _, has := doc[section]; has {
+			t.Errorf("the Unmatched artefact has a %s section — self-telemetry only, no data pipelines (ADR-0030)", section)
+		}
+	}
+	service, ok := doc["service"].(map[string]any)
+	if !ok {
+		t.Fatal("the Unmatched artefact has no service section")
+	}
+	if _, has := service["pipelines"]; has {
+		t.Error("the Unmatched artefact wires pipelines — no data pipelines (ADR-0030)")
+	}
+	telemetry, _ := service["telemetry"].(map[string]any)
+	resource, _ := telemetry["resource"].(map[string]any)
+	if resource[CommitAttribute] != fixtureCommit {
+		t.Errorf("commit stamp = %v, want %v — the artefact carries its own identity (ADR-0013)", resource[CommitAttribute], fixtureCommit)
+	}
+	if resource[UnmatchedAttribute] != true {
+		t.Errorf("%s = %v — the unmatched collector is labelled governed-by-nobody (ADR-0030)", UnmatchedAttribute, resource[UnmatchedAttribute])
+	}
+}

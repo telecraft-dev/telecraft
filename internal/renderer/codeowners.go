@@ -38,7 +38,34 @@ func CodeOwners(tree ownership.Tree) []byte {
 		fmt.Fprintf(&buf, "/teams/%s/ %s\n", id, strings.Join(handles, " "))
 		fmt.Fprintf(&buf, "/rendered/%s/ %s\n", id, strings.Join(handles, " "))
 	}
+
+	// The estate-level governance artefacts — today the Unmatched artefact —
+	// are root-team-owned by convention (ADR-0030).
+	if handles := rootHandles(tree); len(handles) > 0 {
+		buf.WriteString("\n")
+		fmt.Fprintf(&buf, "/rendered/_estate/ %s\n", strings.Join(handles, " "))
+	}
 	return buf.Bytes()
+}
+
+// rootHandles collects the forge handles of the root team(s) — the teams
+// with no parent — in team-id order, deduplicated.
+func rootHandles(tree ownership.Tree) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, id := range sortedKeys(tree.Teams) {
+		if tree.Teams[id].Parent != "" {
+			continue
+		}
+		for _, o := range tree.Teams[id].Owners {
+			h := "@" + string(o)
+			if !seen[h] {
+				seen[h] = true
+				out = append(out, h)
+			}
+		}
+	}
+	return out
 }
 
 // chainHandles collects the forge handles for a team and its ancestors,
