@@ -27,7 +27,7 @@ const (
 	// FloorConflict is the two sources disagreeing: a declared floor
 	// above the live derived count. Resolution prefers derived, but the
 	// comparison is never silent — a declared floor above live reality
-	// usually means a shrunk fleet someone should notice (§2).
+	// usually means the estate shrank and someone should notice (§2).
 	FloorConflict Class = "floor_conflict"
 )
 
@@ -157,7 +157,7 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 			Grade: Advisory,
 			Floor: floor,
 			Seen:  p.Seen,
-			Detail: fmt.Sprintf("declared floor min_expected %d is above the derived count %d — a declared floor above live reality usually means a shrunk fleet someone should notice (ADR-0035 §2)",
+			Detail: fmt.Sprintf("declared floor min_expected %d is above the derived count %d — a declared floor above live reality usually means the estate shrank and someone should notice (ADR-0035 §2)",
 				p.Declared, p.Derived.Instances),
 		})
 	}

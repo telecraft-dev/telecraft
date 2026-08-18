@@ -211,7 +211,7 @@ func TestDamperTracksShortfallOnset(t *testing.T) {
 	if since := d.Observe("data-flow/edge", 40, floor, t0.Add(3*time.Minute)); !since.IsZero() {
 		t.Fatalf("recovered Tier still holds onset %v", since)
 	}
-	if since := d.Observe("data-flow/edge", 12, floor, t0.Add(4*time.Minute)); !since.Equal(t0.Add(4*time.Minute)) {
+	if since := d.Observe("data-flow/edge", 12, floor, t0.Add(4*time.Minute)); !since.Equal(t0.Add(4 * time.Minute)) {
 		t.Fatalf("a fresh shortfall after recovery: onset = %v, want %v — the full grace window applies again", since, t0.Add(4*time.Minute))
 	}
 	if since := d.Observe("data-flow/edge", 0, Floor{}, t0.Add(5*time.Minute)); !since.IsZero() {

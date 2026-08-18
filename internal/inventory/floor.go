@@ -48,8 +48,8 @@ type Floor struct {
 //
 // Resolution never silences the comparison: when both sources exist they
 // are compared by the judgement (Population.Findings), because a declared
-// floor above live reality usually means a shrunk fleet someone should
-// notice.
+// floor above live reality usually means the estate shrank and someone
+// should notice.
 func ResolveFloor(derived Count, declared int) Floor {
 	if derived.Known {
 		return Floor{Source: FloorDerived, Min: derived.Instances, AsOf: derived.AsOf}
