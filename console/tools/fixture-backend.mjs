@@ -20,6 +20,7 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { claimContextProblems, previewClaim, submitClaim, ungovernedSummary } from './claims.mjs'
 import { propose, validate } from './evaluator.mjs'
+import { rolloutProgress } from './rollout.mjs'
 
 const args = process.argv.slice(2)
 const argValue = (flag) => {
@@ -103,6 +104,14 @@ function objects() {
   for (const component of estate.catalogue) {
     out.push({ kind: 'component', id: component.id, name: component.name, team: component.team })
   }
+  for (const rollout of estate.rollouts ?? []) {
+    out.push({
+      kind: 'rollout',
+      id: `${rollout.team}/${rollout.name}`,
+      name: rollout.name,
+      team: rollout.team,
+    })
+  }
   // Catalogue entries of the active version: browsable and deep-linkable,
   // machine-generated, owned by nobody — the index carries no team.
   for (const entry of activeCatalogue().components) {
@@ -158,6 +167,10 @@ const api = {
     hops: estate.topology.hops,
     paths: estate.topology.paths,
   }),
+  // Active Rollouts' cohort progress (ADR-0029): membership from the pure
+  // function, running status from the stamps, evaluated per request —
+  // never stored, exactly the server's posture.
+  '/api/v1/rollouts': () => rolloutProgress(estate),
   '/api/v1/blueprints': () => estate.blueprints,
   '/api/v1/catalogue': () => estate.catalogue,
   // Installed catalogues are retained per version, one designated active
