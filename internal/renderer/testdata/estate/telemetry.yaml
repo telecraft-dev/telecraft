@@ -1,0 +1,8 @@
+# The estate-level self-telemetry destination (REQ-053, ADR-0039 §2):
+# declared once by the adopter, resolved per Tier at render on the Tier's
+# declared Environment. Production overrides the estate endpoint so the
+# fixture exercises the per-Tier resolution.
+self_telemetry:
+  endpoint: https://otlp.observability.internal:4318
+  environments:
+    production: https://otlp-prod.observability.internal:4318

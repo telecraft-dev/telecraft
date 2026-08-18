@@ -69,15 +69,21 @@ func runRender(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "render: %v\n", err)
 		return 2
 	}
+	selfTel, err := renderer.LoadSelfTelemetry(*estate)
+	if err != nil {
+		fmt.Fprintf(stderr, "render: %v\n", err)
+		return 2
+	}
 
 	res, err := renderer.Render(renderer.Inputs{
-		Estate:    est,
-		Topology:  topo,
-		Policy:    policy,
-		Catalogue: cat,
-		Tree:      tree,
-		Floors:    renderer.DefaultFloors(),
-		Commit:    *commit,
+		Estate:        est,
+		Topology:      topo,
+		Policy:        policy,
+		Catalogue:     cat,
+		Tree:          tree,
+		Floors:        renderer.DefaultFloors(),
+		SelfTelemetry: selfTel,
+		Commit:        *commit,
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "render: %v\n", err)

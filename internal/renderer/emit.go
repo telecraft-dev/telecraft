@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -155,13 +156,58 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 	commitKey := scalar(CommitAttribute)
 	commitKey.HeadComment = "The artefact carries its own identity (ADR-0013)."
 	appendPair(resource, commitKey, scalar(in.Commit))
-	telemetry := mapping()
-	appendPair(telemetry, scalar("resource"), resource)
+	tierKey := scalar(TierAttribute)
+	tierKey.HeadComment = "The Tier half of the reading join: reading → (Tier, SHA) → artefact\n→ claims (ADR-0039 §5). A reading, never a back-door Effective."
+	appendPair(resource, tierKey, scalar(tier.ID()))
+	telemetry, telProblems := emitSelfTelemetry(in, resource, tier.Environment, ctx)
+	if len(telProblems) > 0 {
+		return nil, telProblems
+	}
 	appendPair(service, scalar("telemetry"), telemetry)
 
 	appendPair(root, scalar("service"), service)
 
 	return marshalDocument(root)
+}
+
+// emitSelfTelemetry builds the `service::telemetry` block: the identity
+// resource plus OTLP-push of the collector's internal metrics (level
+// normal, periodic reader) and logs (batch processor) to the estate's
+// declared destination, resolved for this Environment (REQ-053, ADR-0039
+// §1–2). The renderer owns this block; Blueprints never author it
+// (boundary against ADR-0024's collector-wide section). Internal traces
+// stay off in v1 — experimental upstream, and no claim consumes them. The
+// localhost Prometheus default is left untouched, so local debugging keeps
+// working.
+func emitSelfTelemetry(in Inputs, resource *yaml.Node, environment, ctx string) (*yaml.Node, []string) {
+	telemetry := mapping()
+	appendPair(telemetry, scalar("resource"), resource)
+
+	exporter := map[string]any{
+		"otlp": map[string]any{
+			"protocol": in.SelfTelemetry.protocol(),
+			"endpoint": in.SelfTelemetry.Resolve(environment),
+		},
+	}
+	metrics, err := configNode(map[string]any{
+		"level":   "normal",
+		"readers": []any{map[string]any{"periodic": map[string]any{"exporter": exporter}}},
+	})
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: self-telemetry metrics block: %v", ctx, err)}
+	}
+	metricsKey := scalar("metrics")
+	metricsKey.HeadComment = "Self-telemetry pushes to the estate's declared destination over its\nown exporter and connection — never through this Tier's own data\npipelines (REQ-053, ADR-0039 §2). Internal traces stay off in v1."
+	appendPair(telemetry, metricsKey, metrics)
+
+	logs, err := configNode(map[string]any{
+		"processors": []any{map[string]any{"batch": map[string]any{"exporter": exporter}}},
+	})
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: self-telemetry logs block: %v", ctx, err)}
+	}
+	appendPair(telemetry, scalar("logs"), logs)
+	return telemetry, nil
 }
 
 // emitSupervisor builds the Supervisor config served beside a Tier's
@@ -226,8 +272,18 @@ func emitUnmatched(in Inputs) []byte {
 	unmatchedKey.HeadComment = "Labelled governed-by-nobody — what makes the onboard CTA rich\n(ADR-0030, ADR-0031)."
 	appendPair(resource, unmatchedKey, boolScalar(true))
 
-	telemetry := mapping()
-	appendPair(telemetry, scalar("resource"), resource)
+	// No Tier stamp — an unmatched collector has none, which is exactly
+	// what the label above says. The push blocks still render: ADR-0030
+	// made this artefact self-telemetry-only, and ADR-0039 §1 makes the
+	// push mandatory everywhere. No Environment either, so the estate
+	// endpoint resolves.
+	telemetry, problems := emitSelfTelemetry(in, resource, "", "unmatched artefact")
+	if len(problems) > 0 {
+		// The blocks are built from validated inputs and plain literals;
+		// refusal here would mean a renderer bug, and the render's contract
+		// is complete-or-refused — so make it loud.
+		panic(strings.Join(problems, "; "))
+	}
 	service := mapping()
 	appendPair(service, scalar("telemetry"), telemetry)
 	appendPair(root, scalar("service"), service)

@@ -15,3 +15,21 @@ service:
       # Labelled governed-by-nobody — what makes the onboard CTA rich
       # (ADR-0030, ADR-0031).
       telecraft.unmatched: true
+    # Self-telemetry pushes to the estate's declared destination over its
+    # own exporter and connection — never through this Tier's own data
+    # pipelines (REQ-053, ADR-0039 §2). Internal traces stay off in v1.
+    metrics:
+      level: normal
+      readers:
+        - periodic:
+            exporter:
+              otlp:
+                endpoint: https://otlp.observability.internal:4318
+                protocol: http/protobuf
+    logs:
+      processors:
+        - batch:
+            exporter:
+              otlp:
+                endpoint: https://otlp.observability.internal:4318
+                protocol: http/protobuf

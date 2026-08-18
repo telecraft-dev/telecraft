@@ -33,3 +33,24 @@ service:
       k8s.node.name: ${env:TELECRAFT_NODE_NAME}
       # The artefact carries its own identity (ADR-0013).
       telecraft.commit: 8b7df143d91c716ecfa5fc1730022f6b421b05cd
+      # The Tier half of the reading join: reading → (Tier, SHA) → artefact
+      # → claims (ADR-0039 §5). A reading, never a back-door Effective.
+      telecraft.tier: data-flow/edge
+    # Self-telemetry pushes to the estate's declared destination over its
+    # own exporter and connection — never through this Tier's own data
+    # pipelines (REQ-053, ADR-0039 §2). Internal traces stay off in v1.
+    metrics:
+      level: normal
+      readers:
+        - periodic:
+            exporter:
+              otlp:
+                endpoint: https://otlp-prod.observability.internal:4318
+                protocol: http/protobuf
+    logs:
+      processors:
+        - batch:
+            exporter:
+              otlp:
+                endpoint: https://otlp-prod.observability.internal:4318
+                protocol: http/protobuf
