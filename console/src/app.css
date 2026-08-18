@@ -879,3 +879,110 @@ button {
   background: var(--colour-surface-raised);
   outline: 2px solid var(--colour-accent);
 }
+
+/* Sign-in (REQ-017, ADR-0019): rendered by the auth gate in place of the
+   shell; the palette is the same tokens, nothing external. */
+
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: var(--colour-bg);
+}
+
+.login-card {
+  width: 320px;
+  padding: var(--space-5);
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login-lede {
+  margin: 0;
+  color: var(--colour-text-muted);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  color: var(--colour-text-muted);
+}
+
+.login-form input {
+  font: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  color: var(--colour-text);
+}
+
+.login-form button {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-1);
+  background: var(--colour-accent);
+  color: var(--colour-accent-contrast);
+  cursor: pointer;
+}
+
+.login-error {
+  margin: 0;
+  color: var(--colour-severity-violation);
+  font-size: 0.9rem;
+}
+
+.login-redirect {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  text-align: center;
+  text-decoration: none;
+  color: var(--colour-text);
+}
+
+.chrome-user {
+  color: var(--colour-text-muted);
+  white-space: nowrap;
+}
+
+.sign-out {
+  font: inherit;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  cursor: pointer;
+}
+
+/* The authoring affordance: words first, hue reinforcing (ADR-0041 §2). */
+
+.authoring {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-1);
+  font-size: 0.9rem;
+  width: fit-content;
+}
+
+.authoring.editable {
+  background: color-mix(in srgb, var(--colour-severity-ok) 12%, transparent);
+  color: var(--colour-severity-ok);
+}
+
+.authoring.readonly {
+  background: color-mix(in srgb, var(--colour-severity-neutral) 12%, transparent);
+  color: var(--colour-text-muted);
+}

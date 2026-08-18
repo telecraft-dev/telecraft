@@ -12,6 +12,24 @@ export interface Me {
   name: string
   /** The user's team id: the shelf's resting scope (ADR-0042 §2). */
   team: string
+  /**
+   * The teams whose objects this user may author changes to: their team
+   * and every team beneath it, derived server-side from the ownership
+   * tree (ADR-0019 §2, ADR-0016/0017). Surfaces offer authoring actions
+   * exactly on objects owned inside this set.
+   */
+  editableTeams: string[]
+}
+
+/**
+ * GET /api/v1/auth/providers — how sign-in works on this instance
+ * (REQ-017, ADR-0019 §1). A `password` provider renders as a credential
+ * form; a `redirect` provider renders as a link to
+ * `/api/v1/auth/{name}/start`.
+ */
+export interface AuthProviderInfo {
+  name: string
+  flow: 'password' | 'redirect'
 }
 
 /** The authored-object kinds jump-to-object can reach (ADR-0042 §1). */

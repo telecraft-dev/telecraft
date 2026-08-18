@@ -313,15 +313,17 @@ func TestMissingDirectoryIsAnError(t *testing.T) {
 	}
 }
 
-// Allow-lists and Grants live beside teams.yaml in the estate directory
-// (ADR-0021 §5); they are policy, loaded by internal/allowlist, and must not
-// be parsed here as authored-object files.
+// Allow-lists, Grants and users live beside teams.yaml in the estate
+// directory (ADR-0021 §5; ADR-0019); they are policy and membership, loaded
+// by internal/allowlist and internal/auth, and must not be parsed here as
+// authored-object files.
 func TestPolicyFilesBesideTeamsAreSkipped(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "teams.yaml", goodTeams)
 	write(t, dir, "tiers.yaml", goodObject)
 	write(t, dir, "allow-lists.yaml", "allow_lists:\n  - team: platform\n    owner: platform-observability\n    allow: [receiver/otlp]\n")
 	write(t, dir, "grants.yaml", "grants: []\n")
+	write(t, dir, "users.yaml", "users:\n  - email: jo@example.com\n    name: Jo\n    owner: platform-observability\n")
 	est, err := Load(dir)
 	if err != nil {
 		t.Fatalf("an estate with policy files beside teams.yaml must load: %v", err)

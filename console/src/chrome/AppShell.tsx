@@ -1,4 +1,6 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet } from '@tanstack/react-router'
+import { api } from '../api/client'
 import { JumpToObject } from './JumpToObject'
 import { LensControl } from './LensControl'
 
@@ -14,6 +16,15 @@ const WORKSPACES = [
 ] as const
 
 export function AppShell() {
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
+  const queryClient = useQueryClient()
+  const signOut = useMutation({
+    mutationFn: api.logout,
+    // Dropping the me query flips the auth gate back to the sign-in
+    // surface; everything else is stale with it.
+    onSuccess: () => queryClient.resetQueries(),
+  })
+
   return (
     <div className="shell">
       <header className="chrome">
@@ -35,6 +46,19 @@ export function AppShell() {
         <div className="chrome-controls">
           <LensControl />
           <JumpToObject />
+          {me.data && (
+            <span className="chrome-user" data-testid="chrome-user">
+              {me.data.name}
+            </span>
+          )}
+          <button
+            type="button"
+            className="sign-out"
+            data-testid="sign-out"
+            onClick={() => signOut.mutate()}
+          >
+            Sign out
+          </button>
         </div>
       </header>
       <main className="workspace-body">

@@ -356,6 +356,15 @@
         "traces": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"],
         "logs": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"]
       }
+    },
+    {
+      "id": "infosec/audit-standard",
+      "name": "audit-standard",
+      "version": 1,
+      "team": "infosec",
+      "pipelines": {
+        "logs": ["otlp-in", "infosec/pii-redaction@3", "batcher"]
+      }
     }
   ],
   "catalogue": [
