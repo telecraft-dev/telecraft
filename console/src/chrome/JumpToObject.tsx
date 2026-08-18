@@ -71,7 +71,7 @@ export function JumpToObject() {
             autoFocus
             data-testid="jump-input"
             className="jump-input"
-            placeholder="Search Tiers, Services, Blueprints, Components, teams"
+            placeholder="Search Tiers, Services, Blueprints, Components, teams, Catalogue entries"
             value={query}
             onChange={(event) => {
               setQuery(event.target.value)

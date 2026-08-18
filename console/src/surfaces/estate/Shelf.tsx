@@ -74,6 +74,7 @@ export function Shelf({
     <section className="shelf" data-testid="shelf">
       <div className="shelf-scope">
         <Link
+          from="/estate"
           to="/estate"
           search={(prev) => ({ ...prev, scope: 'team' as const })}
           className={scope === 'team' ? 'scope-link active' : 'scope-link'}
@@ -82,6 +83,7 @@ export function Shelf({
           My team
         </Link>
         <Link
+          from="/estate"
           to="/estate"
           search={(prev) => ({ ...prev, scope: 'estate' as const })}
           className={scope === 'estate' ? 'scope-link active' : 'scope-link'}
@@ -169,6 +171,7 @@ function ShelfSection({
                     selected={card.tier === selectedTier}
                     onSelect={() =>
                       void navigate({
+                        from: '/estate',
                         to: '/estate',
                         search: (prev) => ({
                           ...prev,

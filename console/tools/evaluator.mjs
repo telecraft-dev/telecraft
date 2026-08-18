@@ -4,13 +4,17 @@
 // same rulebook with enforcement on — the console never carries a copy,
 // because policy state (catalogue, Allow-lists, Grants, floors) lives with
 // the instance. This module is the fixture stand-in for that instance
-// evaluator, judging with the fixture estate's policy; the platform binary
-// replaces it when the endpoint lands there (ADR-0045 §6).
+// evaluator — the Go evaluator (internal/allowlist, internal/blueprint) is
+// the judgement of record at render — judging with the same authored
+// governance policy /api/v1/governance serves and the active catalogue's
+// entries; the platform binary replaces it when the endpoint lands there
+// (ADR-0045 §6).
 //
 // Verdicts implemented, each to its ADR:
 // - Palette: Catalogue ∩ effective Allow-list, narrowing-only inheritance
-//   with Grants unioned back in (ADR-0021); allowed shown, floor-breaching
-//   greyed with the reason, non-allowed hidden with an admitted count
+//   with Grants unioned back in (ADR-0021, the same composition rules as
+//   src/governance/effective.ts); allowed shown, floor-breaching greyed
+//   with the reason, non-allowed hidden with an admitted count
 //   (ADR-0022 §5).
 // - Findings: reference, allow-list, floor (per component and signal
 //   actually routed, ADR-0023 §4), lifecycle, and ordering — ordering
@@ -25,6 +29,9 @@
 //   `type/team.name` for shared ones (ADR-0024 §5).
 
 const SIGNALS = ['traces', 'logs', 'metrics', 'profiles']
+
+// The maturity ladder (ADR-0023); deprecated and unmaintained are
+// lifecycle end-states judged by the lifecycle rule, never floor rungs.
 const STABILITY_RANK = { development: 0, alpha: 1, beta: 2, stable: 3 }
 
 // The shipped ordering wisdom (ADR-0024 §6), mirroring the platform's
@@ -58,27 +65,57 @@ function chain(teams, team) {
   return walk(teams, []) ?? []
 }
 
+// The allow-list pattern vocabulary is literals plus * and ? only,
+// mirroring internal/allowlist parseEntry (and src/governance/effective.ts).
+function globToRegExp(pattern) {
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.')
+  return new RegExp(`^${escaped}$`)
+}
+
 /**
- * The effective Allow-list decision for one `(class, type)` key: walking the
+ * Whether one authored `class/type-pattern` entry selects the catalogue
+ * entry — the class side exact, the pattern tried against the canonical
+ * type and the `deprecated_type` alias (ADR-0020 §3).
+ */
+function entrySelects(pattern, entry) {
+  const cut = pattern.indexOf('/')
+  if (cut <= 0) return false
+  if (pattern.slice(0, cut) !== entry.class) return false
+  const type = globToRegExp(pattern.slice(cut + 1))
+  if (type.test(entry.type)) return true
+  return entry.deprecatedType !== undefined && type.test(entry.deprecatedType)
+}
+
+/**
+ * The effective Allow-list decision for one catalogue entry: walking the
  * chain root→team, each declared list intersects, then each Grant targeting
  * that team unions back in — so a Grant widens from its target's subtree
  * downward and a descendant's list narrows it back out (ADR-0021 §2–3).
+ * A `(class, type)` the Catalogue does not know is not allowed.
  */
-function judgeMembership(estate, team, key) {
-  const policy = estate.policy
+function judgeMembership(estate, team, catEntry) {
+  if (!catEntry) return { allowed: false }
   const teamChain = chain(estate.teams, team)
-  const anyList = teamChain.some((t) => policy.allowLists[t])
+  const lists = new Map(estate.allowLists.map((list) => [list.team, list]))
+  const ownerTeams = new Map(estate.owners.map((owner) => [owner.id, owner.team]))
+  const anyList = teamChain.some((t) => lists.has(t))
+  // Grants apply in id order — the id is the audit chain's name for them.
+  const grants = [...estate.grants].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+
   let allowed = true
   let via
   for (const t of teamChain) {
-    const list = policy.allowLists[t]
-    if (list && !list.includes(key)) {
+    const list = lists.get(t)
+    if (list && !list.allow.some((pattern) => entrySelects(pattern, catEntry))) {
       allowed = false
       via = undefined
     }
     if (!allowed) {
-      for (const grant of policy.grants) {
-        if (grant.grantedTo === t && grant.entries.includes(key)) {
+      for (const grant of grants) {
+        if (grant.team === t && grant.adds.some((pattern) => entrySelects(pattern, catEntry))) {
           allowed = true
           via = grant
           break
@@ -90,17 +127,20 @@ function judgeMembership(estate, team, key) {
   return {
     allowed: true,
     origin: via ? 'grant' : anyList ? 'allow-list' : 'default-allow',
-    grant: via,
+    grant: via
+      ? { id: via.id, grantedBy: ownerTeams.get(via.owner) ?? via.owner, grantedTo: via.team }
+      : undefined,
   }
 }
 
-function typeEntry(estate, cls, type) {
-  return estate.catalogueTypes.find((t) => t.class === cls && t.type === type)
+/** The active catalogue's entry for a `(class, type)`, alias-resolving (ADR-0020 §3). */
+function typeEntry(entries, cls, type) {
+  return entries.find((e) => e.class === cls && (e.type === type || e.deprecatedType === type))
 }
 
 /** The floor stability rank for the evaluation context, or undefined. */
 function floorFor(estate, serviceClass, environment) {
-  const level = estate.policy.floors[environment]?.[serviceClass]
+  const level = estate.floors?.[environment]?.[serviceClass]
   return level === undefined ? undefined : { level, rank: STABILITY_RANK[level] }
 }
 
@@ -133,40 +173,51 @@ function contextOf(estate, draft) {
   return { team: draft.team, serviceClass: card?.serviceClass }
 }
 
+/** The signal-lane deprecation notices of a catalogue entry, if any. */
+function deprecationOf(catEntry) {
+  if (!catEntry?.deprecation) return undefined
+  const signals = Object.keys(catEntry.deprecation)
+  if (signals.length === 0) return undefined
+  return { migration: catEntry.deprecation[signals[0]].migration }
+}
+
 /**
- * The palette (ADR-0022 §5): every Catalogue type and shared Component the
+ * The palette (ADR-0022 §5): every Catalogue entry and shared Component the
  * team may use, judged for the evaluation context. Non-allowed entries are
  * hidden and counted; floor-breaching entries are greyed with the reason;
  * the palette enforces nothing.
  */
-function palette(estate, draft, environment) {
+function palette(estate, entries, draft, environment) {
   const { team, serviceClass } = contextOf(estate, draft)
   const floor = serviceClass ? floorFor(estate, serviceClass, environment) : undefined
-  const entries = []
+  const out = []
   let hidden = 0
 
   // What an add gesture inserts: a shared entry inserts a pinned reference,
   // a type entry a fresh local Component (ADR-0024: palette adds create a
   // local by default); click-add targets every supported signal.
   const judge = (cls, type, base, addRef) => {
-    const membership = judgeMembership(estate, team, `${cls}/${type}`)
+    const catType = typeEntry(entries, cls, type)
+    const membership = judgeMembership(estate, team, catType)
     if (!membership.allowed) {
       hidden += 1
       return
     }
-    const catType = typeEntry(estate, cls, type)
     const stability = catType?.stability ?? {}
     const signals = SIGNALS.filter((s) => stability[s] !== undefined)
     let state = 'allowed'
     let reason
     if (floor) {
-      const breaching = signals.filter((s) => STABILITY_RANK[stability[s]] < floor.rank)
+      const breaching = signals.filter(
+        (s) => stability[s] in STABILITY_RANK && STABILITY_RANK[stability[s]] < floor.rank,
+      )
       if (breaching.length > 0) {
         state = 'greyed'
         reason = `${stability[breaching[0]]} on ${breaching.join(', ')} — below this Service's ${serviceClass} floor in ${environment} (${floor.level})`
       }
     }
-    entries.push({
+    const deprecated = deprecationOf(catType)
+    out.push({
       ...base,
       class: cls,
       type,
@@ -176,20 +227,12 @@ function palette(estate, draft, environment) {
       state,
       ...(reason ? { reason } : {}),
       origin: membership.origin,
-      ...(membership.grant
-        ? {
-            grant: {
-              id: membership.grant.id,
-              grantedBy: membership.grant.grantedBy,
-              grantedTo: membership.grant.grantedTo,
-            },
-          }
-        : {}),
-      ...(catType?.deprecated ? { deprecated: catType.deprecated } : {}),
+      ...(membership.grant ? { grant: membership.grant } : {}),
+      ...(deprecated ? { deprecated } : {}),
     })
   }
 
-  for (const t of estate.catalogueTypes) {
+  for (const t of entries) {
     judge(t.class, t.type, {
       key: `type:${t.class}/${t.type}`,
       label: t.type,
@@ -204,11 +247,11 @@ function palette(estate, draft, environment) {
       `${c.id}@${c.version}`,
     )
   }
-  return { entries, hidden }
+  return { entries: out, hidden }
 }
 
 /** All findings the engine raises for the draft in this context (advisory). */
-function findings(estate, draft, environment) {
+function findings(estate, entries, draft, environment) {
   const { serviceClass } = contextOf(estate, draft)
   const floor = serviceClass ? floorFor(estate, serviceClass, environment) : undefined
   const out = []
@@ -231,7 +274,8 @@ function findings(estate, draft, environment) {
         continue
       }
       const key = `${c.class}/${c.type}`
-      const membership = judgeMembership(estate, draft.team, key)
+      const catType = typeEntry(entries, c.class, c.type)
+      const membership = judgeMembership(estate, draft.team, catType)
       if (!membership.allowed) {
         out.push({
           id: `allowlist-${signal}-${i}`,
@@ -244,7 +288,6 @@ function findings(estate, draft, environment) {
             'Request a Grant from the ancestor owning the wider list, or remove the Component — the allow-list violation is the one rule that blocks the render (ADR-0022 §3).',
         })
       }
-      const catType = typeEntry(estate, c.class, c.type)
       const level = catType?.stability?.[signal]
       if (catType && level === undefined) {
         out.push({
@@ -258,8 +301,9 @@ function findings(estate, draft, environment) {
         })
       }
       // Floors judge each (component, signal) the lane actually routes
-      // (ADR-0023 §4) — a finding, never a block (§5).
-      if (floor && level !== undefined && STABILITY_RANK[level] < floor.rank) {
+      // (ADR-0023 §4) — a finding, never a block (§5). Lifecycle end-states
+      // are the lifecycle rule's, not a floor rung (ADR-0023 §6).
+      if (floor && level in STABILITY_RANK && STABILITY_RANK[level] < floor.rank) {
         out.push({
           id: `floor-${signal}-${i}`,
           kind: 'floor',
@@ -270,15 +314,16 @@ function findings(estate, draft, environment) {
           remediation: `Use a ${floor.level}-or-better component on ${signal}, or take an Exemption (ADR-0023).`,
         })
       }
-      if (catType?.deprecated) {
+      const notice = catType?.deprecation?.[signal]
+      if (notice) {
         out.push({
           id: `lifecycle-${signal}-${i}`,
           kind: 'lifecycle',
           severity: 'advisory',
           lane: signal,
           ref,
-          summary: `${ref} uses the deprecated ${key}`,
-          remediation: catType.deprecated.migration,
+          summary: `${ref} routes ${signal} through the deprecated ${key}`,
+          remediation: notice.migration,
         })
       }
     }
@@ -365,7 +410,7 @@ function renderYAML(estate, draft, environment) {
     '# Rendered preview — the validation API compiles the open Blueprint (ADR-0022);',
     '# read-only here, hand edits belong in git (REQ-035). The authoritative render',
     '# lands in the change proposal (ADR-0028).',
-    `# Tier ${draft.tier} (${environment}), Blueprint ${draft.id}@${draft.version} — draft, unstamped (ADR-0013).`,
+    `# Tier ${draft.tier ?? '(unbound)'} (${environment}), Blueprint ${draft.id}@${draft.version} — draft, unstamped (ADR-0013).`,
   ]
   const section = (title, ids) => {
     if (ids.size === 0) return
@@ -408,9 +453,10 @@ function renderYAML(estate, draft, environment) {
  * verdicts out — findings, palette states, requirement verdicts, the save
  * gate, and the rendered preview. Stateless; the composer calls it on every
  * interaction and the proposal exit calls it with enforcement on.
+ * `entries` is the active catalogue's entry list.
  */
-export function validate(estate, draft, environment) {
-  const found = findings(estate, draft, environment)
+export function validate(estate, entries, draft, environment) {
+  const found = findings(estate, entries, draft, environment)
   const blocking = found.filter((f) => f.kind === 'allow-list')
   const { team, serviceClass } = contextOf(estate, draft)
   const floor = serviceClass ? floorFor(estate, serviceClass, environment) : undefined
@@ -422,7 +468,7 @@ export function validate(estate, draft, environment) {
       ...(floor ? { floor: floor.level } : {}),
     },
     findings: found,
-    palette: palette(estate, draft, environment),
+    palette: palette(estate, entries, draft, environment),
     requirements: requirements(estate, draft),
     save: {
       blocked: blocking.length > 0,
@@ -432,7 +478,7 @@ export function validate(estate, draft, environment) {
   }
 }
 
-let proposalCounter = 100
+let proposalCounter = 200
 
 /**
  * The composer exit (ADR-0043 §6): the draft becomes a change proposal
@@ -440,8 +486,8 @@ let proposalCounter = 100
  * the console proposes, the PR decides. Enforcement is on: an allow-list
  * violation refuses the proposal, fail closed (ADR-0022 §3, ADR-0028 §3).
  */
-export function propose(estate, draft, environment) {
-  const verdict = validate(estate, draft, environment)
+export function propose(estate, entries, draft, environment) {
+  const verdict = validate(estate, entries, draft, environment)
   if (verdict.save.blocked) {
     const failure = new Error(
       `render refused, no proposal (ADR-0028 §3): ${verdict.save.reasons.join('; ')} — request a Grant (ADR-0022 §3)`,

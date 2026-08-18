@@ -4,6 +4,7 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router'
+import { AuthGate } from './auth/AuthGate'
 import { AppShell } from './chrome/AppShell'
 import { Catalogue } from './surfaces/catalogue/Catalogue'
 import { Compose } from './surfaces/compose/Compose'
@@ -22,8 +23,18 @@ export interface RootSearch {
   object?: string
 }
 
+// Every Workspace sits behind the auth gate (REQ-017, ADR-0019): signed
+// out, the same URL renders the sign-in surface and resumes afterwards.
+function Root() {
+  return (
+    <AuthGate>
+      <AppShell />
+    </AuthGate>
+  )
+}
+
 const rootRoute = createRootRoute({
-  component: AppShell,
+  component: Root,
   validateSearch: (search: Record<string, unknown>): RootSearch => ({
     lens: typeof search.lens === 'string' ? search.lens : undefined,
     object: typeof search.object === 'string' ? search.object : undefined,
@@ -103,10 +114,41 @@ const composeRoute = createRoute({
   }),
 })
 
+/**
+ * The Catalogue & Governance view-switchers (ADR-0042 §1): browse the
+ * retained catalogues, a team's effective palette, and the governance
+ * editor whose edits exit as PRs.
+ */
+export type CatalogueView = 'browse' | 'palette' | 'governance'
+
+export interface CatalogueSearch {
+  view?: CatalogueView
+  /** The catalogue version browsed; absent means the active one (ADR-0020 §9). */
+  version?: string
+  /** Browse filters — together they filter on the named signal at the named level. */
+  stability?: string
+  signal?: string
+  /** The palette's team; absent means the signed-in user's team. */
+  team?: string
+  /** A class/type entry prefilling a Grant draft in the governance view. */
+  request?: string
+}
+
 const catalogueRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/catalogue',
   component: Catalogue,
+  validateSearch: (search: Record<string, unknown>): CatalogueSearch => ({
+    view:
+      search.view === 'palette' || search.view === 'governance' || search.view === 'browse'
+        ? search.view
+        : undefined,
+    version: typeof search.version === 'string' ? search.version : undefined,
+    stability: typeof search.stability === 'string' ? search.stability : undefined,
+    signal: typeof search.signal === 'string' ? search.signal : undefined,
+    team: typeof search.team === 'string' ? search.team : undefined,
+    request: typeof search.request === 'string' ? search.request : undefined,
+  }),
 })
 
 const routeTree = rootRoute.addChildren([

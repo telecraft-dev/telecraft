@@ -14,10 +14,32 @@ export interface Me {
   email: string
   /** The user's team id: the shelf's resting scope (ADR-0042 §2). */
   team: string
+  /**
+   * The teams whose objects this user may author changes to: their team
+   * and every team beneath it, derived server-side from the ownership
+   * tree (ADR-0019 §2, ADR-0016/0017). Surfaces offer authoring actions
+   * exactly on objects owned inside this set.
+   */
+  editableTeams: string[]
 }
 
-/** The authored-object kinds jump-to-object can reach (ADR-0042 §1). */
-export type ObjectKind = 'tier' | 'service' | 'blueprint' | 'component' | 'team'
+/**
+ * GET /api/v1/auth/providers — how sign-in works on this instance
+ * (REQ-017, ADR-0019 §1). A `password` provider renders as a credential
+ * form; a `redirect` provider renders as a link to
+ * `/api/v1/auth/{name}/start`.
+ */
+export interface AuthProviderInfo {
+  name: string
+  flow: 'password' | 'redirect'
+}
+
+/**
+ * The object kinds jump-to-object can reach (ADR-0042 §1): the authored
+ * objects, plus `entry` — a Catalogue entry, keyed `class/type` (ADR-0020
+ * §3), browsable and deep-linkable though machine-generated, never authored.
+ */
+export type ObjectKind = 'tier' | 'service' | 'blueprint' | 'component' | 'team' | 'entry'
 
 export interface ObjectRef {
   kind: ObjectKind
@@ -28,7 +50,8 @@ export interface ObjectRef {
 /** GET /api/v1/objects — the jump-to-object index. */
 export interface IndexedObject extends ObjectRef {
   name: string
-  team: string
+  /** Owning team — absent for Catalogue entries, which nobody owns. */
+  team?: string
   environment?: Environment
 }
 
@@ -178,12 +201,29 @@ export interface EstatePayload {
   cards: CardFace[]
 }
 
-/** A Tier as the topology canvas draws it. */
+/** The served vs git-delivered split: delivery path is a visible property
+ * of a collector (ADR-0007), aggregated to Tier grain for the canvas. */
+export interface DeliverySplit {
+  served: number
+  git: number
+}
+
+/**
+ * A Tier as the topology canvas draws it: the authored node plus its
+ * selector-matched counts. Collectors are never drawn — they are matched
+ * into a Tier by selector and appear only as these numbers (ADR-0007);
+ * the count is a door to the flat list (ADR-0042 §3.4).
+ */
 export interface TopologyTier {
   id: string
   name: string
   team: string
   environment: Environment
+  /** Derived strictness, mirrored from the card face (ADR-0025). */
+  serviceClass?: string
+  /** Selector-matched collector count. */
+  matched: number
+  delivery: DeliverySplit
 }
 
 /** An ungoverned arrival source: sits in the dedicated band (ADR-0044 §2). */
@@ -215,18 +255,26 @@ export interface TopologyPayload {
   paths: TopologyPath[]
 }
 
-/** A component class (ADR-0020): where a lane entry may live. */
+/**
+ * A component class: upstream `status.class`, adopted verbatim — only the
+ * five pipeline classes enter a Catalogue (ADR-0020 §2).
+ */
 export type ComponentClass = 'receiver' | 'processor' | 'exporter' | 'extension' | 'connector'
+
+/** The Catalogue primary key (ADR-0020 §3): `type` alone collapses real components. */
+export interface CatalogueKey {
+  class: ComponentClass
+  type: string
+}
+
+/** Renders the key in its authored `class/type` form — also the `entry` object id. */
+export function formatCatalogueKey(key: CatalogueKey): string {
+  return `${key.class}/${key.type}`
+}
 
 /** The upstream signal names, in the lanes' fixed reading order (ADR-0024 §2). */
 export const SIGNAL_ORDER = ['traces', 'logs', 'metrics', 'profiles'] as const
 export type Signal = (typeof SIGNAL_ORDER)[number]
-
-/** A local Component, declared inline and owned by the Blueprint's owner (ADR-0024 §3). */
-export interface LocalComponent {
-  class: ComponentClass
-  type: string
-}
 
 /**
  * GET /api/v1/blueprints — Blueprint schema v1 documents (ADR-0024): the
@@ -241,9 +289,9 @@ export interface BlueprintDoc {
   version: number
   team: string
   /** The Tier the Blueprint is bound to (ADR-0025): the evaluation context. */
-  tier: string
-  /** Local Components by bare name (ADR-0024 §3). */
-  locals: Record<string, LocalComponent>
+  tier?: string
+  /** Local Components by bare name, each the Catalogue key it instantiates (ADR-0024 §3). */
+  locals: Record<string, CatalogueKey>
   /** Per-signal lanes of ordered Component references (ADR-0024 §2). */
   lanes: Record<string, string[]>
   /** The collector-wide extensions block (ADR-0024 §2). */
@@ -253,6 +301,12 @@ export interface BlueprintDoc {
    * never fact — the UI must not blur the two (REQ-031).
    */
   satisfies: string[]
+  /**
+   * The Catalogue key each lane item instantiates — shared references
+   * included — so composer lane items deep-link to their Catalogue entries
+   * (ADR-0042 §1).
+   */
+  components?: Record<string, CatalogueKey>
 }
 
 /** How the evaluator judged one palette entry's presence (ADR-0021 §3). */
@@ -358,6 +412,128 @@ export interface CatalogueComponent {
   name: string
   version: number
   team: string
-  class: 'receiver' | 'processor' | 'exporter' | 'extension' | 'connector'
+  class: ComponentClass
   type: string
+}
+
+/**
+ * An upstream stability level, adopted verbatim: the maturity ladder is
+ * development < alpha < beta < stable; deprecated and unmaintained are
+ * lifecycle end-states, not rungs.
+ */
+export type StabilityLevel =
+  | 'development'
+  | 'alpha'
+  | 'beta'
+  | 'stable'
+  | 'deprecated'
+  | 'unmaintained'
+
+/** The closed six-level vocabulary, ladder order first, for filter controls. */
+export const STABILITY_LEVELS: readonly StabilityLevel[] = [
+  'development',
+  'alpha',
+  'beta',
+  'stable',
+  'deprecated',
+  'unmaintained',
+]
+
+/**
+ * One Catalogue entry: identity, per-signal stability and lifecycle of a
+ * component type (ADR-0020). It states what exists — never what may be used
+ * (that is the Allow-list) and never a configured instance (that is a
+ * governed Component).
+ */
+export interface CatalogueEntry extends CatalogueKey {
+  /** The historical type alias, resolving on every lookup (ADR-0020 §3). */
+  deprecatedType?: string
+  displayName?: string
+  description?: string
+  /** Adopter-authored entries are first-class, marked apart (ADR-0020 §10). */
+  source: 'upstream' | 'adopter'
+  /** Per-signal stability; the signal vocabulary is open (ADR-0020 §1). */
+  stability: Record<string, StabilityLevel>
+  /** The upstream deprecation notice per deprecated signal — ready-made remediation. */
+  deprecation?: Record<string, { date: string; migration: string }>
+}
+
+/** One installed catalogue version (ADR-0020 §9: retained, never replaced). */
+export interface CatalogueVersionInfo {
+  /** The collector release tag the catalogue is pinned to, e.g. `v0.158.0`. */
+  version: string
+  /** Whether this is the designated active catalogue authoring judges against. */
+  active: boolean
+  /** Entry count, for the version picker. */
+  components: number
+  source: { repository: string; ref: string; commit?: string }
+}
+
+/** GET /api/v1/catalogue/versions — the installed catalogues, active designated. */
+export interface CatalogueVersionsPayload {
+  active: string
+  versions: CatalogueVersionInfo[]
+}
+
+/** An Owner in the team tree (ADR-0016), as governance authoring needs it. */
+export interface OwnerDoc {
+  id: string
+  name: string
+  team: string
+}
+
+/**
+ * One Team's declared Allow-list, in its authored shape (ADR-0021 §5):
+ * entries are `class/type-pattern` shapes, an exact name being the
+ * degenerate pattern.
+ */
+export interface AllowListDoc {
+  team: string
+  owner: string
+  allow: string[]
+}
+
+/** One Grant in its authored shape: an ancestor-authored scoped exception (ADR-0021 §3). */
+export interface GrantDoc {
+  id: string
+  owner: string
+  team: string
+  adds: string[]
+}
+
+/**
+ * GET /api/v1/governance — the authored, git-resident Allow-list policy
+ * (ADR-0021 §5), plus the Owners governance edits attribute to. The console
+ * derives each team's effective palette from this and the active catalogue.
+ */
+export interface GovernancePayload {
+  owners: OwnerDoc[]
+  allowLists: AllowListDoc[]
+  grants: GrantDoc[]
+}
+
+/**
+ * POST /api/v1/governance/proposals — a governance edit exiting as a PR via
+ * the forge adapter (ADR-0042 §6): the complete edited policy, proposed;
+ * the console proposes, the PR decides. The server validates fail-closed
+ * exactly as loading does and answers 422 with the problems named.
+ */
+export interface GovernanceProposalRequest {
+  title: string
+  summary?: string
+  allowLists: AllowListDoc[]
+  grants: GrantDoc[]
+}
+
+/** The opened proposal, mirroring the forge seam: opaque id, URL, branch. */
+export interface ProposalRef {
+  id: string
+  url: string
+  branch: string
+}
+
+/** The proposal outcome: opened, or refused with the load problems named. */
+export interface ProposalOutcome {
+  proposal?: ProposalRef
+  problems?: string[]
 }

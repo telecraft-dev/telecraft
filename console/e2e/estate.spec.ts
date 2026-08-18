@@ -61,11 +61,14 @@ test('the lens changes emphasis and evaluation context without removing rows', a
   page,
 }) => {
   await page.goto('/estate?lens=production')
-  const rows = page.locator('.environment-row')
-  const before = await rows.count()
+  // Settle the shelf before taking the baseline count: count() does not
+  // auto-wait, and the auth gate's /api/v1/me round trip now precedes the
+  // estate fetch, so an unrendered shelf would count zero rows.
   await expect(
     page.getByTestId('section-data-flow').locator('.environment-row').first(),
   ).toHaveAttribute('data-environment', 'production')
+  const rows = page.locator('.environment-row')
+  const before = await rows.count()
   await page.getByTestId('lens-control').selectOption('staging')
   // Emphasis moved: staging leads and carries the emphasis class...
   const first = page.getByTestId('section-data-flow').locator('.environment-row').first()

@@ -2,11 +2,14 @@ import type { DragEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 import type {
   BlueprintDoc,
+  CatalogueKey,
   ComponentClass,
   ComposeFinding,
   ComposeVerdict,
   PaletteEntry,
 } from '../../api/types'
+import { formatCatalogueKey } from '../../api/types'
+import { formatObjectRef } from '../../objectref'
 import { laneOrder } from './draft'
 
 // A · Composer, the primary editing surface (ADR-0043 §1): palette left —
@@ -33,9 +36,11 @@ const CLASS_ORDER: ComponentClass[] = ['receiver', 'processor', 'exporter', 'con
 
 export function Palette({
   verdict,
+  editable,
   onAdd,
 }: {
   verdict: ComposeVerdict | undefined
+  editable: boolean
   onAdd: (entry: PaletteEntry, signals: string[]) => void
 }) {
   if (verdict === undefined) return <p className="surface-status">Judging the palette…</p>
@@ -49,26 +54,17 @@ export function Palette({
           <ul>
             {entries
               .filter((e) => e.class === cls)
-              .map((entry) => (
-                <li key={entry.key}>
-                  {/* Greyed is a verdict shown with its reason, never a trap:
-                      the palette enforces nothing (ADR-0022 §5), and a
-                      floor-breaching add produces a finding, not a wall. */}
-                  <button
-                    type="button"
-                    className={entry.state === 'greyed' ? 'palette-entry greyed' : 'palette-entry'}
-                    data-testid={`palette-${entry.key}`}
-                    draggable
-                    onDragStart={(event) => startPaletteDrag(event, entry)}
-                    onClick={() => onAdd(entry, entry.add.signals)}
-                  >
+              .map((entry) => {
+                const facts = (
+                  <>
                     <span className="palette-label">{entry.label}</span>
                     <span className="palette-meta">
                       {entry.class}/{entry.type} · {entry.signals.join(' ')}
                     </span>
                     {entry.origin === 'grant' && entry.grant && (
                       <span className="palette-grant" data-testid={`palette-grant-${entry.key}`}>
-                        via Grant {entry.grant.id} ({entry.grant.grantedBy} → {entry.grant.grantedTo})
+                        via Grant {entry.grant.id} ({entry.grant.grantedBy} →{' '}
+                        {entry.grant.grantedTo})
                       </span>
                     )}
                     {entry.deprecated && (
@@ -77,9 +73,41 @@ export function Palette({
                       </span>
                     )}
                     {entry.reason && <span className="palette-reason">{entry.reason}</span>}
-                  </button>
-                </li>
-              ))}
+                  </>
+                )
+                return (
+                  <li key={entry.key}>
+                    {/* Greyed is a verdict shown with its reason, never a
+                        trap: the palette enforces nothing (ADR-0022 §5), and
+                        a floor-breaching add produces a finding, not a wall.
+                        A read-only remit renders the same facts with no add
+                        gesture — never a dead control (ADR-0019 §2). */}
+                    {editable ? (
+                      <button
+                        type="button"
+                        className={
+                          entry.state === 'greyed' ? 'palette-entry greyed' : 'palette-entry'
+                        }
+                        data-testid={`palette-${entry.key}`}
+                        draggable
+                        onDragStart={(event) => startPaletteDrag(event, entry)}
+                        onClick={() => onAdd(entry, entry.add.signals)}
+                      >
+                        {facts}
+                      </button>
+                    ) : (
+                      <div
+                        className={
+                          entry.state === 'greyed' ? 'palette-entry greyed' : 'palette-entry'
+                        }
+                        data-testid={`palette-${entry.key}`}
+                      >
+                        {facts}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
           </ul>
         </div>
       ))}
@@ -125,29 +153,39 @@ export function Composer({
   draft,
   verdict,
   offendingLane,
+  editable,
   onAdd,
   onRemove,
 }: {
   draft: BlueprintDoc
   verdict: ComposeVerdict | undefined
   offendingLane: string | undefined
+  editable: boolean
   onAdd: (entry: PaletteEntry, signals: string[]) => void
   onRemove: (signal: string, index: number) => void
 }) {
   const entries = verdict?.palette.entries ?? []
-  const stabilityOf = (ref: string, signal: string): string | undefined => {
+  // The Catalogue key a reference instantiates: locals carry their own,
+  // shared references resolve through the doc's key map or the palette.
+  const catalogueKeyOf = (ref: string): CatalogueKey | undefined => {
     const local = draft.locals[ref]
-    const key = local
-      ? `type:${local.class}/${local.type}`
-      : `shared:${ref.split('@')[0] ?? ref}`
-    return entries.find((e) => e.key === key)?.stability[signal]
+    if (local) return local
+    const fromDoc = draft.components?.[ref]
+    if (fromDoc) return fromDoc
+    const shared = entries.find((e) => e.key === `shared:${ref.split('@')[0] ?? ref}`)
+    return shared ? { class: shared.class, type: shared.type } : undefined
+  }
+  const stabilityOf = (ref: string, signal: string): string | undefined => {
+    const key = catalogueKeyOf(ref)
+    if (!key) return undefined
+    return entries.find((e) => e.class === key.class && e.type === key.type)?.stability[signal]
   }
   const flagged = (signal: string, ref: string): boolean =>
     verdict?.findings.some((f) => f.lane === signal && f.ref === ref) ?? false
 
   return (
     <div className="composer">
-      <Palette verdict={verdict} onAdd={onAdd} />
+      <Palette verdict={verdict} editable={editable} onAdd={onAdd} />
       <div className="composer-main">
         <div className="claims-row" data-testid="claims-row">
           <span className="claims-label">satisfies</span>
@@ -174,13 +212,17 @@ export function Composer({
               key={signal}
               className={signal === offendingLane ? 'signal-lane offending' : 'signal-lane'}
               data-testid={`lane-${signal}`}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault()
-                const entry = droppedEntry(event)
-                // The drop target names the signal (ADR-0043 §4).
-                if (entry) onAdd(entry, [signal])
-              }}
+              onDragOver={editable ? (event) => event.preventDefault() : undefined}
+              onDrop={
+                editable
+                  ? (event) => {
+                      event.preventDefault()
+                      const entry = droppedEntry(event)
+                      // The drop target names the signal (ADR-0043 §4).
+                      if (entry) onAdd(entry, [signal])
+                    }
+                  : undefined
+              }
             >
               <header className="lane-head">
                 <h3>{signal}</h3>
@@ -192,48 +234,74 @@ export function Composer({
                 )}
               </header>
               <ol className="lane-components">
-                {lane.map((ref, i) => (
-                  <li
-                    key={`${ref}-${i}`}
-                    className={flagged(signal, ref) ? 'lane-entry flagged' : 'lane-entry'}
-                  >
-                    <span className="lane-ref">{ref}</span>
-                    {stabilityOf(ref, signal) && (
-                      <span className="stability-chip">{stabilityOf(ref, signal)}</span>
-                    )}
-                    <button
-                      type="button"
-                      className="lane-remove"
-                      data-testid={`remove-${signal}-${i}`}
-                      aria-label={`Remove ${ref} from ${signal}`}
-                      onClick={() => onRemove(signal, i)}
+                {lane.map((ref, i) => {
+                  const key = catalogueKeyOf(ref)
+                  return (
+                    <li
+                      key={`${ref}-${i}`}
+                      className={flagged(signal, ref) ? 'lane-entry flagged' : 'lane-entry'}
                     >
-                      ×
-                    </button>
-                  </li>
-                ))}
+                      {/* A lane item deep-links to the Catalogue entry it
+                          instantiates (ADR-0042 §1). */}
+                      {key ? (
+                        <Link
+                          to="/catalogue"
+                          search={(prev) => ({
+                            lens: prev.lens,
+                            object: formatObjectRef({
+                              kind: 'entry',
+                              id: formatCatalogueKey(key),
+                            }),
+                          })}
+                          className="lane-entry-link"
+                          data-testid={`lane-entry-${signal}-${ref}`}
+                        >
+                          {ref}
+                        </Link>
+                      ) : (
+                        <span className="lane-ref">{ref}</span>
+                      )}
+                      {stabilityOf(ref, signal) && (
+                        <span className="stability-chip">{stabilityOf(ref, signal)}</span>
+                      )}
+                      {editable && (
+                        <button
+                          type="button"
+                          className="lane-remove"
+                          data-testid={`remove-${signal}-${i}`}
+                          aria-label={`Remove ${ref} from ${signal}`}
+                          onClick={() => onRemove(signal, i)}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
               </ol>
-              <label className="lane-add">
-                + add to «{signal}»
-                <select
-                  data-testid={`lane-add-${signal}`}
-                  value=""
-                  onChange={(event) => {
-                    const entry = entries.find((e) => e.key === event.target.value)
-                    if (entry) onAdd(entry, [signal])
-                  }}
-                >
-                  <option value="">choose a component…</option>
-                  {entries
-                    .filter((e) => e.signals.includes(signal))
-                    .map((e) => (
-                      <option key={e.key} value={e.key}>
-                        {e.label}
-                        {e.state === 'greyed' ? ' (below floor)' : ''}
-                      </option>
-                    ))}
-                </select>
-              </label>
+              {editable && (
+                <label className="lane-add">
+                  + add to «{signal}»
+                  <select
+                    data-testid={`lane-add-${signal}`}
+                    value=""
+                    onChange={(event) => {
+                      const entry = entries.find((e) => e.key === event.target.value)
+                      if (entry) onAdd(entry, [signal])
+                    }}
+                  >
+                    <option value="">choose a component…</option>
+                    {entries
+                      .filter((e) => e.signals.includes(signal))
+                      .map((e) => (
+                        <option key={e.key} value={e.key}>
+                          {e.label}
+                          {e.state === 'greyed' ? ' (below floor)' : ''}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              )}
             </div>
           )
         })}

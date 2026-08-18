@@ -708,15 +708,19 @@ button {
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-2);
   background: var(--colour-surface);
   font-size: 0.9rem;
+  cursor: grab;
 }
 
 .canvas-node.kind-source {
+  align-items: center;
   border-style: dashed;
   background: var(--colour-surface-raised);
 }
@@ -727,6 +731,46 @@ button {
 
 .canvas-node.chosen {
   outline: 2px solid var(--colour-accent);
+}
+
+.canvas-node-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.canvas-node-name {
+  font-weight: 600;
+}
+
+.canvas-node-counts {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+}
+
+.canvas-node-split {
+  color: var(--colour-text-muted);
+}
+
+/* Traced-Path tint: a single-Tier Path (gateway on-ramp) has no overlay
+ * edge, so the node ring is where its distinct colour lives. */
+
+.canvas-node.on-trace.trace-path-0 {
+  border-color: var(--colour-trace-0);
+}
+
+.canvas-node.on-trace.trace-path-1 {
+  border-color: var(--colour-trace-1);
+}
+
+.canvas-node.on-trace.trace-path-2 {
+  border-color: var(--colour-trace-2);
+}
+
+.canvas-node.on-trace.trace-path-3 {
+  border-color: var(--colour-trace-3);
 }
 
 .canvas-handle {
@@ -765,6 +809,79 @@ button {
 
 .canvas-edge.dimmed {
   opacity: 0.2;
+}
+
+/* Trace overlays: one distinct corridor per Path (ADR-0044 §4, P3). */
+
+.canvas-edge.trace-overlay {
+  stroke-width: 2.5;
+}
+
+.canvas-edge.trace-overlay.trace-path-0 {
+  stroke: var(--colour-trace-0);
+}
+
+.canvas-edge.trace-overlay.trace-path-1 {
+  stroke: var(--colour-trace-1);
+}
+
+.canvas-edge.trace-overlay.trace-path-2 {
+  stroke: var(--colour-trace-2);
+}
+
+.canvas-edge.trace-overlay.trace-path-3 {
+  stroke: var(--colour-trace-3);
+}
+
+.trace-legend {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.trace-path-chip {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-left-width: 4px;
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+}
+
+.trace-path-chip.trace-path-0 {
+  border-left-color: var(--colour-trace-0);
+}
+
+.trace-path-chip.trace-path-1 {
+  border-left-color: var(--colour-trace-1);
+}
+
+.trace-path-chip.trace-path-2 {
+  border-left-color: var(--colour-trace-2);
+}
+
+.trace-path-chip.trace-path-3 {
+  border-left-color: var(--colour-trace-3);
+}
+
+/* Simulate dots (ADR-0044 §5): cosmetic, per-journey, signal-staggered. */
+
+.journey-dot {
+  fill: var(--colour-text-muted);
+}
+
+.journey-dot.signal-traces {
+  fill: var(--colour-signal-traces);
+}
+
+.journey-dot.signal-logs {
+  fill: var(--colour-signal-logs);
+}
+
+.journey-dot.signal-metrics {
+  fill: var(--colour-signal-metrics);
 }
 
 /* Compose */
@@ -1280,10 +1397,252 @@ button {
   stroke: var(--colour-signal-profiles);
 }
 
-/* Catalogue */
+/* Catalogue & Governance */
 
 .catalogue-layout {
+  display: flex;
+  height: 100%;
+}
+
+.catalogue-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: var(--space-4) var(--space-5);
+  overflow: auto;
+}
+
+.catalogue-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.browse-layout {
+  display: flex;
+  flex: 1;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.browse-main {
+  flex: 1;
+  overflow: auto;
+}
+
+.catalogue-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.catalogue-filters label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-muted);
+  font-size: 0.85em;
+}
+
+.catalogue-subhead {
+  font-size: 1rem;
+  margin: var(--space-5) 0 var(--space-1);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.signal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stability-chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+.stability-chip.stability-deprecated,
+.stability-chip.stability-unmaintained {
+  color: var(--colour-severity-violation);
+  border-color: var(--colour-severity-violation);
+}
+
+.stability-chip.stability-development {
+  color: var(--colour-severity-advisory);
+}
+
+.stability-chip.stability-stable {
+  color: var(--colour-severity-ok);
+}
+
+.entry-description {
+  color: var(--colour-text-muted);
+}
+
+.entry-deprecation {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--colour-severity-violation);
+  background: var(--colour-surface-raised);
+  font-size: 0.85em;
+}
+
+.entry-deprecation p {
+  margin: var(--space-1) 0 0;
+}
+
+.entry-instance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* The effective palette */
+
+.palette-view {
+  flex: 1;
+  overflow: auto;
+}
+
+.catalogue-table tr.excluded td {
+  color: var(--colour-text-muted);
+}
+
+.origin-chip {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-1);
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  white-space: nowrap;
+  border: 1px solid var(--colour-border);
+}
+
+.origin-chip.origin-grant {
+  color: var(--colour-accent);
+  border-color: var(--colour-accent);
+}
+
+.origin-chip.origin-excluded {
+  color: var(--colour-severity-neutral);
+  border-style: dashed;
+}
+
+.why-cell {
+  white-space: nowrap;
+}
+
+.why-cell .who-acts {
+  margin-left: var(--space-2);
+}
+
+/* Governance */
+
+.governance-view {
+  flex: 1;
+  overflow: auto;
+  max-width: 46rem;
+}
+
+.governance-section {
+  margin-bottom: var(--space-5);
+}
+
+.governance-section h2 {
+  font-size: 1rem;
+  margin: 0 0 var(--space-1);
+}
+
+.governance-list h3,
+.governance-section h3 {
+  font-size: 0.9rem;
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.governance-view textarea,
+.governance-view input,
+.governance-view select {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.governance-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.governance-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--colour-text-muted);
+  font-size: 0.85em;
+}
+
+.governance-grants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.propose-button {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: var(--colour-accent);
+  color: var(--colour-accent-contrast);
+  cursor: pointer;
+}
+
+.propose-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.proposal-problems {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5);
+  border-left: 3px solid var(--colour-severity-violation);
+  background: var(--colour-surface-raised);
+  font-size: 0.85em;
+}
+
+.proposal-opened {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--colour-severity-ok);
+  background: var(--colour-surface-raised);
+}
+
+.lane-entry-link {
+  color: inherit;
 }
 
 .catalogue-table {
@@ -1310,4 +1669,111 @@ button {
 .catalogue-table tr.selected td {
   background: var(--colour-surface-raised);
   outline: 2px solid var(--colour-accent);
+}
+
+/* Sign-in (REQ-017, ADR-0019): rendered by the auth gate in place of the
+   shell; the palette is the same tokens, nothing external. */
+
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: var(--colour-bg);
+}
+
+.login-card {
+  width: 320px;
+  padding: var(--space-5);
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login-lede {
+  margin: 0;
+  color: var(--colour-text-muted);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: 0.9rem;
+  color: var(--colour-text-muted);
+}
+
+.login-form input {
+  font: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  color: var(--colour-text);
+}
+
+.login-form button {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-1);
+  background: var(--colour-accent);
+  color: var(--colour-accent-contrast);
+  cursor: pointer;
+}
+
+.login-error {
+  margin: 0;
+  color: var(--colour-severity-violation);
+  font-size: 0.9rem;
+}
+
+.login-redirect {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  text-align: center;
+  text-decoration: none;
+  color: var(--colour-text);
+}
+
+.chrome-user {
+  color: var(--colour-text-muted);
+  white-space: nowrap;
+}
+
+.sign-out {
+  font: inherit;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  cursor: pointer;
+}
+
+/* The authoring affordance: words first, hue reinforcing (ADR-0041 §2). */
+
+.authoring {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-1);
+  font-size: 0.9rem;
+  width: fit-content;
+}
+
+.authoring.editable {
+  background: color-mix(in srgb, var(--colour-severity-ok) 12%, transparent);
+  color: var(--colour-severity-ok);
+}
+
+.authoring.readonly {
+  background: color-mix(in srgb, var(--colour-severity-neutral) 12%, transparent);
+  color: var(--colour-text-muted);
 }

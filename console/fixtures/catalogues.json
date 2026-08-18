@@ -1,0 +1,237 @@
+{
+  "_comment": "The installed catalogues the fixture backend serves (ADR-0020 §9: retained per-version, never replaced). Two collector releases sit side by side so version browsing and upgrade diffs are exercisable: v0.158.0 is active; v0.155.0 shows the earlier reality — the span_metrics connector under its old spanmetrics name, the opencensus exporter not yet deprecated, filelog still alpha on logs, and no adopter entry yet. Entries carry identity, per-signal stability and lifecycle only — config field schemas are out of scope upstream (ADR-0020 §1).",
+  "active": "v0.158.0",
+  "versions": [
+    {
+      "version": "v0.155.0",
+      "source": {
+        "repository": "https://github.com/open-telemetry/opentelemetry-collector-contrib",
+        "ref": "v0.155.0",
+        "commit": "3f8a1c9d2e7b4a6f8c1d3e5a7b9c1d3e5f7a9b1c"
+      },
+      "components": [
+        {
+          "class": "receiver",
+          "type": "otlp",
+          "displayName": "OTLP",
+          "description": "Receives telemetry over OTLP/gRPC and OTLP/HTTP.",
+          "source": "upstream",
+          "stability": { "traces": "stable", "metrics": "stable", "logs": "beta" }
+        },
+        {
+          "class": "receiver",
+          "type": "filelog",
+          "displayName": "File log",
+          "description": "Tails and parses log files.",
+          "source": "upstream",
+          "stability": { "logs": "alpha" }
+        },
+        {
+          "class": "receiver",
+          "type": "kafka",
+          "displayName": "Kafka",
+          "description": "Consumes telemetry from Kafka topics.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "processor",
+          "type": "batch",
+          "displayName": "Batch",
+          "description": "Batches telemetry before export.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "processor",
+          "type": "memory_limiter",
+          "displayName": "Memory limiter",
+          "description": "Refuses data when memory is exhausted.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "processor",
+          "type": "filter",
+          "displayName": "Filter",
+          "description": "Drops telemetry matching configured conditions.",
+          "source": "upstream",
+          "stability": { "traces": "alpha", "metrics": "alpha", "logs": "alpha" }
+        },
+        {
+          "class": "processor",
+          "type": "transform",
+          "displayName": "Transform",
+          "description": "Modifies telemetry with OTTL statements.",
+          "source": "upstream",
+          "stability": { "traces": "alpha", "metrics": "alpha", "logs": "alpha" }
+        },
+        {
+          "class": "exporter",
+          "type": "otlphttp",
+          "displayName": "OTLP/HTTP",
+          "description": "Exports telemetry over OTLP/HTTP.",
+          "source": "upstream",
+          "stability": { "traces": "stable", "metrics": "stable", "logs": "stable" }
+        },
+        {
+          "class": "exporter",
+          "type": "debug",
+          "displayName": "Debug",
+          "description": "Writes telemetry to the console for debugging.",
+          "source": "upstream",
+          "stability": { "traces": "development", "metrics": "development", "logs": "development" }
+        },
+        {
+          "class": "exporter",
+          "type": "kafka",
+          "displayName": "Kafka",
+          "description": "Publishes telemetry to Kafka topics.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "exporter",
+          "type": "opencensus",
+          "displayName": "OpenCensus",
+          "description": "Exports telemetry over the OpenCensus protocol.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta" }
+        },
+        {
+          "class": "connector",
+          "type": "spanmetrics",
+          "displayName": "Span metrics",
+          "description": "Aggregates request rate, error and duration metrics from spans.",
+          "source": "upstream",
+          "stability": { "traces_to_metrics": "alpha" }
+        }
+      ]
+    },
+    {
+      "version": "v0.158.0",
+      "source": {
+        "repository": "https://github.com/open-telemetry/opentelemetry-collector-contrib",
+        "ref": "v0.158.0",
+        "commit": "9b4e2d7f1a3c5e7f9b1d3f5a7c9e1b3d5f7a9c1e"
+      },
+      "components": [
+        {
+          "class": "receiver",
+          "type": "otlp",
+          "displayName": "OTLP",
+          "description": "Receives telemetry over OTLP/gRPC and OTLP/HTTP.",
+          "source": "upstream",
+          "stability": { "traces": "stable", "metrics": "stable", "logs": "beta" }
+        },
+        {
+          "class": "receiver",
+          "type": "filelog",
+          "displayName": "File log",
+          "description": "Tails and parses log files.",
+          "source": "upstream",
+          "stability": { "logs": "beta" }
+        },
+        {
+          "class": "receiver",
+          "type": "kafka",
+          "displayName": "Kafka",
+          "description": "Consumes telemetry from Kafka topics.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "processor",
+          "type": "batch",
+          "displayName": "Batch",
+          "description": "Batches telemetry before export.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "processor",
+          "type": "memory_limiter",
+          "displayName": "Memory limiter",
+          "description": "Refuses data when memory is exhausted.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "processor",
+          "type": "filter",
+          "displayName": "Filter",
+          "description": "Drops telemetry matching configured conditions.",
+          "source": "upstream",
+          "stability": { "traces": "alpha", "metrics": "alpha", "logs": "alpha" }
+        },
+        {
+          "class": "processor",
+          "type": "transform",
+          "displayName": "Transform",
+          "description": "Modifies telemetry with OTTL statements.",
+          "source": "upstream",
+          "stability": { "traces": "alpha", "metrics": "alpha", "logs": "alpha" }
+        },
+        {
+          "class": "processor",
+          "type": "pii_scrub",
+          "displayName": "PII scrub",
+          "description": "Adopter-built scrubbing processor from the internal OCB build.",
+          "source": "adopter",
+          "stability": { "traces": "beta", "logs": "beta" }
+        },
+        {
+          "class": "exporter",
+          "type": "otlphttp",
+          "displayName": "OTLP/HTTP",
+          "description": "Exports telemetry over OTLP/HTTP.",
+          "source": "upstream",
+          "stability": { "traces": "stable", "metrics": "stable", "logs": "stable" }
+        },
+        {
+          "class": "exporter",
+          "type": "debug",
+          "displayName": "Debug",
+          "description": "Writes telemetry to the console for debugging.",
+          "source": "upstream",
+          "stability": { "traces": "development", "metrics": "development", "logs": "development" }
+        },
+        {
+          "class": "exporter",
+          "type": "kafka",
+          "displayName": "Kafka",
+          "description": "Publishes telemetry to Kafka topics.",
+          "source": "upstream",
+          "stability": { "traces": "beta", "metrics": "beta", "logs": "beta" }
+        },
+        {
+          "class": "exporter",
+          "type": "opencensus",
+          "displayName": "OpenCensus",
+          "description": "Exports telemetry over the OpenCensus protocol.",
+          "source": "upstream",
+          "stability": { "traces": "deprecated", "metrics": "deprecated" },
+          "deprecation": {
+            "traces": {
+              "date": "2026-05-01",
+              "migration": "Export OTLP instead: the otlp or otlphttp exporter replaces this path."
+            },
+            "metrics": {
+              "date": "2026-05-01",
+              "migration": "Export OTLP instead: the otlp or otlphttp exporter replaces this path."
+            }
+          }
+        },
+        {
+          "class": "connector",
+          "type": "span_metrics",
+          "deprecatedType": "spanmetrics",
+          "displayName": "Span metrics",
+          "description": "Aggregates request rate, error and duration metrics from spans.",
+          "source": "upstream",
+          "stability": { "traces_to_metrics": "alpha" }
+        }
+      ]
+    }
+  ]
+}

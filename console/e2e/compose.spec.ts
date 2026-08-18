@@ -18,27 +18,27 @@ test('the palette shows only the effective palette; disallowed types are absent'
   // Allowed entries are present; the Grant-admitted one names its Grant —
   // the audit chain is total (ADR-0021 §3).
   await expect(page.getByTestId('palette-type:processor/batch')).toBeVisible()
-  await expect(page.getByTestId('palette-grant-shared:infosec/pii-redaction')).toContainText(
-    'grant-pii-redaction',
+  await expect(page.getByTestId('palette-grant-type:receiver/kafka')).toContainText(
+    'kafka-egress-for-data-flow',
   )
   // Non-allowed types are hidden entirely — absent, not greyed traps —
   // with the honest admitted count (ADR-0022 §5).
   await expect(page.getByTestId('palette-type:exporter/debug')).toHaveCount(0)
-  await expect(page.getByTestId('palette-type:exporter/file')).toHaveCount(0)
+  await expect(page.getByTestId('palette-type:processor/pii_scrub')).toHaveCount(0)
   await expect(page.getByTestId('palette-hidden')).toHaveText(
-    '2 components hidden by your allow-list',
+    '5 components hidden by your allow-list',
   )
 })
 
 test('floor greying follows the environment lens as evaluation context', async ({ page }) => {
   await page.goto(`/compose?${EDGE}&lens=production`)
-  const sampling = page.getByTestId('palette-type:processor/tail_sampling')
+  const filter = page.getByTestId('palette-type:processor/filter')
   // Greyed with the reason in production (ADR-0022 §5, ADR-0023)...
-  await expect(sampling).toHaveClass(/greyed/)
-  await expect(sampling.locator('.palette-reason')).toContainText("below this Service's C1 floor")
+  await expect(filter).toHaveClass(/greyed/)
+  await expect(filter.locator('.palette-reason')).toContainText("below this Service's C1 floor")
   // ...and clear in staging, where alpha components belong (ADR-0023 §3).
   await page.getByTestId('lens-control').selectOption('staging')
-  await expect(sampling).not.toHaveClass(/greyed/)
+  await expect(filter).not.toHaveClass(/greyed/)
 })
 
 test('edits produce Blueprint documents; ordering findings appear inline', async ({ page }) => {
@@ -84,7 +84,7 @@ test('the YAML flyout shows the rendered artefact read-only; click-off closes it
   await expect(flyout.locator('textarea, input, [contenteditable]')).toHaveCount(0)
   // Click-off closes: the flyout pushes the surface aside, it never covers
   // it, and clicking the surface dismisses it (P1 verdict).
-  await page.getByTestId('lane-traces').click()
+  await page.getByTestId('lane-traces').locator('h3').click()
   await expect(flyout).toHaveCount(0)
 })
 
@@ -128,7 +128,7 @@ test('the one hard block: Save disabled, different in kind, a Grant the way out'
   // The not-allowed exporter already present blocks Save (ADR-0022 §3).
   await expect(page.getByTestId('save-button')).toBeDisabled()
   const blocked = page.getByTestId('save-blocked')
-  await expect(blocked).toContainText('audit-log')
+  await expect(blocked).toContainText('debug-tap')
   await expect(page.getByTestId('request-grant')).toBeVisible()
   // The allow-list finding renders as blocking — different in kind from
   // the advisory strip entries (P1 verdict).

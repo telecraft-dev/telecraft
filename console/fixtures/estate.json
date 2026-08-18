@@ -1,12 +1,15 @@
 {
-  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance; collectors are the flat list's per-collector detail (ADR-0042 rule 3.4).",
+  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population — per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5) — platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams.",
   "me": {
     "id": "demo-user",
     "name": "Demo user",
-    "email": "demo-user@estate.internal",
-    "team": "data-flow"
+    "team": "data-flow",
+    "email": "demo-user@estate.internal"
   },
-  "environments": ["production", "staging"],
+  "environments": [
+    "production",
+    "staging"
+  ],
   "teams": {
     "id": "engineering",
     "name": "Engineering",
@@ -14,10 +17,21 @@
       {
         "id": "platform",
         "name": "Platform Engineering",
-        "teams": [{ "id": "data-flow", "name": "Data Flow" }]
+        "teams": [
+          {
+            "id": "data-flow",
+            "name": "Data Flow"
+          }
+        ]
       },
-      { "id": "infosec", "name": "Information Security" },
-      { "id": "product", "name": "Product" }
+      {
+        "id": "infosec",
+        "name": "Information Security"
+      },
+      {
+        "id": "product",
+        "name": "Product"
+      }
     ]
   },
   "cards": [
@@ -29,12 +43,25 @@
       "environment": "production",
       "serviceClass": "C1",
       "bands": {
-        "delivery": { "state": "ok", "worstSeverity": "none" },
-        "expectation": { "state": "ok", "worstSeverity": "none" },
-        "conformance": { "state": "ok", "worstSeverity": "none" }
+        "delivery": {
+          "state": "ok",
+          "worstSeverity": "none"
+        },
+        "expectation": {
+          "state": "ok",
+          "worstSeverity": "none"
+        },
+        "conformance": {
+          "state": "ok",
+          "worstSeverity": "none"
+        }
       },
       "findingCounts": {},
-      "population": { "matched": 4, "floor": 3, "floorSource": "derived" }
+      "population": {
+        "matched": 21614,
+        "floor": 21000,
+        "floorSource": "derived"
+      }
     },
     {
       "contractVersion": 1,
@@ -44,7 +71,10 @@
       "environment": "production",
       "serviceClass": "C1",
       "bands": {
-        "delivery": { "state": "ok", "worstSeverity": "none" },
+        "delivery": {
+          "state": "ok",
+          "worstSeverity": "none"
+        },
         "expectation": {
           "state": "finding",
           "worstSeverity": "advisory",
@@ -56,9 +86,18 @@
           "worstFinding": "checkout misses the C1 floor in production"
         }
       },
-      "findingCounts": { "expectation": 1, "conformance": 1 },
-      "waivedCounts": { "conformance": 1 },
-      "population": { "matched": 3, "floor": 3, "floorSource": "derived" }
+      "findingCounts": {
+        "expectation": 1,
+        "conformance": 1
+      },
+      "waivedCounts": {
+        "conformance": 1
+      },
+      "population": {
+        "matched": 3,
+        "floor": 3,
+        "floorSource": "derived"
+      }
     },
     {
       "contractVersion": 1,
@@ -68,12 +107,24 @@
       "environment": "staging",
       "serviceClass": "C1",
       "bands": {
-        "delivery": { "state": "pending_settle", "worstSeverity": "none" },
-        "expectation": { "state": "unknown", "worstSeverity": "none" },
-        "conformance": { "state": "not_applicable", "worstSeverity": "none" }
+        "delivery": {
+          "state": "pending_settle",
+          "worstSeverity": "none"
+        },
+        "expectation": {
+          "state": "unknown",
+          "worstSeverity": "none"
+        },
+        "conformance": {
+          "state": "not_applicable",
+          "worstSeverity": "none"
+        }
       },
       "findingCounts": {},
-      "population": { "matched": 1, "floorSource": "absent" }
+      "population": {
+        "matched": 1,
+        "floorSource": "absent"
+      }
     },
     {
       "contractVersion": 1,
@@ -82,12 +133,25 @@
       "team": "product",
       "environment": "production",
       "bands": {
-        "delivery": { "state": "ok", "worstSeverity": "none" },
-        "expectation": { "state": "ok", "worstSeverity": "none" },
-        "conformance": { "state": "ok", "worstSeverity": "none" }
+        "delivery": {
+          "state": "ok",
+          "worstSeverity": "none"
+        },
+        "expectation": {
+          "state": "ok",
+          "worstSeverity": "none"
+        },
+        "conformance": {
+          "state": "ok",
+          "worstSeverity": "none"
+        }
       },
       "findingCounts": {},
-      "population": { "matched": 2, "floor": 2, "floorSource": "declared" }
+      "population": {
+        "matched": 380,
+        "floor": 350,
+        "floorSource": "declared"
+      }
     }
   ],
   "drawers": {
@@ -103,7 +167,10 @@
           "summary": "unbacked arrival claim on the logs lane",
           "remediation": "Back the claim with a Requirement, or delete the dead logs lane from gateway-standard.",
           "whoActs": {
-            "target": { "kind": "blueprint", "id": "data-flow/gateway-standard" },
+            "target": {
+              "kind": "blueprint",
+              "id": "data-flow/gateway-standard"
+            },
             "lane": "logs",
             "label": "Fix the logs lane in Compose"
           }
@@ -116,7 +183,10 @@
           "summary": "checkout misses the C1 floor in production",
           "remediation": "Bring the gateway population back to the C1 floor of 3 on the checkout Paths.",
           "whoActs": {
-            "target": { "kind": "tier", "id": "data-flow/gateway" },
+            "target": {
+              "kind": "tier",
+              "id": "data-flow/gateway"
+            },
             "label": "Inspect delivery in Topology"
           }
         },
@@ -128,7 +198,10 @@
           "summary": "pii-redaction@3 runs under an expiring Grant",
           "remediation": "Renew the Grant for infosec/pii-redaction, or move to a version inside the Allow-list.",
           "whoActs": {
-            "target": { "kind": "component", "id": "infosec/pii-redaction" },
+            "target": {
+              "kind": "component",
+              "id": "infosec/pii-redaction"
+            },
             "label": "Request renewal in Governance"
           }
         }
@@ -138,7 +211,11 @@
           "key": "service-class",
           "claim": "Service Class C1, derived from the checkout Service's Paths through this Tier",
           "lines": [
-            { "file": "services/checkout.yaml", "line": 4, "text": "serviceClass: C1" },
+            {
+              "file": "services/checkout.yaml",
+              "line": 4,
+              "text": "serviceClass: C1"
+            },
             {
               "file": "services/checkout.yaml",
               "line": 9,
@@ -146,13 +223,19 @@
             }
           ],
           "sha": "9c2f4e1",
-          "trace": { "service": "product/checkout" }
+          "trace": {
+            "service": "product/checkout"
+          }
         },
         {
           "key": "floor",
           "claim": "population floor 3, derived from the substrate cardinality behind the gateway selector",
           "lines": [
-            { "file": "tiers/gateway.yaml", "line": 12, "text": "selector: role=gateway" }
+            {
+              "file": "tiers/gateway.yaml",
+              "line": 12,
+              "text": "selector: role=gateway"
+            }
           ],
           "sha": "9c2f4e1"
         },
@@ -172,11 +255,21 @@
           "key": "band:conformance",
           "claim": "checkout's C1 floor of 3 is judged against the gateway population in production",
           "lines": [
-            { "file": "services/checkout.yaml", "line": 4, "text": "serviceClass: C1" },
-            { "file": "tiers/gateway.yaml", "line": 12, "text": "selector: role=gateway" }
+            {
+              "file": "services/checkout.yaml",
+              "line": 4,
+              "text": "serviceClass: C1"
+            },
+            {
+              "file": "tiers/gateway.yaml",
+              "line": 12,
+              "text": "selector: role=gateway"
+            }
           ],
           "sha": "9c2f4e1",
-          "trace": { "service": "product/checkout" }
+          "trace": {
+            "service": "product/checkout"
+          }
         }
       ]
     },
@@ -189,10 +282,16 @@
           "key": "service-class",
           "claim": "Service Class C1, derived from the checkout Service's Paths through this Tier",
           "lines": [
-            { "file": "services/checkout.yaml", "line": 4, "text": "serviceClass: C1" }
+            {
+              "file": "services/checkout.yaml",
+              "line": 4,
+              "text": "serviceClass: C1"
+            }
           ],
           "sha": "9c2f4e1",
-          "trace": { "service": "product/checkout" }
+          "trace": {
+            "service": "product/checkout"
+          }
         }
       ]
     }
@@ -290,29 +389,87 @@
     }
   ],
   "topology": {
-    "sources": [{ "id": "internet", "name": "internet" }],
+    "sources": [
+      {
+        "id": "internet",
+        "name": "internet"
+      }
+    ],
+    "delivery": {
+      "data-flow/edge": {
+        "served": 21608,
+        "git": 6
+      },
+      "data-flow/gateway": {
+        "served": 3,
+        "git": 0
+      },
+      "data-flow/gateway-staging": {
+        "served": 0,
+        "git": 1
+      },
+      "product/storefront-edge": {
+        "served": 378,
+        "git": 2
+      }
+    },
     "hops": [
       {
         "from": "internet",
         "to": "data-flow/gateway",
         "trusted": false,
-        "signals": ["traces", "logs", "metrics"]
+        "signals": [
+          "traces",
+          "logs",
+          "metrics"
+        ]
       },
       {
         "from": "data-flow/edge",
         "to": "data-flow/gateway",
         "trusted": true,
-        "signals": ["traces", "logs", "metrics"]
+        "signals": [
+          "traces",
+          "logs",
+          "metrics"
+        ]
+      },
+      {
+        "from": "product/storefront-edge",
+        "to": "data-flow/gateway",
+        "trusted": true,
+        "signals": [
+          "traces",
+          "logs"
+        ]
       }
     ],
     "paths": [
       {
         "service": "product/checkout",
-        "through": ["data-flow/edge", "data-flow/gateway"]
+        "through": [
+          "data-flow/edge",
+          "data-flow/gateway"
+        ]
       },
       {
         "service": "product/checkout",
-        "through": ["data-flow/gateway-staging"]
+        "through": [
+          "data-flow/gateway-staging"
+        ]
+      },
+      {
+        "service": "product/storefront",
+        "through": [
+          "product/storefront-edge",
+          "data-flow/gateway"
+        ]
+      },
+      {
+        "service": "product/storefront",
+        "through": [
+          "data-flow/gateway"
+        ]
       }
     ]
   },
@@ -322,6 +479,12 @@
       "name": "checkout",
       "team": "product",
       "serviceClass": "C1"
+    },
+    {
+      "id": "product/storefront",
+      "name": "storefront",
+      "team": "product",
+      "serviceClass": "C2"
     }
   ],
   "blueprints": [
@@ -332,10 +495,22 @@
       "team": "data-flow",
       "tier": "data-flow/gateway",
       "locals": {
-        "otlp-in": { "class": "receiver", "type": "otlp" },
-        "guard": { "class": "processor", "type": "memory_limiter" },
-        "batcher": { "class": "processor", "type": "batch" },
-        "audit-log": { "class": "exporter", "type": "file" }
+        "otlp-in": {
+          "class": "receiver",
+          "type": "otlp"
+        },
+        "guard": {
+          "class": "processor",
+          "type": "memory_limiter"
+        },
+        "batcher": {
+          "class": "processor",
+          "type": "batch"
+        },
+        "debug-tap": {
+          "class": "exporter",
+          "type": "debug"
+        }
       },
       "lanes": {
         "traces": [
@@ -356,12 +531,41 @@
           "otlp-in",
           "guard",
           "batcher",
-          "audit-log",
+          "debug-tap",
           "data-flow/gateway-exporter@2"
         ]
       },
       "extensions": [],
-      "satisfies": ["req-pii-redaction@3", "req-payment-completeness@2"]
+      "satisfies": [
+        "req-pii-redaction@3",
+        "req-payment-completeness@2"
+      ],
+      "components": {
+        "otlp-in": {
+          "class": "receiver",
+          "type": "otlp"
+        },
+        "guard": {
+          "class": "processor",
+          "type": "memory_limiter"
+        },
+        "infosec/pii-redaction@3": {
+          "class": "processor",
+          "type": "transform"
+        },
+        "batcher": {
+          "class": "processor",
+          "type": "batch"
+        },
+        "data-flow/gateway-exporter@2": {
+          "class": "exporter",
+          "type": "otlphttp"
+        },
+        "debug-tap": {
+          "class": "exporter",
+          "type": "debug"
+        }
+      }
     },
     {
       "id": "data-flow/edge-standard",
@@ -370,113 +574,84 @@
       "team": "data-flow",
       "tier": "data-flow/edge",
       "locals": {
-        "otlp-in": { "class": "receiver", "type": "otlp" },
-        "batcher": { "class": "processor", "type": "batch" }
+        "otlp-in": {
+          "class": "receiver",
+          "type": "otlp"
+        },
+        "batcher": {
+          "class": "processor",
+          "type": "batch"
+        }
       },
       "lanes": {
-        "traces": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"],
-        "logs": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"]
+        "traces": [
+          "otlp-in",
+          "batcher",
+          "data-flow/gateway-exporter@2"
+        ],
+        "logs": [
+          "otlp-in",
+          "batcher",
+          "data-flow/gateway-exporter@2"
+        ]
       },
       "extensions": [],
-      "satisfies": ["req-pii-redaction@3"]
-    }
-  ],
-  "catalogueTypes": [
-    {
-      "class": "receiver",
-      "type": "otlp",
-      "stability": { "traces": "stable", "logs": "beta", "metrics": "stable" }
-    },
-    { "class": "receiver", "type": "filelog", "stability": { "logs": "beta" } },
-    {
-      "class": "receiver",
-      "type": "zipkin",
-      "stability": { "traces": "beta" },
-      "deprecated": {
-        "migration": "ingest via the otlp receiver; zipkin support ends with the v0.110 catalogue"
+      "satisfies": [
+        "req-pii-redaction@3"
+      ],
+      "components": {
+        "otlp-in": {
+          "class": "receiver",
+          "type": "otlp"
+        },
+        "batcher": {
+          "class": "processor",
+          "type": "batch"
+        },
+        "data-flow/gateway-exporter@2": {
+          "class": "exporter",
+          "type": "otlphttp"
+        }
       }
     },
     {
-      "class": "processor",
-      "type": "memory_limiter",
-      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
-    },
-    {
-      "class": "processor",
-      "type": "batch",
-      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
-    },
-    {
-      "class": "processor",
-      "type": "transform",
-      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
-    },
-    {
-      "class": "processor",
-      "type": "tail_sampling",
-      "stability": { "traces": "alpha" }
-    },
-    {
-      "class": "exporter",
-      "type": "otlphttp",
-      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
-    },
-    {
-      "class": "exporter",
-      "type": "debug",
-      "stability": {
-        "traces": "development",
-        "logs": "development",
-        "metrics": "development"
+      "id": "infosec/audit-standard",
+      "name": "audit-standard",
+      "version": 1,
+      "team": "infosec",
+      "locals": {
+        "otlp-in": {
+          "class": "receiver",
+          "type": "otlp"
+        },
+        "batcher": {
+          "class": "processor",
+          "type": "batch"
+        }
+      },
+      "lanes": {
+        "logs": [
+          "otlp-in",
+          "infosec/pii-redaction@3",
+          "batcher"
+        ]
+      },
+      "extensions": [],
+      "satisfies": [],
+      "components": {
+        "otlp-in": {
+          "class": "receiver",
+          "type": "otlp"
+        },
+        "infosec/pii-redaction@3": {
+          "class": "processor",
+          "type": "transform"
+        },
+        "batcher": {
+          "class": "processor",
+          "type": "batch"
+        }
       }
-    },
-    {
-      "class": "exporter",
-      "type": "file",
-      "stability": { "traces": "alpha", "logs": "alpha", "metrics": "alpha" }
-    }
-  ],
-  "policy": {
-    "allowLists": {
-      "engineering": [
-        "receiver/otlp",
-        "receiver/filelog",
-        "receiver/zipkin",
-        "processor/memory_limiter",
-        "processor/batch",
-        "processor/tail_sampling",
-        "exporter/otlphttp"
-      ]
-    },
-    "grants": [
-      {
-        "id": "grant-pii-redaction",
-        "grantedBy": "engineering",
-        "grantedTo": "data-flow",
-        "entries": ["processor/transform"],
-        "reason": "the infosec redaction chain runs on transform until first-class redaction ships"
-      }
-    ],
-    "floors": {
-      "production": { "C1": "beta", "C2": "beta", "C3": "alpha" }
-    }
-  },
-  "requirements": [
-    {
-      "id": "req-pii-redaction",
-      "version": 3,
-      "summary": "PII is redacted before telemetry leaves the collector",
-      "remediation": "Add infosec/pii-redaction to every lane carrying user data.",
-      "appliesTo": ["data-flow/gateway-standard", "data-flow/edge-standard"],
-      "verifiedBy": { "ref": "infosec/pii-redaction", "signals": ["traces", "logs"] }
-    },
-    {
-      "id": "req-payment-completeness",
-      "version": 2,
-      "summary": "checkout telemetry engages back-pressure before any buffering processor",
-      "remediation": "Run a memory_limiter processor in the traces lane.",
-      "appliesTo": ["data-flow/gateway-standard", "data-flow/edge-standard"],
-      "verifiedBy": { "type": "processor/memory_limiter", "signals": ["traces"] }
     }
   ],
   "catalogue": [
@@ -495,6 +670,107 @@
       "team": "data-flow",
       "class": "exporter",
       "type": "otlphttp"
+    }
+  ],
+  "owners": [
+    {
+      "id": "engineering-lead",
+      "name": "Engineering lead",
+      "team": "engineering"
+    },
+    {
+      "id": "platform-lead",
+      "name": "Platform lead",
+      "team": "platform"
+    },
+    {
+      "id": "dataflow-lead",
+      "name": "Data Flow lead",
+      "team": "data-flow"
+    },
+    {
+      "id": "infosec-lead",
+      "name": "Information Security lead",
+      "team": "infosec"
+    }
+  ],
+  "allowLists": [
+    {
+      "team": "platform",
+      "owner": "platform-lead",
+      "allow": [
+        "receiver/otlp",
+        "receiver/filelog",
+        "processor/*",
+        "exporter/otlphttp",
+        "exporter/debug",
+        "connector/*"
+      ]
+    },
+    {
+      "team": "data-flow",
+      "owner": "dataflow-lead",
+      "allow": [
+        "receiver/otlp",
+        "processor/batch",
+        "processor/filter",
+        "processor/transform",
+        "processor/memory_limiter",
+        "exporter/otlphttp"
+      ]
+    }
+  ],
+  "grants": [
+    {
+      "id": "kafka-egress-for-data-flow",
+      "owner": "platform-lead",
+      "team": "data-flow",
+      "adds": [
+        "receiver/kafka",
+        "exporter/kafka"
+      ]
+    }
+  ],
+  "floors": {
+    "production": {
+      "C1": "beta",
+      "C2": "beta",
+      "C3": "alpha"
+    }
+  },
+  "requirements": [
+    {
+      "id": "req-pii-redaction",
+      "version": 3,
+      "summary": "PII is redacted before telemetry leaves the collector",
+      "remediation": "Add infosec/pii-redaction to every lane carrying user data.",
+      "appliesTo": [
+        "data-flow/gateway-standard",
+        "data-flow/edge-standard"
+      ],
+      "verifiedBy": {
+        "ref": "infosec/pii-redaction",
+        "signals": [
+          "traces",
+          "logs"
+        ]
+      }
+    },
+    {
+      "id": "req-payment-completeness",
+      "version": 2,
+      "summary": "checkout telemetry engages back-pressure before any buffering processor",
+      "remediation": "Run a memory_limiter processor in the traces lane.",
+      "appliesTo": [
+        "data-flow/gateway-standard",
+        "data-flow/edge-standard"
+      ],
+      "verifiedBy": {
+        "type": "processor/memory_limiter",
+        "signals": [
+          "traces"
+        ]
+      }
     }
   ]
 }

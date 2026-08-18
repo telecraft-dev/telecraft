@@ -2,7 +2,8 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api } from '../../api/client'
-import type { BlueprintDoc, PaletteEntry, RequirementVerdict } from '../../api/types'
+import type { BlueprintDoc, Me, PaletteEntry, RequirementVerdict } from '../../api/types'
+import { canActOn } from '../../auth/authz'
 import { useLens } from '../../chrome/LensControl'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import type { ComposeSurface } from '../../router'
@@ -21,9 +22,15 @@ import { addEntry, addSuggestion, removeEntry } from './draft'
  * are projections. The exit is a change proposal through the forge adapter
  * (ADR-0028) — save proposes, the PR decides; the console never writes
  * live state.
+ *
+ * Whether a Blueprint is yours to author is the ownership tree's answer,
+ * not the surface's (ADR-0019 §2): the editing gestures and Save are
+ * offered exactly when the owning team is in the signed-in user's
+ * editableTeams; otherwise the same surfaces render honestly read-only.
  */
 export function Compose() {
   const blueprints = useQuery({ queryKey: ['blueprints'], queryFn: api.blueprints })
+  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
 
@@ -66,7 +73,7 @@ export function Compose() {
           ))}
         </ul>
       </section>
-      {chosen && <Workspace key={chosen.id} doc={chosen} />}
+      {chosen && <Workspace key={chosen.id} doc={chosen} me={me.data} />}
     </div>
   )
 }
@@ -77,7 +84,7 @@ const SURFACES: { surface: ComposeSurface; label: string; testid: string }[] = [
   { surface: 'canvas', label: 'Node canvas', testid: 'view-canvas' },
 ]
 
-function Workspace({ doc }: { doc: BlueprintDoc }) {
+function Workspace({ doc, me }: { doc: BlueprintDoc; me: Me | undefined }) {
   const [draft, setDraft] = useState(doc)
   const lens = useLens()
   const search = useSearch({ strict: false })
@@ -98,6 +105,7 @@ function Workspace({ doc }: { doc: BlueprintDoc }) {
   const proposed: BlueprintDoc = dirty ? { ...draft, version: doc.version + 1 } : draft
   const proposal = useMutation({ mutationFn: () => api.propose(proposed, lens) })
 
+  const editable = me !== undefined && canActOn(me, doc.team)
   const surface: ComposeSurface = search.surface ?? 'composer'
   const yamlOpen = search.yaml === true
   const closeYaml = () =>
@@ -151,54 +159,68 @@ function Workspace({ doc }: { doc: BlueprintDoc }) {
         </button>
       </header>
 
-      <div className="save-area">
-        {blocked && (
-          <div className="save-blocked" data-testid="save-blocked">
-            <p>
-              <strong>Save is disabled</strong> — {verdict.data?.save.reasons.join('; ')}. The
-              allow-list violation is the one rule that blocks (ADR-0022 §3); everything else
-              stays a finding.
-            </p>
-            <Link
-              to="/catalogue"
-              search={(prev) => ({ lens: prev.lens })}
-              className="who-acts"
-              data-testid="request-grant"
-            >
-              Request a Grant in Governance
-            </Link>
-          </div>
-        )}
-        <button
-          type="button"
-          data-testid="save-button"
-          disabled={blocked || proposal.isPending || verdict.data === undefined}
-          onClick={() => proposal.mutate()}
-        >
-          Save — propose v{proposed.version} as a PR
-        </button>
-        {proposal.isError && (
-          <p className="save-error" data-testid="save-error">
-            {proposal.error.message}
+      {/* Ownership decides the affordance (ADR-0019 §2): honest either way. */}
+      {me &&
+        (editable ? (
+          <p className="authoring editable" data-testid="compose-authoring">
+            Yours to author: {doc.team} is in your remit.
           </p>
-        )}
-        {proposal.data && (
-          <div className="proposal" data-testid="proposal">
-            <p>
-              Change proposal{' '}
-              <a href={proposal.data.url} data-testid="proposal-url">
-                {proposal.data.id}
-              </a>{' '}
-              opened on branch <code data-testid="proposal-branch">{proposal.data.branch}</code>{' '}
-              through the forge adapter, render-in-PR (ADR-0028) — the console proposes, the PR
-              decides.
+        ) : (
+          <p className="authoring readonly" data-testid="compose-authoring">
+            Read-only: owned by {doc.team}. Changes route through its owners.
+          </p>
+        ))}
+
+      {editable && (
+        <div className="save-area">
+          {blocked && (
+            <div className="save-blocked" data-testid="save-blocked">
+              <p>
+                <strong>Save is disabled</strong> — {verdict.data?.save.reasons.join('; ')}. The
+                allow-list violation is the one rule that blocks (ADR-0022 §3); everything else
+                stays a finding.
+              </p>
+              <Link
+                to="/catalogue"
+                search={(prev) => ({ lens: prev.lens })}
+                className="who-acts"
+                data-testid="request-grant"
+              >
+                Request a Grant in Governance
+              </Link>
+            </div>
+          )}
+          <button
+            type="button"
+            data-testid="save-button"
+            disabled={blocked || proposal.isPending || verdict.data === undefined}
+            onClick={() => proposal.mutate()}
+          >
+            Save — propose v{proposed.version} as a PR
+          </button>
+          {proposal.isError && (
+            <p className="save-error" data-testid="save-error">
+              {proposal.error.message}
             </p>
-            <p className="item-meta" data-testid="proposal-attribution">
-              Attributed to {proposal.data.attributedTo} (ADR-0014).
-            </p>
-          </div>
-        )}
-      </div>
+          )}
+          {proposal.data && (
+            <div className="proposal" data-testid="proposal">
+              <p>
+                Change proposal{' '}
+                <a href={proposal.data.url} data-testid="proposal-url">
+                  {proposal.data.id}
+                </a>{' '}
+                opened on branch <code data-testid="proposal-branch">{proposal.data.branch}</code>{' '}
+                through the forge adapter, render-in-PR (ADR-0028) — the console proposes, the PR
+                decides.
+              </p>
+              <p className="item-meta" data-testid="proposal-attribution">
+                Attributed to {proposal.data.attributedTo} (ADR-0014).
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="compose-work">
         {/* Click-off closes the resident flyout without swallowing the click (P1 verdict). */}
@@ -211,15 +233,22 @@ function Workspace({ doc }: { doc: BlueprintDoc }) {
               draft={draft}
               verdict={verdict.data}
               offendingLane={search.lane}
+              editable={editable}
               onAdd={onAdd}
               onRemove={onRemove}
             />
           )}
           {surface === 'requirements' && (
-            <Requirements verdict={verdict.data} onSuggest={onSuggest} />
+            <Requirements verdict={verdict.data} editable={editable} onSuggest={onSuggest} />
           )}
           {surface === 'canvas' && (
-            <NodeCanvas draft={draft} verdict={verdict.data} onAdd={onAdd} onRemove={onRemove} />
+            <NodeCanvas
+              draft={draft}
+              verdict={verdict.data}
+              editable={editable}
+              onAdd={onAdd}
+              onRemove={onRemove}
+            />
           )}
         </div>
         {yamlOpen && <YamlFlyout yaml={verdict.data?.yaml} onClose={closeYaml} />}

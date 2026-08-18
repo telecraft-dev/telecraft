@@ -30,6 +30,7 @@ type ComposeNode = Node<{
   signal: string
   index: number
   flagged: boolean
+  editable: boolean
   onRemove: (signal: string, index: number) => void
 }>
 
@@ -46,15 +47,17 @@ function ComposeNodeView({ data }: NodeProps<ComposeNode>) {
     <div className={data.flagged ? 'canvas-node compose flagged' : 'canvas-node compose'}>
       <Handle type="target" position={Position.Left} className="canvas-handle" />
       <span>{data.label}</span>
-      <button
-        type="button"
-        className="lane-remove"
-        data-testid={`canvas-remove-${data.signal}-${data.index}`}
-        aria-label={`Remove ${data.label} from ${data.signal}`}
-        onClick={() => data.onRemove(data.signal, data.index)}
-      >
-        ×
-      </button>
+      {data.editable && (
+        <button
+          type="button"
+          className="lane-remove"
+          data-testid={`canvas-remove-${data.signal}-${data.index}`}
+          aria-label={`Remove ${data.label} from ${data.signal}`}
+          onClick={() => data.onRemove(data.signal, data.index)}
+        >
+          ×
+        </button>
+      )}
       <Handle type="source" position={Position.Right} className="canvas-handle" />
     </div>
   )
@@ -89,11 +92,13 @@ const edgeTypes = { composeEdge: ComposeEdgeView }
 export function NodeCanvas({
   draft,
   verdict,
+  editable,
   onAdd,
   onRemove,
 }: {
   draft: BlueprintDoc
   verdict: ComposeVerdict | undefined
+  editable: boolean
   onAdd: (entry: PaletteEntry, signals: string[]) => void
   onRemove: (signal: string, index: number) => void
 }) {
@@ -132,7 +137,9 @@ export function NodeCanvas({
     data: {
       label: band.label,
       signal: band.id,
-      onDrop: (entry, signal) => onAdd(entry, [signal]),
+      onDrop: (entry, signal) => {
+        if (editable) onAdd(entry, [signal])
+      },
     },
     width: geometry.width,
     height: band.height,
@@ -155,6 +162,7 @@ export function NodeCanvas({
         signal,
         index: Number(index),
         flagged: flagged(signal, node.label),
+        editable,
         onRemove,
       },
     }
@@ -173,7 +181,7 @@ export function NodeCanvas({
       {/* Drag-authoring is available everywhere the palette is (ADR-0044 §3):
           the palette rides the flow view, and its drop targets are the
           signal bands. */}
-      <Palette verdict={verdict} onAdd={onAdd} />
+      <Palette verdict={verdict} editable={editable} onAdd={onAdd} />
       <div className="compose-canvas" data-testid="compose-canvas">
         <ReactFlow
           nodes={[...bandNodes, ...nodes]}

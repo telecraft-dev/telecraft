@@ -10,9 +10,11 @@ import type { ComposeVerdict, RequirementVerdict } from '../../api/types'
  */
 export function Requirements({
   verdict,
+  editable,
   onSuggest,
 }: {
   verdict: ComposeVerdict | undefined
+  editable: boolean
   onSuggest: (row: RequirementVerdict) => void
 }) {
   if (verdict === undefined) return <p className="surface-status">Judging the draft…</p>
@@ -60,14 +62,16 @@ export function Requirements({
               <td>
                 {!row.met && (
                   <>
-                    <button
-                      type="button"
-                      data-testid={`suggest-${row.id}`}
-                      onClick={() => onSuggest(row)}
-                    >
-                      Add {row.suggestion.ref ?? row.suggestion.type} to{' '}
-                      {row.suggestion.signals.join(', ')}
-                    </button>
+                    {editable && (
+                      <button
+                        type="button"
+                        data-testid={`suggest-${row.id}`}
+                        onClick={() => onSuggest(row)}
+                      >
+                        Add {row.suggestion.ref ?? row.suggestion.type} to{' '}
+                        {row.suggestion.signals.join(', ')}
+                      </button>
+                    )}
                     <p className="finding-remediation">{row.remediation}</p>
                   </>
                 )}
