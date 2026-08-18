@@ -68,8 +68,9 @@ describe('demo mode read paths (issue #50)', () => {
   it('joins the Tier delivery split onto the topology payload', async () => {
     const topology = await demoApi.topology()
     const tier = topology.tiers.find((t) => t.id === 'data-flow/edge')
-    expect(tier?.matched).toBeGreaterThan(0)
-    expect(tier?.delivery.served + tier!.delivery.git).toBeGreaterThan(0)
+    if (!tier) throw new Error('the fixture estate has no data-flow/edge Tier')
+    expect(tier.matched).toBeGreaterThan(0)
+    expect(tier.delivery.served + tier.delivery.git).toBeGreaterThan(0)
   })
 
   it('refuses an uninstalled catalogue version instead of answering empty', async () => {
