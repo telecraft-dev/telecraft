@@ -1,0 +1,294 @@
+// Package delivery is the second cross of ADR-0004: Intended × Effective,
+// judged per collector, producing the delivery status that sits beside the
+// conformance verdict and qualifies it — never blended into it (REQ-020).
+//
+// The status has two axes, kept separate because they come from different
+// witnesses. The remote reading is OpAMP's RemoteConfigStatus vocabulary,
+// adopted verbatim — UNSET / APPLYING / APPLIED / FAILED plus the error —
+// with no invented delivery states (ADR-0004). The comparison is the
+// normalised layer-2 cross of the artefact in git against the collector's
+// own reported config, under the delivery path's Mutation profile
+// (ADR-0005, ADR-0046), qualified by the commit stamps both sides carry
+// (ADR-0013): agreeing configs are in sync; disagreeing configs with two
+// different stamps are stale (the collector runs another commit — a
+// delivery lag); disagreeing configs without that explanation are drifted,
+// with layer 3 saying where.
+//
+// GitOps is co-equal (REQ-041): the same computation runs for both paths,
+// the path itself is a visible property of the status, and the only
+// difference is the profile the comparison runs under. Every reading
+// carries the absence discipline (ADR-0004, ADR-0008): a provider or path
+// that cannot report a reading yields Known: false with a cause, and
+// not-knowing never reads as failing.
+package delivery
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/telecraft-dev/telecraft/internal/normalise"
+	"github.com/telecraft-dev/telecraft/internal/renderer"
+)
+
+// Path is the delivery path, chosen per collector and visible as a
+// collector property (REQ-041, ADR-0010): the platform serves everything;
+// GitOps is an alternative, not a fallback.
+type Path string
+
+const (
+	// PathServed is the platform's own OpAMP serving path — the Supervisor
+	// beside the collector applies what the server offers (ADR-0010).
+	PathServed Path = "served"
+
+	// PathGit is the git-delivered path: the config reaches the collector
+	// by GitOps, config management, or a person. Legitimate, not lesser.
+	PathGit Path = "git"
+)
+
+func (p Path) Valid() bool {
+	return p == PathServed || p == PathGit
+}
+
+// Profile is the Mutation profile this path's layer-2 comparison runs
+// under by default (ADR-0046): the serving path's reports carry the
+// Supervisor's injections; a git-delivered config compares exactly. A
+// provider reading collectors through its own lossy channel passes its own
+// profile to Compute instead.
+func (p Path) Profile() normalise.Profile {
+	if p == PathServed {
+		return normalise.Supervisor()
+	}
+	return normalise.Exact()
+}
+
+// State is OpAMP's RemoteConfigStatuses vocabulary, verbatim (ADR-0004: no
+// invented delivery states).
+type State string
+
+const (
+	StateUnset    State = "UNSET"
+	StateApplying State = "APPLYING"
+	StateApplied  State = "APPLIED"
+	StateFailed   State = "FAILED"
+)
+
+func (s State) Valid() bool {
+	switch s {
+	case StateUnset, StateApplying, StateApplied, StateFailed:
+		return true
+	}
+	return false
+}
+
+// RemoteStatus is the collector-reported RemoteConfigStatus reading. Known
+// keeps "this path carries no such reading" distinct from FAILED: a
+// git-delivered collector has no Supervisor to report one, and a provider
+// that can never report it must not look like failure (ADR-0008,
+// ADR-0036).
+type RemoteStatus struct {
+	Known bool
+	Cause string
+
+	State        State
+	ErrorMessage string
+}
+
+// Intended is the per-collector Intended reading: the rendered artefact in
+// git this collector should be running — pinned to a commit by the stamp
+// riding inside it (ADR-0004, ADR-0013). A hand-committed config is
+// Intended too.
+type Intended struct {
+	Known bool
+	Cause string
+
+	Artefact []byte
+}
+
+// Effective is the per-collector Effective reading: the collector's own
+// reported running config, never what an applier holds (ADR-0004).
+type Effective struct {
+	Known bool
+	Cause string
+
+	Config []byte
+}
+
+// Comparison is the verdict of the normalised Intended × Effective cross.
+// The stale/drifted split follows ADR-0004's own qualifiers; these are
+// comparison outcomes beside the remote reading, never replacements for
+// its states.
+type Comparison string
+
+const (
+	// ComparisonUnknown: a side could not be read or could not be
+	// normalised. Not knowing is a normal state and never reads as failing
+	// (ADR-0004, ADR-0008); the Status.Cause says why.
+	ComparisonUnknown Comparison = "unknown"
+
+	// ComparisonInSync: the layer-2 digests agree under the profile — the
+	// collector runs the intended config, modulo the path's catalogued
+	// mutations and nothing else.
+	ComparisonInSync Comparison = "in_sync"
+
+	// ComparisonStale: the configs disagree and the two commit stamps
+	// differ — the collector runs another commit's config. A delivery lag,
+	// owned by the delivery path (ADR-0004: a fault here can wear a
+	// pipeline fault's clothes).
+	ComparisonStale Comparison = "stale"
+
+	// ComparisonDrifted: the configs disagree without a commit gap to
+	// explain it. Changes says where.
+	ComparisonDrifted Comparison = "drifted"
+)
+
+// Status is one collector's delivery status.
+type Status struct {
+	// Path is the collector's delivery path — a visible property (REQ-041).
+	Path Path
+
+	// Profile names the Mutation profile the comparison ran under; part of
+	// digest identity, so part of the status's identity too (ADR-0046).
+	Profile string
+
+	// Remote is the RemoteConfigStatus reading, verbatim.
+	Remote RemoteStatus
+
+	// Comparison is the normalised cross; Cause explains an unknown one.
+	Comparison Comparison
+	Cause      string
+
+	// IntendedCommit and EffectiveCommit are the commit stamps read from
+	// each side's config (ADR-0013: the artefact carries its own identity,
+	// and "which commit is this running" is read from the collector).
+	// Empty when a side carries no stamp — normal for foreign configs.
+	IntendedCommit  string
+	EffectiveCommit string
+
+	// Changes is the layer-3 localisation, present exactly when the
+	// comparison found disagreement (ADR-0005: computed only then).
+	Changes []normalise.Change
+}
+
+// Compute crosses one collector's readings into its delivery status. The
+// same computation serves both delivery paths (REQ-041) — path and profile
+// only parameterise it. Unknown readings and configs the normaliser
+// refuses (it fails closed — ADR-0046) yield ComparisonUnknown with a
+// cause, never an error and never a failure look-alike; an error reports a
+// caller bug (invalid path, profile, or remote state), not a reading.
+func Compute(path Path, profile normalise.Profile, intended Intended, effective Effective, remote RemoteStatus) (Status, error) {
+	if !path.Valid() {
+		return Status{}, fmt.Errorf("unknown delivery path %q — served or git (REQ-041)", path)
+	}
+	if remote.Known && !remote.State.Valid() {
+		return Status{}, fmt.Errorf("remote state %q is not RemoteConfigStatus vocabulary (ADR-0004)", remote.State)
+	}
+
+	st := Status{Path: path, Profile: profile.Name, Remote: remote, Comparison: ComparisonUnknown}
+
+	var causes []string
+	if !intended.Known {
+		causes = append(causes, "no Intended reading: "+orUnexplained(intended.Cause))
+	}
+	if !effective.Known {
+		causes = append(causes, "no Effective reading: "+orUnexplained(effective.Cause))
+	}
+	if len(causes) > 0 {
+		st.Cause = strings.Join(causes, "; ")
+		return st, nil
+	}
+
+	in, err := normalise.Normalised(intended.Artefact, profile)
+	if err != nil {
+		st.Cause = fmt.Sprintf("the Intended artefact did not normalise (failing closed): %v", err)
+		return st, nil
+	}
+	eff, err := normalise.Normalised(effective.Config, profile)
+	if err != nil {
+		st.Cause = fmt.Sprintf("the Effective config did not normalise (failing closed): %v", err)
+		return st, nil
+	}
+	st.IntendedCommit = stampOf(in)
+	st.EffectiveCommit = stampOf(eff)
+
+	inDigest, err := normalise.Digest(in, profile)
+	if err != nil {
+		return Status{}, err
+	}
+	effDigest, err := normalise.Digest(eff, profile)
+	if err != nil {
+		return Status{}, err
+	}
+
+	if inDigest == effDigest {
+		st.Comparison = ComparisonInSync
+		return st, nil
+	}
+	st.Changes = normalise.Layer3(in, eff)
+	if st.IntendedCommit != "" && st.EffectiveCommit != "" && st.IntendedCommit != st.EffectiveCommit {
+		st.Comparison = ComparisonStale
+	} else {
+		st.Comparison = ComparisonDrifted
+	}
+	return st, nil
+}
+
+// Summary renders the status as one line for logs and printers: both axes,
+// never blended.
+func (s Status) Summary() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "path=%s profile=%s", s.Path, s.Profile)
+	if s.Remote.Known {
+		fmt.Fprintf(&b, " remote=%s", s.Remote.State)
+		if s.Remote.ErrorMessage != "" {
+			fmt.Fprintf(&b, " remote_error=%q", s.Remote.ErrorMessage)
+		}
+	} else {
+		fmt.Fprintf(&b, " remote=unknown (%s)", orUnexplained(s.Remote.Cause))
+	}
+	fmt.Fprintf(&b, " comparison=%s", s.Comparison)
+	if s.Comparison == ComparisonUnknown {
+		fmt.Fprintf(&b, " (%s)", orUnexplained(s.Cause))
+	}
+	if s.IntendedCommit != "" {
+		fmt.Fprintf(&b, " intended_commit=%s", s.IntendedCommit)
+	}
+	if s.EffectiveCommit != "" {
+		fmt.Fprintf(&b, " effective_commit=%s", s.EffectiveCommit)
+	}
+	if n := len(s.Changes); n > 0 {
+		fmt.Fprintf(&b, " changes=%d", n)
+	}
+	return b.String()
+}
+
+// stampOf reads the commit stamp out of a normalised config tree:
+// service.telemetry.resource.<renderer.CommitAttribute> (ADR-0013). Absent
+// or non-string means no stamp — normal for foreign configs, never an
+// error.
+func stampOf(doc any) string {
+	root, ok := doc.(map[string]any)
+	if !ok {
+		return ""
+	}
+	svc, ok := root["service"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	tel, ok := svc["telemetry"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	res, ok := tel["resource"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	stamp, _ := res[renderer.CommitAttribute].(string)
+	return stamp
+}
+
+func orUnexplained(cause string) string {
+	if cause == "" {
+		return "unexplained"
+	}
+	return cause
+}
