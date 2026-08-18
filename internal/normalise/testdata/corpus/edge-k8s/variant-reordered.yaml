@@ -1,0 +1,101 @@
+# Same config as base.yaml, top-level and nested map keys in different order.
+# Semantically identical — must hash equal at layer 2 under every profile.
+service:
+  telemetry:
+    metrics:
+      level: normal
+  pipelines:
+    traces:
+      exporters:
+        - otlp/gateway
+      processors:
+        - memory_limiter
+        - batch
+        - k8sattributes
+      receivers:
+        - otlp
+    logs:
+      receivers:
+        - filelog/containers
+        - otlp
+      processors:
+        - memory_limiter
+        - batch
+        - k8sattributes
+        - resource/platform-owner
+      exporters:
+        - otlp/gateway
+    metrics:
+      receivers:
+        - kubeletstats
+        - otlp
+        - prometheus/self
+      processors:
+        - memory_limiter
+        - k8sattributes
+        - batch
+        - resource/platform-owner
+      exporters:
+        - otlp/gateway
+  extensions:
+    - opamp/mgmt
+extensions:
+  opamp/mgmt:
+    instance_uid: 018f2b2e-0000-7000-8000-000000000001
+    server:
+      http:
+        polling_interval: 30s
+        endpoint: https://mgmt.example.com:443/v1/opamp
+exporters:
+  otlp/gateway:
+    headers:
+      authorization: Bearer s3cr3t-example
+    tls:
+      ca_file: /etc/ssl/certs/ca-certificates.crt
+    endpoint: gateway.observability.svc.cluster.local:4317
+processors:
+  resource/platform-owner:
+    attributes:
+      - action: upsert
+        value: core-observability
+        key: platform.owner
+  k8sattributes:
+    extract:
+      labels:
+        - tag_name: service.name
+          from: pod
+          key: app.kubernetes.io/name
+      metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+    auth_type: serviceAccount
+  batch: {}
+  memory_limiter:
+    spike_limit_percentage: 25
+    limit_percentage: 80
+    check_interval: 1s
+receivers:
+  prometheus/self:
+    config:
+      scrape_configs:
+        - static_configs:
+            - targets:
+                - 127.0.0.1:8888
+          scrape_interval: 30s
+          job_name: otelcol
+  kubeletstats:
+    endpoint: https://${env:K8S_NODE_NAME}:10250
+    auth_type: serviceAccount
+    collection_interval: 30s
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+  filelog/containers:
+    operators:
+      - type: container
+    start_at: end
+    include:
+      - /var/log/pods/*/*/*.log

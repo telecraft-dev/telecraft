@@ -1,0 +1,36 @@
+# base.yaml with keys shuffled and mixed quoting. Cosmetic only.
+service:
+  pipelines:
+    metrics:
+      exporters: ["otlphttp/backend"]
+      processors: ["memory_limiter", "batch"]
+      receivers: ["otlp"]
+    traces:
+      processors:
+        - "memory_limiter"
+        - "attributes/strip-untrusted"
+        - "batch"
+      exporters:
+        - "otlphttp/backend"
+      receivers:
+        - "otlp"
+exporters:
+  otlphttp/backend:
+    headers:
+      x-api-token: "tok-example-123"
+    endpoint: "https://ingest.example.com:443"
+processors:
+  batch:
+    send_batch_max_size: 16384
+  attributes/strip-untrusted:
+    actions:
+      - action: delete
+        key: internal.cost.centre
+  memory_limiter:
+    limit_percentage: 75
+    check_interval: "1s"
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"

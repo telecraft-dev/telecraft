@@ -162,6 +162,12 @@ func validateTier(path string, t *Tier) []string {
 			break
 		}
 	}
+	if t.MinExpected < 0 {
+		p = append(p, ctx+" declares a negative min_expected — a population floor is at least zero, and zero means no declared floor (ADR-0035)")
+	}
+	if t.MinExpected > 0 && len(t.Selector) == 0 {
+		p = append(p, ctx+" declares min_expected but no selector — the floor counts collectors matched by selector, so without one nothing can ever meet it (ADR-0035, ADR-0007)")
+	}
 	for _, h := range t.Hops {
 		if h.From == "" {
 			p = append(p, ctx+" has a hop with no from — a Hop is a directed edge, and its source is what trust is judged about (ADR-0007)")

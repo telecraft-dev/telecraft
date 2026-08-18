@@ -1,0 +1,84 @@
+{
+  "receivers": {
+    "filelog/containers": {
+      "include": ["/var/log/pods/*/*/*.log"],
+      "start_at": "end",
+      "operators": [{"type": "container"}]
+    },
+    "otlp": {
+      "protocols": {
+        "grpc": {"endpoint": "0.0.0.0:4317"},
+        "http": {"endpoint": "0.0.0.0:4318"}
+      }
+    },
+    "kubeletstats": {
+      "collection_interval": "30s",
+      "auth_type": "REDACTED",
+      "endpoint": "https://${env:K8S_NODE_NAME}:10250"
+    },
+    "prometheus/self": {
+      "config": {
+        "scrape_configs": [
+          {
+            "job_name": "otelcol",
+            "scrape_interval": "30s",
+            "static_configs": [{"targets": ["127.0.0.1:8888"]}]
+          }
+        ]
+      }
+    }
+  },
+  "processors": {
+    "memory_limiter": {
+      "check_interval": "1s",
+      "limit_percentage": 80,
+      "spike_limit_percentage": 25
+    },
+    "batch": {},
+    "k8sattributes": {
+      "auth_type": "REDACTED",
+      "extract": {
+        "metadata": ["k8s.namespace.name", "k8s.pod.name"],
+        "labels": [
+          {"key": "REDACTED", "from": "pod", "tag_name": "service.name"}
+        ]
+      }
+    },
+    "resource/platform-owner": {
+      "attributes": [
+        {"key": "REDACTED", "value": "core-observability", "action": "upsert"}
+      ]
+    }
+  },
+  "exporters": {
+    "otlp/gateway": {
+      "endpoint": "gateway.observability.svc.cluster.local:4317",
+      "tls": {"ca_file": "/etc/ssl/certs/ca-certificates.crt"},
+      "headers": {"authorization": "REDACTED"}
+    }
+  },
+  "extensions": {
+    "opamp/fleet": {"polling_interval": "30s"}
+  },
+  "service": {
+    "extensions": ["opamp/fleet"],
+    "pipelines": {
+      "logs": {
+        "receivers": ["filelog/containers", "otlp"],
+        "processors": ["memory_limiter", "batch", "k8sattributes", "resource/platform-owner"],
+        "exporters": ["otlp/gateway"]
+      },
+      "metrics": {
+        "receivers": ["kubeletstats", "otlp", "prometheus/self"],
+        "processors": ["memory_limiter", "k8sattributes", "batch", "resource/platform-owner"],
+        "exporters": ["otlp/gateway"]
+      },
+      "traces": {
+        "receivers": ["otlp"],
+        "processors": ["memory_limiter", "batch", "k8sattributes"],
+        "exporters": ["otlp/gateway"]
+      }
+    },
+    "telemetry": {"metrics": {"level": "normal"}}
+  }
+}

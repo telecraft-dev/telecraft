@@ -244,6 +244,14 @@ type Tier struct {
 	// many.
 	Selector map[string]string `yaml:"selector"`
 
+	// MinExpected is the Tier's declared population floor (ADR-0035 §2):
+	// at least this many collectors should match — reviewable in git, for
+	// substrates with no queryable inventory ("at least 12 boxes in that
+	// rack"). A floor, never an equality: surplus is never a finding. Zero
+	// means no declared floor, and a live derived count always outranks
+	// the declaration (derived > declared > absent).
+	MinExpected int `yaml:"min_expected"`
+
 	Serving *Serving `yaml:"serving"`
 	Hops    []Hop    `yaml:"hops"`
 
