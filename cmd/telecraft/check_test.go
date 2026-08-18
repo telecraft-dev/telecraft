@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // writeLibraryFile drops one file into dir, creating parents, and returns
@@ -247,5 +249,191 @@ func TestCheckReportsAuthoringFindings(t *testing.T) {
 				t.Errorf("never-applies produced a finding on %s/%s — it applies nowhere", row.Service, row.Environment)
 			}
 		}
+	}
+}
+
+// writeExemptions authors one exemption for configOnlyLibrary's requirement
+// — exactly what checkout fails in twoEnvEstate's staging row — and returns
+// the exemptions directory.
+func writeExemptions(t *testing.T, dir, expires, subject string) string {
+	t.Helper()
+	body := fmt.Sprintf(`
+id: checkout-onboarding
+requirement: logs-receiver-present
+owner: platform-observability
+expires: %s
+%s
+reason: onboarding
+`, expires, subject)
+	writeLibraryFile(t, filepath.Join(dir, "exemptions"), "checkout.yaml", body)
+	return filepath.Join(dir, "exemptions")
+}
+
+// Criterion (REQ-014, ADR-0037): a waived finding still appears with its
+// diagnosis plus the waiver — in the findings, in the row score, and in the
+// summary roll-up — while giving up only its count and with it the exit code.
+func TestCheckWaivedFindingStaysVisible(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
+	exDir := writeExemptions(t, dir, "2999-01-01", "service: checkout")
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
+	if code != 0 {
+		t.Fatalf("exit %d, want 0 — the only failure is waived\nstderr: %s", code, msg)
+	}
+
+	staging := report.Rows[1]
+	if staging.Environment != "staging" || len(staging.Findings) != 1 {
+		t.Fatalf("rows = %+v, want the staging row second with one finding", report.Rows)
+	}
+	f := staging.Findings[0]
+	if f.Outcome != "misconfigured" || len(f.Detail) == 0 {
+		t.Errorf("finding = %+v — the waiver must never replace the diagnosis", f)
+	}
+	if f.Waived != "exempt" {
+		t.Errorf("waived = %q, want exempt", f.Waived)
+	}
+	for _, want := range []string{"checkout-onboarding", "platform-observability", "2999-01-01"} {
+		if !strings.Contains(f.WaiverReason, want) {
+			t.Errorf("waiver_reason %q does not carry %q", f.WaiverReason, want)
+		}
+	}
+	if staging.Score.Waived != 1 || staging.Score.Failing != 0 {
+		t.Errorf("staging score = %+v, want the failure waived", staging.Score)
+	}
+	if report.Summary.Waived != 1 || report.Summary.CountingFailures != 0 {
+		t.Errorf("summary = %+v — the waived count must ride the roll-up", report.Summary)
+	}
+}
+
+// Criterion: an expired Exemption reverts to the raw finding with no manual
+// step — the gate fails again — and the file still in the tree surfaces as
+// an authoring finding (ADR-0037 §3), visible but never in the exit code.
+func TestCheckExpiredExemptionReverts(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
+	exDir := writeExemptions(t, dir, "2026-01-01", "service: checkout")
+
+	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — an expired exemption waives nothing", code)
+	}
+	f := report.Rows[1].Findings[0]
+	if f.Waived != "" || f.WaiverReason != "" {
+		t.Errorf("finding = %+v, want the raw finding back untouched", f)
+	}
+	if report.Summary.Waived != 0 || report.Summary.CountingFailures != 1 {
+		t.Errorf("summary = %+v, want the failure counting again", report.Summary)
+	}
+	if len(report.AuthoringFindings) != 1 ||
+		report.AuthoringFindings[0].Exemption != "checkout-onboarding" ||
+		!strings.Contains(report.AuthoringFindings[0].Message, "expired") {
+		t.Errorf("authoring findings = %+v, want the dead exemption surfaced", report.AuthoringFindings)
+	}
+}
+
+// Criterion (REQ-014): an Exemption without owner or expiry fails load, and
+// through this gate that is exit 2 — never a run that silently counted
+// findings someone believes are waived.
+func TestCheckInvalidExemptionsExitTwo(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
+	exDir := filepath.Join(dir, "exemptions")
+	writeLibraryFile(t, exDir, "bad.yaml", `
+id: no-owner-no-expiry
+requirement: logs-receiver-present
+service: checkout
+`)
+
+	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(msg, "has no owner") || !strings.Contains(msg, "has no expiry") {
+		t.Errorf("stderr %q should name the missing owner and expiry", msg)
+	}
+}
+
+// Grace rides the estate's own table: a classed Service inside its
+// onboarding window passes the gate with the finding visible and waived.
+func TestCheckGraceWaivesInsideTheWindow(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	onboarded := time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02")
+	estate := writeLibraryFile(t, dir, "estate.yaml", fmt.Sprintf(`
+grace:
+  - class: C1
+    window: 240h
+services:
+  - name: checkout
+    class: C1
+    onboarded: %s
+    environments:
+      - name: production
+        pipelines: []
+`, onboarded))
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
+	if code != 0 {
+		t.Fatalf("exit %d, want 0 — the failure falls inside the C1 grace window\nstderr: %s", code, msg)
+	}
+	f := report.Rows[0].Findings[0]
+	if f.Outcome != "misconfigured" || f.Waived != "grace" {
+		t.Errorf("finding = %+v, want the diagnosis intact under a grace waiver", f)
+	}
+	if !strings.Contains(f.WaiverReason, "Service Class C1") {
+		t.Errorf("waiver_reason %q should name the class", f.WaiverReason)
+	}
+	if report.Summary.Waived != 1 {
+		t.Errorf("summary = %+v, want the grace waiver in the roll-up", report.Summary)
+	}
+}
+
+// A team-scoped exemption resolves through the ownership model (ADR-0037
+// §2): with -ownership the subtree covers the Service via an ancestor team,
+// without it the run refuses rather than silently not applying the waiver.
+func TestCheckTeamScopedExemption(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
+	exDir := writeExemptions(t, dir, "2999-01-01", "team: engineering")
+
+	ownDir := filepath.Join(dir, "ownership")
+	writeLibraryFile(t, ownDir, "teams.yaml", `
+teams:
+  - id: engineering
+    name: Engineering
+    teams:
+      - id: payments
+        name: Payments
+        owners: [payments-lead]
+`)
+	writeLibraryFile(t, ownDir, "services.yaml", `
+- kind: service
+  id: checkout
+  owner: payments-lead
+`)
+
+	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
+	if code != 2 || !strings.Contains(msg, "no ownership model") {
+		t.Fatalf("without -ownership: exit %d, stderr %q — want a refusal naming the missing model", code, msg)
+	}
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-exemptions", exDir, "-ownership", ownDir)
+	if code != 0 {
+		t.Fatalf("with -ownership: exit %d, want 0\nstderr: %s", code, msg)
+	}
+	f := report.Rows[1].Findings[0]
+	if f.Waived != "exempt" {
+		t.Errorf("finding = %+v — checkout's team sits under engineering, so the subtree exemption covers it", f)
 	}
 }
