@@ -9,8 +9,9 @@ import (
 	"testing"
 )
 
-// writeFile drops one file into dir and returns its path.
-func writeFile(t *testing.T, dir, name, body string) string {
+// writeLibraryFile drops one file into dir, creating parents, and returns
+// its path. (main_test.go's writeFile is the flat sibling.)
+func writeLibraryFile(t *testing.T, dir, name, body string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -94,7 +95,7 @@ func TestCheckUsageErrors(t *testing.T) {
 func TestCheckMalformedLibraryExitsNonZero(t *testing.T) {
 	dir := t.TempDir()
 	libDir := filepath.Join(dir, "library")
-	badFile := writeFile(t, libDir, "bad.yaml", `
+	badFile := writeLibraryFile(t, libDir, "bad.yaml", `
 - id: broken
   title: Broken
   version: 1
@@ -103,7 +104,7 @@ func TestCheckMalformedLibraryExitsNonZero(t *testing.T) {
     kind: logs
   remediation: fix it
 `)
-	estate := writeFile(t, dir, "estate.yaml", twoEnvEstate)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
 
 	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 2 {
@@ -117,8 +118,8 @@ func TestCheckMalformedLibraryExitsNonZero(t *testing.T) {
 func TestCheckCleanEstateExitsZero(t *testing.T) {
 	dir := t.TempDir()
 	libDir := filepath.Join(dir, "library")
-	writeFile(t, libDir, "config.yaml", configOnlyLibrary)
-	estate := writeFile(t, dir, "estate.yaml", `
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
 services:
   - name: checkout
     environments:
@@ -151,8 +152,8 @@ services:
 func TestCheckCountsFailuresPerRow(t *testing.T) {
 	dir := t.TempDir()
 	libDir := filepath.Join(dir, "library")
-	writeFile(t, libDir, "config.yaml", configOnlyLibrary)
-	estate := writeFile(t, dir, "estate.yaml", twoEnvEstate)
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
 
 	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 1 {
@@ -190,8 +191,8 @@ func TestCheckCountsFailuresPerRow(t *testing.T) {
 func TestCheckUnreachableBackendFailsTheGate(t *testing.T) {
 	dir := t.TempDir()
 	libDir := filepath.Join(dir, "library")
-	writeFile(t, libDir, "signal.yaml", signalOnlyLibrary)
-	estate := writeFile(t, dir, "estate.yaml", `
+	writeLibraryFile(t, libDir, "signal.yaml", signalOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
 services:
   - name: checkout
     environments:
@@ -219,8 +220,8 @@ services:
 func TestCheckReportsAuthoringFindings(t *testing.T) {
 	dir := t.TempDir()
 	libDir := filepath.Join(dir, "library")
-	writeFile(t, libDir, "config.yaml", configOnlyLibrary)
-	writeFile(t, libDir, "scoped.yaml", `
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	writeLibraryFile(t, libDir, "scoped.yaml", `
 - id: never-applies
   title: Scoped to an environment nobody declared
   version: 1
@@ -231,7 +232,7 @@ func TestCheckReportsAuthoringFindings(t *testing.T) {
     has_receiver: [otlp]
   remediation: fix the environments list
 `)
-	estate := writeFile(t, dir, "estate.yaml", twoEnvEstate)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
 
 	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 1 {

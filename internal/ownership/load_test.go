@@ -312,3 +312,34 @@ func TestMissingDirectoryIsAnError(t *testing.T) {
 		t.Fatal("expected an error for a missing estate directory")
 	}
 }
+
+// Allow-lists and Grants live beside teams.yaml in the estate directory
+// (ADR-0021 §5); they are policy, loaded by internal/allowlist, and must not
+// be parsed here as authored-object files.
+func TestPolicyFilesBesideTeamsAreSkipped(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "teams.yaml", goodTeams)
+	write(t, dir, "tiers.yaml", goodObject)
+	write(t, dir, "allow-lists.yaml", "allow_lists:\n  - team: platform\n    owner: platform-observability\n    allow: [receiver/otlp]\n")
+	write(t, dir, "grants.yaml", "grants: []\n")
+	est, err := Load(dir)
+	if err != nil {
+		t.Fatalf("an estate with policy files beside teams.yaml must load: %v", err)
+	}
+	if len(est.Objects) != 1 {
+		t.Errorf("got %d objects, want just the tier — policy files are not authored objects", len(est.Objects))
+	}
+}
+
+// LoadTeams is the seam for consumers that judge against teams alone.
+func TestLoadTeamsReadsJustTheTree(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "teams.yaml", goodTeams)
+	tree, err := LoadTeams(filepath.Join(dir, "teams.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := tree.Teams["platform"]; !ok {
+		t.Error("the tree does not hold the authored team")
+	}
+}

@@ -49,6 +49,13 @@ func Load(dir string) (Estate, error) {
 			teamsPath = filepath.Join(dir, e.Name())
 			continue
 		}
+		// Allow-lists and Grants live beside teams.yaml in the estate
+		// directory (ADR-0021 §5), but they are policy, not ownership —
+		// internal/allowlist loads and validates them. Skipped here so one
+		// estate directory carries the whole authored set.
+		if e.Name() == "allow-lists.yaml" || e.Name() == "grants.yaml" {
+			continue
+		}
 		objectFiles = append(objectFiles, filepath.Join(dir, e.Name()))
 	}
 	sort.Strings(objectFiles)
@@ -94,6 +101,14 @@ func Load(dir string) (Estate, error) {
 		return Estate{}, fmt.Errorf("invalid estate ownership:\n  - %s", strings.Join(problems, "\n  - "))
 	}
 	return est, nil
+}
+
+// LoadTeams reads and validates just the team tree from one teams.yaml. It
+// is the seam for consumers that judge against teams alone — the Allow-list
+// policy and its palette CLI (ADR-0021) — without requiring the estate's
+// authored-object set.
+func LoadTeams(path string) (Tree, error) {
+	return loadTeams(path)
 }
 
 // teamNode is the authored shape of one team in teams.yaml. Nesting is the
