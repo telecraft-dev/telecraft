@@ -3,6 +3,8 @@ package delivery
 import (
 	"strings"
 	"testing"
+
+	"github.com/telecraft-dev/telecraft/internal/estate"
 )
 
 // intendedArtefact is a minimal rendered artefact: stamped with its commit,
@@ -77,7 +79,7 @@ func known(config string) Effective { return Effective{Known: true, Config: []by
 
 func intended(artefact string) Intended { return Intended{Known: true, Artefact: []byte(artefact)} }
 
-func compute(t *testing.T, path Path, in Intended, eff Effective, remote RemoteStatus) Status {
+func compute(t *testing.T, path Path, in Intended, eff Effective, remote estate.DeliveryStatus) Status {
 	t.Helper()
 	st, err := Compute(path, path.Profile(), in, eff, remote)
 	if err != nil {
@@ -92,7 +94,7 @@ func compute(t *testing.T, path Path, in Intended, eff Effective, remote RemoteS
 // beside it.
 func TestServedCollectorInSync(t *testing.T) {
 	st := compute(t, PathServed, intended(intendedArtefact), known(supervisedEffective),
-		RemoteStatus{Known: true, State: StateApplied})
+		estate.DeliveryStatus{Known: true, State: estate.DeliveryApplied})
 
 	if st.Comparison != ComparisonInSync {
 		t.Fatalf("comparison = %s (cause %q), want in_sync:\n%v", st.Comparison, st.Cause, st.Changes)
@@ -100,7 +102,7 @@ func TestServedCollectorInSync(t *testing.T) {
 	if st.Path != PathServed || st.Profile != "supervisor" {
 		t.Errorf("path=%s profile=%s — the path and its profile are visible properties", st.Path, st.Profile)
 	}
-	if st.Remote.State != StateApplied {
+	if st.Remote.State != estate.DeliveryApplied {
 		t.Errorf("remote = %s, want the verbatim APPLIED", st.Remote.State)
 	}
 	if st.IntendedCommit != st.EffectiveCommit || st.IntendedCommit == "" {
@@ -114,7 +116,7 @@ func TestServedCollectorInSync(t *testing.T) {
 // Known: false, never failure.
 func TestGitCollectorGetsIdenticalTreatment(t *testing.T) {
 	st := compute(t, PathGit, intended(intendedArtefact), known(gitEffective),
-		RemoteStatus{Known: false, Cause: "the git-delivered path carries no RemoteConfigStatus reporter"})
+		estate.DeliveryStatus{Cause: "the git-delivered path carries no RemoteConfigStatus reporter"})
 
 	if st.Comparison != ComparisonInSync {
 		t.Fatalf("comparison = %s (cause %q), want in_sync:\n%v", st.Comparison, st.Cause, st.Changes)
@@ -135,7 +137,7 @@ func TestGitCollectorGetsIdenticalTreatment(t *testing.T) {
 // exact profile — an injection nobody's allow-list covers is a real
 // difference.
 func TestProfileIsLoadBearingPerPath(t *testing.T) {
-	st := compute(t, PathGit, intended(intendedArtefact), known(supervisedEffective), RemoteStatus{})
+	st := compute(t, PathGit, intended(intendedArtefact), known(supervisedEffective), estate.DeliveryStatus{})
 	if st.Comparison != ComparisonDrifted {
 		t.Fatalf("comparison = %s, want drifted — the exact profile must flag the injected extension", st.Comparison)
 	}
@@ -154,7 +156,7 @@ func TestUnknownReadingsNeverLookLikeFailure(t *testing.T) {
 		"neither":      {Intended{Known: false}, Effective{Known: false}},
 	}
 	for name, tc := range cases {
-		st := compute(t, PathGit, tc.in, tc.eff, RemoteStatus{Known: false, Cause: "not reported"})
+		st := compute(t, PathGit, tc.in, tc.eff, estate.DeliveryStatus{Cause: "not reported"})
 		if st.Comparison != ComparisonUnknown {
 			t.Errorf("%s: comparison = %s, want unknown", name, st.Comparison)
 		}
@@ -175,7 +177,7 @@ func TestStaleAndDriftedAreSplitByTheCommitStamps(t *testing.T) {
 	older := strings.ReplaceAll(strings.ReplaceAll(gitEffective,
 		"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2", "f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1"),
 		"https://gateway.internal:4318", "https://old-gateway.internal:4318")
-	st := compute(t, PathGit, intended(intendedArtefact), known(older), RemoteStatus{})
+	st := compute(t, PathGit, intended(intendedArtefact), known(older), estate.DeliveryStatus{})
 	if st.Comparison != ComparisonStale {
 		t.Fatalf("comparison = %s, want stale for a different-commit disagreement", st.Comparison)
 	}
@@ -184,7 +186,7 @@ func TestStaleAndDriftedAreSplitByTheCommitStamps(t *testing.T) {
 	}
 
 	edited := strings.ReplaceAll(gitEffective, "https://gateway.internal:4318", "https://somewhere-else:4318")
-	st = compute(t, PathGit, intended(intendedArtefact), known(edited), RemoteStatus{})
+	st = compute(t, PathGit, intended(intendedArtefact), known(edited), estate.DeliveryStatus{})
 	if st.Comparison != ComparisonDrifted {
 		t.Fatalf("comparison = %s, want drifted for a same-commit disagreement", st.Comparison)
 	}
@@ -204,7 +206,7 @@ func TestStaleAndDriftedAreSplitByTheCommitStamps(t *testing.T) {
 // and never to a failure look-alike.
 func TestNormaliserRefusalFailsClosedToUnknown(t *testing.T) {
 	dup := "receivers: {}\nreceivers: {}\n"
-	st := compute(t, PathGit, intended(intendedArtefact), known(dup), RemoteStatus{})
+	st := compute(t, PathGit, intended(intendedArtefact), known(dup), estate.DeliveryStatus{})
 	if st.Comparison != ComparisonUnknown {
 		t.Fatalf("comparison = %s, want unknown for a refused config", st.Comparison)
 	}
@@ -217,11 +219,11 @@ func TestNormaliserRefusalFailsClosedToUnknown(t *testing.T) {
 // bug, reported as an error rather than judged (ADR-0004: RemoteConfigStatus
 // verbatim, no invented delivery states).
 func TestInventedVocabularyIsRefused(t *testing.T) {
-	if _, err := Compute("sideloaded", PathGit.Profile(), intended(intendedArtefact), known(gitEffective), RemoteStatus{}); err == nil {
+	if _, err := Compute("sideloaded", PathGit.Profile(), intended(intendedArtefact), known(gitEffective), estate.DeliveryStatus{}); err == nil {
 		t.Error("an unknown delivery path was accepted")
 	}
 	if _, err := Compute(PathGit, PathGit.Profile(), intended(intendedArtefact), known(gitEffective),
-		RemoteStatus{Known: true, State: "SORT_OF_APPLIED"}); err == nil {
+		estate.DeliveryStatus{Known: true, State: "SORT_OF_APPLIED"}); err == nil {
 		t.Error("an invented delivery state was accepted")
 	}
 }

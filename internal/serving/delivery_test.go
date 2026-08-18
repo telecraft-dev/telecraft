@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/telecraft-dev/telecraft/internal/delivery"
+	"github.com/telecraft-dev/telecraft/internal/estate"
 )
 
 // supervised mimics what the Supervisor reports back after applying an
@@ -74,7 +75,7 @@ func TestDeliveryStatusForServedCollector(t *testing.T) {
 	if st.Path != delivery.PathServed {
 		t.Errorf("path = %s — the delivery path is a visible property (REQ-041)", st.Path)
 	}
-	if st.Remote.State != delivery.StateApplied {
+	if st.Remote.State != estate.DeliveryApplied {
 		t.Errorf("remote = %s, want the verbatim APPLIED", st.Remote.State)
 	}
 	if st.IntendedCommit != fixtureCommit || st.EffectiveCommit != fixtureCommit {
@@ -108,7 +109,7 @@ func TestDeliveryStatusForDriftedCollector(t *testing.T) {
 	if len(st.Changes) == 0 {
 		t.Error("no layer-3 localisation for a drifted collector (ADR-0005)")
 	}
-	if st.Remote.State != delivery.StateFailed || st.Remote.ErrorMessage == "" {
+	if st.Remote.State != estate.DeliveryFailed || st.Remote.Error == "" {
 		t.Errorf("remote = %+v, want the verbatim FAILED with its error", st.Remote)
 	}
 }

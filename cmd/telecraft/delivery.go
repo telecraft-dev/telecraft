@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/telecraft-dev/telecraft/internal/delivery"
+	"github.com/telecraft-dev/telecraft/internal/estate"
 )
 
 // runDelivery prints one collector's delivery status: the Intended ×
@@ -56,7 +57,7 @@ func runDelivery(args []string, stdout, stderr io.Writer) int {
 	st, err := delivery.Compute(path, path.Profile(),
 		delivery.Intended{Known: true, Artefact: intended},
 		delivery.Effective{Known: true, Config: effective},
-		delivery.RemoteStatus{Cause: "a file comparison carries no RemoteConfigStatus reading — the OpAMP server reads it live"})
+		estate.DeliveryStatus{Cause: "a file comparison carries no RemoteConfigStatus reading — the OpAMP server reads it live"})
 	if err != nil {
 		fmt.Fprintf(stderr, "delivery: %v\n", err)
 		return 2
@@ -66,8 +67,8 @@ func runDelivery(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "profile           %s\n", st.Profile)
 	if st.Remote.Known {
 		fmt.Fprintf(stdout, "remote            %s\n", st.Remote.State)
-		if st.Remote.ErrorMessage != "" {
-			fmt.Fprintf(stdout, "remote_error      %s\n", st.Remote.ErrorMessage)
+		if st.Remote.Error != "" {
+			fmt.Fprintf(stdout, "remote_error      %s\n", st.Remote.Error)
 		}
 	} else {
 		fmt.Fprintf(stdout, "remote            known=false cause=%q\n", st.Remote.Cause)

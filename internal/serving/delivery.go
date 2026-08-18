@@ -7,6 +7,7 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 
 	"github.com/telecraft-dev/telecraft/internal/delivery"
+	"github.com/telecraft-dev/telecraft/internal/estate"
 )
 
 // deliveryStatus computes the served-path delivery status for one
@@ -48,24 +49,30 @@ func effectiveReading(ec *protobufs.EffectiveConfig) delivery.Effective {
 	return delivery.Effective{Cause: fmt.Sprintf("the collector reported %d config files — the comparison reads the Supervisor's single merged document", len(bodies))}
 }
 
-// remoteReading adopts the reported RemoteConfigStatus verbatim (ADR-0004).
-// An absent report is Known: false — a normal state, not a failure.
-func remoteReading(rcs *protobufs.RemoteConfigStatus) delivery.RemoteStatus {
+// remoteReading adopts the reported RemoteConfigStatus verbatim into the
+// seam's reading shape (ADR-0004, ADR-0008). An absent report is
+// Known: false — a normal state, not a failure.
+func remoteReading(rcs *protobufs.RemoteConfigStatus) estate.DeliveryStatus {
 	if rcs == nil {
-		return delivery.RemoteStatus{Cause: "the collector did not report RemoteConfigStatus"}
+		return estate.DeliveryStatus{Cause: "the collector did not report RemoteConfigStatus"}
 	}
-	var state delivery.State
+	var state estate.DeliveryState
 	switch rcs.GetStatus() {
 	case protobufs.RemoteConfigStatuses_RemoteConfigStatuses_UNSET:
-		state = delivery.StateUnset
+		state = estate.DeliveryUnset
 	case protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING:
-		state = delivery.StateApplying
+		state = estate.DeliveryApplying
 	case protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED:
-		state = delivery.StateApplied
+		state = estate.DeliveryApplied
 	case protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED:
-		state = delivery.StateFailed
+		state = estate.DeliveryFailed
 	default:
-		return delivery.RemoteStatus{Cause: fmt.Sprintf("unrecognised RemoteConfigStatus %d", rcs.GetStatus())}
+		return estate.DeliveryStatus{Cause: fmt.Sprintf("unrecognised RemoteConfigStatus %d", rcs.GetStatus())}
 	}
-	return delivery.RemoteStatus{Known: true, State: state, ErrorMessage: rcs.GetErrorMessage()}
+	return estate.DeliveryStatus{
+		Known:      true,
+		State:      state,
+		ConfigHash: rcs.GetLastRemoteConfigHash(),
+		Error:      rcs.GetErrorMessage(),
+	}
 }

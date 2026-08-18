@@ -3,9 +3,10 @@
 // conformance verdict and qualifies it — never blended into it (REQ-020).
 //
 // The status has two axes, kept separate because they come from different
-// witnesses. The remote reading is OpAMP's RemoteConfigStatus vocabulary,
-// adopted verbatim — UNSET / APPLYING / APPLIED / FAILED plus the error —
-// with no invented delivery states (ADR-0004). The comparison is the
+// witnesses. The remote reading is the EstateProvider seam's DeliveryStatus
+// (internal/estate): OpAMP's RemoteConfigStatus vocabulary, adopted
+// verbatim — UNSET / APPLYING / APPLIED / FAILED plus the error — with no
+// invented delivery states (ADR-0004). The comparison is the
 // normalised layer-2 cross of the artefact in git against the collector's
 // own reported config, under the delivery path's Mutation profile
 // (ADR-0005, ADR-0046), qualified by the commit stamps both sides carry
@@ -26,6 +27,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/telecraft-dev/telecraft/internal/estate"
 	"github.com/telecraft-dev/telecraft/internal/normalise"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 )
@@ -61,36 +63,16 @@ func (p Path) Profile() normalise.Profile {
 	return normalise.Exact()
 }
 
-// State is OpAMP's RemoteConfigStatuses vocabulary, verbatim (ADR-0004: no
-// invented delivery states).
-type State string
-
-const (
-	StateUnset    State = "UNSET"
-	StateApplying State = "APPLYING"
-	StateApplied  State = "APPLIED"
-	StateFailed   State = "FAILED"
-)
-
-func (s State) Valid() bool {
+// validState reports whether a known remote reading carries the
+// RemoteConfigStatus vocabulary and nothing else (ADR-0004: no invented
+// delivery states). The type is the seam's — estate.DeliveryState — so the
+// same reading flows from any EstateProvider straight into Compute.
+func validState(s estate.DeliveryState) bool {
 	switch s {
-	case StateUnset, StateApplying, StateApplied, StateFailed:
+	case estate.DeliveryUnset, estate.DeliveryApplying, estate.DeliveryApplied, estate.DeliveryFailed:
 		return true
 	}
 	return false
-}
-
-// RemoteStatus is the collector-reported RemoteConfigStatus reading. Known
-// keeps "this path carries no such reading" distinct from FAILED: a
-// git-delivered collector has no Supervisor to report one, and a provider
-// that can never report it must not look like failure (ADR-0008,
-// ADR-0036).
-type RemoteStatus struct {
-	Known bool
-	Cause string
-
-	State        State
-	ErrorMessage string
 }
 
 // Intended is the per-collector Intended reading: the rendered artefact in
@@ -150,8 +132,10 @@ type Status struct {
 	// digest identity, so part of the status's identity too (ADR-0046).
 	Profile string
 
-	// Remote is the RemoteConfigStatus reading, verbatim.
-	Remote RemoteStatus
+	// Remote is the RemoteConfigStatus reading, verbatim — the seam's
+	// DeliveryStatus (ADR-0008, ADR-0036): Known false with a cause for a
+	// path or provider that cannot report one, never a failure look-alike.
+	Remote estate.DeliveryStatus
 
 	// Comparison is the normalised cross; Cause explains an unknown one.
 	Comparison Comparison
@@ -175,11 +159,11 @@ type Status struct {
 // refuses (it fails closed — ADR-0046) yield ComparisonUnknown with a
 // cause, never an error and never a failure look-alike; an error reports a
 // caller bug (invalid path, profile, or remote state), not a reading.
-func Compute(path Path, profile normalise.Profile, intended Intended, effective Effective, remote RemoteStatus) (Status, error) {
+func Compute(path Path, profile normalise.Profile, intended Intended, effective Effective, remote estate.DeliveryStatus) (Status, error) {
 	if !path.Valid() {
 		return Status{}, fmt.Errorf("unknown delivery path %q — served or git (REQ-041)", path)
 	}
-	if remote.Known && !remote.State.Valid() {
+	if remote.Known && !validState(remote.State) {
 		return Status{}, fmt.Errorf("remote state %q is not RemoteConfigStatus vocabulary (ADR-0004)", remote.State)
 	}
 
@@ -239,8 +223,8 @@ func (s Status) Summary() string {
 	fmt.Fprintf(&b, "path=%s profile=%s", s.Path, s.Profile)
 	if s.Remote.Known {
 		fmt.Fprintf(&b, " remote=%s", s.Remote.State)
-		if s.Remote.ErrorMessage != "" {
-			fmt.Fprintf(&b, " remote_error=%q", s.Remote.ErrorMessage)
+		if s.Remote.Error != "" {
+			fmt.Fprintf(&b, " remote_error=%q", s.Remote.Error)
 		}
 	} else {
 		fmt.Fprintf(&b, " remote=unknown (%s)", orUnexplained(s.Remote.Cause))
