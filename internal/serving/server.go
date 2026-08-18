@@ -31,6 +31,25 @@ const serverCapabilities = uint64(protobufs.ServerCapabilities_ServerCapabilitie
 	protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig |
 	protobufs.ServerCapabilities_ServerCapabilities_AcceptsEffectiveConfig)
 
+// Tap observes the serving wire for readers off the serving path — the
+// OpAMP-direct EstateProvider (ADR-0008) is the intended tap. The server
+// calls Report for every message a collector sends, passing the identity
+// attributes it flattened for matching (nil when the message carried no
+// description), and Closed when the connection ends. The server stores
+// nothing on a tap's behalf (ADR-0032): whatever a tap accumulates is the
+// tap's own cache, derivable from live connections exactly as the closed
+// list demands, and expected to die with them.
+type Tap interface {
+	// Report receives one collector message as it arrived. conn is an
+	// opaque comparable connection key, stable for the connection's life
+	// and never surfaced as identity (ADR-0013).
+	Report(conn any, identity map[string]string, msg *protobufs.AgentToServer)
+
+	// Closed marks the end of a connection: anything the tap holds under
+	// this key describes a collector no longer reporting.
+	Closed(conn any)
+}
+
 // Config configures one Server. Source and ListenEndpoint are required.
 type Config struct {
 	// Source supplies the repo snapshot: a GitSource fetching a remote, or
@@ -48,6 +67,11 @@ type Config struct {
 	// Logf receives operational one-liners (refresh failures, refused
 	// serves). Nil discards them.
 	Logf func(format string, args ...any)
+
+	// Tap, when non-nil, observes every collector message and connection
+	// close — the door the OpAMP-direct EstateProvider reads through
+	// (ADR-0008). The serving decision is unaffected by it.
+	Tap Tap
 }
 
 // Server is the stateless OpAMP server (REQ-040): wiring plus the two
@@ -61,6 +85,7 @@ type Server struct {
 	listen      string
 	interval    time.Duration
 	logf        func(format string, args ...any)
+	tap         Tap
 	opamp       server.OpAMPServer
 	stopRefresh context.CancelFunc
 	refreshDone chan struct{}
@@ -94,6 +119,7 @@ func New(cfg Config) (*Server, error) {
 		listen:   cfg.ListenEndpoint,
 		interval: cfg.FetchInterval,
 		logf:     cfg.Logf,
+		tap:      cfg.Tap,
 	}
 	s.opamp = server.New(opampLogger{s.logf})
 	return s, nil
@@ -200,6 +226,13 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 	}
 
 	desc := msg.GetAgentDescription()
+	var attrs map[string]string
+	if desc != nil {
+		attrs = attributesOf(desc)
+	}
+	if s.tap != nil {
+		s.tap.Report(conn, attrs, msg)
+	}
 	if desc == nil {
 		// Stateless means no per-connection attribute memory (ADR-0032):
 		// a message without the description cannot be matched, so ask for
@@ -208,7 +241,7 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 		return resp
 	}
 
-	match := s.snapshot.Load().Match(attributesOf(desc))
+	match := s.snapshot.Load().Match(attrs)
 	remote, err := remoteConfig(match.Artefact)
 	if err != nil {
 		// Never an empty config map (REQ-042, ADR-0010 rule 6): serving
@@ -226,9 +259,13 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 }
 
 // onConnectionClose is where the second cache honours its lifetime: the
-// digest dies with the connection (ADR-0032 §1).
+// digest dies with the connection (ADR-0032 §1) — and any tap learns its
+// own per-connection holdings are now about a collector gone quiet.
 func (s *Server) onConnectionClose(conn types.Connection) {
 	s.digests.Delete(conn)
+	if s.tap != nil {
+		s.tap.Closed(conn)
+	}
 }
 
 // remoteConfig wraps one rendered artefact for the wire, refusing an empty

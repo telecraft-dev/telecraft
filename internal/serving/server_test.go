@@ -295,6 +295,7 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		"listen":      true, // the endpoint to open
 		"interval":    true, // the poll cadence
 		"logf":        true, // operational logging
+		"tap":         true, // the off-path wire observer (EstateProvider); the server stores nothing for it
 		"opamp":       true, // the wire-protocol listener
 		"stopRefresh": true, // poll shutdown
 		"refreshDone": true, // poll shutdown
@@ -315,6 +316,56 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		t.Errorf("Server has %d fields, %d classified — keep the audit exhaustive", typ.NumField(), len(wiring)+len(storage))
 	}
 }
+
+// A configured tap observes every message with the flattened identity —
+// including one with no description, where identity is nil — and learns of
+// the connection's close. The serving decision is unaffected by it.
+func TestTapObservesReportsAndCloses(t *testing.T) {
+	root, _ := fixtureEstate(t)
+	tap := &recordingTap{}
+	s := testServer(t, root)
+	s.tap = tap
+	conn := fakeConn{1}
+
+	withDesc := s.onMessage(context.Background(), conn, &protobufs.AgentToServer{
+		AgentDescription: description(gatewayAttrs()),
+	})
+	if withDesc.GetRemoteConfig() == nil {
+		t.Error("the serving decision changed under a tap — no config was offered")
+	}
+	s.onMessage(context.Background(), conn, &protobufs.AgentToServer{})
+	s.onConnectionClose(conn)
+
+	if len(tap.reports) != 2 {
+		t.Fatalf("tap saw %d reports, want 2", len(tap.reports))
+	}
+	if got := tap.reports[0].identity; !reflect.DeepEqual(got, gatewayAttrs()) {
+		t.Errorf("tap identity = %v, want the flattened reported attributes", got)
+	}
+	if tap.reports[1].identity != nil {
+		t.Error("a message without a description reached the tap with a non-nil identity")
+	}
+	if len(tap.closed) != 1 || tap.closed[0] != any(conn) {
+		t.Errorf("tap closes = %v, want the one closed connection", tap.closed)
+	}
+}
+
+// recordingTap records what the wire showed it.
+type recordingTap struct {
+	reports []tapReport
+	closed  []any
+}
+
+type tapReport struct {
+	conn     any
+	identity map[string]string
+}
+
+func (r *recordingTap) Report(conn any, identity map[string]string, _ *protobufs.AgentToServer) {
+	r.reports = append(r.reports, tapReport{conn: conn, identity: identity})
+}
+
+func (r *recordingTap) Closed(conn any) { r.closed = append(r.closed, conn) }
 
 // testServer builds a Server over root and loads its snapshot without
 // opening the listener — the serving decision under test is onMessage.
