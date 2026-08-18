@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func writeEstate(t *testing.T, body string) string {
@@ -93,6 +94,105 @@ func TestEstateLoadFailsClosed(t *testing.T) {
 			}
 			if len(estate.Rows) != 0 {
 				t.Error("a failed load must fail closed — no rows returned")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error %q does not mention %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestEstateGraceTableLoads(t *testing.T) {
+	estate, err := LoadEstate(writeEstate(t, `
+grace:
+  - class: C1
+    window: 24h
+  - class: C2
+    window: 24h
+  - class: C3
+    window: 720h
+services:
+  - name: checkout
+    class: C1
+    onboarded: 2026-08-10
+    environments:
+      - name: production
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(estate.Grace) != 3 {
+		t.Fatalf("grace table = %+v, want 3 entries", estate.Grace)
+	}
+	if w, ok := estate.Grace.WindowFor("C3"); !ok || w != 720*time.Hour {
+		t.Errorf("WindowFor(C3) = %v, %v", w, ok)
+	}
+	if _, ok := estate.Grace.WindowFor("C9"); ok {
+		t.Error("WindowFor must report a class the table does not define")
+	}
+	row := estate.Rows[0]
+	if row.Class != "C1" || !row.Onboarded.Equal(time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("row = %+v, want class C1 onboarded 2026-08-10", row)
+	}
+}
+
+// The grace table and the class fields fail closed like the rest of the
+// estate file: a table that grew with class, a class the table cannot
+// place, or an onboarding date with no class to scale it is a load error.
+func TestEstateGraceFailsClosed(t *testing.T) {
+	deployed := "    environments:\n      - name: production\n"
+	cases := []struct {
+		name, body, want string
+	}{
+		{
+			name: "grace grows as class rises",
+			body: "grace:\n  - class: C1\n    window: 720h\n  - class: C2\n    window: 24h\nservices:\n  - name: checkout\n" + deployed,
+			want: "grace shrinks as class rises",
+		},
+		{
+			name: "duplicate class",
+			body: "grace:\n  - class: C1\n    window: 24h\n  - class: C1\n    window: 24h\nservices:\n  - name: checkout\n" + deployed,
+			want: "twice",
+		},
+		{
+			name: "nameless class",
+			body: "grace:\n  - window: 24h\nservices:\n  - name: checkout\n" + deployed,
+			want: "no class",
+		},
+		{
+			name: "non-positive window",
+			body: "grace:\n  - class: C1\n    window: 0h\nservices:\n  - name: checkout\n" + deployed,
+			want: "positive",
+		},
+		{
+			name: "class the table does not define",
+			body: "grace:\n  - class: C1\n    window: 24h\nservices:\n  - name: checkout\n    class: C9\n" + deployed,
+			want: "does not define",
+		},
+		{
+			name: "class with no grace table at all",
+			body: "services:\n  - name: checkout\n    class: C1\n" + deployed,
+			want: "does not define",
+		},
+		{
+			name: "onboarded without class",
+			body: "services:\n  - name: checkout\n    onboarded: 2026-08-10\n" + deployed,
+			want: "Service-Class-scoped",
+		},
+		{
+			name: "malformed onboarded date",
+			body: "services:\n  - name: checkout\n    class: C1\n    onboarded: last tuesday\n" + deployed,
+			want: "2006-01-02",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			estate, err := LoadEstate(writeEstate(t, tc.body))
+			if err == nil {
+				t.Fatal("load succeeded, want a failure that names the problem")
+			}
+			if len(estate.Rows) != 0 || len(estate.Grace) != 0 {
+				t.Error("a failed load must fail closed — nothing returned")
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error %q does not mention %q", err, tc.want)
