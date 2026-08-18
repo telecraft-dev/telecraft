@@ -18,6 +18,10 @@
 // tree (REQ-032, ADR-0025): the call the render-in-PR bot and the CI
 // recompute both make (ADR-0028). See render.go.
 //
+// serve runs the stateless OpAMP server (REQ-040, ADR-0013): rendered
+// artefacts from git to connected collectors, matched by Tier selector,
+// never an empty config map. See serve.go.
+//
 // Which backend answers is wiring inside internal/provider/ — this command
 // holds only neutral connection settings (ADR-0001).
 package main
@@ -57,6 +61,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runPalette(args[1:], stdout, stderr)
 	case "render":
 		return runRender(args[1:], stdout, stderr)
+	case "serve":
+		return runServe(args[1:], stdout, stderr)
 	default:
 		usage(stderr)
 		return 2
@@ -68,6 +74,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
+	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
 }
 
 func runObserve(args []string, stdout, stderr io.Writer) int {

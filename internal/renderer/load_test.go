@@ -170,3 +170,39 @@ func TestFloorOnLifecycleLevelIsRejected(t *testing.T) {
 		t.Fatalf("a lifecycle end-state validated as a floor (ADR-0023 §6): %v", err)
 	}
 }
+
+// A Tier that declares serving but no selector could never receive its own
+// config — every collector of it would land on the Unmatched artefact, and
+// silent mis-delivery is exactly what fail-closed loading exists to refuse
+// (ADR-0007, ADR-0030).
+func TestServingWithoutSelectorFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "teams/pipelines/tiers/gateway.yaml", `
+owner: pipelines-lead
+environment: production
+blueprint: pipelines/flow@1
+serving:
+  endpoint: wss://opamp.internal/v1/opamp
+`)
+	_, err := LoadTopology(root)
+	if err == nil || !strings.Contains(err.Error(), "no selector") {
+		t.Fatalf("a served Tier without a selector loaded: %v", err)
+	}
+}
+
+// A selector pair with an empty side can never match a reported attribute;
+// authoring one is a mistake, never a wildcard.
+func TestSelectorWithEmptySideFailsClosed(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "teams/pipelines/tiers/gateway.yaml", `
+owner: pipelines-lead
+environment: production
+blueprint: pipelines/flow@1
+selector:
+  telecraft.tier: ""
+`)
+	_, err := LoadTopology(root)
+	if err == nil || !strings.Contains(err.Error(), "empty key or value") {
+		t.Fatalf("a selector with an empty value loaded: %v", err)
+	}
+}

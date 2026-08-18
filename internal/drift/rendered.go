@@ -48,6 +48,12 @@ func LoadRendered(root string) (Rendered, error) {
 			continue
 		}
 		team := t.Name()
+		if strings.HasPrefix(team, "_") {
+			// Reserved estate-level artefacts — the Unmatched config lives
+			// at rendered/_estate/ (ADR-0030) — are not Tier artefacts and
+			// claim nothing a floor can move under.
+			continue
+		}
 		files, err := os.ReadDir(filepath.Join(root, renderedDir, team))
 		if err != nil {
 			return nil, err
