@@ -27,18 +27,18 @@ npm run e2e            # Playwright against dist/ and the fixture backend
 
 ## Layout
 
-- `src/engine/` — the canvas engine: a pure library, model in, geometry
-  out (ADR-0044). Band and row constraints are invariants; xyflow only
+- `src/engine/`: the canvas engine, a pure library (model in, geometry
+  out; ADR-0044). Band and row constraints are invariants; xyflow only
   draws what the engine returns, and custom SVG stays the named escape
   hatch (ADR-0045 §2).
-- `src/surfaces/` — the Workspace surfaces: the Estate shelf, the
-  Topology flow canvas, Compose, and Catalogue & Governance.
-- `src/chrome/` — the shell: Workspace navigation, the environment lens,
-  and jump-to-object search.
-- `src/presentation/` — the per-user presentation store, the console's
+- `src/surfaces/`: the Workspace surfaces (the Estate shelf, the
+  Topology flow canvas, Compose, and Catalogue & Governance).
+- `src/chrome/`: the shell (Workspace navigation, the environment lens,
+  and jump-to-object search).
+- `src/presentation/`: the per-user presentation store, the console's
   only non-git state (ADR-0042 §7).
-- `tools/` — the fixture backend and the zero-CDN check.
-- `fixtures/` — the fixture estate, mirroring
+- `tools/`: the fixture backend and the zero-CDN check.
+- `fixtures/`: the fixture estate, mirroring
   `internal/renderer/testdata/estate`.
 
 ## The platform API
@@ -83,9 +83,9 @@ vendor-word lint:
 
 Search params are validated by the router (ADR-0045 §3):
 
-- `lens` — the environment lens; an explicit value beats the persisted
+- `lens`: the environment lens; an explicit value beats the persisted
   per-user preference (ADR-0042 §4).
-- `object` — the selected object as `kind:id`, for example
+- `object`: the selected object as `kind:id`, for example
   `tier:data-flow/gateway` (see `src/objectref.ts`).
-- `scope` — shelf scope: the signed-in user's team subtree (`team`,
-  the default) or the whole estate (`estate`).
+- `scope`: the shelf scope, either the signed-in user's team subtree
+  (`team`, the default) or the whole estate (`estate`).
