@@ -26,6 +26,9 @@
 // Effective cross via the normaliser (ADR-0004, ADR-0005), computed
 // identically for both delivery paths (REQ-041). See delivery.go.
 //
+// passwd hashes one basic-auth secret for the users.yaml seam (REQ-017,
+// ADR-0019): stdin in, the stored hash out. See passwd.go.
+//
 // Which backend answers is wiring inside internal/provider/ — this command
 // holds only neutral connection settings (ADR-0001).
 package main
@@ -69,6 +72,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runServe(args[1:], stdout, stderr)
 	case "delivery":
 		return runDelivery(args[1:], stdout, stderr)
+	case "passwd":
+		return runPasswd(args[1:], os.Stdin, stdout, stderr)
 	default:
 		usage(stderr)
 		return 2
@@ -82,6 +87,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
 	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
+	fmt.Fprintln(stderr, "       telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)")
 }
 
 func runObserve(args []string, stdout, stderr io.Writer) int {
