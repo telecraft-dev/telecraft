@@ -14,6 +14,10 @@
 // each with its provenance — the lists it survived, or the named Grant that
 // admitted it.
 //
+// render compiles every Tier's bound Blueprint to the rendered artefact
+// tree (REQ-032, ADR-0025): the call the render-in-PR bot and the CI
+// recompute both make (ADR-0028). See render.go.
+//
 // Which backend answers is wiring inside internal/provider/ — this command
 // holds only neutral connection settings (ADR-0001).
 package main
@@ -51,6 +55,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runCheck(args[1:], stdout, stderr)
 	case "palette":
 		return runPalette(args[1:], stdout, stderr)
+	case "render":
+		return runRender(args[1:], stdout, stderr)
 	default:
 		usage(stderr)
 		return 2
@@ -61,6 +67,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "usage: telecraft observe -service <service.name> [-environment env] [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]")
 	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
+	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
 }
 
 func runObserve(args []string, stdout, stderr io.Writer) int {
