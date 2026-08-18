@@ -485,8 +485,11 @@ let proposalCounter = 200
  * through the forge adapter, user-attributed, render-in-PR (ADR-0028) —
  * the console proposes, the PR decides. Enforcement is on: an allow-list
  * violation refuses the proposal, fail closed (ADR-0022 §3, ADR-0028 §3).
+ * A claim context (the claim flow's draft-new-Tier path, ADR-0042 §6) —
+ * already judged by the claim rulebook at the endpoint — makes this the
+ * PR authoring the Tier binding beside the Blueprint, named accordingly.
  */
-export function propose(estate, entries, draft, environment) {
+export function propose(estate, entries, draft, environment, claim) {
   const verdict = validate(estate, entries, draft, environment)
   if (verdict.save.blocked) {
     const failure = new Error(
@@ -499,7 +502,7 @@ export function propose(estate, entries, draft, environment) {
   return {
     id: `PR-${proposalCounter}`,
     url: `https://forge.example/estate/pull/${proposalCounter}`,
-    branch: `compose/${draft.id}`,
+    branch: claim !== undefined ? `claim/${claim.tier}` : `compose/${draft.id}`,
     attributedTo: `${estate.me.name} <${estate.me.email}>`,
   }
 }

@@ -92,6 +92,33 @@ export function Shelf({
           Whole estate
         </Link>
       </div>
+      {/* Ungoverned collectors sit in the dedicated band above governed
+          Tiers (ADR-0031 §2): concern, never failure — an explicit
+          onboard-me CTA, and no compliance denominator counts them. The
+          count is a door to the flat list (rule 3.4), where the claim
+          flow starts herd-first (ADR-0042 §6). Collectors have no owning
+          team, so the band shows at every scope. */}
+      {payload.ungoverned.served + payload.ungoverned.foreign > 0 && (
+        <aside className="ungoverned-band" data-testid="ungoverned-band">
+          <p>
+            <strong>
+              {payload.ungoverned.served + payload.ungoverned.foreign} ungoverned collectors
+            </strong>{' '}
+            — {payload.ungoverned.served} served the Unmatched artefact,{' '}
+            {payload.ungoverned.foreign} foreign. Governed by nobody, counted against
+            nobody: they appear in no compliance denominator.
+          </p>
+          <Link
+            from="/estate"
+            to="/estate"
+            search={(prev) => ({ ...prev, view: 'list' as const, ungoverned: true })}
+            className="onboard-cta"
+            data-testid="onboard-cta"
+          >
+            Onboard them
+          </Link>
+        </aside>
+      )}
       {visible.map(({ team, cards }) => (
         <ShelfSection
           key={team.id}

@@ -70,9 +70,9 @@ URL the user arrived on survives the round trip.
 | `/api/v1/auth/logout` (POST) | Ends the session. |
 | `/api/v1/me` | The signed-in user: id, name, team (the shelf's resting scope), and `editableTeams` — the team subtree the ownership tree derives their authoring rights from (ADR-0019 §2). Surfaces offer authoring actions exactly on objects owned inside that set. |
 | `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team, plus the active catalogue's entries (kind `entry`, id `class/type`, no team — nobody owns them). |
-| `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, and one ADR-0041 card face per Tier. |
+| `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, one ADR-0041 card face per Tier, and the ungoverned band's counts — collectors matching no Tier selector, split by how they are read (served the Unmatched artefact, or foreign via the estate provider; ADR-0030/0031). Concern, never failure: they carry the onboard CTA and appear in no compliance denominator. |
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
-| `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen. |
+| `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen, and the reported identifying attributes Tier selectors match on (ADR-0013). Rows without a Tier are the ungoverned population (ADR-0031), marked by how they are read (`served` or `foreign`); their attributes are the claim flow's raw material. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. Each Tier carries its selector-matched collector count, derived Service Class, and the served/git delivery split — collectors are matched into a Tier by selector and appear only as these numbers, never as nodes (ADR-0007). |
 | `/api/v1/blueprints` | Blueprint schema v1 documents (ADR-0024): per-signal lanes of ordered Component references, local Components, the collector-wide extensions block, the bound Tier, version-stamped `satisfies` claims, and the Catalogue key each lane item instantiates, so lane items deep-link to their Catalogue entries. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
@@ -81,7 +81,9 @@ URL the user arrived on survives the round trip.
 | `/api/v1/governance` | The authored, git-resident Allow-list policy (ADR-0021 §5): Owners, Allow-lists and Grants in their authored shapes. The console derives each team's effective palette — with total provenance — from this plus the active catalogue (`src/governance/effective.ts`, the same derived-presentation pattern as the roll-up). |
 | `POST /api/v1/governance/proposals` | A governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal — opaque id, URL, branch — mirroring the forge seam (`internal/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
 | `POST /api/v1/validate` | The one evaluator (ADR-0022 §1): the open draft plus its Environment in; findings, palette verdicts (show, grey with reason, hidden-with-count), requirement verdicts (claimed beside met, never blended), the save gate, and the rendered-artefact preview out. Stateless; the composer calls it on every interaction, judging with the same authored governance policy and active catalogue the endpoints above serve. |
-| `POST /api/v1/proposals` | The composer exit (ADR-0043 §6): the draft becomes a change proposal through the forge adapter, render-in-PR and user-attributed (ADR-0028, ADR-0014). Enforcement is on: an allow-list violation answers 409 and no proposal opens, fail closed. |
+| `POST /api/v1/proposals` | The composer exit (ADR-0043 §6): the draft becomes a change proposal through the forge adapter, render-in-PR and user-attributed (ADR-0028, ADR-0014). Enforcement is on: an allow-list violation answers 409 and no proposal opens, fail closed. An optional `claim` context (the claim flow's draft-new-Tier path, ADR-0042 §6) makes this the PR authoring the Tier binding beside the Blueprint; it is judged by the claim rulebook first and refused 422 with the problems named. |
+| `POST /api/v1/claims/preview` | The claim flow's continuous impact evaluation (ADR-0042 §6): the constrained selector plus Environment in — with `mode` and `tier` once the one question (attach or draft) is answered — and the impact out: matched ungoverned collectors split by referent, governed populations the selector does not contradict (blast radius, reported, never hidden), attach candidates ranked by selector proximity with the widened selector each implies, and the rendered Tier binding the PR would carry. For attach the judged selector is the widened one: what merge would actually serve. |
+| `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014) — the console proposes, the PR decides; the platform binary wires this to `forge.Submit` like the other proposal exits. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives — generalise-never-enumerate is enforced server-side, not assumed of the UI. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 1`): three bands as enum states plus worst-finding
@@ -121,6 +123,13 @@ Search params are validated by the router (ADR-0045 §3):
 - `tier`, `team`, `env`: the flat list's explicit filters. A collector
   count anywhere is a door that lands here with `tier` pre-filled
   (ADR-0042 §3.4); the lens is never one of these filters.
+- `ungoverned`: the flat list narrowed to the ungoverned population — the
+  onboard CTA's door (ADR-0031).
+- `herd`: the claim flow's selection, ungoverned collector ids
+  comma-joined (ADR-0042 §6). A non-empty herd summons the claim panel;
+  view-switching preserves it. Console selection state only — the
+  produced selector generalises over shared identity attributes and
+  never contains these ids.
 - `lane`: the signal lane a Blueprint-shaped who-acts chip lands on in
   Compose (ADR-0042 §3.3).
 - `surface` (Compose): the surface switcher over the one open Blueprint
@@ -128,6 +137,11 @@ Search params are validated by the router (ADR-0045 §3):
   Switching never loses the draft.
 - `yaml`: whether the resident read-only YAML flyout is open (REQ-035);
   it rides every Compose surface.
+- `claim`, `tier`, `team`, `env` (Compose): the claim flow's
+  draft-new-Tier handoff (ADR-0042 §6) — the pre-filled selector in its
+  `key=value,key=value` shape plus the new Tier's id, owning team, and
+  Environment. Compose opens a fresh draft Blueprint bound to the new
+  Tier, and Save proposes the Tier binding beside it as one PR.
 - `view` (Catalogue & Governance): `browse` (the default), `palette`, or
   `governance` — view-switchers over one model, like the Estate's.
 - `version`: the catalogue version browsed; absent means the active one.

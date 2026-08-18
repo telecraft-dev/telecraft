@@ -4,7 +4,13 @@
 // boundary. `entries` is the active catalogue's entry list, the same data
 // /api/v1/catalogue/entries serves.
 
-import type { BlueprintDoc, CatalogueEntry, ComposeVerdict, Proposal } from '../src/api/types'
+import type {
+  BlueprintDoc,
+  CatalogueEntry,
+  ClaimContext,
+  ComposeVerdict,
+  Proposal,
+} from '../src/api/types'
 
 export function validate(
   estate: unknown,
@@ -18,4 +24,5 @@ export function propose(
   entries: CatalogueEntry[],
   draft: BlueprintDoc,
   environment: string,
+  claim?: ClaimContext,
 ): Proposal

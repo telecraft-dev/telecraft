@@ -2,9 +2,16 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api } from '../../api/client'
-import type { BlueprintDoc, Me, PaletteEntry, RequirementVerdict } from '../../api/types'
+import type {
+  BlueprintDoc,
+  ClaimContext,
+  Me,
+  PaletteEntry,
+  RequirementVerdict,
+} from '../../api/types'
 import { canActOn } from '../../auth/authz'
 import { useLens } from '../../chrome/LensControl'
+import { formatSelector, parseSelector } from '../../estate/claim'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import type { ComposeSurface } from '../../router'
 import { Composer } from './Composer'
@@ -43,6 +50,32 @@ export function Compose() {
       ? blueprints.data.find((bp) => bp.id === selected.id)
       : undefined
 
+  // The claim flow's draft-new-Tier handoff (ADR-0042 §6): the claim
+  // params open a fresh draft Blueprint bound to the new Tier, selector
+  // pre-filled; Save proposes the Tier binding beside it.
+  const claim: ClaimContext | undefined =
+    search.claim !== undefined && search.tier !== undefined && search.team !== undefined
+      ? {
+          selector: parseSelector(search.claim),
+          tier: search.tier,
+          team: search.team,
+          environment: search.env ?? 'production',
+        }
+      : undefined
+  const claimDoc: BlueprintDoc | undefined = claim
+    ? {
+        id: `${claim.tier}-standard`,
+        name: `${claim.tier.split('/').pop() ?? claim.tier}-standard`,
+        version: 1,
+        team: claim.team,
+        tier: claim.tier,
+        locals: {},
+        lanes: {},
+        extensions: [],
+        satisfies: [],
+      }
+    : undefined
+
   return (
     <div className="compose-layout">
       <section className="compose-list">
@@ -73,7 +106,11 @@ export function Compose() {
           ))}
         </ul>
       </section>
-      {chosen && <Workspace key={chosen.id} doc={chosen} me={me.data} />}
+      {claimDoc && claim ? (
+        <Workspace key={claimDoc.id} doc={claimDoc} me={me.data} claim={claim} />
+      ) : (
+        chosen && <Workspace key={chosen.id} doc={chosen} me={me.data} />
+      )}
     </div>
   )
 }
@@ -84,7 +121,15 @@ const SURFACES: { surface: ComposeSurface; label: string; testid: string }[] = [
   { surface: 'canvas', label: 'Node canvas', testid: 'view-canvas' },
 ]
 
-function Workspace({ doc, me }: { doc: BlueprintDoc; me: Me | undefined }) {
+function Workspace({
+  doc,
+  me,
+  claim,
+}: {
+  doc: BlueprintDoc
+  me: Me | undefined
+  claim?: ClaimContext
+}) {
   const [draft, setDraft] = useState(doc)
   const lens = useLens()
   const search = useSearch({ strict: false })
@@ -103,7 +148,7 @@ function Workspace({ doc, me }: { doc: BlueprintDoc; me: Me | undefined }) {
   // A content change lands with its version bump in the same PR
   // (ADR-0024 §7): the proposal carries the next monotonic version.
   const proposed: BlueprintDoc = dirty ? { ...draft, version: doc.version + 1 } : draft
-  const proposal = useMutation({ mutationFn: () => api.propose(proposed, lens) })
+  const proposal = useMutation({ mutationFn: () => api.propose(proposed, lens, claim) })
 
   const editable = me !== undefined && canActOn(me, doc.team)
   const surface: ComposeSurface = search.surface ?? 'composer'
@@ -158,6 +203,21 @@ function Workspace({ doc, me }: { doc: BlueprintDoc; me: Me | undefined }) {
           YAML
         </button>
       </header>
+
+      {/* The claim flow's draft path (ADR-0042 §6): the selector arrives
+          pre-filled from the herd's shared identity attributes, and the
+          proposal authors the Tier binding beside this Blueprint. */}
+      {claim && (
+        <div className="claim-banner" data-testid="claim-banner">
+          <p>
+            Claiming into new Tier <span className="mono">{claim.tier}</span> (
+            {claim.environment}, owned by {claim.team}) with selector{' '}
+            <code data-testid="claim-banner-selector">{formatSelector(claim.selector)}</code>{' '}
+            — generalised over the herd&rsquo;s shared identity attributes, never a list of
+            instance ids. Save proposes the Tier binding beside this Blueprint as one PR.
+          </p>
+        </div>
+      )}
 
       {/* Ownership decides the affordance (ADR-0019 §2): honest either way. */}
       {me &&

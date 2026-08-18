@@ -1,5 +1,5 @@
 {
-  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population — per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5) — platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams.",
+  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population — per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5) — platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams. Collector rows carry the reported identifying attributes Tier selectors match on (ADR-0013); `selectors` holds each Tier's authored selector, the claim flow's proximity and blast-radius material (ADR-0042 §6). Rows without a `tier` are the ungoverned population (ADR-0031): a payments-team edge DaemonSet nobody authored a Tier for (served the Unmatched artefact, ADR-0030) and two foreign host watchers read through the estate provider — unlike governed counts, these few rows are the whole ungoverned population, so preview arithmetic over them is exact.",
   "me": {
     "id": "demo-user",
     "name": "Demo user",
@@ -304,7 +304,13 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:58:00Z"
+      "lastSeen": "2026-08-18T07:58:00Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "telemetry",
+        "deployment.environment": "production",
+        "service.instance.id": "5f1c0a2e-edge-0"
+      }
     },
     {
       "id": "edge-1",
@@ -313,7 +319,13 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:59:00Z"
+      "lastSeen": "2026-08-18T07:59:00Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "telemetry",
+        "deployment.environment": "production",
+        "service.instance.id": "5f1c0a2e-edge-1"
+      }
     },
     {
       "id": "edge-2",
@@ -322,7 +334,13 @@
       "environment": "production",
       "state": "stale",
       "version": "0.103.0",
-      "lastSeen": "2026-08-16T21:14:00Z"
+      "lastSeen": "2026-08-16T21:14:00Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "telemetry",
+        "deployment.environment": "production",
+        "service.instance.id": "5f1c0a2e-edge-2"
+      }
     },
     {
       "id": "edge-3",
@@ -331,7 +349,13 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:57:00Z"
+      "lastSeen": "2026-08-18T07:57:00Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "telemetry",
+        "deployment.environment": "production",
+        "service.instance.id": "5f1c0a2e-edge-3"
+      }
     },
     {
       "id": "gw-0",
@@ -340,7 +364,12 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:59:30Z"
+      "lastSeen": "2026-08-18T07:59:30Z",
+      "attributes": {
+        "telecraft.tier": "gateway",
+        "deployment.environment": "production",
+        "service.instance.id": "9a44be71-gw-0"
+      }
     },
     {
       "id": "gw-1",
@@ -349,7 +378,12 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:59:10Z"
+      "lastSeen": "2026-08-18T07:59:10Z",
+      "attributes": {
+        "telecraft.tier": "gateway",
+        "deployment.environment": "production",
+        "service.instance.id": "9a44be71-gw-1"
+      }
     },
     {
       "id": "gw-2",
@@ -358,7 +392,12 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:58:40Z"
+      "lastSeen": "2026-08-18T07:58:40Z",
+      "attributes": {
+        "telecraft.tier": "gateway",
+        "deployment.environment": "production",
+        "service.instance.id": "9a44be71-gw-2"
+      }
     },
     {
       "id": "gws-0",
@@ -367,7 +406,12 @@
       "environment": "staging",
       "state": "reporting",
       "version": "0.105.0",
-      "lastSeen": "2026-08-18T07:55:00Z"
+      "lastSeen": "2026-08-18T07:55:00Z",
+      "attributes": {
+        "telecraft.tier": "gateway",
+        "deployment.environment": "staging",
+        "service.instance.id": "c07d1f55-gws-0"
+      }
     },
     {
       "id": "sf-0",
@@ -376,7 +420,13 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:59:00Z"
+      "lastSeen": "2026-08-18T07:59:00Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "storefront",
+        "deployment.environment": "production",
+        "service.instance.id": "1be2d9c4-sf-0"
+      }
     },
     {
       "id": "sf-1",
@@ -385,9 +435,107 @@
       "environment": "production",
       "state": "reporting",
       "version": "0.104.0",
-      "lastSeen": "2026-08-18T07:58:20Z"
+      "lastSeen": "2026-08-18T07:58:20Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "storefront",
+        "deployment.environment": "production",
+        "service.instance.id": "1be2d9c4-sf-1"
+      }
+    },
+    {
+      "id": "pay-edge-7f3a",
+      "ungoverned": "served",
+      "environment": "production",
+      "state": "reporting",
+      "version": "0.105.0",
+      "lastSeen": "2026-08-18T07:59:20Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "payments",
+        "k8s.cluster": "prod-east",
+        "deployment.environment": "production",
+        "service.instance.id": "7f3a2c91-pay-0"
+      }
+    },
+    {
+      "id": "pay-edge-b41c",
+      "ungoverned": "served",
+      "environment": "production",
+      "state": "reporting",
+      "version": "0.105.0",
+      "lastSeen": "2026-08-18T07:58:50Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "payments",
+        "k8s.cluster": "prod-east",
+        "deployment.environment": "production",
+        "service.instance.id": "b41c8d02-pay-1"
+      }
+    },
+    {
+      "id": "pay-edge-e9d0",
+      "ungoverned": "served",
+      "environment": "production",
+      "state": "reporting",
+      "version": "0.105.0",
+      "lastSeen": "2026-08-18T07:59:40Z",
+      "attributes": {
+        "telecraft.tier": "edge",
+        "k8s.namespace": "payments",
+        "k8s.cluster": "prod-east",
+        "deployment.environment": "production",
+        "service.instance.id": "e9d03b77-pay-2"
+      }
+    },
+    {
+      "id": "host-watch-a",
+      "ungoverned": "foreign",
+      "environment": "production",
+      "state": "reporting",
+      "version": "0.98.0",
+      "lastSeen": "2026-08-18T07:40:00Z",
+      "attributes": {
+        "os.type": "linux",
+        "region": "eu-west",
+        "deployment.environment": "production",
+        "host.name": "metal-a.eu-west.internal"
+      }
+    },
+    {
+      "id": "host-watch-b",
+      "ungoverned": "foreign",
+      "environment": "production",
+      "state": "reporting",
+      "version": "0.98.0",
+      "lastSeen": "2026-08-18T07:41:00Z",
+      "attributes": {
+        "os.type": "linux",
+        "region": "eu-west",
+        "deployment.environment": "production",
+        "host.name": "metal-b.eu-west.internal"
+      }
     }
   ],
+  "selectors": {
+    "data-flow/edge": {
+      "telecraft.tier": "edge",
+      "k8s.namespace": "telemetry",
+      "deployment.environment": "production"
+    },
+    "data-flow/gateway": {
+      "telecraft.tier": "gateway",
+      "deployment.environment": "production"
+    },
+    "data-flow/gateway-staging": {
+      "telecraft.tier": "gateway",
+      "deployment.environment": "staging"
+    },
+    "product/storefront-edge": {
+      "telecraft.tier": "edge",
+      "k8s.namespace": "storefront"
+    }
+  },
   "topology": {
     "sources": [
       {

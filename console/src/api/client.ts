@@ -5,6 +5,11 @@ import type {
   CatalogueComponent,
   CatalogueEntry,
   CatalogueVersionsPayload,
+  ClaimContext,
+  ClaimOutcome,
+  ClaimPreview,
+  ClaimPreviewRequest,
+  ClaimRequest,
   CollectorRow,
   ComposeVerdict,
   EstatePayload,
@@ -77,9 +82,39 @@ export const api = {
   /** The one evaluator, called continuously as the user edits (ADR-0022 §2). */
   validate: (draft: BlueprintDoc, environment: string) =>
     post<ComposeVerdict>('/api/v1/validate', { draft, environment }),
-  /** The composer's PR exit through the forge adapter — fail closed (ADR-0028). */
-  propose: (draft: BlueprintDoc, environment: string) =>
-    post<Proposal>('/api/v1/proposals', { draft, environment }),
+  /** The composer's PR exit through the forge adapter — fail closed (ADR-0028).
+   * A claim context rides along on the draft-new-Tier path: the PR then
+   * authors the Tier binding beside the Blueprint (ADR-0042 §6). */
+  propose: (draft: BlueprintDoc, environment: string, claim?: ClaimContext) =>
+    post<Proposal>('/api/v1/proposals', { draft, environment, ...(claim ? { claim } : {}) }),
+
+  /** The claim flow's continuous impact evaluation (ADR-0042 §6). */
+  claimPreview: (request: ClaimPreviewRequest) =>
+    post<ClaimPreview>('/api/v1/claims/preview', request),
+
+  /**
+   * The claim flow's attach exit: a PR widening the chosen Tier's selector
+   * (ADR-0042 §6). A 422 comes back as named problems for the panel to
+   * show — the fail-closed refusal shape, never a thrown error.
+   */
+  claim: async (request: ClaimRequest): Promise<ClaimOutcome> => {
+    const res = await fetch('/api/v1/claims', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+    if (res.status === 401) {
+      throw new UnauthenticatedError('/api/v1/claims')
+    }
+    if (res.status === 422) {
+      const body = (await res.json()) as { problems?: string[] }
+      return { problems: body.problems ?? ['the claim was refused'] }
+    }
+    if (!res.ok) {
+      throw new Error(`/api/v1/claims: ${res.status} ${res.statusText}`)
+    }
+    return { proposal: (await res.json()) as Proposal }
+  },
 
   /**
    * A governance edit exits as a PR via the forge adapter (ADR-0042 §6). A

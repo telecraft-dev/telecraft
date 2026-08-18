@@ -62,6 +62,12 @@ export interface EstateSearch {
   /** Flat-list filters — explicit filters stay available; the lens never is one. */
   team?: string
   env?: string
+  /** Flat-list filter: ungoverned collectors only — the onboard CTA's door (ADR-0031). */
+  ungoverned?: boolean
+  /** The claim flow's herd: selected ungoverned collector ids, comma-joined
+   * (ADR-0042 §6). Console selection state, never a selector — the produced
+   * selector generalises and enumerates nothing. */
+  herd?: string
 }
 
 const estateRoute = createRoute({
@@ -77,6 +83,8 @@ const estateRoute = createRoute({
     tier: typeof search.tier === 'string' ? search.tier : undefined,
     team: typeof search.team === 'string' ? search.team : undefined,
     env: typeof search.env === 'string' ? search.env : undefined,
+    ungoverned: search.ungoverned === true || search.ungoverned === 'true' ? true : undefined,
+    herd: typeof search.herd === 'string' ? search.herd : undefined,
   }),
 })
 
@@ -96,6 +104,13 @@ export interface ComposeSearch {
   surface?: ComposeSurface
   /** Whether the resident read-only YAML flyout is open (REQ-035). */
   yaml?: boolean
+  /** The claim flow's draft-new-Tier handoff (ADR-0042 §6): the pre-filled
+   * selector in its `key=value,key=value` shape, plus the new Tier's id,
+   * owning team, and Environment. */
+  claim?: string
+  tier?: string
+  team?: string
+  env?: string
 }
 
 const composeRoute = createRoute({
@@ -111,6 +126,10 @@ const composeRoute = createRoute({
         ? search.surface
         : undefined,
     yaml: search.yaml === true || search.yaml === 'true' ? true : undefined,
+    claim: typeof search.claim === 'string' ? search.claim : undefined,
+    tier: typeof search.tier === 'string' ? search.tier : undefined,
+    team: typeof search.team === 'string' ? search.team : undefined,
+    env: typeof search.env === 'string' ? search.env : undefined,
   }),
 })
 
