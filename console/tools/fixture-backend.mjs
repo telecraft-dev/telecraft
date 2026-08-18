@@ -119,6 +119,9 @@ const api = {
   // Per-collector detail, served flat: list surfaces are its only home
   // (ADR-0042 rule 3.4); the console filters client-side.
   '/api/v1/collectors': () => estate.collectors,
+  // Tiers at authored grain with selector-matched counts (ADR-0007): the
+  // matched number is the card face's population, single-sourced; the
+  // served/git split is Tier-aggregated delivery-path detail.
   '/api/v1/topology': () => ({
     environments: estate.environments,
     tiers: estate.cards.map((card) => ({
@@ -126,6 +129,12 @@ const api = {
       name: card.name,
       team: card.team,
       environment: card.environment,
+      ...(card.serviceClass ? { serviceClass: card.serviceClass } : {}),
+      matched: card.population.matched,
+      delivery: estate.topology.delivery[card.tier] ?? {
+        served: card.population.matched,
+        git: 0,
+      },
     })),
     sources: estate.topology.sources,
     hops: estate.topology.hops,

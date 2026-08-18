@@ -34,7 +34,11 @@ npm run e2e            # Playwright against dist/ and the fixture backend
 - `src/engine/`: the canvas engine, a pure library (model in, geometry
   out; ADR-0044). Band and row constraints are invariants; xyflow only
   draws what the engine returns, and custom SVG stays the named escape
-  hatch (ADR-0045 §2).
+  hatch (ADR-0045 §2). Edges derive from the model and are never
+  hand-drawn; topology nodes drag within their Environment row or band
+  only, with the within-row offset in the per-user presentation store;
+  simulate is cosmetic dots over the routed geometry and persists
+  nothing (ADR-0044 §3, §5).
 - `src/surfaces/`: the Workspace surfaces (the Estate shelf, the
   Topology flow canvas, Compose, and Catalogue & Governance).
 - `src/chrome/`: the shell (Workspace navigation, the environment lens,
@@ -69,7 +73,7 @@ URL the user arrived on survives the round trip.
 | `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, and one ADR-0041 card face per Tier. |
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
 | `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen. |
-| `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. |
+| `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. Each Tier carries its selector-matched collector count, derived Service Class, and the served/git delivery split — collectors are matched into a Tier by selector and appear only as these numbers, never as nodes (ADR-0007). |
 | `/api/v1/blueprints` | Blueprint summaries with per-signal component lanes in renderer order. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
 

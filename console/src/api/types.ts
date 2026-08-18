@@ -194,12 +194,29 @@ export interface EstatePayload {
   cards: CardFace[]
 }
 
-/** A Tier as the topology canvas draws it. */
+/** The served vs git-delivered split: delivery path is a visible property
+ * of a collector (ADR-0007), aggregated to Tier grain for the canvas. */
+export interface DeliverySplit {
+  served: number
+  git: number
+}
+
+/**
+ * A Tier as the topology canvas draws it: the authored node plus its
+ * selector-matched counts. Collectors are never drawn — they are matched
+ * into a Tier by selector and appear only as these numbers (ADR-0007);
+ * the count is a door to the flat list (ADR-0042 §3.4).
+ */
 export interface TopologyTier {
   id: string
   name: string
   team: string
   environment: Environment
+  /** Derived strictness, mirrored from the card face (ADR-0025). */
+  serviceClass?: string
+  /** Selector-matched collector count. */
+  matched: number
+  delivery: DeliverySplit
 }
 
 /** An ungoverned arrival source: sits in the dedicated band (ADR-0044 §2). */
