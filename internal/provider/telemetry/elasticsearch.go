@@ -51,6 +51,15 @@ type Elasticsearch struct {
 	identityLimit    int
 	commitLimit      int
 
+	// The metering fields (ADR-0040): where a metric datapoint's value
+	// lands, which incarnation and exporter the datapoint belongs to, and
+	// how far each fan-out is followed before the reading says Truncated.
+	metricValuePrefix string
+	instanceIDField   string
+	exporterField     string
+	instanceLimit     int
+	exporterLimit     int
+
 	// now stamps AsOf onto every reading; tests pin it.
 	now func() time.Time
 }
@@ -110,6 +119,33 @@ type ElasticsearchConfig struct {
 	// Default 200.
 	SampleSize int
 
+	// MetricValuePrefix is the document field prefix under which a metric
+	// datapoint's value lands, so a counter's field is the prefix plus
+	// the metric name. Default: metrics. (OTel-native mode).
+	MetricValuePrefix string
+
+	// InstanceIDField is the document field holding service.instance.id —
+	// one collector process incarnation, regenerated on every restart
+	// (R-4 §2c). Metering buckets by it because a cumulative counter's
+	// window delta is only exact within one incarnation. Default:
+	// resource.attributes.service.instance.id (OTel-native mode).
+	InstanceIDField string
+
+	// ExporterField is the datapoint attribute holding an exporter's
+	// rendered id — the legacy join key (R-4 §2b) — from which the
+	// per-exporter out-rate a Hop's throughput reads is split. Default:
+	// attributes.exporter.
+	ExporterField string
+
+	// InstanceLimit caps how many incarnations a metering delta is summed
+	// over per signal, and ExporterLimit how many exporters are split
+	// out; either cap reached is reported Truncated, never a silently
+	// low throughput. Defaults 1000 and 100 — a Tier holds tens of
+	// exporters, and a window holding more incarnations than the cap is
+	// itself worth surfacing.
+	InstanceLimit int
+	ExporterLimit int
+
 	Timeout time.Duration
 }
 
@@ -141,6 +177,21 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 	if cfg.IdentityLimit <= 0 {
 		cfg.IdentityLimit = 500
 	}
+	if cfg.MetricValuePrefix == "" {
+		cfg.MetricValuePrefix = "metrics."
+	}
+	if cfg.InstanceIDField == "" {
+		cfg.InstanceIDField = "resource.attributes.service.instance.id"
+	}
+	if cfg.ExporterField == "" {
+		cfg.ExporterField = "attributes.exporter"
+	}
+	if cfg.InstanceLimit <= 0 {
+		cfg.InstanceLimit = 1000
+	}
+	if cfg.ExporterLimit <= 0 {
+		cfg.ExporterLimit = 100
+	}
 	if cfg.CommitLimit <= 0 {
 		cfg.CommitLimit = 50
 	}
@@ -168,7 +219,14 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 		sampleSize:       cfg.SampleSize,
 		identityLimit:    cfg.IdentityLimit,
 		commitLimit:      cfg.CommitLimit,
-		now:              time.Now,
+
+		metricValuePrefix: cfg.MetricValuePrefix,
+		instanceIDField:   cfg.InstanceIDField,
+		exporterField:     cfg.ExporterField,
+		instanceLimit:     cfg.InstanceLimit,
+		exporterLimit:     cfg.ExporterLimit,
+
+		now: time.Now,
 	}, nil
 }
 
@@ -222,7 +280,8 @@ func (e *Elasticsearch) Observe(ctx context.Context, service seam.Service, windo
 				} `json:"total"`
 			} `json:"hits"`
 			Aggregations map[string]struct {
-				DocCount int64 `json:"doc_count"`
+				DocCount int64    `json:"doc_count"`
+				Value    *float64 `json:"value"`
 			} `json:"aggregations"`
 			Error json.RawMessage `json:"error"`
 		} `json:"responses"`
@@ -244,6 +303,9 @@ func (e *Elasticsearch) Observe(ctx context.Context, service seam.Service, windo
 
 		total := r.Hits.Total.Value
 		sig := seam.SignalObservation{Known: true, Present: total > 0, Volume: total}
+		if agg, ok := r.Aggregations["newest"]; ok && agg.Value != nil {
+			sig.Newest = epochMillis(*agg.Value)
+		}
 		if total > 0 && len(attributes) > 0 {
 			sig.AttributeCoverage = map[string]float64{}
 			for _, attr := range attributes {
@@ -359,15 +421,19 @@ func (e *Elasticsearch) observeBody(service seam.Service, window time.Duration, 
 			},
 		},
 	}
-	if len(attributes) > 0 {
-		aggs := map[string]any{}
-		for _, attr := range attributes {
-			aggs["attr_"+sanitise(attr)] = map[string]any{
-				"filter": map[string]any{"exists": map[string]any{"field": attr}},
-			}
-		}
-		body["aggs"] = aggs
+	// Freshness is a reading, not an inference (ADR-0040 §4): the newest
+	// landed record's timestamp comes back with the count, so
+	// last-known-plus-age renders from the reading rather than from the
+	// console guessing at it.
+	aggs := map[string]any{
+		"newest": map[string]any{"max": map[string]any{"field": "@timestamp"}},
 	}
+	for _, attr := range attributes {
+		aggs["attr_"+sanitise(attr)] = map[string]any{
+			"filter": map[string]any{"exists": map[string]any{"field": attr}},
+		}
+	}
+	body["aggs"] = aggs
 	return body
 }
 
@@ -423,6 +489,17 @@ func dateMath(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%ds", int64(d/time.Second))
 	}
+}
+
+// epochMillis converts a max-timestamp aggregation's numeric value —
+// epoch milliseconds, the shape a date field aggregates to — into an
+// instant. A zero value is no timestamp at all rather than the epoch:
+// nothing landed is a reading, and 1970 would be a fabricated one.
+func epochMillis(v float64) time.Time {
+	if v <= 0 {
+		return time.Time{}
+	}
+	return time.UnixMilli(int64(v)).UTC()
 }
 
 // sanitise makes an attribute name safe as an aggregation key.
