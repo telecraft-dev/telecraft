@@ -1924,3 +1924,160 @@ button {
 .claim-banner p {
   margin: 0;
 }
+
+/* ---- The rollout ledger (ADR-0029): cohort progress, both paths ---- */
+
+.rollout-ledger {
+  padding: var(--space-4);
+  overflow: auto;
+}
+
+.rollout-section {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-2);
+  background: var(--colour-surface);
+}
+
+.rollout-section.selected {
+  outline: 2px solid var(--colour-accent);
+}
+
+.rollout-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.rollout-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.rollout-name {
+  color: var(--colour-text);
+  text-decoration: none;
+}
+
+.rollout-name:hover {
+  text-decoration: underline;
+}
+
+.rollout-bindings {
+  color: var(--colour-text-muted);
+  font-size: 0.9rem;
+}
+
+.rollout-target {
+  color: var(--colour-text-muted);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+/* The verdict chip: states render as words first; hue reinforces
+ * (ADR-0041 §2's mono-red discipline holds here too). */
+
+.decision-chip {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-1);
+  border: 1px solid var(--colour-border);
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--colour-text);
+  background: var(--colour-surface-raised);
+}
+
+.decision-chip.decision-blocked,
+.decision-chip.decision-abort {
+  border-color: var(--colour-severity-violation);
+  color: var(--colour-severity-violation);
+}
+
+.decision-chip.decision-advance {
+  border-color: var(--colour-severity-ok);
+  color: var(--colour-severity-ok);
+}
+
+.decision-chip.decision-hold {
+  color: var(--colour-text-muted);
+}
+
+.rollout-table {
+  width: 100%;
+}
+
+.cohort-row.cohort-pending td {
+  color: var(--colour-text-muted);
+}
+
+.cohort-state-active {
+  font-weight: 600;
+}
+
+.cohort-spec code {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.cohort-widens,
+.cohort-preview {
+  color: var(--colour-text-muted);
+  font-size: 0.85rem;
+}
+
+.path-split-part.running-from {
+  color: var(--colour-text-muted);
+}
+
+.path-split-part.running-other {
+  color: var(--colour-severity-advisory);
+}
+
+/* Foreign membership is advisory: lag, never failure (ADR-0029 §7) — the
+ * chip says so in words, and nothing about it reads as red. */
+
+.advisory-chip {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-1);
+  background: var(--colour-ungoverned-band);
+  font-size: 0.85rem;
+}
+
+.rollout-halts {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.halt-chip {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-severity-violation);
+  border-radius: var(--radius-1);
+  color: var(--colour-severity-violation);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.rollout-panel .panel-facts code {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.rollout-verdict {
+  margin-bottom: var(--space-4);
+}
+
+.rollout-reason {
+  margin: var(--space-2) 0 0;
+}
+
+.rollout-evidence {
+  margin: var(--space-2) 0 0;
+  color: var(--colour-text-muted);
+  font-size: 0.9rem;
+}

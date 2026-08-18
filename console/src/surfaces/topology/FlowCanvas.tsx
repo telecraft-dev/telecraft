@@ -25,6 +25,7 @@ import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
 import { CardPanel } from '../estate/card'
 import { buildTopologyModel, pathHopPairs, pathTierIds, servicePaths } from './model'
+import { TopologyViewSwitcher } from './switcher'
 
 // The topology flow canvas: xyflow is the interaction substrate (pan,
 // zoom, node lifecycle, constrainable drag); the engine owns every
@@ -175,7 +176,7 @@ export function FlowCanvas() {
   const topology = useQuery({ queryKey: ['topology'], queryFn: api.topology })
   const estate = useQuery({ queryKey: ['estate'], queryFn: api.estate })
   const search = useSearch({ strict: false })
-  const navigate = useNavigate()
+  const navigate = useNavigate({ from: '/topology' })
   const { store } = usePresentation()
   // Simulate is a cosmetic toggle: component state only, nothing in the
   // URL and nothing in the presentation store — it changes nothing
@@ -315,6 +316,7 @@ export function FlowCanvas() {
       <div className="topology-main">
         <header className="topology-header">
           <h1>Topology</h1>
+          <TopologyViewSwitcher active="flow" />
           <div className="trace-controls">
             <span>Trace a Service's Paths:</span>
             {services.map((service) => (

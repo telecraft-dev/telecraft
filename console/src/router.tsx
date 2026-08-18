@@ -9,7 +9,7 @@ import { AppShell } from './chrome/AppShell'
 import { Catalogue } from './surfaces/catalogue/Catalogue'
 import { Compose } from './surfaces/compose/Compose'
 import { Estate } from './surfaces/estate/Estate'
-import { FlowCanvas } from './surfaces/topology/FlowCanvas'
+import { Topology } from './surfaces/topology/Topology'
 
 // Every surface state is URL-addressable — workspace, selection, lens
 // (ADR-0042 §3.5): the search params below are that rule as a
@@ -88,10 +88,23 @@ const estateRoute = createRoute({
   }),
 })
 
+/** The Topology view-switchers: the flow canvas, and the rollout ledger —
+ * one model, complementary representations (ADR-0042 §1, ADR-0029). */
+export type TopologyView = 'flow' | 'rollout'
+
+export interface TopologySearch {
+  /** The Topology view: the flow canvas lands; the rollout ledger switches
+   * in place. A selected `object` of kind `rollout` implies the ledger. */
+  view?: TopologyView
+}
+
 const topologyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/topology',
-  component: FlowCanvas,
+  component: Topology,
+  validateSearch: (search: Record<string, unknown>): TopologySearch => ({
+    view: search.view === 'rollout' || search.view === 'flow' ? search.view : undefined,
+  }),
 })
 
 /** The Compose surfaces: three projections of one open Blueprint (ADR-0043 §1). */

@@ -115,9 +115,10 @@ function severityLabel(severity: Severity): string {
 /**
  * The "why?" affordance (ADR-0042 §5): a provenance popover — claim, the
  * implying config lines, the judged SHA — with an optional travel action
- * that traces the Service's Paths on the canvas via rule 3.3.
+ * that traces the Service's Paths on the canvas via rule 3.3. Shared with
+ * every panel that carries provenance (the Rollout panel among them).
  */
-function WhyButton({
+export function WhyButton({
   provenance,
   open,
   onToggle,
