@@ -39,7 +39,14 @@ export interface AuthProviderInfo {
  * objects, plus `entry` — a Catalogue entry, keyed `class/type` (ADR-0020
  * §3), browsable and deep-linkable though machine-generated, never authored.
  */
-export type ObjectKind = 'tier' | 'service' | 'blueprint' | 'component' | 'team' | 'entry'
+export type ObjectKind =
+  | 'tier'
+  | 'service'
+  | 'blueprint'
+  | 'component'
+  | 'team'
+  | 'entry'
+  | 'rollout'
 
 export interface ObjectRef {
   kind: ObjectKind
@@ -285,6 +292,116 @@ export interface TopologyPayload {
   sources: TopologySource[]
   hops: TopologyHop[]
   paths: TopologyPath[]
+}
+
+/**
+ * How a rollout cohort member's config arrives (ADR-0029 §7): `served` by
+ * the OpAMP path — membership computed per connect, acknowledgement by
+ * config hash — or `foreign`, the adopter's own GitOps tooling, read
+ * through the telecraft.tier stamp readings (ADR-0039 §5). The Foreign
+ * population reads everything and blocks nothing: advisory, lag never
+ * failure.
+ */
+export type RolloutPath = 'served' | 'foreign'
+
+/**
+ * Which of a Rollout's two artefacts a member actually runs, as far as its
+ * readings can tell (ADR-0029 §7). Not knowing is a normal state
+ * (ADR-0008): wiring both artefacts share reads `unknown`, never guessed.
+ */
+export type RolloutRunning = 'to' | 'from' | 'other' | 'unknown'
+
+/** One delivery path's running split over a cohort's members. */
+export interface RolloutPathProgress {
+  members: number
+  to: number
+  from: number
+  other: number
+  unknown: number
+}
+
+/**
+ * A stage's relation to the active stage: `entered` cohorts accumulate —
+ * advancing only ever widens (ADR-0029 §4) — `active` is the stage the
+ * evaluation judges, `pending` counts are the membership preview,
+ * information for the reviewer, never the authoritative decision.
+ */
+export type RolloutCohortState = 'entered' | 'active' | 'pending'
+
+/**
+ * One cohort's progress: the cumulative membership up to and including
+ * this stage (the union the server evaluates per connect), split by
+ * delivery path, computed from stamps and the membership function.
+ */
+export interface RolloutCohortProgress {
+  index: number
+  /** The authored cohort spec, rendered for reading. */
+  cohort: string
+  /** The stage's authored minimum soak, for example `24h`. */
+  soak: string
+  state: RolloutCohortState
+  /** Members this stage admits beyond the previous stage's cohort. */
+  widens: number
+  served: RolloutPathProgress
+  /** Advisory (ADR-0029 §7): displayed, never blocking. */
+  foreign: RolloutPathProgress
+}
+
+/** One halted cohort member (ADR-0029 §6) — the condition set is extensible. */
+export interface RolloutHalt {
+  collector: string
+  path: RolloutPath
+  condition: string
+  reason: string
+}
+
+/**
+ * The evaluation's verdict on the active stage (ADR-0029 §5, §6): halting
+ * is passive — `blocked` is a withheld advance, nothing races; `abort` is
+ * proposed at or past the threshold; `advance` is proposed for a human to
+ * merge.
+ */
+export type RolloutDecision = 'hold' | 'blocked' | 'advance' | 'abort'
+
+/** The numbers the verdict rests on, computed over the active cohort. */
+export interface RolloutEvidence {
+  membersSeen: number
+  runningTo: number
+  runningFrom: number
+  runningOther: number
+  unknown: number
+  soaked: string
+  minSoak: string
+}
+
+/**
+ * GET /api/v1/rollouts — one active Rollout's cohort progress across both
+ * delivery paths (ADR-0029): membership from the pure function, delivery
+ * status against the rollout artefacts from commit stamps, halt and abort
+ * states with provenance.
+ */
+export interface RolloutProgress {
+  /** Team-qualified Rollout id, for example `data-flow/gateway-canary`. */
+  id: string
+  name: string
+  team: string
+  owner: string
+  /** The one Tier this Rollout stages (ADR-0029 §2). */
+  tier: string
+  tierName: string
+  environment: Environment
+  /** The dual bindings, `team/name@version` (ADR-0029 §3). */
+  from: string
+  to: string
+  /** The active stage, 0-based. */
+  stage: number
+  decision: RolloutDecision
+  reason: string
+  evidence: RolloutEvidence
+  cohorts: RolloutCohortProgress[]
+  halts: RolloutHalt[]
+  /** The "why?" chain for the authored facts (ADR-0041 §3). */
+  provenance: Provenance[]
 }
 
 /**

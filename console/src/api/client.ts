@@ -20,6 +20,7 @@ import type {
   Proposal,
   ProposalOutcome,
   ProposalRef,
+  RolloutProgress,
   TopologyPayload,
 } from './types'
 
@@ -73,6 +74,8 @@ export const api = {
   drawer: (tier: string) => get<CardDrawer>(`/api/v1/drawer?tier=${encodeURIComponent(tier)}`),
   collectors: () => get<CollectorRow[]>('/api/v1/collectors'),
   topology: () => get<TopologyPayload>('/api/v1/topology'),
+  /** Active Rollouts' cohort progress across both delivery paths (ADR-0029). */
+  rollouts: () => get<RolloutProgress[]>('/api/v1/rollouts'),
   blueprints: () => get<BlueprintDoc[]>('/api/v1/blueprints'),
   catalogue: () => get<CatalogueComponent[]>('/api/v1/catalogue'),
   catalogueVersions: () => get<CatalogueVersionsPayload>('/api/v1/catalogue/versions'),

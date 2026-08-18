@@ -74,6 +74,7 @@ URL the user arrived on survives the round trip.
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
 | `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen, and the reported identifying attributes Tier selectors match on (ADR-0013). Rows without a Tier are the ungoverned population (ADR-0031), marked by how they are read (`served` or `foreign`); their attributes are the claim flow's raw material. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. Each Tier carries its selector-matched collector count, derived Service Class, and the served/git delivery split — collectors are matched into a Tier by selector and appear only as these numbers, never as nodes (ADR-0007). |
+| `/api/v1/rollouts` | Every active Rollout's cohort progress (ADR-0029), computed per request — membership is a pure function of the authored Rollout and reported identifying attributes, never stored (§4). Each Rollout carries its authored facts (owner, target Tier, `from`/`to` bindings, active stage), the evaluation's verdict (`hold`, `blocked`, `advance`, `abort`) with its reason and evidence, per-cohort progress — cumulative membership per stage, split by delivery path, with running status against the two rendered artefacts (served by acknowledged config hash; foreign by the `telecraft.tier` stamp readings, ADR-0039 §5) — every halted member with its condition and reason (§6, the set is extensible), and "why?" provenance for the authored facts. Foreign members are advisory: lag, never failure (§7). Pending stages carry the membership preview — information for the reviewer, never the authoritative decision. |
 | `/api/v1/blueprints` | Blueprint schema v1 documents (ADR-0024): per-signal lanes of ordered Component references, local Components, the collector-wide extensions block, the bound Tier, version-stamped `satisfies` claims, and the Catalogue key each lane item instantiates, so lane items deep-link to their Catalogue entries. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
 | `/api/v1/catalogue/versions` | The installed catalogue versions (ADR-0020 §9: retained, never replaced), each with its entry count and source, and which one is active. |
@@ -123,6 +124,11 @@ Search params are validated by the router (ADR-0045 §3):
 - `tier`, `team`, `env`: the flat list's explicit filters. A collector
   count anywhere is a door that lands here with `tier` pre-filled
   (ADR-0042 §3.4); the lens is never one of these filters.
+- `view` (Topology): the Topology view-switcher, one of `flow` (the flow
+  canvas, the default) or `rollout` (the rollout ledger, ADR-0029).
+  Switching preserves selection and lens (ADR-0042 §3.1); a selected
+  `object` of kind `rollout` implies the ledger, so a Rollout deep link
+  needs no explicit view.
 - `ungoverned`: the flat list narrowed to the ungoverned population — the
   onboard CTA's door (ADR-0031).
 - `herd`: the claim flow's selection, ungoverned collector ids
