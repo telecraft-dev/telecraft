@@ -5,6 +5,9 @@
 owner: gateway-owners
 environment: production
 blueprint: data-flow/gateway-standard@4
+selector:
+  telecraft.tier: gateway
+  deployment.environment: production
 serving:
   endpoint: wss://opamp.telecraft.internal/v1/opamp
 hops:

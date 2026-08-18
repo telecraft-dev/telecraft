@@ -153,6 +153,15 @@ func validateTier(path string, t *Tier) []string {
 	if t.Serving != nil && t.Serving.Endpoint == "" {
 		p = append(p, ctx+" declares serving with no endpoint — the Supervisor needs the OpAMP server endpoint (ADR-0010)")
 	}
+	if t.Serving != nil && len(t.Selector) == 0 {
+		p = append(p, ctx+" declares serving but no selector — a served collector is matched into its Tier by selector, so without one every collector of this Tier lands on the Unmatched artefact (ADR-0007, ADR-0030)")
+	}
+	for k, v := range t.Selector {
+		if k == "" || v == "" {
+			p = append(p, ctx+" has a selector pair with an empty key or value — a selector is equality over reported identifying attributes, and an empty side can never match (ADR-0007)")
+			break
+		}
+	}
 	for _, h := range t.Hops {
 		if h.From == "" {
 			p = append(p, ctx+" has a hop with no from — a Hop is a directed edge, and its source is what trust is judged about (ADR-0007)")

@@ -235,6 +235,15 @@ type Tier struct {
 	// Blueprint is the authored binding string, parsed into binding.
 	Blueprint string `yaml:"blueprint"`
 
+	// Selector is the Tier's collector-matching expression (ADR-0007): a
+	// collector is never authored — it connects, reports identifying
+	// attributes, and is matched into the Tier whose selector its attributes
+	// satisfy. Semantics are equality over every authored pair; the most
+	// specific satisfied selector wins. The selector doubles as the Tier's
+	// expectation (ADR-0030): it says what shape should match, never how
+	// many.
+	Selector map[string]string `yaml:"selector"`
+
 	Serving *Serving `yaml:"serving"`
 	Hops    []Hop    `yaml:"hops"`
 
