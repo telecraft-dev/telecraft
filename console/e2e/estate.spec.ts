@@ -51,10 +51,11 @@ test('a collector count is a door to the flat list, pre-filtered and URL-address
   await page.goto('/estate?view=list&tier=data-flow%2Fgateway')
   await expect(page.getByTestId('collector-gw-0')).toBeVisible()
   await expect(page.getByTestId('collector-table').locator('tbody tr')).toHaveCount(3)
-  // Widening the filter shows every collector: the flat list is the only
-  // home of per-collector detail (ADR-0042 §3.4).
+  // Widening the filter shows every collector — the ungoverned included,
+  // in view and never hidden (ADR-0031): the flat list is the only home
+  // of per-collector detail (ADR-0042 §3.4).
   await page.getByTestId('filter-tier').selectOption('')
-  await expect(page.getByTestId('collector-table').locator('tbody tr')).toHaveCount(10)
+  await expect(page.getByTestId('collector-table').locator('tbody tr')).toHaveCount(15)
 })
 
 test('the lens changes emphasis and evaluation context without removing rows', async ({
