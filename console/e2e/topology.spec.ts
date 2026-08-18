@@ -125,6 +125,13 @@ test('the universal card panel and deep links work from canvas nodes', async ({ 
   await expect(page).toHaveURL(/\/topology\?.*object=tier%3Adata-flow%2Fgateway/)
   await expect(page.getByTestId('card-panel')).toBeVisible()
   await expect(page.getByTestId('panel-title')).toHaveText('gateway')
+  // One face payload, many representations (ADR-0041 §4): the flow
+  // readings the shelf shows are the same readings here, from the same
+  // contract — volume, freshness and shape per signal lane.
+  const flow = page.getByTestId('panel-flow')
+  await expect(flow.getByTestId('matrix-data-flow/gateway-traces')).toContainText('1M → 100k')
+  await expect(flow.getByTestId('matrix-data-flow/gateway-traces')).toContainText('30s')
+  await expect(flow.getByTestId('matrix-data-flow/gateway-metrics')).toContainText('1 of 2 missing')
   // A who-acts chip in that panel still travels to the fixing surface
   // (ADR-0042 §3.3).
   await expect(page.getByTestId('who-acts-gateway-expectation-logs')).toBeVisible()
