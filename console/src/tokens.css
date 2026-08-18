@@ -28,6 +28,12 @@
   --colour-ungoverned-band: #f3eddf;
   --colour-dimmed: rgba(28, 33, 38, 0.25);
 
+  /* Per-signal edge hues (composer canvas): distinct, never load-bearing. */
+  --colour-signal-traces: #2a5d8f;
+  --colour-signal-logs: #6a4a8f;
+  --colour-signal-metrics: #2e6b3f;
+  --colour-signal-profiles: #8a6116;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

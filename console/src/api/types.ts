@@ -273,6 +273,8 @@ export interface PaletteEntry {
   residence: 'type' | 'shared'
   /** The signals the entry supports; click-add targets all of them (ADR-0043 §4). */
   signals: string[]
+  /** Upstream stability per signal — the per-(component, signal) chips (ADR-0023). */
+  stability: Record<string, string>
   /** What an add gesture inserts: the pinned reference for shared entries. */
   add: { ref?: string; signals: string[] }
   state: 'allowed' | 'greyed'
@@ -327,6 +329,8 @@ export interface RequirementVerdict {
  * continuous; Save calls the same rulebook with enforcement on.
  */
 export interface ComposeVerdict {
+  /** The evaluation context echoed back: the lens as context (ADR-0042 §4). */
+  context: { team: string; environment: Environment; serviceClass?: string; floor?: string }
   findings: ComposeFinding[]
   palette: ComposePalette
   requirements: RequirementVerdict[]

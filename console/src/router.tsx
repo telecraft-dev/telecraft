@@ -75,9 +75,16 @@ const topologyRoute = createRoute({
   component: FlowCanvas,
 })
 
+/** The Compose surfaces: three projections of one open Blueprint (ADR-0043 §1). */
+export type ComposeSurface = 'composer' | 'requirements' | 'canvas'
+
 export interface ComposeSearch {
   /** The signal lane a who-acts chip lands on (ADR-0042 §3.3). */
   lane?: string
+  /** The surface switcher; switching never loses the draft (ADR-0043 §1). */
+  surface?: ComposeSurface
+  /** Whether the resident read-only YAML flyout is open (REQ-035). */
+  yaml?: boolean
 }
 
 const composeRoute = createRoute({
@@ -86,6 +93,13 @@ const composeRoute = createRoute({
   component: Compose,
   validateSearch: (search: Record<string, unknown>): ComposeSearch => ({
     lane: typeof search.lane === 'string' ? search.lane : undefined,
+    surface:
+      search.surface === 'composer' ||
+      search.surface === 'requirements' ||
+      search.surface === 'canvas'
+        ? search.surface
+        : undefined,
+    yaml: search.yaml === true || search.yaml === 'true' ? true : undefined,
   }),
 })
 

@@ -122,6 +122,21 @@ describe('ordering findings (ADR-0024 §6)', () => {
   })
 })
 
+describe('reference findings (ADR-0024)', () => {
+  it('flags a lane routing a signal the component does not declare — never a block', () => {
+    const draft = doc('data-flow/edge-standard')
+    draft.locals['legacy-in'] = { class: 'receiver', type: 'zipkin' }
+    draft.lanes['logs'] = ['legacy-in', ...(draft.lanes['logs'] ?? [])]
+    const verdict = validate(estate, draft, 'production')
+    expect(
+      verdict.findings.some(
+        (f) => f.kind === 'reference' && f.summary.includes('declares no logs support'),
+      ),
+    ).toBe(true)
+    expect(verdict.save.blocked).toBe(false)
+  })
+})
+
 describe('requirement verdicts (REQ-031, ADR-0026)', () => {
   it('carries claim and judgement side by side: claimed is never met', () => {
     const verdicts = validate(estate, doc('data-flow/edge-standard'), 'production').requirements

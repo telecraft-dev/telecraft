@@ -171,6 +171,7 @@ function palette(estate, draft, environment) {
       class: cls,
       type,
       signals,
+      stability,
       add: { ...(addRef ? { ref: addRef } : {}), signals },
       state,
       ...(reason ? { reason } : {}),
@@ -245,6 +246,17 @@ function findings(estate, draft, environment) {
       }
       const catType = typeEntry(estate, c.class, c.type)
       const level = catType?.stability?.[signal]
+      if (catType && level === undefined) {
+        out.push({
+          id: `reference-${signal}-${i}`,
+          kind: 'reference',
+          severity: 'advisory',
+          lane: signal,
+          ref,
+          summary: `${ref} (${key}) declares no ${signal} support`,
+          remediation: `Route ${signal} through a component that declares it, or remove the entry from this lane.`,
+        })
+      }
       // Floors judge each (component, signal) the lane actually routes
       // (ADR-0023 §4) — a finding, never a block (§5).
       if (floor && level !== undefined && STABILITY_RANK[level] < floor.rank) {
@@ -400,7 +412,15 @@ function renderYAML(estate, draft, environment) {
 export function validate(estate, draft, environment) {
   const found = findings(estate, draft, environment)
   const blocking = found.filter((f) => f.kind === 'allow-list')
+  const { team, serviceClass } = contextOf(estate, draft)
+  const floor = serviceClass ? floorFor(estate, serviceClass, environment) : undefined
   return {
+    context: {
+      team,
+      environment,
+      ...(serviceClass ? { serviceClass } : {}),
+      ...(floor ? { floor: floor.level } : {}),
+    },
     findings: found,
     palette: palette(estate, draft, environment),
     requirements: requirements(estate, draft),
