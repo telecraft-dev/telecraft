@@ -1,0 +1,101 @@
+# Edge collector on Kubernetes — shape taken from the live PoC evidence
+# (ticket 06 pipeline fingerprint). This is the "rendered" side.
+receivers:
+  filelog/containers:
+    include:
+      - /var/log/pods/*/*/*.log
+    start_at: end
+    operators:
+      - type: container
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  kubeletstats:
+    collection_interval: 30s
+    auth_type: serviceAccount
+    endpoint: https://${env:K8S_NODE_NAME}:10250
+  prometheus/self:
+    config:
+      scrape_configs:
+        - job_name: otelcol
+          scrape_interval: 30s
+          static_configs:
+            - targets:
+                - 127.0.0.1:8888
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  batch: {}
+  k8sattributes:
+    auth_type: serviceAccount
+    extract:
+      metadata:
+        - k8s.namespace.name
+        - k8s.pod.name
+      labels:
+        - key: app.kubernetes.io/name
+          from: pod
+          tag_name: service.name
+  resource/platform-owner:
+    attributes:
+      - key: platform.owner
+        value: core-observability
+        action: upsert
+exporters:
+  otlp/gateway:
+    endpoint: gateway.observability.svc.cluster.local:4317
+    tls:
+      ca_file: /etc/ssl/certs/ca-certificates.crt
+    headers:
+      authorization: Bearer s3cr3t-example
+extensions:
+  opamp/mgmt:
+    server:
+      http:
+        endpoint: https://mgmt.example.com:443/v1/opamp
+        polling_interval: 30s
+    instance_uid: 018f2b2e-0000-7000-8000-000000000001
+service:
+  extensions:
+    - opamp/mgmt
+  pipelines:
+    logs:
+      receivers:
+        - filelog/containers
+        - otlp
+      processors:
+        - memory_limiter
+        - batch
+        - k8sattributes
+        - resource/platform-owner
+      exporters:
+        - otlp/gateway
+    metrics:
+      receivers:
+        - kubeletstats
+        - otlp
+        - prometheus/self
+      processors:
+        - memory_limiter
+        - k8sattributes
+        - batch
+        - resource/platform-owner
+      exporters:
+        - otlp/gateway
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - memory_limiter
+        - batch
+        - k8sattributes
+      exporters:
+        - otlp/gateway
+  telemetry:
+    metrics:
+      level: normal

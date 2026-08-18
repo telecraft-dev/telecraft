@@ -1,0 +1,33 @@
+# Plain host-metrics node collector, GitOps-delivered (no opamp extension at
+# all — the normaliser must not require one).
+receivers:
+  hostmetrics:
+    collection_interval: 60s
+    scrapers:
+      cpu: {}
+      memory: {}
+      filesystem:
+        exclude_mount_points:
+          mount_points:
+            - /var/lib/docker/*
+          match_type: regexp
+processors:
+  resourcedetection/system:
+    detectors:
+      - system
+  batch: {}
+exporters:
+  otlp/gateway:
+    endpoint: gateway.observability.svc.cluster.local:4317
+    tls:
+      ca_file: /etc/ssl/certs/ca-certificates.crt
+service:
+  pipelines:
+    metrics:
+      receivers:
+        - hostmetrics
+      processors:
+        - resourcedetection/system
+        - batch
+      exporters:
+        - otlp/gateway

@@ -1,0 +1,32 @@
+# base.yaml with keys shuffled. Cosmetic only.
+service:
+  pipelines:
+    metrics:
+      exporters:
+        - otlp/gateway
+      processors:
+        - resourcedetection/system
+        - batch
+      receivers:
+        - hostmetrics
+exporters:
+  otlp/gateway:
+    tls:
+      ca_file: /etc/ssl/certs/ca-certificates.crt
+    endpoint: gateway.observability.svc.cluster.local:4317
+processors:
+  batch: {}
+  resourcedetection/system:
+    detectors:
+      - system
+receivers:
+  hostmetrics:
+    scrapers:
+      filesystem:
+        exclude_mount_points:
+          match_type: regexp
+          mount_points:
+            - /var/lib/docker/*
+      memory: {}
+      cpu: {}
+    collection_interval: 60s
