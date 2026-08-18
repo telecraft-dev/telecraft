@@ -157,8 +157,12 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 	if !strings.HasSuffix(commit.Author.Name, "[bot]") {
 		t.Errorf("commit author = %+v, want the App's bot identity — a custom author forfeits the signature", commit.Author)
 	}
-	if !strings.HasSuffix(commit.Committer.Name, "[bot]") {
-		t.Errorf("committer = %q, want the App's bot identity", commit.Committer.Name)
+	// The committer of a GitHub-signed commit is GitHub's own web-flow
+	// signer identity ("GitHub <noreply@github.com>") — the same committer
+	// web-interface commits carry. What matters is that it is the forge's
+	// verified machinery, never the human.
+	if commit.Committer.Name != "GitHub" && !strings.HasSuffix(commit.Committer.Name, "[bot]") {
+		t.Errorf("committer = %q, want the forge's signing identity, never the human", commit.Committer.Name)
 	}
 	if !commit.Verification.Verified {
 		t.Error("commit is not signature-verified — the App rung of the ladder promises verified attribution (ADR-0028 §4)")
