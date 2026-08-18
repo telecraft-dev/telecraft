@@ -305,11 +305,24 @@ type Service struct {
 func (s Service) ID() string { return s.Team + "/" + s.Name }
 
 // Topology is the loaded, validated topology view the renderer consumes:
-// every Tier and Service found across the source roots, keyed by
+// every Tier, Service and Rollout found across the source roots, keyed by
 // team-qualified id.
 type Topology struct {
 	Tiers    map[string]Tier
 	Services map[string]Service
+	Rollouts map[string]Rollout
+}
+
+// RolloutFor returns the active Rollout targeting the given Tier, if one is
+// authored. At most one exists — one active Rollout per Tier is a load
+// invariant (ADR-0029 §2).
+func (t Topology) RolloutFor(tierID string) (Rollout, bool) {
+	for _, id := range sortedKeys(t.Rollouts) {
+		if t.Rollouts[id].Tier == tierID {
+			return t.Rollouts[id], true
+		}
+	}
+	return Rollout{}, false
 }
 
 // SortedTiers returns the Tiers in stable id order — the enumerable

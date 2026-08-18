@@ -20,6 +20,7 @@ const (
 	teamsDir    = "teams"
 	tiersDir    = "tiers"
 	servicesDir = "services"
+	rolloutsDir = "rollouts"
 )
 
 // LoadTopology reads every Tier and Service under the given source roots.
@@ -39,7 +40,7 @@ func LoadTopology(roots ...string) (Topology, error) {
 		return Topology{}, fmt.Errorf("no source roots — an estate is a set of repos mapped to team subtrees, single-repo the degenerate case (ADR-0027)")
 	}
 
-	topo := Topology{Tiers: map[string]Tier{}, Services: map[string]Service{}}
+	topo := Topology{Tiers: map[string]Tier{}, Services: map[string]Service{}, Rollouts: map[string]Rollout{}}
 	definedIn := map[string]string{} // "tier <id>" / "service <id>" → file
 	var problems []string
 
@@ -96,6 +97,24 @@ func LoadTopology(roots ...string) (Topology, error) {
 				definedIn[key] = path
 				topo.Services[id] = svc
 			}
+
+			for _, path := range yamlFiles(filepath.Join(teamsRoot, team, rolloutsDir)) {
+				var r Rollout
+				if err := loadObjectFile(path, &r, "Rollout"); err != nil {
+					return Topology{}, err
+				}
+				r.Team = team
+				problems = append(problems, validateRollout(path, &r)...)
+				r.Name = baseName(path)
+				id := team + "/" + r.Name
+				key := "rollout " + id
+				if prev, dup := definedIn[key]; dup {
+					problems = append(problems, fmt.Sprintf("rollout %q defined in both %s and %s", id, prev, path))
+					continue
+				}
+				definedIn[key] = path
+				topo.Rollouts[id] = r
+			}
 		}
 	}
 
@@ -117,6 +136,36 @@ func LoadTopology(roots ...string) (Topology, error) {
 					problems = append(problems, fmt.Sprintf("service %q routes a Path through tier %q, which is not an authored Tier — the traversal would impose no judgement, and under-governed is the failure mode (ADR-0025 §4)", id, through))
 				}
 			}
+		}
+	}
+
+	// Cross-object: a Rollout is the Tier owner's instrument over their own
+	// Tier, one active per Tier, and while it is active it is the only door
+	// for the rebinding (ADR-0029 §2). All of this fails the load — a
+	// rollout the render half-honoured would serve a population nobody
+	// reviewed.
+	activeOn := map[string]string{} // tier id → rollout id
+	for _, id := range sortedKeys(topo.Rollouts) {
+		r := topo.Rollouts[id]
+		tier, ok := topo.Tiers[r.Tier]
+		if !ok {
+			problems = append(problems, fmt.Sprintf("rollout %q targets tier %q, which is not an authored Tier (ADR-0029 §2)", id, r.Tier))
+			continue
+		}
+		if tier.Team != r.Team {
+			problems = append(problems, fmt.Sprintf("rollout %q targets tier %q of another team — a Rollout lives beside the Tier it stages, under the owning team's directory (ADR-0027, ADR-0029 §2)", id, r.Tier))
+			continue
+		}
+		if r.Owner != "" && r.Owner != tier.Owner {
+			problems = append(problems, fmt.Sprintf("rollout %q is owned by %q but tier %q is owned by %q — a Rollout's owner is the Tier's owner (ADR-0029 §2)", id, r.Owner, r.Tier, tier.Owner))
+		}
+		if prev, dup := activeOn[r.Tier]; dup {
+			problems = append(problems, fmt.Sprintf("rollouts %q and %q both target tier %q — one active Rollout per Tier (ADR-0029 §2)", prev, id, r.Tier))
+			continue
+		}
+		activeOn[r.Tier] = id
+		if r.from != tier.Binding() {
+			problems = append(problems, fmt.Sprintf("rollout %q binds from %s but tier %q binds %s — while a Rollout is active the Rollout file is the only door, so a direct rebind fails render validation (ADR-0029 §2)", id, r.from, r.Tier, tier.Binding()))
 		}
 	}
 
