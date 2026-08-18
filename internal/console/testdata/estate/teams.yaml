@@ -1,0 +1,18 @@
+# A small estate for the snapshot generator's tests: one team subtree with
+# one Tier, one Service whose Path imposes a C1 floor, and the owners every
+# finding routes to.
+teams:
+  - id: engineering
+    name: Engineering
+    owners: [engineering-lead]
+    teams:
+      - id: platform
+        name: Platform Engineering
+        owners: [platform-observability]
+        teams:
+          - id: data-flow
+            name: Data Flow
+            owners: [gateway-owners]
+      - id: product
+        name: Product
+        owners: [checkout-team]

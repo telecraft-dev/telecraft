@@ -1,0 +1,67 @@
+# The declared runtime readings: the collector estate and the arrivals.
+as_of: 2026-08-19T09:00:00Z
+window: 24h
+
+collectors:
+  - id: gw-1
+    attributes:
+      telecraft.tier: gateway
+      deployment.environment: production
+      service.instance.id: gw-1
+    state: reporting
+    version: "0.158.0"
+    last_seen: 2026-08-19T08:59:10Z
+    delivery: served
+  - id: gw-2
+    attributes:
+      telecraft.tier: gateway
+      deployment.environment: production
+      service.instance.id: gw-2
+    state: reporting
+    version: "0.158.0"
+    last_seen: 2026-08-19T08:59:20Z
+    delivery: served
+  - id: gw-3
+    attributes:
+      telecraft.tier: gateway
+      deployment.environment: production
+      service.instance.id: gw-3
+    state: reporting
+    version: "0.158.0"
+    last_seen: 2026-08-19T08:59:30Z
+    delivery: git
+  - id: stray-1
+    attributes:
+      deployment.environment: production
+      k8s.namespace: legacy
+      service.instance.id: stray-1
+    state: reporting
+    version: "0.150.0"
+    last_seen: 2026-08-19T08:58:00Z
+    delivery: served
+  - id: stray-2
+    attributes:
+      deployment.environment: production
+      k8s.namespace: legacy
+      service.instance.id: stray-2
+    state: reporting
+    version: "0.150.0"
+    last_seen: 2026-08-19T08:58:01Z
+    delivery: git
+
+rows:
+  - service: product/checkout
+    environment: production
+    signals:
+      logs: {present: true, volume: 90210}
+      traces: {present: true, volume: 41020}
+      # Metrics have been absent since July: a failing finding an authored
+      # Exemption waives the count of, never the diagnosis.
+      metrics: {present: false, volume: 0, since: 2026-07-01T00:00:00Z}
+
+tiers:
+  - tier: data-flow/gateway
+    signals:
+      metrics: {present: true, volume: 4120}
+      logs: {present: true, volume: 210}
+    emitting: [all]

@@ -1,0 +1,11 @@
+owner: gateway-owners
+environment: production
+blueprint: data-flow/gateway-standard@2
+selector:
+  telecraft.tier: gateway
+  deployment.environment: production
+min_expected: 3
+serving:
+  endpoint: wss://opamp.telecraft.internal/v1/opamp
+hops:
+  - from: internet

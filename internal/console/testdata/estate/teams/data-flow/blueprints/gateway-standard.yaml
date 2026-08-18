@@ -1,0 +1,51 @@
+# The lone Blueprint. The logs lane routes a transform the fixture
+# catalogue rates alpha for logs, which breaches the C1 production floor
+# the traversing Service imposes — a finding, never a block (ADR-0023 §5).
+name: gateway-standard
+version: 2
+owner: gateway-owners
+satisfies:
+  - logs-delivered@1
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc: {}
+  - name: guard
+    class: processor
+    type: memory_limiter
+    version: 1
+    config:
+      check_interval: 1s
+      limit_mib: 512
+  - name: redact
+    class: processor
+    type: transform
+    version: 1
+    config:
+      error_mode: ignore
+  - name: batcher
+    class: processor
+    type: batch
+    version: 1
+  - name: health
+    class: extension
+    type: health_check
+    version: 1
+pipelines:
+  logs:
+    - component: otlp-in
+    - component: guard
+    - component: redact
+    - component: batcher
+    - component: data-flow/gateway-exporter@2
+  traces:
+    - component: otlp-in
+    - component: guard
+    - component: batcher
+    - component: data-flow/gateway-exporter@2
+extensions:
+  - component: health

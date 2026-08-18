@@ -1,0 +1,437 @@
+package console
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"time"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/internal/telemetry"
+)
+
+// Readings is the estate's declared runtime evidence: the two readings a
+// repository cannot hold. In production the collector collector estate arrives through
+// the EstateProvider seam (ADR-0008) and the arrivals through the
+// TelemetryProvider seam (ADR-0008, ADR-0039); a static snapshot has
+// neither backend, so the estate declares them here and this package plays
+// them back through the same seams. Everything judged from them is judged
+// by the product's own evaluators.
+//
+// Loading is strict and fails closed, matching every other authored file in
+// the estate: an unknown field or a malformed document is an error naming
+// the file, never a snapshot silently missing a collector.
+type Readings struct {
+	// AsOf is the instant every reading was taken, and the instant the
+	// snapshot's judgements are made at. Mandatory: a reading without a
+	// timestamp cannot have its freshness computed (ADR-0036 §2).
+	AsOf time.Time `yaml:"as_of"`
+
+	// Window is the trailing window the arrival readings cover; zero takes
+	// the requirements library's longest window.
+	Window requirements.Duration `yaml:"window"`
+
+	// Collectors is the collector estate: every collector the estate reading can see,
+	// with the identifying attributes Tier selectors match on.
+	Collectors []CollectorReading `yaml:"collectors"`
+
+	// Rows is the arrival reading per (Service, Environment) — the Observed
+	// leg of the verdict cross (ADR-0004).
+	Rows []RowReading `yaml:"rows"`
+
+	// Tiers is the self-telemetry reading per Tier (ADR-0039).
+	Tiers []TierReading `yaml:"tiers"`
+}
+
+// CollectorReading is one collector as the estate reading sees it.
+type CollectorReading struct {
+	// ID names the collector in list surfaces. It is presentation only —
+	// identity for matching is Attributes (ADR-0013).
+	ID string `yaml:"id"`
+
+	// Attributes are the reported identifying attributes: what Tier
+	// selectors and Rollout cohorts match on.
+	Attributes map[string]string `yaml:"attributes"`
+
+	// State is reporting, stale or never_seen — the flat list's state
+	// column, rendered last-known-plus-age beside LastSeen (ADR-0040).
+	State string `yaml:"state"`
+
+	// Version is the collector build the reading reports.
+	Version string `yaml:"version"`
+
+	// LastSeen is the last-known reading time.
+	LastSeen time.Time `yaml:"last_seen"`
+
+	// Delivery is how this collector receives config: served over OpAMP or
+	// git-delivered (REQ-041). A visible property of the collector
+	// (ADR-0007), aggregated to Tier grain for the canvas.
+	Delivery string `yaml:"delivery"`
+
+	// RunningSHA is the commit stamp the collector reports running; empty
+	// takes the snapshot's head, which is the settled steady state.
+	RunningSHA string `yaml:"running_sha"`
+
+	// AppliedAt is when the running artefact went APPLIED; zero is treated
+	// as settled, so a Tier is not held pending forever (ADR-0038 §4b).
+	AppliedAt time.Time `yaml:"applied_at"`
+}
+
+// RowReading is one (Service, Environment) arrival reading.
+type RowReading struct {
+	// Service is the Service's service.name, matching the conformance
+	// estate's rows (ADR-0015).
+	Service string `yaml:"service"`
+
+	Environment string `yaml:"environment"`
+
+	// Signals is the per-signal reading. A signal absent from the map is
+	// Known false with a stated cause: not knowing is a normal state and
+	// is reported as itself (ADR-0008), never as absence.
+	Signals map[string]SignalReading `yaml:"signals"`
+}
+
+// SignalReading is one signal's arrival reading.
+type SignalReading struct {
+	// Known distinguishes "the backend cannot say" from "nothing arrived".
+	// Absent defaults to known — the ordinary case in a declared reading.
+	Known *bool  `yaml:"known"`
+	Cause string `yaml:"cause"`
+
+	Present bool  `yaml:"present"`
+	Volume  int64 `yaml:"volume"`
+
+	// AttributeCoverage is the fraction of records carrying each named
+	// attribute, in [0, 1].
+	AttributeCoverage map[string]float64 `yaml:"attribute_coverage"`
+
+	// Since is when this signal stopped arriving. The judgement never
+	// raises a finding from a single instant (ADR-0035 §3) and a snapshot
+	// is a single instant, so persistence is declared here exactly as a
+	// Damper would have tracked it. Absent means the silence starts now,
+	// which reads as dampened — the honest answer for a gap nobody has
+	// watched yet.
+	Since time.Time `yaml:"since"`
+}
+
+// TierReading is one Tier's self-telemetry reading (ADR-0039).
+type TierReading struct {
+	Tier string `yaml:"tier"`
+
+	// Signals is the per-signal self-telemetry reading; the covered
+	// signals are metrics and logs (internal traces stay off in v1).
+	Signals map[string]SignalReading `yaml:"signals"`
+
+	// Emitting declares which of the Tier's instantiated components report
+	// their own telemetry: `all`, `none`, or a list of rendered component
+	// ids exactly as the artefact spells them. The generator renders the
+	// declaration into the join-key attribute combinations R-4 pins
+	// (internal/selftelemetry interprets them), so the claims are judged
+	// by the real normaliser against a real-shaped reading.
+	Emitting []string `yaml:"emitting"`
+
+	// Silent withholds named components from an `all` declaration — the
+	// door to an honest expectation red on one component.
+	Silent []string `yaml:"silent"`
+
+	// Components carries verbatim component-identity attribute
+	// combinations, for a reading authored exactly as a backend recorded
+	// it. Merged with whatever Emitting renders.
+	Components []map[string]string `yaml:"components"`
+
+	// EverSeen reports whether any collector has ever matched this Tier.
+	// Absent means "as the collector estate reads now": a Tier with collectors has
+	// been seen, one without never has. Declaring it false on a populated
+	// Tier is meaningless and declaring it true on an empty one is the
+	// dropped-to-zero case — under-populated, never never_seen (ADR-0030).
+	EverSeen *bool `yaml:"ever_seen"`
+
+	// FirstWatched is when the platform started watching this Tier — the
+	// age base for the never_seen stale-config signal (ADR-0035 §7).
+	FirstWatched time.Time `yaml:"first_watched"`
+
+	// ShortfallSince is when the current sub-floor condition began. The
+	// judgement never raises a toothed finding from a single instant
+	// (ADR-0035 §3), and a snapshot is a single instant — so persistence
+	// is declared here, exactly as a Damper would have tracked it.
+	ShortfallSince time.Time `yaml:"shortfall_since"`
+
+	// Attributes are extra component-identity attribute combinations the
+	// reading carries beyond the pipeline components — collector-level
+	// telemetry and synthetic graph nodes. Tolerated, matching nothing.
+	Attributes []map[string]string `yaml:"attributes"`
+}
+
+// emitsAll reports the `all` shorthand.
+func (t TierReading) emitsAll() bool {
+	for _, e := range t.Emitting {
+		if e == "all" {
+			return true
+		}
+	}
+	return false
+}
+
+// silentSet indexes the withheld component ids.
+func (t TierReading) silentSet() map[string]bool {
+	out := map[string]bool{}
+	for _, s := range t.Silent {
+		out[s] = true
+	}
+	return out
+}
+
+// LoadReadings reads and validates one readings file.
+func LoadReadings(path string) (Readings, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return Readings{}, err
+	}
+
+	var doc yaml.Node
+	if err := yaml.Unmarshal(raw, &doc); err != nil {
+		return Readings{}, fmt.Errorf("%s: %w", path, err)
+	}
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
+		return Readings{}, fmt.Errorf("%s: empty file — the readings file declares the collector estate and the arrivals a repository cannot hold", path)
+	}
+
+	dec := yaml.NewDecoder(bytes.NewReader(raw))
+	dec.KnownFields(true)
+	var r Readings
+	if err := dec.Decode(&r); err != nil {
+		return Readings{}, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := dec.Decode(new(yaml.Node)); !errors.Is(err, io.EOF) {
+		return Readings{}, fmt.Errorf("%s: more than one YAML document in the file — one concern per file", path)
+	}
+
+	var problems []string
+	if r.AsOf.IsZero() {
+		problems = append(problems, "as_of is missing — every reading carries the instant it was taken (ADR-0036 §2)")
+	}
+	seen := map[string]string{}
+	for i, c := range r.Collectors {
+		ctx := fmt.Sprintf("collector %d", i)
+		if c.ID != "" {
+			ctx = fmt.Sprintf("collector %q", c.ID)
+		}
+		if c.ID == "" {
+			problems = append(problems, ctx+" has no id")
+		} else if prev, dup := seen[c.ID]; dup {
+			problems = append(problems, fmt.Sprintf("%s appears twice (%s)", ctx, prev))
+		} else {
+			seen[c.ID] = ctx
+		}
+		if len(c.Attributes) == 0 {
+			problems = append(problems, ctx+" reports no identifying attributes — a reading nothing can match belongs to nobody (ADR-0036 §2)")
+		}
+		switch c.State {
+		case "reporting", "stale", "never_seen":
+		case "":
+			problems = append(problems, ctx+" has no state — one of reporting, stale, never_seen")
+		default:
+			problems = append(problems, fmt.Sprintf("%s has state %q — one of reporting, stale, never_seen", ctx, c.State))
+		}
+		switch c.Delivery {
+		case "served", "git":
+		case "":
+			problems = append(problems, ctx+" declares no delivery path — served or git (REQ-041)")
+		default:
+			problems = append(problems, fmt.Sprintf("%s has delivery %q — served or git (REQ-041)", ctx, c.Delivery))
+		}
+	}
+	for _, row := range r.Rows {
+		if row.Service == "" || row.Environment == "" {
+			problems = append(problems, "a row reading names no service or no environment — the evaluation unit is one Service in one Environment (ADR-0033)")
+		}
+		for name := range row.Signals {
+			if !requirements.SignalKind(name).Valid() {
+				problems = append(problems, fmt.Sprintf("row %s/%s reads signal %q — the vocabulary is logs, metrics, traces (ADR-0009)", row.Service, row.Environment, name))
+			}
+		}
+	}
+	for _, tier := range r.Tiers {
+		if tier.Tier == "" {
+			problems = append(problems, "a tier reading names no tier")
+		}
+		for name := range tier.Signals {
+			if !requirements.SignalKind(name).Valid() {
+				problems = append(problems, fmt.Sprintf("tier %s reads signal %q — the vocabulary is logs, metrics, traces (ADR-0009)", tier.Tier, name))
+			}
+		}
+	}
+	if len(problems) > 0 {
+		return Readings{}, fmt.Errorf("invalid readings in %s:\n  - %s", path, strings.Join(problems, "\n  - "))
+	}
+	return r, nil
+}
+
+// row finds the arrival reading for one row.
+func (r Readings) row(service, environment string) (RowReading, bool) {
+	for _, row := range r.Rows {
+		if row.Service == service && row.Environment == environment {
+			return row, true
+		}
+	}
+	return RowReading{}, false
+}
+
+// tier finds the self-telemetry reading for one Tier.
+func (r Readings) tier(id string) (TierReading, bool) {
+	for _, t := range r.Tiers {
+		if t.Tier == id {
+			return t, true
+		}
+	}
+	return TierReading{}, false
+}
+
+// observed converts one row reading to the seam's shape.
+func (s SignalReading) observed(attributes []string) telemetry.SignalObservation {
+	if s.Known != nil && !*s.Known {
+		cause := s.Cause
+		if cause == "" {
+			cause = "the declared reading marks this signal unknown"
+		}
+		return telemetry.SignalObservation{Known: false, Cause: cause}
+	}
+	obs := telemetry.SignalObservation{Known: true, Present: s.Present, Volume: s.Volume}
+	if len(attributes) > 0 && len(s.AttributeCoverage) > 0 {
+		obs.AttributeCoverage = map[string]float64{}
+		for _, a := range attributes {
+			if v, ok := s.AttributeCoverage[a]; ok {
+				obs.AttributeCoverage[a] = v
+			}
+		}
+	}
+	return obs
+}
+
+// selfSignal converts one tier reading's signal to the seam's shape.
+func (s SignalReading) selfSignal(components []telemetry.ComponentTelemetry) telemetry.SelfSignal {
+	if s.Known != nil && !*s.Known {
+		cause := s.Cause
+		if cause == "" {
+			cause = "the declared reading marks this signal unknown"
+		}
+		return telemetry.SelfSignal{Known: false, Cause: cause}
+	}
+	return telemetry.SelfSignal{
+		Known:      true,
+		Present:    s.Present,
+		Volume:     s.Volume,
+		Components: components,
+	}
+}
+
+// missing is the reading for a row or signal the estate declared nothing
+// for: Known false with a cause, never a fabricated absence (ADR-0008).
+func missing(what string) telemetry.SignalObservation {
+	return telemetry.SignalObservation{
+		Known: false,
+		Cause: "the estate's readings file declares no reading for " + what + " — not knowing is a normal state, reported as itself (ADR-0008)",
+	}
+}
+
+// provider plays the declared readings back through the TelemetryProvider
+// seam, so the evaluators judging them cannot tell a declared reading from
+// a live one — which is the point: the judgement is the product's.
+type provider struct {
+	readings Readings
+	window   time.Duration
+
+	// components is the self-telemetry component identity per Tier,
+	// rendered from the Tier readings' Emitting declarations.
+	components map[string][]telemetry.ComponentTelemetry
+}
+
+// Name identifies the reading's origin in stamps and logs. It is the
+// estate's own declaration, not a backend — and says so.
+func (p *provider) Name() string { return "telecraft/declared-readings" }
+
+func (p *provider) Observe(_ context.Context, service telemetry.Service, window time.Duration, attributes []string) telemetry.Observed {
+	obs := telemetry.Observed{
+		AsOf:    p.readings.AsOf,
+		Window:  window,
+		Signals: map[requirements.SignalKind]telemetry.SignalObservation{},
+	}
+	row, ok := p.readings.row(service.Name, service.Environment)
+	for _, kind := range telemetry.Signals() {
+		if !ok {
+			obs.Signals[kind] = missing(fmt.Sprintf("%s in %s", service.Name, service.Environment))
+			continue
+		}
+		sig, declared := row.Signals[string(kind)]
+		if !declared {
+			obs.Signals[kind] = missing(fmt.Sprintf("%s %s in %s", kind, service.Name, service.Environment))
+			continue
+		}
+		obs.Signals[kind] = sig.observed(attributes)
+	}
+	return obs
+}
+
+func (p *provider) AttributeNames(_ context.Context, service telemetry.Service, kind requirements.SignalKind, window time.Duration) telemetry.AttributeNames {
+	row, ok := p.readings.row(service.Name, service.Environment)
+	if !ok {
+		return telemetry.AttributeNames{
+			Known:  false,
+			Cause:  missing(service.Name).Cause,
+			AsOf:   p.readings.AsOf,
+			Window: window,
+		}
+	}
+	sig, declared := row.Signals[string(kind)]
+	if !declared {
+		return telemetry.AttributeNames{
+			Known:  false,
+			Cause:  missing(string(kind) + " for " + service.Name).Cause,
+			AsOf:   p.readings.AsOf,
+			Window: window,
+		}
+	}
+	names := make([]string, 0, len(sig.AttributeCoverage))
+	for a := range sig.AttributeCoverage {
+		names = append(names, a)
+	}
+	sort.Strings(names)
+	return telemetry.AttributeNames{
+		Known:  true,
+		AsOf:   p.readings.AsOf,
+		Window: window,
+		Names:  names,
+	}
+}
+
+func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Duration) telemetry.SelfObserved {
+	out := telemetry.SelfObserved{
+		AsOf:    p.readings.AsOf,
+		Window:  window,
+		Signals: map[requirements.SignalKind]telemetry.SelfSignal{},
+	}
+	reading, ok := p.readings.tier(tier)
+	if !ok {
+		return telemetry.SelfUnknown(p.readings.AsOf, window,
+			"the estate's readings file declares no self-telemetry reading for "+tier+" — Known false reads as unknown, never red (ADR-0039 §2)")
+	}
+	for _, kind := range telemetry.SelfSignals() {
+		sig, declared := reading.Signals[string(kind)]
+		if !declared {
+			out.Signals[kind] = telemetry.SelfSignal{
+				Known: false,
+				Cause: "the estate's readings file declares no " + string(kind) + " self-telemetry for " + tier,
+			}
+			continue
+		}
+		out.Signals[kind] = sig.selfSignal(p.components[tier])
+	}
+	return out
+}
