@@ -521,3 +521,40 @@ pipelines:
 		t.Fatalf("a receiverless lane did not refuse the render: %v", err)
 	}
 }
+
+// Intended projects lanes through the same compilation the render uses —
+// rendered ids, connector sides, empty lanes absent — so a judgement of
+// intent (ADR-0004, internal/drift) can never disagree with what renders.
+func TestIntendedProjectsLanesInRenderedIDs(t *testing.T) {
+	in := fixtureInputs(t)
+	bp, ok := in.Estate.Blueprint("data-flow/gateway-standard")
+	if !ok {
+		t.Fatal("fixture blueprint missing")
+	}
+
+	pipes := Intended(in.Estate, bp)
+	byName := map[string]IntendedPipeline{}
+	for _, p := range pipes {
+		byName[p.Name] = p
+	}
+	if _, ok := byName["profiles"]; ok || len(pipes) != 3 {
+		t.Fatalf("pipelines = %v, want traces, metrics and logs only — an unauthored lane wires nothing", pipes)
+	}
+
+	traces := byName["traces"]
+	if len(traces.Receivers) != 1 || traces.Receivers[0] != "otlp/otlp-in" {
+		t.Errorf("traces receivers = %v, want the rendered id otlp/otlp-in", traces.Receivers)
+	}
+	wantProcessors := []string{"memory_limiter/guard", "transform/infosec.pii-redaction", "batch/batcher"}
+	if len(traces.Processors) != len(wantProcessors) {
+		t.Fatalf("traces processors = %v, want %v in authored order", traces.Processors, wantProcessors)
+	}
+	for i, want := range wantProcessors {
+		if traces.Processors[i] != want {
+			t.Errorf("traces processors[%d] = %q, want %q", i, traces.Processors[i], want)
+		}
+	}
+	if len(traces.Exporters) != 1 || traces.Exporters[0] != "otlphttp/data-flow.gateway-exporter" {
+		t.Errorf("traces exporters = %v, want the rendered id otlphttp/data-flow.gateway-exporter", traces.Exporters)
+	}
+}

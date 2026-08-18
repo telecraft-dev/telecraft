@@ -115,10 +115,10 @@ type instance struct {
 	comp blueprint.Component
 }
 
-// renderedID computes the standard `type/name` id an instance renders under
+// RenderedID computes the standard `type/name` id an instance renders under
 // (ADR-0024 §5): shared → `type/team.name`, local → `type/name`. Provenance
 // is in the id; collisions are a mechanical render error.
-func renderedID(c blueprint.Component) string {
+func RenderedID(c blueprint.Component) string {
 	if c.Team == "" {
 		return c.Type + "/" + c.Name
 	}
@@ -180,7 +180,7 @@ func resolveInstances(est blueprint.Estate, bp blueprint.Blueprint, ctx string) 
 				problems = append(problems, fmt.Sprintf("%s: %s lane references %s, which nothing provides — a complete artefact cannot exist until the reference changes or the Component returns (ADR-0016)", ctx, l.name, ref))
 				continue
 			}
-			id := renderedID(c)
+			id := RenderedID(c)
 			if prev, seen := instances[id]; seen {
 				if prev.comp.ID() != c.ID() {
 					problems = append(problems, fmt.Sprintf("%s: rendered id %q is claimed by both %s and %s — collisions are a mechanical render error (ADR-0024 §5)", ctx, id, prev.comp.ID(), c.ID()))
@@ -226,22 +226,11 @@ func allowListProblems(policy *allowlist.Policy, bp blueprint.Blueprint, instanc
 }
 
 // floorFindings judges the bound Blueprint against the cumulative stability
-// floors (ADR-0023): at the Tier's declared Environment crossed with the
-// strictest Service Class among Services whose Paths traverse the Tier
-// (ADR-0025 §4), per (component, signal) — and only for signals the
-// Blueprint actually routes through the component. A breach is a
-// violation-grade finding routed onward, never a block (ADR-0022 §4): a
-// routine catalogue activation must not freeze config work.
+// floors and formats each breach as a violation-grade finding routed onward,
+// never a block (ADR-0022 §4): a routine catalogue activation must not
+// freeze config work.
 func floorFindings(in Inputs, tier Tier, bp blueprint.Blueprint) []Finding {
-	traversing := in.Topology.Traversing(tier.ID())
-	if len(traversing) == 0 {
-		return nil
-	}
-	classes := make([]ServiceClass, 0, len(traversing))
-	for _, s := range traversing {
-		classes = append(classes, s.Class)
-	}
-	strictest, err := in.Floors.Strictest(classes)
+	breaches, err := in.Floors.Breaches(in.Topology, in.Catalogue, in.Estate, tier, bp)
 	if err != nil {
 		// Floors.Validate passed, so this only trips on a Service class the
 		// policy does not rank; surface it as a finding on the Tier rather
@@ -249,9 +238,59 @@ func floorFindings(in Inputs, tier Tier, bp blueprint.Blueprint) []Finding {
 		return []Finding{{KindFloor, tier.ID(), bp.ID(), "",
 			fmt.Sprintf("cannot derive judgement strictness: %v", err)}}
 	}
-	floor, ok := in.Floors.FloorFor(strictest, tier.Environment)
+	var out []Finding
+	for _, b := range breaches {
+		out = append(out, Finding{KindFloor, tier.ID(), bp.ID(), string(b.Signal),
+			fmt.Sprintf("routes %s through %s (%s/%s), which is %s for %s — below the %s floor for Service Class %s in %s, imposed by %s (ADR-0023, ADR-0025 §4)",
+				b.Signal, b.Component.ID(), b.Component.Class, b.Component.Type, b.Level, b.Signal, b.Floor, b.Class, tier.Environment, strings.Join(b.Imposers, ", "))})
+	}
+	return out
+}
+
+// FloorBreach is one (component, signal) the floor judgement rejects: the
+// Blueprint routes the signal through a component whose upstream stability
+// for that signal sits below the floor the Tier's traversal imposes.
+type FloorBreach struct {
+	Signal    blueprint.Signal
+	Component blueprint.Component
+
+	// Level is the component's upstream stability for the signal; Floor is
+	// the minimum the policy imposes; Class is the strictest traversing
+	// Service Class the floor derives from; Imposers are the Services of
+	// that class whose Paths traverse the Tier.
+	Level    catalogue.Level
+	Floor    catalogue.Level
+	Class    ServiceClass
+	Imposers []string
+}
+
+// Breaches judges one Tier's bound Blueprint against this floor policy
+// (ADR-0023): at the Tier's declared Environment crossed with the strictest
+// Service Class among Services whose Paths traverse the Tier (ADR-0025 §4),
+// per (component, signal) — and only for signals the Blueprint actually
+// routes through the component. The render formats breaches as floor
+// findings; the drift detection re-judges committed config against the
+// current policy with the same call, so the two surfaces can never disagree
+// about what a breach is (ADR-0026, REQ-025).
+//
+// The error names a traversing Service Class the policy cannot rank —
+// judging with a guess would under- or over-govern silently.
+func (p FloorPolicy) Breaches(topo Topology, cat *catalogue.Catalogue, est blueprint.Estate, tier Tier, bp blueprint.Blueprint) ([]FloorBreach, error) {
+	traversing := topo.Traversing(tier.ID())
+	if len(traversing) == 0 {
+		return nil, nil
+	}
+	classes := make([]ServiceClass, 0, len(traversing))
+	for _, s := range traversing {
+		classes = append(classes, s.Class)
+	}
+	strictest, err := p.Strictest(classes)
+	if err != nil {
+		return nil, err
+	}
+	floor, ok := p.FloorFor(strictest, tier.Environment)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	imposers := make([]string, 0, len(traversing))
@@ -261,14 +300,14 @@ func floorFindings(in Inputs, tier Tier, bp blueprint.Blueprint) []Finding {
 		}
 	}
 
-	var out []Finding
+	var out []FloorBreach
 	for _, s := range blueprint.Signals {
 		for _, e := range bp.Lane(s) {
-			c, ok := resolve(in.Estate, bp, e.Reference())
+			c, ok := resolve(est, bp, e.Reference())
 			if !ok {
 				continue // already a mechanical refusal
 			}
-			entry, ok := in.Catalogue.Lookup(c.Class, c.Type)
+			entry, ok := cat.Lookup(c.Class, c.Type)
 			if !ok {
 				continue // already refused by the allow-list gate
 			}
@@ -281,13 +320,12 @@ func floorFindings(in Inputs, tier Tier, bp blueprint.Blueprint) []Finding {
 				continue // lifecycle is an orthogonal axis, not a rung (ADR-0023 §6)
 			}
 			if rank < ladder[floor] {
-				out = append(out, Finding{KindFloor, tier.ID(), bp.ID(), string(s),
-					fmt.Sprintf("routes %s through %s (%s/%s), which is %s for %s — below the %s floor for Service Class %s in %s, imposed by %s (ADR-0023, ADR-0025 §4)",
-						s, c.ID(), c.Class, c.Type, level, s, floor, strictest, tier.Environment, strings.Join(imposers, ", "))})
+				out = append(out, FloorBreach{Signal: s, Component: c,
+					Level: level, Floor: floor, Class: strictest, Imposers: imposers})
 			}
 		}
 	}
-	return out
+	return out, nil
 }
 
 // lane pairs a lane name with its entries, extensions included, for uniform
@@ -341,7 +379,7 @@ func compileLane(est blueprint.Estate, bp blueprint.Blueprint, name string, entr
 		if !ok {
 			continue // already a mechanical refusal from resolveInstances
 		}
-		id := renderedID(c)
+		id := RenderedID(c)
 		switch c.Class {
 		case catalogue.Receiver:
 			p.receivers = append(p.receivers, id)
@@ -370,4 +408,40 @@ func compileLane(est blueprint.Estate, bp blueprint.Blueprint, name string, entr
 		}
 	}
 	return p, problems
+}
+
+// IntendedPipeline is one signal lane compiled to its pipeline sides, in
+// rendered-id terms: the Intended reading of a Blueprint (ADR-0004) — what
+// the config in git wires — in the shape config assertions judge.
+type IntendedPipeline struct {
+	Name string
+
+	Receivers  []string
+	Processors []string
+	Exporters  []string
+}
+
+// Intended projects a Blueprint's signal lanes to their Intended pipelines,
+// through the same lane compilation the render uses — connector sides
+// included — so a judgement of intent can never disagree with what would
+// render. Entries that fail to resolve or compile are simply absent: their
+// problems refuse the render and route as load findings elsewhere; this
+// projection reports what the config does wire, and judging it is the
+// caller's business (ADR-0004, internal/drift).
+func Intended(est blueprint.Estate, bp blueprint.Blueprint) []IntendedPipeline {
+	var out []IntendedPipeline
+	for _, s := range blueprint.Signals {
+		entries := bp.Lane(s)
+		if len(entries) == 0 {
+			continue
+		}
+		p, _ := compileLane(est, bp, string(s), entries, "intended "+bp.ID())
+		out = append(out, IntendedPipeline{
+			Name:       string(s),
+			Receivers:  p.receivers,
+			Processors: p.processors,
+			Exporters:  p.exporters,
+		})
+	}
+	return out
 }
