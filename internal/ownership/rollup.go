@@ -49,7 +49,7 @@ func (e Estate) Rollup(team TeamID, findings []Finding) (Rollup, error) {
 	out := Rollup{Team: team, Scores: map[FindingKind]Score{}}
 	for _, f := range findings {
 		if !f.Kind.Valid() {
-			return Rollup{}, fmt.Errorf("finding about %s %q has unknown kind %q — one of service_conformance, delivery, component_health (ADR-0017)", f.Subject.Kind, f.Subject.ID, f.Kind)
+			return Rollup{}, fmt.Errorf("finding about %s %q has unknown kind %q — one of service_conformance, delivery, component_health, expectation (ADR-0017, ADR-0038)", f.Subject.Kind, f.Subject.ID, f.Kind)
 		}
 		if !f.Grade.Valid() {
 			return Rollup{}, fmt.Errorf("finding about %s %q has unknown grade %q — one of pass, advisory, violation", f.Subject.Kind, f.Subject.ID, f.Grade)
