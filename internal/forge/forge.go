@@ -1,0 +1,119 @@
+// Package forge defines the forge-adapter seam (ADR-0028 §4): platform-
+// authored changes become reviewed change proposals against the estate
+// repository. The platform never writes to a cluster and never commits to
+// the default branch — the proposal is the approval surface, git history is
+// the audit trail (ADR-0003, ADR-0014).
+//
+// The seam is deliberately narrow and vendor-neutral (ADR-0019 §4): a
+// change is a branch, a message, an acting human and a set of file
+// contents; a proposal is an opaque identifier and a URL. No forge's API
+// types, review vocabulary or authentication scheme crosses this interface
+// in either direction — implementations live under internal/provider/ and
+// are vendor-qualified there (ADR-0001).
+//
+// What a forge can do varies down the ADR-0028 §4 capability ladder (full →
+// partial → bare git). An implementation declares its rungs statically via
+// Capabilities, the ADR-0036 pattern: "cannot" is a declared shape surfaces
+// can render honestly, never a runtime surprise.
+package forge
+
+import "context"
+
+// Identity is the acting human a change is attributed to (ADR-0014): name
+// and email come from the authenticated identity's claims, so attribution
+// survives without a forge account (ADR-0019 §3).
+type Identity struct {
+	// Name and Email author the commit. Both are required: an
+	// unattributable change is the shared-service-account failure ADR-0014
+	// exists to prevent, and Submit refuses it.
+	Name  string
+	Email string
+
+	// Handle is the human's account on the configured forge, when known —
+	// a convenience for review mentions, never required.
+	Handle string
+}
+
+// Change is one platform-authored change: the authored file contents plus,
+// after Submit has run the render, the bot-refreshed rendered artefacts
+// (ADR-0028 §1).
+type Change struct {
+	// Branch names the proposal's branch — the branch-per-draft convention
+	// (ADR-0028); the name is an implementation detail, not a domain
+	// concept. Proposing the same branch again updates the existing
+	// proposal, which is how a red render check is retried after a fix.
+	Branch string
+
+	// Base is the branch the proposal targets. Empty means the
+	// repository's default branch.
+	Base string
+
+	// Title and Body describe the proposal to its reviewers. Submit
+	// appends the attribution footer to Body.
+	Title string
+	Body  string
+
+	// Message is the commit message. Empty means Title.
+	Message string
+
+	// Author is the acting human (ADR-0014). Required.
+	Author Identity
+
+	// Files maps repository-relative paths to full file contents. A nil
+	// value deletes the path. Authored paths never sit under rendered/ —
+	// that tree is protected (ADR-0028 §2) and Submit refuses such a
+	// change before rendering anything.
+	Files map[string][]byte
+}
+
+// Proposal is an opened (or refreshed) change proposal. The forge's native
+// identifier stays opaque to the core: it is display and correlation data,
+// never something to compute on.
+type Proposal struct {
+	ID     string
+	URL    string
+	Branch string
+}
+
+// Capabilities is an implementation's static declaration of its rungs on
+// the ADR-0028 §4 ladder. A false is "not applicable" for this forge —
+// declared once, rendered honestly, never failure (ADR-0036 §1).
+type Capabilities struct {
+	// Proposals: the forge has a change-proposal object with review
+	// machinery. Bare git (branch push, manual merge) declares false.
+	Proposals bool
+
+	// ReviewRouting: the forge honours a generated code-ownership
+	// projection (ADR-0019 §2), so merge rights are the forge's.
+	ReviewRouting bool
+
+	// Annotations: the forge can carry check results on the proposal.
+	Annotations bool
+
+	// VerifiedAttribution: the forge verifies the platform's bot identity
+	// on the commits it writes. Bare git carries git-author attribution
+	// unverified (ADR-0028 §4) — the render gate still holds; forge-
+	// enforced review is what that adopter forfeited.
+	VerifiedAttribution bool
+}
+
+// Forge is the forge-adapter seam. Implementations live under
+// internal/provider/ (ADR-0001); the first-party implementation is the
+// ADR-0014 app integration.
+type Forge interface {
+	// Name identifies the implementation for logs and proposal footers —
+	// the vendor-qualified name as runtime data, never a type.
+	Name() string
+
+	// Capabilities is the static ladder declaration. Constant per
+	// implementation: capability is what the forge is, not how it feels
+	// right now.
+	Capabilities() Capabilities
+
+	// Propose opens the change proposal, or refreshes it when the branch
+	// already carries one: the branch is moved to a new commit authored by
+	// change.Author and the proposal's title and body are updated.
+	// Idempotent per (Branch, Files): re-proposing the same content is not
+	// an error.
+	Propose(ctx context.Context, change Change) (Proposal, error)
+}

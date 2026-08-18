@@ -56,3 +56,23 @@ jobs:
       - run: go test ./internal/provider/telemetry/ -run Live -v -count=1
         env:
           TELECRAFT_TELEMETRY_LIVE_ENDPOINT: http://localhost:9200
+
+  # The live forge-adapter contract test (issue #18): the GitHub App PR
+  # flow against the provisioned estate-fixture repository. The suite
+  # skips loudly — and this job stays green — when the FORGE_* secrets
+  # are not exposed to this repo or the App installation cannot yet see
+  # estate-fixture (ADR-0036 kit discipline: absent credentials never
+  # fail the suite).
+  forge-live:
+    name: Forge adapter live (GitHub App)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go test ./internal/provider/forge/ -run Live -v -count=1
+        env:
+          FORGE_APP_ID: ${{ secrets.FORGE_APP_ID }}
+          FORGE_INSTALLATION_ID: ${{ secrets.FORGE_INSTALLATION_ID }}
+          FORGE_APP_PRIVATE_KEY: ${{ secrets.FORGE_APP_PRIVATE_KEY }}

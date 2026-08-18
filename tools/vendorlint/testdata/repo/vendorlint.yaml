@@ -9,6 +9,9 @@ scopes:
     rules:
       - pattern: (?i)(elastic|fleet|grafana)
         message: vendor word in the neutral core (ADR-0001)
+      - pattern: (?i)(github|gitlab|gitea)
+        allow: [github\.com/]
+        message: forge vendor word in the neutral core (ADR-0028 §4)
   - name: provider
     include: [internal/provider/**]
     rules:
