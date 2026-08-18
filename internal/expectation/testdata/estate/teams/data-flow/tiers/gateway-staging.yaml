@@ -1,0 +1,9 @@
+# The staging sibling: same Blueprint, different Environment — claims
+# derive per (Service, Environment) from that environment's bound config
+# (ADR-0033).
+owner: gateway-owners
+environment: staging
+blueprint: data-flow/gateway-standard@1
+selector:
+  telecraft.tier: gateway
+  deployment.environment: staging

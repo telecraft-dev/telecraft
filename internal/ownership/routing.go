@@ -10,11 +10,18 @@ const (
 	ServiceConformance FindingKind = "service_conformance"
 	Delivery           FindingKind = "delivery"
 	ComponentHealth    FindingKind = "component_health"
+
+	// Expectation carries claim failures from the Expectation engine
+	// (ADR-0038 §5): unbacked data claims Service-attached and
+	// advisory-grade, pipeline claims Tier-attached and
+	// violation-capable after dampening. Its own roll-up column, never
+	// blended — Exemptions apply unmodified.
+	Expectation FindingKind = "expectation"
 )
 
 func (k FindingKind) Valid() bool {
 	switch k {
-	case ServiceConformance, Delivery, ComponentHealth:
+	case ServiceConformance, Delivery, ComponentHealth, Expectation:
 		return true
 	}
 	return false

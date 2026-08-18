@@ -1,0 +1,213 @@
+{
+  "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+  "claims": [
+    {
+      "kind": "arrival",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "production",
+      "signal": "logs",
+      "tiers": [
+        "data-flow/gateway"
+      ]
+    },
+    {
+      "kind": "arrival",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "production",
+      "signal": "traces",
+      "tiers": [
+        "data-flow/gateway"
+      ]
+    },
+    {
+      "kind": "arrival",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "staging",
+      "signal": "logs",
+      "tiers": [
+        "data-flow/gateway-staging"
+      ]
+    },
+    {
+      "kind": "arrival",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "staging",
+      "signal": "traces",
+      "tiers": [
+        "data-flow/gateway-staging"
+      ]
+    },
+    {
+      "kind": "enrichment",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "production",
+      "signal": "logs",
+      "attribute": "log.source",
+      "value": "gateway",
+      "tiers": [
+        "data-flow/gateway"
+      ]
+    },
+    {
+      "kind": "enrichment",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "production",
+      "signal": "traces",
+      "attribute": "deployment.owner",
+      "value": "product",
+      "tiers": [
+        "data-flow/gateway"
+      ]
+    },
+    {
+      "kind": "enrichment",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "production",
+      "signal": "traces",
+      "attribute": "telecraft.zone",
+      "value": "eu-1",
+      "tiers": [
+        "data-flow/gateway"
+      ]
+    },
+    {
+      "kind": "enrichment",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "staging",
+      "signal": "logs",
+      "attribute": "log.source",
+      "value": "gateway",
+      "tiers": [
+        "data-flow/gateway-staging"
+      ]
+    },
+    {
+      "kind": "enrichment",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "staging",
+      "signal": "traces",
+      "attribute": "deployment.owner",
+      "value": "product",
+      "tiers": [
+        "data-flow/gateway-staging"
+      ]
+    },
+    {
+      "kind": "enrichment",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "service": "product/checkout",
+      "environment": "staging",
+      "signal": "traces",
+      "attribute": "telecraft.zone",
+      "value": "eu-1",
+      "tiers": [
+        "data-flow/gateway-staging"
+      ]
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway-staging",
+      "component": "otlphttp/shipper",
+      "component_kind": "exporter",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway-staging",
+      "component": "k8sattributes/k8s",
+      "component_kind": "processor",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway-staging",
+      "component": "memory_limiter/guard",
+      "component_kind": "processor",
+      "shape": "unidentified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway-staging",
+      "component": "resource/stamp",
+      "component_kind": "processor",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway-staging",
+      "component": "transform/scrub",
+      "component_kind": "processor",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway-staging",
+      "component": "otlp/otlp-in",
+      "component_kind": "receiver",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway",
+      "component": "otlphttp/shipper",
+      "component_kind": "exporter",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway",
+      "component": "k8sattributes/k8s",
+      "component_kind": "processor",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway",
+      "component": "memory_limiter/guard",
+      "component_kind": "processor",
+      "shape": "unidentified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway",
+      "component": "resource/stamp",
+      "component_kind": "processor",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway",
+      "component": "transform/scrub",
+      "component_kind": "processor",
+      "shape": "identified"
+    },
+    {
+      "kind": "self_telemetry",
+      "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+      "tier": "data-flow/gateway",
+      "component": "otlp/otlp-in",
+      "component_kind": "receiver",
+      "shape": "identified"
+    }
+  ]
+}
