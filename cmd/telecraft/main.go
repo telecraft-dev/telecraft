@@ -22,6 +22,11 @@
 // artefacts from git to connected collectors, matched by Tier selector,
 // never an empty config map. See serve.go.
 //
+// snapshot writes the console API snapshot: the JSON documents the platform
+// API would serve, computed by the real evaluators over one estate checkout
+// — what a static console reads instead of calling a server. See
+// snapshot.go.
+//
 // delivery prints one collector's delivery status — the Intended ×
 // Effective cross via the normaliser (ADR-0004, ADR-0005), computed
 // identically for both delivery paths (REQ-041). See delivery.go.
@@ -70,6 +75,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runRender(args[1:], stdout, stderr)
 	case "serve":
 		return runServe(args[1:], stdout, stderr)
+	case "snapshot":
+		return runSnapshot(args[1:], stdout, stderr)
 	case "delivery":
 		return runDelivery(args[1:], stdout, stderr)
 	case "passwd":
@@ -86,6 +93,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
 	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
+	fmt.Fprintln(stderr, "       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
 	fmt.Fprintln(stderr, "       telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)")
 }

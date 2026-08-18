@@ -1,0 +1,29 @@
+- id: logs-delivered
+  title: Logs are collected and delivered
+  description: The Service's logs reach a backend.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  config:
+    has_receiver: [otlp]
+  signal:
+    kind: logs
+    present: true
+    window: 24h
+    min_volume: 1
+  remediation: Wire an otlp receiver into a logs pipeline and check the exporter queue.
+
+- id: metrics-delivered
+  title: Service metrics are delivered
+  description: The Service emits metrics.
+  version: 1
+  requirement_level: conditionally_required
+  owner: platform-observability
+  config:
+    has_receiver: [otlp]
+  signal:
+    kind: metrics
+    present: true
+    window: 24h
+    min_volume: 1
+  remediation: Enable metric export in the Service's SDK.

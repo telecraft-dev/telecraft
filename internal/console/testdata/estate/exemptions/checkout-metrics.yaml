@@ -1,0 +1,7 @@
+# One authored waiver: it waives the count, never the diagnosis (ADR-0037).
+id: checkout-metrics-onboarding
+requirement: metrics-delivered
+owner: platform-observability
+service: product/checkout
+expires: 2099-01-01
+reason: The metrics migration is owned by the platform team.

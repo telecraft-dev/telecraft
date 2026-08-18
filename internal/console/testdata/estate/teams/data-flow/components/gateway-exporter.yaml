@@ -1,0 +1,7 @@
+name: gateway-exporter
+class: exporter
+type: otlp_http
+version: 2
+owner: gateway-owners
+config:
+  endpoint: https://ingest.observability.internal:4318

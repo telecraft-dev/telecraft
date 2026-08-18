@@ -1,0 +1,17 @@
+grace:
+  - class: C1
+    window: 168h
+services:
+  - name: product/checkout
+    class: C1
+    environments:
+      - name: production
+        pipelines:
+          - name: logs
+            receivers: [otlp/otlp-in]
+            processors: [memory_limiter/guard, transform/redact, batch/batcher]
+            exporters: [otlp_http/data-flow.gateway-exporter]
+          - name: traces
+            receivers: [otlp/otlp-in]
+            processors: [memory_limiter/guard, batch/batcher]
+            exporters: [otlp_http/data-flow.gateway-exporter]

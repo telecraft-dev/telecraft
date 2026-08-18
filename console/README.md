@@ -115,6 +115,52 @@ reads it, so a field added or renamed on either side without the other
 following is a failing test, and the version bump is the reviewable
 event.
 
+## Demo mode
+
+A static host has no server to call, so the public demo at
+`demo.telecraft.dev` is the console bundle plus a build-time **snapshot**
+of the platform API (issue #50):
+
+```sh
+go run ./cmd/telecraft snapshot \
+  -estate ../estate-demo -catalogue ../estate-demo/catalogues/catalogue-v0.158.0.json \
+  -library ../estate-demo/requirements -exemptions ../estate-demo/exemptions \
+  -rows ../estate-demo/demo/rows.yaml -readings ../estate-demo/demo/readings.yaml \
+  -commit "$(git -C ../estate-demo rev-parse HEAD)" -team engineering \
+  -out console/dist/demo-snapshot.json
+npm run build:demo     # VITE_DEMO=1 — the console reads the snapshot, not /api
+```
+
+`telecraft snapshot` (`internal/console`) loads the estate with the same
+loaders the platform uses and writes the documents the endpoints above
+serve, computed by the packages that own each judgement: `internal/renderer`
+for artefacts and floors, `internal/drift` for library_drift,
+`internal/conformance` for the verdict cross, `internal/expectation` for
+claims, `internal/inventory` for populations, `internal/serving` for
+selector matching, `internal/allowlist` for the governance policy. Nothing
+in the snapshot is authored by hand; a rendered tree that no longer matches
+its sources refuses the build outright (ADR-0028 §2).
+
+The two things a repository cannot hold — the collector estate and the
+arrivals, which reach a real instance through the EstateProvider and
+TelemetryProvider seams — are declared by the estate in a readings file and
+played back through those same seams. They are inputs like the authored
+YAML; every verdict over them is the product's.
+
+In the console, `src/api/demo.ts` answers the whole contract from the
+snapshot. Read paths project it; the two continuous evaluators — the
+composer's `validate` and the claim flow's preview — run in the browser
+over the same estate documents the server would judge with, so Compose and
+the claim panel stay live rather than canned. The write paths render in
+full and terminate at an explanatory notice that names the pull-request
+exit they stand in for: Compose's Save, the claim flow's attach and draft
+exits, and the governance editor's proposal. Read-only falls out by
+construction — there is nothing to POST to.
+
+Deep links need the host's single-page fallback: the deploy copies
+`index.html` to `404.html`, which is how a static host serves a URL the
+bundle owns (ADR-0042 §3.5).
+
 ## Zero-CDN rule
 
 Every asset is bundled and self-hosted; fonts are the system stack

@@ -8,6 +8,7 @@
     "dev": "vite",
     "backend": "node tools/fixture-backend.mjs",
     "build": "tsc --noEmit && vite build",
+    "build:demo": "tsc --noEmit && vite build --mode demo",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",

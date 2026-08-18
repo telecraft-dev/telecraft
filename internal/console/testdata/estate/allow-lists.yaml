@@ -1,0 +1,10 @@
+allow_lists:
+  - team: data-flow
+    owner: gateway-owners
+    allow:
+      - receiver/otlp
+      - processor/batch
+      - processor/memory_limiter
+      - processor/transform
+      - exporter/otlp_http
+      - extension/health_check

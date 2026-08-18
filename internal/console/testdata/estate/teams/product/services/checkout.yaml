@@ -1,0 +1,4 @@
+owner: checkout-team
+class: C1
+paths:
+  - through: [data-flow/gateway]
