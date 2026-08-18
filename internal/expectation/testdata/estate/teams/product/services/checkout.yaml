@@ -1,0 +1,8 @@
+# The fixture Service: Paths through both gateway siblings, so data
+# claims derive for the production and staging rows independently
+# (ADR-0033).
+owner: checkout-team
+class: C1
+paths:
+  - through: [data-flow/gateway]
+  - through: [data-flow/gateway-staging]

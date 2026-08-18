@@ -1,0 +1,89 @@
+# The fixture Blueprint the golden derivation reads. Its lanes exercise
+# every claim rule of ADR-0038 §2:
+#   - traces and logs route (arrival claims); metrics does not (none).
+#   - `stamp` (resource) inserts/upserts constants → enrichment claims;
+#     its `update` action and `from_attribute` entry derive nothing.
+#   - `k8s` (k8sattributes) is runtime behaviour → NO claim, ever.
+#   - `scrub` (transform) has one literal set → one claim; its pattern
+#     statement derives nothing.
+#   - `guard` (memory_limiter) is an identity-dropping singleton → its
+#     self-telemetry claim expects the unidentified shape (R-4 §5.2).
+#   - the extension derives no self-telemetry claim.
+name: gateway-standard
+version: 1
+owner: gateway-owners
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc: {}
+  - name: guard
+    class: processor
+    type: memory_limiter
+    version: 1
+    config:
+      check_interval: 1s
+      limit_mib: 512
+  - name: stamp
+    class: processor
+    type: resource
+    version: 1
+    config:
+      attributes:
+        - key: deployment.owner
+          value: product
+          action: insert
+        - key: telecraft.zone
+          value: eu-1
+          action: upsert
+        - key: host.rack
+          value: r12
+          action: update
+        - key: copied.from
+          from_attribute: source
+          action: insert
+  - name: k8s
+    class: processor
+    type: k8sattributes
+    version: 1
+    config:
+      extract:
+        metadata: [k8s.pod.name, k8s.namespace.name]
+  - name: scrub
+    class: processor
+    type: transform
+    version: 1
+    config:
+      error_mode: ignore
+      log_statements:
+        - context: log
+          statements:
+            - set(attributes["log.source"], "gateway")
+            - replace_pattern(body, "\\b\\d{16}\\b", "****")
+  - name: shipper
+    class: exporter
+    type: otlphttp
+    version: 1
+    config:
+      endpoint: https://intake.example.internal
+  - name: health
+    class: extension
+    type: health_check
+    version: 1
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: guard
+    - component: stamp
+    - component: shipper
+  logs:
+    - component: otlp-in
+    - component: guard
+    - component: k8s
+    - component: scrub
+    - component: shipper
+extensions:
+  - component: health

@@ -1,0 +1,10 @@
+# The production gateway the fixture Service's Path traverses: one
+# Environment, one bound Blueprint version — the artefact the claims
+# derive from (ADR-0025, ADR-0038).
+owner: gateway-owners
+environment: production
+blueprint: data-flow/gateway-standard@1
+selector:
+  telecraft.tier: gateway
+  deployment.environment: production
+min_expected: 2
