@@ -8,6 +8,9 @@ blueprint: data-flow/gateway-standard@4
 selector:
   telecraft.tier: gateway
   deployment.environment: production
+# The declared population floor (ADR-0035 §2): at least this many
+# collectors should match. A floor, never an equality.
+min_expected: 2
 serving:
   endpoint: wss://opamp.telecraft.internal/v1/opamp
 hops:
