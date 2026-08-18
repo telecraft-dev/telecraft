@@ -100,7 +100,10 @@ func TestRolloutRendersDualArtefacts(t *testing.T) {
 	if bytes.Equal(base, next) {
 		t.Error("base and @next artefacts are identical — the rollout stages nothing")
 	}
-	if !strings.Contains(string(next), "batch") || strings.Contains(string(base), "batch") {
+	// The candidate's processor renders as batch/batch — a discriminator
+	// the base cannot carry (the self-telemetry emission uses a bare batch
+	// processor in every artefact, so the bare word discriminates nothing).
+	if !strings.Contains(string(next), "batch/batch") || strings.Contains(string(base), "batch/batch") {
 		t.Error("the @next artefact should carry the candidate Blueprint's content and the base should not")
 	}
 	for name, artefact := range map[string][]byte{"base": base, "@next": next} {

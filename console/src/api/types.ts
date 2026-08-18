@@ -172,19 +172,39 @@ export interface CardDrawer {
 }
 
 /**
+ * How an ungoverned collector is read (ADR-0031 §1): `served` runs the
+ * Unmatched artefact (ADR-0030) — commit-stamped, health-visible,
+ * governed by nobody; `foreign` is read through the estate provider and
+ * never served. No stigma attaches to the delivery path — only to
+ * matching no selector.
+ */
+export type UngovernedKind = 'served' | 'foreign'
+
+/**
  * GET /api/v1/collectors — per-collector detail, which lives in list
  * surfaces only (ADR-0042 §3.4): collector counts elsewhere are doors to
  * the flat list.
  */
 export interface CollectorRow {
   id: string
-  tier: string
-  team: string
+  /** The selector-matched Tier — absent when no Tier selector matches (ADR-0031). */
+  tier?: string
+  /** Present exactly when `tier` is absent: how the ungoverned collector is read. */
+  ungoverned?: UngovernedKind
+  /** The matched Tier's owning team; an ungoverned collector has none. */
+  team?: string
   environment: Environment
   state: 'reporting' | 'stale' | 'never_seen'
   version: string
   /** Last-known reading time, so last-known-plus-age renders (ADR-0040). */
   lastSeen?: string
+  /**
+   * Reported identifying attributes — the identity Tier selectors match
+   * on (ADR-0013). For a served ungoverned collector this is the Unmatched
+   * artefact's self-telemetry evidence (ADR-0030), the raw material the
+   * claim flow's suggested selector generalises over (ADR-0042 §6).
+   */
+  attributes?: Record<string, string>
 }
 
 export interface TeamNode {
@@ -193,12 +213,24 @@ export interface TeamNode {
   teams?: TeamNode[]
 }
 
+/**
+ * Ungoverned collectors in view (ADR-0031 §2): concern, never failure —
+ * they appear with the onboard CTA and count in no compliance
+ * denominator. The split names the two ways an ungoverned collector is
+ * read; per-collector detail stays flat-list material (ADR-0042 §3.4).
+ */
+export interface UngovernedSummary {
+  served: number
+  foreign: number
+}
+
 /** GET /api/v1/estate — the shelf's bulk face payload (ADR-0041 §2). */
 export interface EstatePayload {
   /** Production leads (ADR-0033). */
   environments: Environment[]
   teams: TeamNode
   cards: CardFace[]
+  ungoverned: UngovernedSummary
 }
 
 /** The served vs git-delivered split: delivery path is a visible property
@@ -536,4 +568,90 @@ export interface ProposalRef {
 export interface ProposalOutcome {
   proposal?: ProposalRef
   problems?: string[]
+}
+
+/**
+ * A Tier selector as authored (ADR-0007): attribute pairs matched by
+ * string equality against a collector's reported identifying attributes —
+ * every pair must equal, the most specific satisfied selector wins.
+ */
+export type Selector = Record<string, string>
+
+/**
+ * POST /api/v1/claims/preview — the claim flow's continuous evaluation
+ * (ADR-0042 §6): the constrained selector plus context in, the impact out.
+ * `mode` and `tier` join once the one question (attach or draft) is
+ * answered, and the rendered Tier binding joins the answer.
+ */
+export interface ClaimPreviewRequest {
+  selector: Selector
+  environment: Environment
+  team?: string
+  mode?: 'attach' | 'draft'
+  tier?: string
+}
+
+/** An existing Tier as an attach candidate, ranked by selector proximity. */
+export interface ClaimCandidate {
+  tier: string
+  name: string
+  team: string
+  environment: Environment
+  selector: Selector
+  /** Selector pairs the claim already satisfies — the ranking key. */
+  satisfied: number
+  /** Pairs in the candidate's authored selector. */
+  of: number
+  /** The selector attach would leave behind: the shared pairs alone —
+   * widened, never enumerated (ADR-0042 §6). */
+  widened: Selector
+}
+
+/** A governed population the claim selector does not contradict — blast radius. */
+export interface ClaimOverlap {
+  tier: string
+  matched: number
+}
+
+export interface ClaimPreview {
+  /** Ungoverned collectors the selector matches now, by how they are read. */
+  matched: { total: number; served: number; foreign: number }
+  overlaps: ClaimOverlap[]
+  candidates: ClaimCandidate[]
+  /** The Tier binding as the PR would carry it, once a path is chosen. */
+  rendered?: string
+}
+
+/**
+ * POST /api/v1/claims — the attach exit (ADR-0042 §6): the named Tier's
+ * selector widens to the claim's, and the change exits as a PR via the
+ * forge adapter, user-attributed, carrying the rendered impact preview.
+ * The console proposes, the PR decides.
+ */
+export interface ClaimRequest {
+  selector: Selector
+  environment: Environment
+  team: string
+  mode: 'attach' | 'draft'
+  /** attach: the existing Tier to widen; draft: the new Tier's id. */
+  tier: string
+  title: string
+}
+
+/** The claim outcome: opened, or refused with the problems named (422). */
+export interface ClaimOutcome {
+  proposal?: Proposal
+  problems?: string[]
+}
+
+/**
+ * The claim context riding a Compose proposal for the draft-new-Tier path
+ * (ADR-0042 §6): Compose opens with the selector pre-filled, and the PR
+ * authors the Tier binding beside the drafted Blueprint.
+ */
+export interface ClaimContext {
+  selector: Selector
+  tier: string
+  team: string
+  environment: Environment
 }

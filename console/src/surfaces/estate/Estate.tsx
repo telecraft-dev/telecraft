@@ -4,7 +4,8 @@ import { api } from '../../api/client'
 import type { EstateView } from '../../router'
 import { parseObjectRef } from '../../objectref'
 import { CardPanel } from './card'
-import { FlatList } from './FlatList'
+import { ClaimPanel } from './Claim'
+import { FlatList, herdIds } from './FlatList'
 import { RollUp } from './RollUp'
 import { Shelf } from './Shelf'
 
@@ -34,6 +35,10 @@ export function Estate() {
     selected?.kind === 'tier'
       ? payload.cards.find((card) => card.tier === selected.id)
       : undefined
+  // The claim flow's herd (ADR-0042 §6): a non-empty selection summons the
+  // claim panel in place of the card panel — view-switching preserves it
+  // (rule 3.1), since the selection lives in the URL.
+  const herd = herdIds(search.herd)
 
   return (
     <div className="estate-layout">
@@ -59,7 +64,11 @@ export function Estate() {
         {view === 'rollup' && <RollUp payload={payload} />}
         {view === 'list' && <FlatList payload={payload} selectedTier={selectedCard?.tier} />}
       </div>
-      {selectedCard && <CardPanel card={selectedCard} />}
+      {herd.length > 0 ? (
+        <ClaimPanel payload={payload} herd={herd} />
+      ) : (
+        selectedCard && <CardPanel card={selectedCard} />
+      )}
     </div>
   )
 }

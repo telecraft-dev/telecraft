@@ -87,14 +87,19 @@ func estateInputs(t *testing.T, root string) Inputs {
 	if err != nil {
 		t.Fatal(err)
 	}
+	selfTel, err := LoadSelfTelemetry(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return Inputs{
-		Estate:    est,
-		Topology:  topo,
-		Policy:    policy,
-		Catalogue: cat,
-		Tree:      tree,
-		Floors:    DefaultFloors(),
-		Commit:    fixtureCommit,
+		Estate:        est,
+		Topology:      topo,
+		Policy:        policy,
+		Catalogue:     cat,
+		Tree:          tree,
+		Floors:        DefaultFloors(),
+		SelfTelemetry: selfTel,
+		Commit:        fixtureCommit,
 	}
 }
 
@@ -130,6 +135,7 @@ func scratchEstate(t *testing.T, blueprintYAML, tierYAML string, extra map[strin
 	t.Helper()
 	root := t.TempDir()
 	writeFile(t, root, "teams.yaml", scratchTeams)
+	writeFile(t, root, SelfTelemetryFile, scratchSelfTelemetry)
 	writeFile(t, root, "teams/pipelines/blueprints/flow.yaml", blueprintYAML)
 	writeFile(t, root, "teams/pipelines/tiers/gateway.yaml", tierYAML)
 	for rel, content := range extra {
@@ -142,4 +148,11 @@ const scratchTier = `
 owner: pipelines-lead
 environment: production
 blueprint: pipelines/flow@1
+`
+
+// scratchSelfTelemetry is the minimal destination declaration every
+// scratch estate carries — self-telemetry is mandatory (ADR-0039 §1).
+const scratchSelfTelemetry = `
+self_telemetry:
+  endpoint: https://otlp.scratch.internal:4318
 `

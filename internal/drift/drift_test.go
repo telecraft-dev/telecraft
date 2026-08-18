@@ -191,13 +191,14 @@ func renderAndCommit(t *testing.T, root string, in Inputs) {
 		t.Fatal(err)
 	}
 	res, err := renderer.Render(renderer.Inputs{
-		Estate:    in.Estate,
-		Topology:  in.Topology,
-		Policy:    policy,
-		Catalogue: in.Catalogue,
-		Tree:      tree,
-		Floors:    in.Floors,
-		Commit:    "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+		Estate:        in.Estate,
+		Topology:      in.Topology,
+		Policy:        policy,
+		Catalogue:     in.Catalogue,
+		Tree:          tree,
+		Floors:        in.Floors,
+		SelfTelemetry: renderer.SelfTelemetry{Endpoint: "https://otlp.fixture.internal:4318"},
+		Commit:        "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
 	})
 	if err != nil {
 		t.Fatal(err)

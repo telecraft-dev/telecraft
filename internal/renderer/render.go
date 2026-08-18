@@ -56,6 +56,10 @@ type Inputs struct {
 	Tree      ownership.Tree
 	Floors    FloorPolicy
 
+	// SelfTelemetry is the estate-level destination every artefact pushes
+	// the collector's own metrics and logs to (REQ-053, ADR-0039).
+	SelfTelemetry SelfTelemetry
+
 	// Commit is the SHA stamped into every artefact (ADR-0013).
 	Commit string
 }
@@ -92,6 +96,12 @@ func Render(in Inputs) (Result, error) {
 		return Result{}, fmt.Errorf("no catalogue — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
 	}
 	if err := in.Floors.Validate(); err != nil {
+		return Result{}, err
+	}
+	if err := in.SelfTelemetry.Validate(); err != nil {
+		// Includes the missing destination: self-telemetry is mandatory in
+		// every rendered artefact (REQ-053, ADR-0039 §1), so an estate with
+		// nowhere to push it cannot render.
 		return Result{}, err
 	}
 
