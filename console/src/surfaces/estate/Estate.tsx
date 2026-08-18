@@ -22,7 +22,7 @@ const VIEWS: { view: EstateView; label: string; testid: string }[] = [
 
 export function Estate() {
   const estate = useQuery({ queryKey: ['estate'], queryFn: api.estate })
-  const search = useSearch({ strict: false })
+  const search = useSearch({ from: '/estate' })
 
   if (estate.isPending) return <p className="surface-status">Loading the estate…</p>
   if (estate.isError) return <p className="surface-status">The estate payload failed to load.</p>
@@ -44,6 +44,7 @@ export function Estate() {
             {VIEWS.map(({ view: v, label, testid }) => (
               <Link
                 key={v}
+                from="/estate"
                 to="/estate"
                 search={(prev) => ({ ...prev, view: v })}
                 className={v === view ? 'scope-link active' : 'scope-link'}

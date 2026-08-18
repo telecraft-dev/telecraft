@@ -1,5 +1,5 @@
 {
-  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population — per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population.",
+  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population — per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5) — platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams.",
   "me": {
     "id": "demo-user",
     "name": "Demo user",
@@ -371,6 +371,13 @@
           "data-flow/gateway-exporter@2"
         ],
         "metrics": ["otlp-in", "guard", "batcher", "data-flow/gateway-exporter@2"]
+      },
+      "components": {
+        "otlp-in": { "class": "receiver", "type": "otlp" },
+        "guard": { "class": "processor", "type": "memory_limiter" },
+        "infosec/pii-redaction@3": { "class": "processor", "type": "transform" },
+        "batcher": { "class": "processor", "type": "batch" },
+        "data-flow/gateway-exporter@2": { "class": "exporter", "type": "otlphttp" }
       }
     },
     {
@@ -381,6 +388,11 @@
       "pipelines": {
         "traces": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"],
         "logs": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"]
+      },
+      "components": {
+        "otlp-in": { "class": "receiver", "type": "otlp" },
+        "batcher": { "class": "processor", "type": "batch" },
+        "data-flow/gateway-exporter@2": { "class": "exporter", "type": "otlphttp" }
       }
     },
     {
@@ -390,6 +402,11 @@
       "team": "infosec",
       "pipelines": {
         "logs": ["otlp-in", "infosec/pii-redaction@3", "batcher"]
+      },
+      "components": {
+        "otlp-in": { "class": "receiver", "type": "otlp" },
+        "infosec/pii-redaction@3": { "class": "processor", "type": "transform" },
+        "batcher": { "class": "processor", "type": "batch" }
       }
     }
   ],
@@ -409,6 +426,46 @@
       "team": "data-flow",
       "class": "exporter",
       "type": "otlphttp"
+    }
+  ],
+  "owners": [
+    { "id": "engineering-lead", "name": "Engineering lead", "team": "engineering" },
+    { "id": "platform-lead", "name": "Platform lead", "team": "platform" },
+    { "id": "dataflow-lead", "name": "Data Flow lead", "team": "data-flow" },
+    { "id": "infosec-lead", "name": "Information Security lead", "team": "infosec" }
+  ],
+  "allowLists": [
+    {
+      "team": "platform",
+      "owner": "platform-lead",
+      "allow": [
+        "receiver/otlp",
+        "receiver/filelog",
+        "processor/*",
+        "exporter/otlphttp",
+        "exporter/debug",
+        "connector/*"
+      ]
+    },
+    {
+      "team": "data-flow",
+      "owner": "dataflow-lead",
+      "allow": [
+        "receiver/otlp",
+        "processor/batch",
+        "processor/filter",
+        "processor/transform",
+        "processor/memory_limiter",
+        "exporter/otlphttp"
+      ]
+    }
+  ],
+  "grants": [
+    {
+      "id": "kafka-egress-for-data-flow",
+      "owner": "platform-lead",
+      "team": "data-flow",
+      "adds": ["receiver/kafka", "exporter/kafka"]
     }
   ]
 }

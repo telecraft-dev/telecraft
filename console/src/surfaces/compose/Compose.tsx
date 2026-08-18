@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { api } from '../../api/client'
+import { formatCatalogueKey } from '../../api/types'
 import { canActOn } from '../../auth/authz'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 
@@ -85,9 +86,34 @@ export function Compose() {
             >
               <h3>{signal}</h3>
               <ol className="lane-components">
-                {lane.map((component, i) => (
-                  <li key={`${component}-${i}`}>{component}</li>
-                ))}
+                {lane.map((component, i) => {
+                  // A palette item deep-links to its Catalogue entry
+                  // (ADR-0042 §1): the key it instantiates rides the
+                  // Blueprint summary.
+                  const key = chosen.components?.[component]
+                  return (
+                    <li key={`${component}-${i}`}>
+                      {key ? (
+                        <Link
+                          to="/catalogue"
+                          search={(prev) => ({
+                            lens: prev.lens,
+                            object: formatObjectRef({
+                              kind: 'entry',
+                              id: formatCatalogueKey(key),
+                            }),
+                          })}
+                          className="lane-entry-link"
+                          data-testid={`lane-entry-${signal}-${component}`}
+                        >
+                          {component}
+                        </Link>
+                      ) : (
+                        component
+                      )}
+                    </li>
+                  )
+                })}
               </ol>
             </div>
           ))}

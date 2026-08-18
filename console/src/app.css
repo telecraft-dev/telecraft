@@ -965,10 +965,252 @@ button {
   font-size: 0.8em;
 }
 
-/* Catalogue */
+/* Catalogue & Governance */
 
 .catalogue-layout {
+  display: flex;
+  height: 100%;
+}
+
+.catalogue-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: var(--space-4) var(--space-5);
+  overflow: auto;
+}
+
+.catalogue-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.browse-layout {
+  display: flex;
+  flex: 1;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.browse-main {
+  flex: 1;
+  overflow: auto;
+}
+
+.catalogue-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.catalogue-filters label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-muted);
+  font-size: 0.85em;
+}
+
+.catalogue-subhead {
+  font-size: 1rem;
+  margin: var(--space-5) 0 var(--space-1);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.signal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stability-chip {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+.stability-chip.stability-deprecated,
+.stability-chip.stability-unmaintained {
+  color: var(--colour-severity-violation);
+  border-color: var(--colour-severity-violation);
+}
+
+.stability-chip.stability-development {
+  color: var(--colour-severity-advisory);
+}
+
+.stability-chip.stability-stable {
+  color: var(--colour-severity-ok);
+}
+
+.entry-description {
+  color: var(--colour-text-muted);
+}
+
+.entry-deprecation {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--colour-severity-violation);
+  background: var(--colour-surface-raised);
+  font-size: 0.85em;
+}
+
+.entry-deprecation p {
+  margin: var(--space-1) 0 0;
+}
+
+.entry-instance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* The effective palette */
+
+.palette-view {
+  flex: 1;
+  overflow: auto;
+}
+
+.catalogue-table tr.excluded td {
+  color: var(--colour-text-muted);
+}
+
+.origin-chip {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-1);
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  white-space: nowrap;
+  border: 1px solid var(--colour-border);
+}
+
+.origin-chip.origin-grant {
+  color: var(--colour-accent);
+  border-color: var(--colour-accent);
+}
+
+.origin-chip.origin-excluded {
+  color: var(--colour-severity-neutral);
+  border-style: dashed;
+}
+
+.why-cell {
+  white-space: nowrap;
+}
+
+.why-cell .who-acts {
+  margin-left: var(--space-2);
+}
+
+/* Governance */
+
+.governance-view {
+  flex: 1;
+  overflow: auto;
+  max-width: 46rem;
+}
+
+.governance-section {
+  margin-bottom: var(--space-5);
+}
+
+.governance-section h2 {
+  font-size: 1rem;
+  margin: 0 0 var(--space-1);
+}
+
+.governance-list h3,
+.governance-section h3 {
+  font-size: 0.9rem;
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.governance-view textarea,
+.governance-view input,
+.governance-view select {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+  color: var(--colour-text);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.governance-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.governance-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--colour-text-muted);
+  font-size: 0.85em;
+}
+
+.governance-grants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.propose-button {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: var(--colour-accent);
+  color: var(--colour-accent-contrast);
+  cursor: pointer;
+}
+
+.propose-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.proposal-problems {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5);
+  border-left: 3px solid var(--colour-severity-violation);
+  background: var(--colour-surface-raised);
+  font-size: 0.85em;
+}
+
+.proposal-opened {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--colour-severity-ok);
+  background: var(--colour-surface-raised);
+}
+
+.lane-entry-link {
+  color: inherit;
 }
 
 .catalogue-table {
