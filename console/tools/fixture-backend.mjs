@@ -60,6 +60,17 @@ const api = {
     teams: estate.teams,
     cards: estate.cards,
   }),
+  // The on-demand drawer (ADR-0041 §3): findings with who-acts routing and
+  // why-provenance. A Tier without a seeded drawer answers empty, honestly.
+  '/api/v1/drawer': (url) => {
+    const tier = url.searchParams.get('tier') ?? ''
+    return (
+      estate.drawers[tier] ?? { contractVersion: 1, tier, findings: [], provenance: [] }
+    )
+  },
+  // Per-collector detail, served flat: list surfaces are its only home
+  // (ADR-0042 rule 3.4); the console filters client-side.
+  '/api/v1/collectors': () => estate.collectors,
   '/api/v1/topology': () => ({
     environments: estate.environments,
     tiers: estate.cards.map((card) => ({
@@ -90,7 +101,7 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`)
   const handler = api[url.pathname]
   if (handler) {
-    const body = JSON.stringify(handler())
+    const body = JSON.stringify(handler(url))
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
     res.end(body)
     return
