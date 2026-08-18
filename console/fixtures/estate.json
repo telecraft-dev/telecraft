@@ -3,6 +3,7 @@
   "me": {
     "id": "demo-user",
     "name": "Demo user",
+    "email": "demo-user@estate.internal",
     "team": "data-flow"
   },
   "environments": ["production", "staging"],
@@ -329,7 +330,14 @@
       "name": "gateway-standard",
       "version": 4,
       "team": "data-flow",
-      "pipelines": {
+      "tier": "data-flow/gateway",
+      "locals": {
+        "otlp-in": { "class": "receiver", "type": "otlp" },
+        "guard": { "class": "processor", "type": "memory_limiter" },
+        "batcher": { "class": "processor", "type": "batch" },
+        "audit-log": { "class": "exporter", "type": "file" }
+      },
+      "lanes": {
         "traces": [
           "otlp-in",
           "guard",
@@ -344,18 +352,131 @@
           "batcher",
           "data-flow/gateway-exporter@2"
         ],
-        "metrics": ["otlp-in", "guard", "batcher", "data-flow/gateway-exporter@2"]
-      }
+        "metrics": [
+          "otlp-in",
+          "guard",
+          "batcher",
+          "audit-log",
+          "data-flow/gateway-exporter@2"
+        ]
+      },
+      "extensions": [],
+      "satisfies": ["req-pii-redaction@3", "req-payment-completeness@2"]
     },
     {
       "id": "data-flow/edge-standard",
       "name": "edge-standard",
       "version": 2,
       "team": "data-flow",
-      "pipelines": {
+      "tier": "data-flow/edge",
+      "locals": {
+        "otlp-in": { "class": "receiver", "type": "otlp" },
+        "batcher": { "class": "processor", "type": "batch" }
+      },
+      "lanes": {
         "traces": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"],
         "logs": ["otlp-in", "batcher", "data-flow/gateway-exporter@2"]
+      },
+      "extensions": [],
+      "satisfies": ["req-pii-redaction@3"]
+    }
+  ],
+  "catalogueTypes": [
+    {
+      "class": "receiver",
+      "type": "otlp",
+      "stability": { "traces": "stable", "logs": "beta", "metrics": "stable" }
+    },
+    { "class": "receiver", "type": "filelog", "stability": { "logs": "beta" } },
+    {
+      "class": "receiver",
+      "type": "zipkin",
+      "stability": { "traces": "beta" },
+      "deprecated": {
+        "migration": "ingest via the otlp receiver; zipkin support ends with the v0.110 catalogue"
       }
+    },
+    {
+      "class": "processor",
+      "type": "memory_limiter",
+      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
+    },
+    {
+      "class": "processor",
+      "type": "batch",
+      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
+    },
+    {
+      "class": "processor",
+      "type": "transform",
+      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
+    },
+    {
+      "class": "processor",
+      "type": "tail_sampling",
+      "stability": { "traces": "alpha" }
+    },
+    {
+      "class": "exporter",
+      "type": "otlphttp",
+      "stability": { "traces": "beta", "logs": "beta", "metrics": "beta" }
+    },
+    {
+      "class": "exporter",
+      "type": "debug",
+      "stability": {
+        "traces": "development",
+        "logs": "development",
+        "metrics": "development"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "file",
+      "stability": { "traces": "alpha", "logs": "alpha", "metrics": "alpha" }
+    }
+  ],
+  "policy": {
+    "allowLists": {
+      "engineering": [
+        "receiver/otlp",
+        "receiver/filelog",
+        "receiver/zipkin",
+        "processor/memory_limiter",
+        "processor/batch",
+        "processor/tail_sampling",
+        "exporter/otlphttp"
+      ]
+    },
+    "grants": [
+      {
+        "id": "grant-pii-redaction",
+        "grantedBy": "engineering",
+        "grantedTo": "data-flow",
+        "entries": ["processor/transform"],
+        "reason": "the infosec redaction chain runs on transform until first-class redaction ships"
+      }
+    ],
+    "floors": {
+      "production": { "C1": "beta", "C2": "beta", "C3": "alpha" }
+    }
+  },
+  "requirements": [
+    {
+      "id": "req-pii-redaction",
+      "version": 3,
+      "summary": "PII is redacted before telemetry leaves the collector",
+      "remediation": "Add infosec/pii-redaction to every lane carrying user data.",
+      "appliesTo": ["data-flow/gateway-standard", "data-flow/edge-standard"],
+      "verifiedBy": { "ref": "infosec/pii-redaction", "signals": ["traces", "logs"] }
+    },
+    {
+      "id": "req-payment-completeness",
+      "version": 2,
+      "summary": "checkout telemetry engages back-pressure before any buffering processor",
+      "remediation": "Run a memory_limiter processor in the traces lane.",
+      "appliesTo": ["data-flow/gateway-standard", "data-flow/edge-standard"],
+      "verifiedBy": { "type": "processor/memory_limiter", "signals": ["traces"] }
     }
   ],
   "catalogue": [

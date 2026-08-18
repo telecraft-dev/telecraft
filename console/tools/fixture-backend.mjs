@@ -11,6 +11,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { propose, validate } from './evaluator.mjs'
 
 const args = process.argv.slice(2)
 const argValue = (flag) => {
@@ -87,6 +88,23 @@ const api = {
   '/api/v1/catalogue': () => estate.catalogue,
 }
 
+// The composing endpoints (ADR-0022 §1): one evaluator behind both — the
+// composer's continuous advisory call, and the proposal exit with
+// enforcement on. A blocked proposal answers 409, fail closed (ADR-0028 §3).
+const postApi = {
+  '/api/v1/validate': (body) => validate(estate, body.draft, body.environment),
+  '/api/v1/proposals': (body) => propose(estate, body.draft, body.environment),
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    req.on('data', (chunk) => chunks.push(chunk))
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    req.on('error', reject)
+  })
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -99,6 +117,19 @@ const MIME = {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`)
+  const postHandler = req.method === 'POST' ? postApi[url.pathname] : undefined
+  if (postHandler) {
+    try {
+      const body = JSON.parse(await readBody(req))
+      const result = postHandler(body)
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify(result))
+    } catch (err) {
+      res.writeHead(err.status ?? 400, { 'content-type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify({ error: err.message }))
+    }
+    return
+  }
   const handler = api[url.pathname]
   if (handler) {
     const body = JSON.stringify(handler(url))

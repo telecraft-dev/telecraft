@@ -60,8 +60,10 @@ All endpoints are `GET`, returning JSON. The TypeScript shapes live in
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
 | `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen. |
 | `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. |
-| `/api/v1/blueprints` | Blueprint summaries with per-signal component lanes in renderer order. |
+| `/api/v1/blueprints` | Blueprint schema v1 documents (ADR-0024): per-signal lanes of ordered Component references, local Components, the collector-wide extensions block, the bound Tier, and version-stamped `satisfies` claims. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
+| `POST /api/v1/validate` | The one evaluator (ADR-0022 §1): the open draft plus its Environment in; findings, palette verdicts (show, grey with reason, hidden-with-count), requirement verdicts (claimed beside met, never blended), the save gate, and the rendered-artefact preview out. Stateless; the composer calls it on every interaction. |
+| `POST /api/v1/proposals` | The composer exit (ADR-0043 §6): the draft becomes a change proposal through the forge adapter, render-in-PR and user-attributed (ADR-0028, ADR-0014). Enforcement is on: an allow-list violation answers 409 and no proposal opens, fail closed. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 1`): three bands as enum states plus worst-finding
@@ -103,3 +105,8 @@ Search params are validated by the router (ADR-0045 §3):
   (ADR-0042 §3.4); the lens is never one of these filters.
 - `lane`: the signal lane a Blueprint-shaped who-acts chip lands on in
   Compose (ADR-0042 §3.3).
+- `view` (Compose): the surface switcher over the one open Blueprint
+  (ADR-0043 §1) — `composer` (the default), `requirements`, or `canvas`.
+  Switching never loses the draft.
+- `yaml`: whether the resident read-only YAML flyout is open (REQ-035);
+  it rides every Compose surface.

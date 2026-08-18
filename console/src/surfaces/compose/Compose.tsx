@@ -60,7 +60,7 @@ export function Compose() {
           <h2>
             {chosen.name} <span className="item-meta">v{chosen.version}</span>
           </h2>
-          {Object.entries(chosen.pipelines).map(([signal, lane]) => (
+          {Object.entries(chosen.lanes).map(([signal, lane]) => (
             <div
               key={signal}
               className={signal === search.lane ? 'signal-lane offending' : 'signal-lane'}
