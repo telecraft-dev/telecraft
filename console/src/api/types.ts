@@ -88,19 +88,97 @@ export interface Band {
   worstFinding?: string
 }
 
+/**
+ * Every reading on the face carries whether it is known, why not when it
+ * is not, and the instant it was taken (ADR-0041 §2) — which is what lets
+ * last-known-plus-age render from the contract instead of the client
+ * guessing at it.
+ */
+export interface Reading {
+  known: boolean
+  cause?: string
+  /** RFC 3339. */
+  asOf: string
+}
+
+/**
+ * One signal lane's flow through the Tier (ADR-0040 §2, §3). The
+ * reduction is a figure, never a grade: a filter dropping ninety per cent
+ * is doing its job. The three error counts beside it are the only
+ * readings on the row anything reds off.
+ */
+export interface VolumeReading extends Reading {
+  in: number
+  out: number
+  reduction: number
+  refused: number
+  sendFailed: number
+  enqueueFailed: number
+  /** The figure is a floor: more instances or exporters existed than were summed. */
+  truncated?: boolean
+}
+
+/** A lane's freshness. `silent` is a known-empty window — not the same as not knowing. */
+export interface FreshnessReading extends Reading {
+  /** RFC 3339; absent when nothing was seen. */
+  newest?: string
+  ageSeconds?: number
+  silent?: boolean
+}
+
+/** A lane's shape summary: required attributes, and how many are missing (ADR-0034). */
+export interface ShapeReading extends Reading {
+  required: number
+  missing: number
+  summary?: string
+}
+
+export type SignalName = 'logs' | 'metrics' | 'traces'
+
+/** One lane of the per-signal matrix: the skeleton under the reading bands (P4 variant D). */
+export interface SignalRow {
+  signal: SignalName
+  volume: VolumeReading
+  freshness: FreshnessReading
+  shape: ShapeReading
+}
+
+/** The Tier's restart-rate reading: incarnations in the window (ADR-0040 §4). */
+export interface ChurnReading extends Reading {
+  incarnations: number
+  truncated?: boolean
+}
+
+/** ADR-0035's population output, verbatim: siblings, never degrees of each other. */
+export type PopulationState = 'ok' | 'never_seen' | 'under_populated'
+
 /** The face payload's population line (ADR-0041 §2, ADR-0035). */
 export interface Population {
   matched: number
   floor?: number
   floorSource: 'derived' | 'declared' | 'absent'
+  state: PopulationState
+  /** The shortfall onset, or the start of watching on a neutral never_seen. RFC 3339. */
+  since?: string
+  /** The aged-never_seen signal: an authored Tier nothing ever used (ADR-0035 §7). */
+  staleConfig?: boolean
 }
 
 /**
- * The card face, contract version 1: the card unit is the Tier, and the
+ * The card contract's integer version (ADR-0041 §4). v2 added the
+ * per-signal matrix rows, the population state and the churn reading; the
+ * bump is the visible, reviewable event the ADR asks for, and both sides
+ * are held to console/fixtures/card-contract.json, which the engine
+ * writes and `tests/card-contract.test.ts` reads.
+ */
+export const CARD_CONTRACT_VERSION = 2
+
+/**
+ * The card face, contract version 2: the card unit is the Tier, and the
  * shelf groups and sorts from these fields alone (ADR-0041, ADR-0042 §2).
  */
 export interface CardFace {
-  contractVersion: 1
+  contractVersion: 2
   /** Tier id — the contract keys on Tier id, never on a pair. */
   tier: string
   name: string
@@ -119,6 +197,12 @@ export interface CardFace {
    */
   waivedCounts?: Record<string, number>
   population: Population
+  /**
+   * The per-signal matrix rows, in stable signal order — bands over
+   * matrix is the card face P4's verdict shipped (variant D).
+   */
+  signals: SignalRow[]
+  churn: ChurnReading
 }
 
 /** How dampening currently holds a finding (ADR-0035 §3, ADR-0037). */
@@ -172,7 +256,7 @@ export interface Provenance {
 
 /** GET /api/v1/drawer?tier= — the on-demand drawer payload (ADR-0041 §3). */
 export interface CardDrawer {
-  contractVersion: 1
+  contractVersion: 2
   tier: string
   findings: Finding[]
   provenance: Provenance[]

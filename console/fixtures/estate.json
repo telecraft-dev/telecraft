@@ -36,7 +36,7 @@
   },
   "cards": [
     {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "tier": "data-flow/edge",
       "name": "edge",
       "team": "data-flow",
@@ -60,11 +60,96 @@
       "population": {
         "matched": 21614,
         "floor": 21000,
-        "floorSource": "derived"
+        "floorSource": "derived",
+        "state": "ok"
+      },
+      "signals": [
+        {
+          "signal": "logs",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 4200000,
+            "out": 1100000,
+            "reduction": 3100000,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:40Z",
+            "ageSeconds": 20
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 3,
+            "missing": 0,
+            "summary": "3 of 3 required attributes present"
+          }
+        },
+        {
+          "signal": "metrics",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 900000,
+            "out": 900000,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:45Z",
+            "ageSeconds": 15
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 0,
+            "missing": 0
+          }
+        },
+        {
+          "signal": "traces",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 12000000,
+            "out": 1200000,
+            "reduction": 10800000,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:52Z",
+            "ageSeconds": 8
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 4,
+            "missing": 0,
+            "summary": "4 of 4 required attributes present"
+          }
+        }
+      ],
+      "churn": {
+        "known": true,
+        "asOf": "2026-08-18T11:59:00Z",
+        "incarnations": 21
       }
     },
     {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "tier": "data-flow/gateway",
       "name": "gateway",
       "team": "data-flow",
@@ -96,11 +181,96 @@
       "population": {
         "matched": 3,
         "floor": 3,
-        "floorSource": "derived"
+        "floorSource": "derived",
+        "state": "ok"
+      },
+      "signals": [
+        {
+          "signal": "logs",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 0,
+            "out": 0,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "silent": true
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 2,
+            "missing": 0,
+            "summary": "nothing landed to check the shape against"
+          }
+        },
+        {
+          "signal": "metrics",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 48000,
+            "out": 47900,
+            "reduction": 100,
+            "refused": 100,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:15Z",
+            "ageSeconds": 45
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 2,
+            "missing": 1,
+            "summary": "deployment.environment.name missing on landed metrics"
+          }
+        },
+        {
+          "signal": "traces",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 1000000,
+            "out": 100000,
+            "reduction": 900000,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:30Z",
+            "ageSeconds": 30
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 4,
+            "missing": 0,
+            "summary": "4 of 4 required attributes present"
+          }
+        }
+      ],
+      "churn": {
+        "known": true,
+        "asOf": "2026-08-18T11:59:00Z",
+        "incarnations": 4
       }
     },
     {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "tier": "data-flow/gateway-staging",
       "name": "gateway-staging",
       "team": "data-flow",
@@ -123,11 +293,98 @@
       "findingCounts": {},
       "population": {
         "matched": 1,
-        "floorSource": "absent"
+        "floorSource": "absent",
+        "state": "ok"
+      },
+      "signals": [
+        {
+          "signal": "logs",
+          "volume": {
+            "known": false,
+            "cause": "no self-telemetry has reported at the serving SHA yet",
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 0,
+            "out": 0,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": false,
+            "cause": "no self-telemetry has reported at the serving SHA yet",
+            "asOf": "2026-08-18T11:59:00Z"
+          },
+          "shape": {
+            "known": false,
+            "cause": "no landed telemetry to read a shape from",
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 0,
+            "missing": 0
+          }
+        },
+        {
+          "signal": "metrics",
+          "volume": {
+            "known": false,
+            "cause": "no self-telemetry has reported at the serving SHA yet",
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 0,
+            "out": 0,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": false,
+            "cause": "no self-telemetry has reported at the serving SHA yet",
+            "asOf": "2026-08-18T11:59:00Z"
+          },
+          "shape": {
+            "known": false,
+            "cause": "no landed telemetry to read a shape from",
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 0,
+            "missing": 0
+          }
+        },
+        {
+          "signal": "traces",
+          "volume": {
+            "known": false,
+            "cause": "no self-telemetry has reported at the serving SHA yet",
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 0,
+            "out": 0,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": false,
+            "cause": "no self-telemetry has reported at the serving SHA yet",
+            "asOf": "2026-08-18T11:59:00Z"
+          },
+          "shape": {
+            "known": false,
+            "cause": "no landed telemetry to read a shape from",
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 0,
+            "missing": 0
+          }
+        }
+      ],
+      "churn": {
+        "known": false,
+        "cause": "no self-telemetry has reported at the serving SHA yet",
+        "asOf": "2026-08-18T11:59:00Z",
+        "incarnations": 0
       }
     },
     {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "tier": "product/storefront-edge",
       "name": "storefront-edge",
       "team": "product",
@@ -150,13 +407,98 @@
       "population": {
         "matched": 380,
         "floor": 350,
-        "floorSource": "declared"
+        "floorSource": "declared",
+        "state": "ok"
+      },
+      "signals": [
+        {
+          "signal": "logs",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 2100000,
+            "out": 2100000,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:48Z",
+            "ageSeconds": 12
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 3,
+            "missing": 0,
+            "summary": "3 of 3 required attributes present"
+          }
+        },
+        {
+          "signal": "metrics",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 40000,
+            "out": 40000,
+            "reduction": 0,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:30Z",
+            "ageSeconds": 30
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 0,
+            "missing": 0
+          }
+        },
+        {
+          "signal": "traces",
+          "volume": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "in": 800000,
+            "out": 96000,
+            "reduction": 704000,
+            "refused": 0,
+            "sendFailed": 0,
+            "enqueueFailed": 0
+          },
+          "freshness": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "newest": "2026-08-18T11:58:40Z",
+            "ageSeconds": 20
+          },
+          "shape": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "required": 4,
+            "missing": 0,
+            "summary": "4 of 4 required attributes present"
+          }
+        }
+      ],
+      "churn": {
+        "known": true,
+        "asOf": "2026-08-18T11:59:00Z",
+        "incarnations": 12
       }
     }
   ],
   "drawers": {
     "data-flow/gateway": {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "tier": "data-flow/gateway",
       "findings": [
         {
@@ -274,7 +616,7 @@
       ]
     },
     "data-flow/edge": {
-      "contractVersion": 1,
+      "contractVersion": 2,
       "tier": "data-flow/edge",
       "findings": [],
       "provenance": [

@@ -1,0 +1,181 @@
+{
+  "face": {
+    "contractVersion": 2,
+    "tier": "data-flow/gateway",
+    "name": "gateway",
+    "team": "data-flow",
+    "environment": "production",
+    "serviceClass": "C1",
+    "bands": {
+      "conformance": {
+        "state": "finding",
+        "worstSeverity": "advisory",
+        "worstFinding": "pii-redaction@3 runs under an expiring Grant"
+      },
+      "delivery": {
+        "state": "finding",
+        "worstSeverity": "violation",
+        "worstFinding": "the serving artefact never reached APPLIED"
+      },
+      "expectation": {
+        "state": "finding",
+        "worstSeverity": "advisory",
+        "worstFinding": "the logs lane is authored and nothing has ever landed on it"
+      }
+    },
+    "signals": [
+      {
+        "signal": "logs",
+        "volume": {
+          "known": false,
+          "cause": "no index matches \"metrics-*\"",
+          "asOf": "2026-08-18T11:59:00Z",
+          "in": 0,
+          "out": 0,
+          "reduction": 0,
+          "refused": 0,
+          "sendFailed": 0,
+          "enqueueFailed": 0
+        },
+        "freshness": {
+          "known": false,
+          "cause": "no index matches \"metrics-*\"",
+          "asOf": "2026-08-18T11:59:00Z"
+        },
+        "shape": {
+          "known": false,
+          "cause": "no index matches \"logs-*\"",
+          "asOf": "2026-08-18T11:59:00Z",
+          "required": 0,
+          "missing": 0
+        }
+      },
+      {
+        "signal": "metrics",
+        "volume": {
+          "known": true,
+          "asOf": "2026-08-18T11:59:00Z",
+          "in": 48000,
+          "out": 47900,
+          "reduction": 100,
+          "refused": 100,
+          "sendFailed": 0,
+          "enqueueFailed": 0
+        },
+        "freshness": {
+          "known": true,
+          "asOf": "2026-08-18T11:59:00Z",
+          "newest": "2026-08-18T11:58:15Z",
+          "ageSeconds": 105
+        },
+        "shape": {
+          "known": true,
+          "asOf": "2026-08-18T11:59:00Z",
+          "required": 2,
+          "missing": 1,
+          "summary": "deployment.environment.name missing on landed metrics"
+        }
+      },
+      {
+        "signal": "traces",
+        "volume": {
+          "known": true,
+          "asOf": "2026-08-18T11:59:00Z",
+          "in": 1000000,
+          "out": 100000,
+          "reduction": 900000,
+          "refused": 0,
+          "sendFailed": 0,
+          "enqueueFailed": 0
+        },
+        "freshness": {
+          "known": true,
+          "asOf": "2026-08-18T11:59:00Z",
+          "newest": "2026-08-18T11:58:30Z",
+          "ageSeconds": 90
+        },
+        "shape": {
+          "known": true,
+          "asOf": "2026-08-18T11:59:00Z",
+          "required": 4,
+          "missing": 0,
+          "summary": "4 of 4 required attributes present"
+        }
+      }
+    ],
+    "churn": {
+      "known": true,
+      "asOf": "2026-08-18T11:59:00Z",
+      "incarnations": 14
+    },
+    "population": {
+      "matched": 12,
+      "floor": 40,
+      "floorSource": "derived",
+      "state": "under_populated",
+      "since": "2026-08-18T05:59:00Z"
+    },
+    "findingCounts": {
+      "conformance": 1,
+      "delivery": 1,
+      "expectation": 1
+    },
+    "waivedCounts": {
+      "conformance": 1
+    }
+  },
+  "drawer": {
+    "contractVersion": 2,
+    "tier": "data-flow/gateway",
+    "findings": [
+      {
+        "id": "gateway-delivery-stalled",
+        "kind": "delivery",
+        "severity": "violation",
+        "dampening": "none",
+        "summary": "the serving artefact never reached APPLIED",
+        "remediation": "Re-serve data-flow/gateway at head, then check the supervisor logs on the stalled collectors.",
+        "whoActs": {
+          "target": {
+            "kind": "tier",
+            "id": "data-flow/gateway"
+          },
+          "label": "Inspect delivery in Topology"
+        }
+      },
+      {
+        "id": "gateway-expectation-logs",
+        "kind": "expectation",
+        "severity": "advisory",
+        "dampening": "none",
+        "summary": "the logs lane is authored and nothing has ever landed on it",
+        "remediation": "Back the claim with a Requirement, or delete the dead logs lane from gateway-standard.",
+        "whoActs": {
+          "target": {
+            "kind": "blueprint",
+            "id": "data-flow/gateway-standard"
+          },
+          "lane": "logs",
+          "label": "Fix the logs lane in Compose"
+        }
+      }
+    ],
+    "provenance": [
+      {
+        "key": "band:expectation",
+        "claim": "arrival claim: logs should land for product/checkout in production (via data-flow/gateway)",
+        "lines": [
+          {
+            "file": "teams/data-flow/blueprints/gateway-standard.yaml",
+            "line": 24,
+            "text": "    - ref: infosec/pii-redaction@3"
+          }
+        ],
+        "sha": "8b7df143d91c716ecfa5fc1730022f6b421b05cd",
+        "trace": {
+          "service": "product/checkout"
+        }
+      }
+    ]
+  }
+}

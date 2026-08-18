@@ -9,10 +9,21 @@ import type {
   Finding,
   Provenance,
   Severity,
+  SignalRow,
 } from '../../api/types'
 import { BAND_ORDER } from '../../api/types'
 import type { CardStanding } from '../../estate/order'
 import { totalFindings } from '../../estate/order'
+import {
+  errorReadings,
+  formatChurn,
+  formatFreshness,
+  formatItems,
+  formatReduction,
+  formatShape,
+  formatVolume,
+  readingTitle,
+} from '../../estate/readings'
 import { deepLinkFor } from '../../objectref'
 
 // The universal card, face and panel (ADR-0041, ADR-0042 §3.2): one
@@ -47,6 +58,50 @@ function stateLabel(state: BandState): string {
     case 'stale_demoted':
       return 'stale, demoted'
   }
+}
+
+/**
+ * One lane of the per-signal matrix (P4 variant D): volume with its
+ * reduction, freshness, shape. Every cell carries the reading's own
+ * as-of in its title, so an unknown reading reads as last-known-plus-age
+ * rather than as a confident zero (ADR-0041 §2).
+ */
+function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] }) {
+  if (signals.length === 0) {
+    // A conforming payload with no lanes is a card with no matrix, not a
+    // broken card: the console renders what the contract carries.
+    return null
+  }
+  return (
+    <table className="signal-matrix" data-testid={`matrix-${tier}`}>
+      <tbody>
+        {signals.map((row) => {
+          const reduction = formatReduction(row.volume)
+          const errors = errorReadings(row.volume)
+          return (
+            <tr key={row.signal} data-testid={`matrix-${tier}-${row.signal}`}>
+              <th scope="row">{row.signal}</th>
+              <td className="cell-volume" title={readingTitle(row.volume)}>
+                {formatVolume(row.volume)}
+                {reduction && <span className="cell-note">{reduction}</span>}
+                {errors.length > 0 && (
+                  <span className="cell-errors" data-testid={`errors-${tier}-${row.signal}`}>
+                    {errors.map((error) => `${formatItems(error.items)} ${error.label}`).join(', ')}
+                  </span>
+                )}
+              </td>
+              <td className="cell-freshness" title={readingTitle(row.freshness)}>
+                {formatFreshness(row.freshness)}
+              </td>
+              <td className="cell-shape" title={readingTitle(row.shape)}>
+                {formatShape(row.shape)}
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
 }
 
 export function CardFaceView({
@@ -91,6 +146,7 @@ export function CardFaceView({
             )
           })}
         </ul>
+        <SignalMatrix tier={card.tier} signals={card.signals ?? []} />
       </button>
       <footer className="card-foot">
         {/* A collector count is a door to the flat list, pre-filtered (ADR-0042 §3.4). */}
@@ -286,6 +342,17 @@ export function CardPanel({ card }: { card: CardFace }) {
           )
         })}
       </ul>
+      <section className="panel-flow" data-testid="panel-flow">
+        <h3>Flow</h3>
+        <SignalMatrix tier={card.tier} signals={card.signals ?? []} />
+        {card.churn && (
+          <p className="section-summary" title={readingTitle(card.churn)}>
+            {/* The restart-rate reading: presented, never judged — scaling
+                out and crash-looping both raise it (ADR-0040 §4). */}
+            Restarts: {formatChurn(card.churn)}
+          </p>
+        )}
+      </section>
       <section className="panel-findings" data-testid="panel-findings">
         <h3>Findings</h3>
         {drawer.isPending && <p className="surface-status">Loading the drawer…</p>}

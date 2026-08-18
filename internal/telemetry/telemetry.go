@@ -72,6 +72,20 @@ type Provider interface {
 	// platform reads them from the adopter's backend like any other
 	// telemetry, never over a privileged side channel.
 	ObserveSelf(ctx context.Context, tier string, window time.Duration) SelfObserved
+
+	// Meter reads one Tier's pipeline-grain flow counters over the
+	// trailing window (REQ-050, ADR-0040): per (Tier, signal) in and out
+	// item counts, the per-exporter split a Hop's throughput reads, the
+	// error-rate readings, and the Tier's incarnation count. Computed on
+	// read, never stored — the platform holds no time series, and history
+	// is a range query against the adopter's backend at the adopter's
+	// retention (ADR-0040 §5).
+	//
+	// An implementation whose backend cannot aggregate this way declares
+	// the incapability by returning MeterUnknown with a cause (ADR-0036
+	// pattern, ADR-0040 §6): metering never invents, and a reading nobody
+	// can take is Known false, not a zero.
+	Meter(ctx context.Context, tier string, window time.Duration) Metered
 }
 
 // Observed is one Service's reading across all signals. AsOf and Window
@@ -111,6 +125,12 @@ type SignalObservation struct {
 
 	Present bool  `json:"present"`
 	Volume  int64 `json:"volume"`
+
+	// Newest is the timestamp of the newest record that landed in the
+	// window — the service-grain freshness base (ADR-0040 §4): the age of
+	// the newest landed record per (Service, Environment, signal). Zero
+	// when nothing landed, where the absence itself is the reading.
+	Newest time.Time `json:"newest,omitempty"`
 
 	// AttributeCoverage maps each requested attribute name to the fraction
 	// of records in the window carrying it, in [0, 1]. Absent when no

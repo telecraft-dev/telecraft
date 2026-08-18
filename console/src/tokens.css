@@ -50,6 +50,8 @@
   --radius-1: 4px;
   --radius-2: 8px;
 
-  --card-width: 232px;
-  --card-height: 148px;
+  --card-width: 292px;
+  /* Bands over matrix, at one height for every card: the uniform grid
+     beat collapsing cards on the shelf (P4 rule 3). */
+  --card-height: 232px;
 }

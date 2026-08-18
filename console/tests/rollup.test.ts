@@ -16,7 +16,7 @@ function card(
   extras: Partial<Pick<CardFace, 'findingCounts' | 'waivedCounts'>> = {},
 ): CardFace {
   return {
-    contractVersion: 1,
+    contractVersion: 2,
     tier,
     name: tier,
     team,
@@ -24,7 +24,9 @@ function card(
     bands: { delivery: okBand, expectation: okBand, conformance: okBand, ...bands },
     findingCounts: extras.findingCounts ?? {},
     waivedCounts: extras.waivedCounts,
-    population: { matched: 1, floorSource: 'absent' },
+    population: { matched: 1, floorSource: 'absent', state: 'ok' },
+    signals: [],
+    churn: { known: true, asOf: '2026-08-18T12:00:00Z', incarnations: 0 },
   }
 }
 

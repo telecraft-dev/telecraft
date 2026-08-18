@@ -47,7 +47,9 @@ npm run e2e            # Playwright against dist/ and the fixture backend
   only non-git state (ADR-0042 §7).
 - `tools/`: the fixture backend and the zero-CDN check.
 - `fixtures/`: the fixture estate, mirroring
-  `internal/renderer/testdata/estate`.
+  `internal/renderer/testdata/estate`, plus `card-contract.json` — the
+  shared card-contract artefact the engine writes and the console's
+  contract test reads.
 
 ## The platform API
 
@@ -87,12 +89,31 @@ URL the user arrived on survives the round trip.
 | `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014) — the console proposes, the PR decides; the platform binary wires this to `forge.Submit` like the other proposal exits. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives — generalise-never-enumerate is enforced server-side, not assumed of the UI. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
-(`contractVersion: 1`): three bands as enum states plus worst-finding
-labels, shelf summary fields, and the population line. Hue appears
-nowhere in the contract. The face also carries optional waived counts
-per kind (`waivedCounts`), an additive shelf summary field the roll-up
-reads: an Exemption waives the count, never the diagnosis, and waived
-counts ride every roll-up level (ADR-0017, ADR-0037).
+(`contractVersion: 2`): three bands as enum states plus worst-finding
+labels, the per-signal matrix rows, shelf summary fields, and the
+population line. Hue appears nowhere in the contract — band position and
+glyph are what distinguish the three reds, and a renderer cannot make
+colour load-bearing by reading a field. The face also carries optional
+waived counts per kind (`waivedCounts`), an additive shelf summary field
+the roll-up reads: an Exemption waives the count, never the diagnosis,
+and waived counts ride every roll-up level (ADR-0017, ADR-0037).
+
+Version 2 added the metering rows P4's verdict put under the bands
+(ADR-0040): per signal lane, volume as items in and out with the
+reduction between them, freshness, and a shape summary — each reading
+carrying its own `known`, `cause` and `asOf`, so last-known-plus-age
+renders from the contract rather than from the console guessing. It also
+added the population line's ADR-0035 `state` with its neutral age, and
+the Tier's `churn` reading. In-minus-out is *reduction*: a filter
+dropping ninety per cent is doing its job, and the only readings the
+meter reds off are `refused`, `sendFailed` and `enqueueFailed`.
+
+Both sides of the contract are held to one artefact,
+`fixtures/card-contract.json`. The engine writes it —
+`go test ./internal/card -update` — and `tests/card-contract.test.ts`
+reads it, so a field added or renamed on either side without the other
+following is a failing test, and the version bump is the reviewable
+event.
 
 ## Zero-CDN rule
 
