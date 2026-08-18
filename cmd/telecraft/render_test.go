@@ -82,6 +82,7 @@ func renderEstate(t *testing.T, extra map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
 	writeLibraryFile(t, root, "teams.yaml", renderTeams)
+	writeLibraryFile(t, root, "telemetry.yaml", "self_telemetry:\n  endpoint: https://otlp.fixture.internal:4318\n")
 	writeLibraryFile(t, root, "teams/pipelines/blueprints/flow.yaml", renderBlueprint)
 	writeLibraryFile(t, root, "teams/pipelines/tiers/gateway.yaml", renderTier)
 	for name, body := range extra {

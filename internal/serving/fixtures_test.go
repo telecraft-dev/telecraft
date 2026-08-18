@@ -126,13 +126,14 @@ blueprint: pipelines/flow@1
 		t.Fatal(err)
 	}
 	res, err = renderer.Render(renderer.Inputs{
-		Estate:    est,
-		Topology:  topo,
-		Policy:    policy,
-		Catalogue: cat,
-		Tree:      tree,
-		Floors:    renderer.DefaultFloors(),
-		Commit:    fixtureCommit,
+		Estate:        est,
+		Topology:      topo,
+		Policy:        policy,
+		Catalogue:     cat,
+		Tree:          tree,
+		Floors:        renderer.DefaultFloors(),
+		SelfTelemetry: renderer.SelfTelemetry{Endpoint: "https://otlp.fixture.internal:4318"},
+		Commit:        fixtureCommit,
 	})
 	if err != nil {
 		t.Fatal(err)
