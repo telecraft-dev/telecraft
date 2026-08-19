@@ -4,54 +4,86 @@
 
 Telecraft is an open-source fleet and policy management platform for
 OpenTelemetry. It models your collection topology, composes collector
-configurations from owned, versioned building blocks, and then does the thing
-no other tool does: derives from the configuration an *expectation* of what
-telemetry should arrive — and checks it. Green means "the config worked",
-never merely "the config applied".
+configuration from owned, versioned building blocks, and then does the thing
+no other tool does: it derives from the configuration an *expectation* of what
+telemetry should arrive, and checks it. Green means "the configuration
+worked", never merely "the configuration applied".
+
+See it running: **[demo.telecraft.dev](https://demo.telecraft.dev)** is the
+real console over a public demo estate, read-only and rebuilt from git on
+every push.
 
 Three separately-adoptable rungs, in any order:
 
 | Rung | What it does | What it costs you |
 |---|---|---|
-| **Conformance** | Reads your telemetry backend and your collectors' reported configs, judges every service against its Service Class floor, and tells you *whose* problem each finding is | A connection string |
+| **Conformance** | Reads your telemetry backend and your collectors' reported configuration, judges every service against its Service Class floor, and tells you *whose* problem each finding is | A connection string |
 | **Authoring** | A console where teams compose Blueprints from governed Components and render plain otelcol YAML into git as pull requests | Nothing in your delivery path changes |
-| **Serving** | A stateless OpAMP server that delivers rendered config from git to collectors — with GitOps as a co-equal alternative, chosen per collector | An OpAMP Supervisor beside each served collector |
+| **Serving** | A stateless OpAMP server that delivers rendered configuration from git to collectors, with GitOps as a co-equal alternative, chosen per collector | An OpAMP Supervisor beside each served collector |
 
 Principles that hold everywhere: **nothing sits in the telemetry path** (if
 Telecraft is down, no telemetry stops flowing); **git is the source of
 truth** (history, rollback, approval and audit are git's, not ours);
-**configurations, never binaries**; **vendor-neutral core** (Elastic,
+**configurations, never binaries**; **vendor-neutral core** (Elasticsearch,
 Prometheus and friends are plugins); **air-gap first-class** (no hard
-dependency on any SaaS).
+dependency on any hosted service).
+
+## Documentation
+
+Full documentation lives in [`docs/`](docs/):
+
+- [Concepts](docs/concepts/) explain the model, from readings and verdicts to
+  governance.
+- [Guides](docs/guides/) walk through tasks, starting with the
+  [quickstart](docs/guides/quickstart.md).
+- [Reference](docs/reference/) covers every command, flag, and authored file
+  format, alongside the [glossary](docs/glossary.md).
+- [Contributing](docs/contributing/) is the developer documentation: local
+  development, package architecture, the provider seams, and how decisions
+  are recorded.
 
 ## Status
 
-Pre-alpha: the design corpus is complete and the build has started. Decisions
-live in [`docs/`](docs/) — start with the [glossary](docs/glossary.md), the
-visual [terminology guide](docs/terminology.html), the
-[requirements](docs/requirements/product-requirements.md) and the
-[ADRs](docs/adr/). The build plan is [`docs/plan.md`](docs/plan.md); the
-backlog is the [issue tracker](https://github.com/telecraft-dev/telecraft/issues).
+The first build is complete: conformance, authoring, and serving all work
+end to end, with a console over all four workspaces. Interfaces are still
+free to change, so treat it as early software rather than a stable release.
+
+The decision corpus behind the product lives in
+[`docs/adr/`](docs/adr/) (47 architecture decision records), with
+[requirements](docs/requirements/), [research](docs/research/), and
+[prototype verdicts](docs/prototypes/) beside it.
 
 ## Repository layout
 
 | Path | What lives there |
 |---|---|
-| `cmd/` | Binaries (arrive with the first ported code) |
-| `internal/` | The neutral core — no vendor word appears here (ADR-0001) |
+| `cmd/` | The `telecraft` CLI, plus the `catalogue-import` and `blueprint-check` tools |
+| `internal/` | The neutral core: no vendor word appears here (ADR-0001) |
 | `internal/provider/` | Vendor implementations behind the core's seams, always product-qualified: `Elasticsearch`, `ElasticFleet` |
-| `console/` | The TypeScript/React console (arrives in Phase 4, ADR-0045) |
-| `tools/vendorlint/` | The ADR-0001 vendor-word lint; its scope globs in [`vendorlint.yaml`](vendorlint.yaml) are the core/provider boundary |
-| `docs/` | The decision corpus: glossary, requirements, ADRs, research, prototype verdicts |
+| `console/` | The TypeScript and React console (ADR-0045) |
+| `tools/vendorlint/` | The ADR-0001 vendor-word lint; its scope globs in [`vendorlint.yaml`](vendorlint.yaml) are the core and provider boundary |
+| `docs/` | Documentation and the decision corpus |
 
 ## Development
 
-Go 1.26+. Both CI checks run locally with:
+Go 1.26 or later, and Node.js for the console. The full set of checks that CI
+runs:
 
 ```sh
+go build ./...            # the core and the CLI
 go test ./...             # unit tests, including the lint's self-test
 go run ./tools/vendorlint # the vendor-word lint over code and docs
+
+cd console
+npm ci && npm run typecheck && npm test && npm run build
 ```
+
+CI runs six jobs: build and test, the console build, the vendor-word lint,
+a live check against Elasticsearch, a live check of the forge adapter against
+GitHub, and a build of the demo snapshot and bundle. The two live jobs skip
+themselves, loudly, when their credentials are absent.
+
+See [contributing](docs/contributing/) for the detail.
 
 ### Brand and design
 

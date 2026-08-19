@@ -1,0 +1,83 @@
+# Navigation manifest for the Telecraft documentation site.
+#
+# The site build reads this file to decide what to publish and in what
+# order. Everything published lives in one of the four sections below;
+# within a section, pages sort by the `order` field in their front
+# matter, and the section index page is always order 1.
+#
+# This file is the contract between the documentation in this repository
+# and whatever builds telecraft.dev. Keep it generator-agnostic: plain
+# Markdown pages, YAML front matter of `title`, `description` and
+# `order`, and this manifest. A generator needs nothing else.
+
+site:
+  title: Telecraft documentation
+  description: >-
+    Craft, govern, and verify OpenTelemetry across your whole estate.
+  # Where the built documentation is served. The site itself is built
+  # from the telecraft-dev/telecraft.dev repository, which pulls this
+  # directory; see docs/contributing/documentation.md.
+  base_path: /docs
+  repository: https://github.com/telecraft-dev/telecraft
+  edit_path: docs
+
+sections:
+  - id: concepts
+    title: Concepts
+    path: concepts
+    audience: public
+    summary: >-
+      The model behind Telecraft: what it reads, what it judges, and the
+      vocabulary the rest of the documentation uses.
+
+  - id: guides
+    title: Guides
+    path: guides
+    audience: public
+    summary: >-
+      Task-oriented instructions, from a first verdict to serving
+      configuration and staging a rollout.
+
+  - id: reference
+    title: Reference
+    path: reference
+    audience: public
+    summary: >-
+      Exhaustive lookup: every command, flag, and authored file format.
+
+  - id: contributing
+    title: Contributing
+    path: contributing
+    audience: contributor
+    summary: >-
+      Developer documentation: local development, the package
+      architecture, the provider seams, and how decisions are recorded.
+
+# Pages that sit outside a section directory but are still published.
+pages:
+  - path: index.md
+    title: Telecraft documentation
+    order: 0
+  - path: glossary.md
+    title: Glossary
+    section: reference
+    order: 100
+  - path: terminology.html
+    title: Terminology guide
+    section: reference
+    order: 101
+    format: html
+
+# The working corpus behind the decisions. These directories are not
+# built into the site: they are a record of how the product was argued
+# into existence, they assume the reader has the whole history, and they
+# reference each other by number rather than by link. The Contributing
+# section links to them on GitHub instead, which is where they read best.
+not_published:
+  - adr
+  - requirements
+  - research
+  - prototypes
+  - branding
+  - plan.md
+  - open-questions.md
