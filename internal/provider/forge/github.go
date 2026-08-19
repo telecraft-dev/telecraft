@@ -286,24 +286,55 @@ func (g *GitHubApp) moveBranch(ctx context.Context, branch, sha string) error {
 }
 
 // ensureProposal opens the pull request for the branch, or refreshes the
-// title and body of the open one.
+// one already standing for it — reopening it first if it needs that.
+//
+// It deliberately asks for every state, not just open ones. Propose resets
+// the branch to base before it commits, because createCommitOnBranch is
+// the only commit shape GitHub signs for an App and it will only write
+// onto a branch already sitting at the parent it is given. For as long as
+// it takes that commit to land, the branch holds nothing ahead of base —
+// and GitHub, seeing a pull request with no commits in it, closes the
+// pull request. It is a race with a background job on their side, so it
+// fires on some retries and not others.
+//
+// Asking only for open proposals therefore misses our own, precisely when
+// a retry is in flight, and the function goes on to open a second one.
+// That is the duplicate proposal this function exists to prevent
+// (ADR-0028 §6: a retry moves the same branch and refreshes the same pull
+// request), and on a user's repository it would be a duplicate they did
+// not ask for.
 func (g *GitHubApp) ensureProposal(ctx context.Context, change seam.Change, base string) (seam.Proposal, error) {
 	head := g.owner + ":" + change.Branch
-	var open []struct {
-		Number  int    `json:"number"`
-		HTMLURL string `json:"html_url"`
+	var existing []struct {
+		Number   int     `json:"number"`
+		HTMLURL  string  `json:"html_url"`
+		State    string  `json:"state"`
+		MergedAt *string `json:"merged_at"`
 	}
-	query := g.repoPath("/pulls") + "?state=open&head=" + url.QueryEscape(head)
-	if err := g.api(ctx, http.MethodGet, query, nil, &open); err != nil {
+	query := g.repoPath("/pulls") + "?state=all&sort=created&direction=desc&head=" + url.QueryEscape(head)
+	if err := g.api(ctx, http.MethodGet, query, nil, &existing); err != nil {
 		return seam.Proposal{}, err
 	}
 
-	if len(open) > 0 {
-		pr := open[0]
-		if err := g.api(ctx, http.MethodPatch, g.repoPath(fmt.Sprintf("/pulls/%d", pr.Number)), map[string]string{
+	for _, pr := range existing {
+		// A merged proposal is finished. The branch being reused after a
+		// merge is a genuinely new change, and it gets its own pull
+		// request rather than resurrecting the delivered one.
+		if pr.MergedAt != nil {
+			continue
+		}
+		refresh := map[string]string{
 			"title": change.Title,
 			"body":  change.Body,
-		}, nil); err != nil {
+		}
+		// Reopening is how the retry contract survives GitHub having
+		// closed our own proposal out from under us. A proposal someone
+		// closed on purpose reopens too — the alternative is opening a
+		// second one beside it, which is worse in every case.
+		if pr.State == "closed" {
+			refresh["state"] = "open"
+		}
+		if err := g.api(ctx, http.MethodPatch, g.repoPath(fmt.Sprintf("/pulls/%d", pr.Number)), refresh, nil); err != nil {
 			return seam.Proposal{}, err
 		}
 		return seam.Proposal{ID: fmt.Sprint(pr.Number), URL: pr.HTMLURL, Branch: change.Branch}, nil
