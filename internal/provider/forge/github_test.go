@@ -46,10 +46,12 @@ func keyPEM(t *testing.T) []byte {
 type fakeAPI struct {
 	t *testing.T
 
-	mu     sync.Mutex
-	bodies map[string][]map[string]any // "METHOD path" -> decoded bodies
-	branch string                      // current sha of the draft branch, "" = absent
-	openPR int                         // open PR number for the branch, 0 = none
+	mu       sync.Mutex
+	bodies   map[string][]map[string]any // "METHOD path" -> decoded bodies
+	branch   string                      // current sha of the draft branch, "" = absent
+	openPR   int                         // PR number for the branch, 0 = none
+	prState  string                      // "open" or "closed"; GitHub closes an emptied PR
+	prMerged bool                        // a merged proposal is finished, never reopened
 }
 
 func (f *fakeAPI) record(r *http.Request) map[string]any {
@@ -124,19 +126,33 @@ func (f *fakeAPI) server(t *testing.T) *httptest.Server {
 			reply(w, http.StatusOK, map[string]any{})
 		case "GET /pulls":
 			f.mu.Lock()
-			n := f.openPR
+			n, state, merged := f.openPR, f.prState, f.prMerged
 			f.mu.Unlock()
 			if n == 0 {
 				reply(w, http.StatusOK, []any{})
 				return
 			}
-			reply(w, http.StatusOK, []any{map[string]any{"number": n, "html_url": prURL(n)}})
+			// The caller asks for state=all, so a closed proposal is
+			// listed rather than hidden — which is the whole point.
+			if !strings.Contains(r.URL.RawQuery, "state=all") {
+				t.Errorf("GET /pulls asked for %q; a state=open query cannot see a proposal GitHub has closed", r.URL.RawQuery)
+			}
+			pr := map[string]any{"number": n, "html_url": prURL(n), "state": state}
+			if merged {
+				pr["merged_at"] = "2026-08-19T00:00:00Z"
+			}
+			reply(w, http.StatusOK, []any{pr})
 		case "POST /pulls":
 			f.mu.Lock()
-			f.openPR = 7
+			f.openPR, f.prState = 7, "open"
 			f.mu.Unlock()
 			reply(w, http.StatusCreated, map[string]any{"number": 7, "html_url": prURL(7)})
 		case "PATCH /pulls/7":
+			if state, ok := body["state"].(string); ok && state == "open" {
+				f.mu.Lock()
+				f.prState = "open"
+				f.mu.Unlock()
+			}
 			reply(w, http.StatusOK, map[string]any{})
 		default:
 			t.Errorf("unexpected call: %s %s", r.Method, r.URL.Path)
@@ -346,6 +362,78 @@ func TestProposeRefreshesExistingProposal(t *testing.T) {
 	// One exchange serves both proposes: the installation token is cached.
 	if n := len(api.sent("POST", "/app/installations/154498501/access_tokens")); n != 1 {
 		t.Errorf("saw %d token exchanges, want 1 (cached until expiry)", n)
+	}
+}
+
+// TestProposeReopensAProposalGitHubClosed: the branch is reset onto base
+// before the commit lands, so for a moment it holds nothing ahead of base
+// and GitHub closes the pull request sitting on it. A retry must reopen
+// that proposal, never open a second one beside it (ADR-0028 §6).
+//
+// This is not hypothetical: it failed the live contract twice on 2026-08-19,
+// opening pull requests 65 and 69 on the fixture repository when 64 and 68
+// were the proposals it was meant to refresh.
+func TestProposeReopensAProposalGitHubClosed(t *testing.T) {
+	api := &fakeAPI{t: t}
+	srv := api.server(t)
+	defer srv.Close()
+	forge := testForge(t, srv.URL)
+
+	first, err := forge.Propose(t.Context(), testChange())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// GitHub notices the emptied branch and closes the proposal.
+	api.mu.Lock()
+	api.prState = "closed"
+	api.mu.Unlock()
+
+	refreshed := testChange()
+	refreshed.Title = "Raise the gold tier (fixed)"
+	again, err := forge.Propose(t.Context(), refreshed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.ID != first.ID {
+		t.Errorf("retry opened proposal %s, want the original %s reopened", again.ID, first.ID)
+	}
+	if n := len(api.sent("POST", "/repos/telecraft-dev/estate-fixture/pulls")); n != 1 {
+		t.Errorf("saw %d pull-request creations, want 1 — a closed proposal is reopened, never duplicated", n)
+	}
+	patches := api.sent("PATCH", "/repos/telecraft-dev/estate-fixture/pulls/7")
+	if len(patches) != 1 {
+		t.Fatalf("saw %d refreshes, want 1", len(patches))
+	}
+	if patches[0]["state"] != "open" {
+		t.Errorf("refresh = %v, want it to carry state=open — a closed proposal that stays closed is not a proposal", patches[0])
+	}
+}
+
+// TestProposeLeavesAMergedProposalAlone: a merged proposal is delivered.
+// Reusing its branch is a new change, and it gets its own pull request
+// rather than resurrecting the one that already landed.
+func TestProposeLeavesAMergedProposalAlone(t *testing.T) {
+	api := &fakeAPI{t: t}
+	srv := api.server(t)
+	defer srv.Close()
+	forge := testForge(t, srv.URL)
+
+	if _, err := forge.Propose(t.Context(), testChange()); err != nil {
+		t.Fatal(err)
+	}
+	api.mu.Lock()
+	api.prState, api.prMerged = "closed", true
+	api.mu.Unlock()
+
+	if _, err := forge.Propose(t.Context(), testChange()); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(api.sent("POST", "/repos/telecraft-dev/estate-fixture/pulls")); n != 2 {
+		t.Errorf("saw %d pull-request creations, want 2 — the merged one is finished", n)
+	}
+	if n := len(api.sent("PATCH", "/repos/telecraft-dev/estate-fixture/pulls/7")); n != 0 {
+		t.Errorf("saw %d refreshes of the merged proposal, want 0", n)
 	}
 }
 
