@@ -26,6 +26,7 @@ import { usePresentation } from '../../presentation/usePresentation'
 import { CardPanel } from '../estate/card'
 import { buildTopologyModel, pathHopPairs, pathTierIds, servicePaths } from './model'
 import { TopologyViewSwitcher } from './switcher'
+import { topAnchoredViewportY } from './viewport'
 
 // The topology flow canvas: xyflow is the interaction substrate (pan,
 // zoom, node lifecycle, constrainable drag); the engine owns every
@@ -373,6 +374,20 @@ export function FlowCanvas() {
             edgeTypes={edgeTypes}
             fitView
             minZoom={0.2}
+            onInit={(instance) => {
+              // The fit centres the graph; the bands read top-down, so a
+              // graph shorter than the canvas hangs from the top instead
+              // (ADR-0044 §2). The engine's geometry is untouched — this
+              // is where the viewport points at it (ADR-0045 §2).
+              const viewport = instance.getViewport()
+              const canvas = instance.viewportInitialized
+                ? document.querySelector('[data-testid="topology-canvas"]')
+                : null
+              const height = canvas?.getBoundingClientRect().height ?? 0
+              if (height === 0) return
+              const y = topAnchoredViewportY(viewport, geometry.height, height)
+              if (y !== viewport.y) instance.setViewport({ ...viewport, y })
+            }}
             nodesConnectable={false}
             edgesFocusable={false}
             proOptions={{ hideAttribution: true }}

@@ -5,17 +5,14 @@ import { demoMode } from '../api/demo'
 import { DemoBanner } from './DemoBanner'
 import { JumpToObject } from './JumpToObject'
 import { LensControl } from './LensControl'
+import { WORKSPACES } from './workspaces'
 
 // Navigation is activity-first: the four Workspaces are the only top-level
 // entries (ADR-0042 §1). Switching Workspaces keeps the lens (one global
 // chrome control) and drops the object selection, which belongs to the
-// Workspace that read it.
-const WORKSPACES = [
-  { to: '/estate', label: 'Estate', testid: 'nav-estate' },
-  { to: '/topology', label: 'Topology', testid: 'nav-topology' },
-  { to: '/compose', label: 'Compose', testid: 'nav-compose' },
-  { to: '/catalogue', label: 'Catalogue & Governance', testid: 'nav-catalogue' },
-] as const
+// Workspace that read it. The list itself lives in ./workspaces, because
+// the deploy pre-renders an entry document per Workspace URL and the two
+// must not drift.
 
 export function AppShell() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
