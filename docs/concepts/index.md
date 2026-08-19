@@ -65,12 +65,12 @@ These five hold everywhere in the design. Where a feature would break one,
 the feature loses.
 
 **Nothing sits in the telemetry path.** If Telecraft is down, no telemetry
-stops flowing. The platform is never a collector, a gateway, or a hop. Every
-governance mechanism that looks like it needs to be inline (schema checking at
-collection time, quarantining unrecognised sources) ships instead as a
-*rendered pattern*: configuration the renderer emits into your own collectors,
-plus a reading the platform takes afterwards. A pattern that dies costs you
-findings, never data.
+stops flowing. The platform is never a collector, a gateway, or a hop. Where a
+capability looks like it needs to be inline, the answer is a *rendered
+pattern*: configuration the renderer emits into your own collectors, plus a
+reading the platform takes afterwards through the same seam it reads your
+telemetry through. Collector health works exactly that way. A pattern that
+stops working costs you findings, never data.
 
 **Git is the source of truth.** History, rollback, approval, and the audit
 trail already exist in git, so none of them are built. The console opens

@@ -118,16 +118,21 @@ beside it is what stops that from reading as clean.
 ## Authorisation follows ownership
 
 What a signed-in human may author is derived from the ownership tree, not from
-a parallel role store. There is one source of truth and two enforcement
-shapes: where the forge supports review routing, the platform generates the
-forge's code-ownership file from ownership metadata and merge rights stay the
-forge's; where no review machinery exists, a platform merge gate enforces the
-same rule.
+a parallel role store, and there is one source of truth: the ownership
+metadata in the estate repository.
 
-That generated projection is what makes Exemption authority mechanical rather
-than procedural: an exemption file touching a Requirement routes to that
-Requirement's owning team for review, so self-forgiveness is impossible by
-construction. See [governance](governance.md#exemptions-and-grace).
+Where the forge supports review routing, the platform **generates** the
+forge's code-ownership file from that metadata, and merge rights stay the
+forge's. The projection is a cache, never the source: humans edit `teams.yaml`
+and the `owner` field on objects, and the renderer emits the projection in the
+configured forge's dialect. Every line carries the owners of the team *plus
+its ancestors*, so review reach derives from the tree rather than from the
+directory shape, and the ancestors who govern a team keep their say.
+
+A forge declares its capabilities up front rather than failing at merge time,
+so an adopter running on plain git transport can see exactly which
+forge-enforced review they have forfeited. The render gate still holds either
+way.
 
 Reference: [ADR-0016](../adr/0016-ownership-and-components.md),
 [ADR-0017](../adr/0017-team-hierarchy-rollup.md).

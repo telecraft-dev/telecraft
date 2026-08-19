@@ -106,13 +106,19 @@ waived from the completeness requirement until March" is one reviewable file
 rather than 40 copies. There are no narrowing semantics, because an Exemption
 waives a count and never forbids complying.
 
-**Authority is mechanical, not procedural.** The change introducing an
-Exemption must be approved by the owner of the Requirement being waived, or
-that owner's ancestor team. Nothing enforces this with a workflow: the
-[generated code-ownership projection](ownership.md#authorisation-follows-ownership)
-routes an exemption file touching a Requirement to that Requirement's owning
-team, so self-forgiveness is impossible by construction. On forges without
-code-ownership, the platform merge gate enforces the same rule.
+**Authority is a review rule, not a workflow.** An Exemption is valid only
+when the change introducing it is approved by the owner of the Requirement
+being waived, or by that owner's ancestor team. The point is that
+self-forgiveness should be impossible: an Exemption is a loosening, and every
+loosening mechanism in the model runs in one direction, the way only an
+ancestor may widen an [allow-list](authoring.md#allow-lists-and-grants).
+
+Telecraft builds no approval workflow for that. Review routing is the forge's,
+driven by the
+[generated code-ownership projection](ownership.md#authorisation-follows-ownership).
+What the platform enforces itself is structural: the loader refuses an
+Exemption that names no Requirement, no owner, or no expiry, or that carries
+both a Service and a Team.
 
 Renewal is a fresh change proposal. Expiry means the file stops counting on the
 next run with no manual step, and an expired Exemption left in the tree is an
@@ -164,24 +170,25 @@ Several families feed those kinds:
 
 ## Enforcement points
 
-There is **one evaluator**, exposed as a validation service, and every caller
-uses it: the composer as you edit, the render step, CI, and the continuous
-evaluation loop over Effective configurations. Vendoring a copy into CI is
-refused, because policy state lives with the instance and a vendored copy
-would judge with stale policy by construction. The composer's live findings,
-the save gate, CI annotations, and the estate view can never disagree, because
-they are the same call.
+There is **one evaluator**, and every caller goes through it: the composer as
+you edit, the render step, the CI check, and the continuous evaluation over
+Effective configurations. Vendoring a copy of the rules into CI is refused,
+because the policy state they need (the active Catalogue, the allow-lists, the
+Grants, the floors) lives with the instance, and a vendored copy would judge
+with stale policy by construction. The composer's live findings, the save
+gate, CI annotations, and the estate view can never disagree, because the
+judgement behind all four is the same code over the same policy.
 
-Validation is continuous rather than save-triggered. The call is stateless,
-draft in and findings out, so the composer shows findings and palette states
-while you type. Saving makes the same call with enforcement on.
+Judging is stateless, draft in and findings out, so validation is continuous
+rather than save-triggered: the composer shows findings and palette states as
+you edit, and saving asks the same question with enforcement on.
 
 **Exactly one policy rule hard-blocks: an allow-list violation, at render.** A
 Blueprint referencing a component outside its team's effective list does not
 render into the estate repository. That rule earns its status by having a
 total authority chain and a fast, auditable escape hatch: request a
-[Grant](authoring.md#allow-lists-and-grants). Because the escape hatch exists,
-no break-glass override does.
+[Grant](authoring.md#allow-lists-and-grants). Because that escape hatch
+exists, no override mechanism is needed and none exists.
 
 Everything else that is policy produces findings. Stability floors and
 lifecycle never block: breaches have legitimate temporary states, such as a
@@ -237,13 +244,14 @@ passes the requirement and is surfaced anyway.
 
 ### Quarantine
 
-Ungoverned data is handled by the **quarantine pattern**: a gateway Blueprint
-may include an authored routing rule sending telemetry from unrecognised
-`service.name` values to a short-retention quarantine destination, which the
-platform then observes and flags. Unknown sources are arriving; onboard them.
+Ungoverned data is handled by the **quarantine pattern**. A gateway Blueprint
+can carry an authored routing rule that sends telemetry from unrecognised
+`service.name` values to a short-retention quarantine destination, and the
+platform reads what lands there through the same seam it reads everything
+else: unknown sources are arriving, so onboard them.
 
-This is a rendered governance pattern authored out of ordinary Components,
-never a platform runtime capability, because the platform is
+That is a governance pattern you author out of ordinary Components, never a
+platform runtime capability, because the platform is
 [not in the data path](index.md#principles). It drains by onboarding, never by
 retention growth.
 
