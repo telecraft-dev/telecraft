@@ -109,8 +109,8 @@ stamped, self-telemetry on, no data pipelines, and non-empty by construction.
 The one case where the platform is genuinely talking to an ungoverned thing is
 not wasted. Instead of a silent `nop` pipeline, the collector becomes
 maximally visible: stamped, health-reporting, and explicitly labelled as
-governed by nobody, so the onboarding prompt can say something useful. It is
-alive, on this node, running this version, since Tuesday.
+governed by nobody, so the onboarding prompt can say something useful: alive,
+on this node, running this version, connected since this morning.
 
 Not knowing is a rendered, visible state rather than an absence.
 
@@ -127,8 +127,8 @@ conformance outcome: the outcomes are per-requirement crosses needing an
 Effective or Observed reading, and a Tier with no collectors has neither.
 The selector *is* the expectation, so the finding is the selector's.
 
-It is neutral without a floor. A freshly authored Tier awaiting its workload is
-a normal Tuesday: visible, excluded from every compliance denominator, and
+It is neutral without a floor. A freshly authored Tier awaiting its workload
+is an ordinary state: visible, excluded from every compliance denominator, and
 never red. Its age doubles as the stale-configuration signal, "never matched in
 90 days".
 
@@ -173,7 +173,7 @@ A **Cohort** is a subset of one Tier's collector population, never a Tier
 itself: a Tier is a policy position, not a rollout wave. Three specification
 forms mix per stage:
 
-- **Enumerated hosts**, naming identifying-attribute values: the three boxes
+- **Enumerated hosts**, naming identifying-attribute values: the three hosts
   you trust.
 - **Attribute selector**, such as a region.
 - **Fraction**, resolved by a stable hash over the same identifying attributes

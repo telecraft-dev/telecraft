@@ -133,8 +133,8 @@ one tolerates the Supervisor's injections.
 
 Delivery status qualifies the conformance verdict rather than replacing it.
 `broken_pipeline` with `APPLIED` is a pipeline fault. The same outcome on a
-stale or drifted collector is a delivery fault wearing a pipeline fault's
-clothes. With `FAILED`, it belongs to whoever wrote the configuration.
+stale or drifted collector is a delivery fault that looks like a pipeline
+fault. With `FAILED`, it belongs to whoever wrote the configuration.
 
 ## Why the readings stay separate
 

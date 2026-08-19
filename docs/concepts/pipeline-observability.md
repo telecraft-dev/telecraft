@@ -28,7 +28,7 @@ verdict, not in the model.
 
 The engine is machinery, not vocabulary. It adds no eighth outcome and no
 fourth reading. Data claims are the computation that decides the Observed leg
-of [the cross](readings-and-verdicts.md#the-outcome-cross): a Service's
+of the [outcome cross](readings-and-verdicts.md#the-outcome-cross): a Service's
 "expected traces never landed" *is* `not_delivered`, and the Expectation is
 why the evaluator knew to look for traces at all. Pipeline claims join the
 Tier-attached finding family instead.
