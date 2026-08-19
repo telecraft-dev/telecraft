@@ -78,10 +78,14 @@ cd console
 npm ci && npm run typecheck && npm test && npm run check:palette && npm run build
 ```
 
-CI runs six jobs: build and test, the console build, the vendor-word lint,
-a live check against Elasticsearch, a live check of the forge adapter against
-GitHub, and a build of the demo snapshot and bundle. The two live jobs skip
-themselves, loudly, when their credentials are absent.
+CI runs build and test, the console build, the vendor-word lint, a live check
+against Elasticsearch, a live check of the forge adapter against GitHub, and a
+build of the demo snapshot and bundle. The two live jobs skip themselves,
+loudly, when their credentials are absent.
+
+Which of those run depends on what changed: a documentation-only change runs
+the vendor-word lint and nothing else, because the lint is the only one of
+them that reads `docs/`. Everything runs when the diff base is unknown.
 
 See [contributing](docs/contributing/) for the detail.
 
