@@ -47,18 +47,26 @@ jobs:
           owner: telecraft-dev
           repositories: estate-demo
 
-      # estate-demo's workflow already takes the ref to build from as an
-      # input, so this asks for exactly the build it would run by hand.
-      # Nothing changes over there, which keeps the demo's pipeline the one
-      # thing it has always been: its own.
+      # A repository dispatch, the same shape docs-dispatch.yml uses, and
+      # for the same reason: it needs Contents write, which the App holds,
+      # where dispatching a workflow directly needs Actions write, which it
+      # does not. The first attempt at this used `gh workflow run` and
+      # failed with `403 Resource not accessible by integration`.
+      #
+      # No inputs travel with a repository dispatch. estate-demo's platform
+      # checkout already falls back to `main` without them, which is the
+      # ref being asked for, so nothing over there needed rewiring beyond
+      # the trigger itself.
       - name: Ask the demo to rebuild from this commit
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           DEMO_SHA: ${{ github.sha }}
+          DEMO_REF: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          gh workflow run demo.yml \
-            --repo telecraft-dev/estate-demo \
-            --ref main \
-            -f telecraft_ref=main
+          jq -n \
+            --arg sha "$DEMO_SHA" \
+            --arg ref "$DEMO_REF" \
+            '{event_type: "console-updated", client_payload: {sha: $sha, ref: $ref}}' \
+          | gh api -X POST /repos/telecraft-dev/estate-demo/dispatches --input -
           echo "Asked estate-demo to rebuild the demo from $DEMO_SHA."
