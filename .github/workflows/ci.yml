@@ -145,3 +145,15 @@ jobs:
             -team data-flow \
             -out console/dist/demo-snapshot.json
           node -e "const s=require('./console/dist/demo-snapshot.json'); if (!s.estate.cards.length) throw new Error('the snapshot carries no cards')"
+      # Every Workspace URL has to resolve to a document, or a static host
+      # answers it from its not-found page — the right screen behind a 404
+      # (ADR-0042 §3.5).
+      - name: Every Workspace URL has an entry document
+        working-directory: console
+        run: |
+          node tools/assemble-site.mjs dist
+          for route in estate topology compose catalogue; do
+            test -f "dist/$route.html" || { echo "no dist/$route.html"; exit 1; }
+            test -f "dist/$route/index.html" || { echo "no dist/$route/index.html"; exit 1; }
+          done
+          test -f dist/404.html || { echo "no dist/404.html"; exit 1; }
