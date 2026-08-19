@@ -1,0 +1,50 @@
+name: Documentation
+
+# The documentation lives here; the site that publishes it is built in
+# telecraft-dev/telecraft.dev. When a documentation change lands on main,
+# this tells that repository to rebuild. The build itself, and every
+# choice it depends on, stays over there.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-dispatch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-site:
+    name: Notify telecraft.dev
+    runs-on: ubuntu-latest
+    steps:
+      # The same App the forge adapter uses (ADR-0014). It needs read
+      # access to telecraft.dev in its installation; without that the
+      # token request fails and this job goes red, which is the point:
+      # a documentation change that never reaches the site should be
+      # visible, not silent.
+      - name: Mint an App token for telecraft.dev
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FORGE_APP_ID }}
+          private-key: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
+          owner: telecraft-dev
+          repositories: telecraft.dev
+
+      - name: Dispatch the documentation build
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          DOCS_SHA: ${{ github.sha }}
+          DOCS_REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg sha "$DOCS_SHA" \
+            --arg ref "$DOCS_REF" \
+            '{event_type: "docs-updated", client_payload: {sha: $sha, ref: $ref}}' \
+          | gh api -X POST /repos/telecraft-dev/telecraft.dev/dispatches --input -
+          echo "Asked telecraft.dev to rebuild the documentation from $DOCS_SHA."
