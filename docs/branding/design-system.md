@@ -326,6 +326,17 @@ link must stay an anchor.
 who-acts link that happens to point at the surface the reader is already on.
 The pressed state is `selected`.
 
+The chrome is one row at every width, and it is measured rather than
+assumed (`e2e/chrome.spec.ts`). The theme control is a labelled select
+matching the environment lens beside it; it began as a three-segment
+control and did not fit — on the demo, whose chrome carries an extra
+provenance banner, it wanted 1749px inside 1600px and wrapped
+"Catalogue & Governance" onto three lines. Hiding the segment words at a
+breakpoint would have bought the space by giving up what made the control
+readable, so the control changed shape instead. Inside the chrome, the
+demo's provenance line is what truncates first: it is the longest thing
+there and the least load-bearing.
+
 Panel width is the reader's: drag the handle, arrow-key it, `Home` to reset.
 It is a device preference and lives in `localStorage`, not the URL, which
 follows the theme's rule and is the second documented exception to

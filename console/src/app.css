@@ -207,40 +207,6 @@ select {
   color: var(--colour-text);
 }
 
-/* ---- The segmented control ----
-   Three states shown as three. Used by the theme control, where `system` is
-   a real choice that an on/off switch could not express. */
-
-.segmented {
-  display: inline-flex;
-  border: 1px solid var(--colour-rule);
-  border-radius: var(--radius-1);
-  overflow: hidden;
-}
-
-.segment {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
-  border: 0;
-  border-left: 1px solid var(--colour-rule);
-  background: var(--colour-surface-raised);
-  color: var(--colour-text-muted);
-  font-size: var(--text-xs);
-  cursor: pointer;
-  transition: background var(--motion-fast) var(--motion-ease);
-}
-
-.segment:first-child {
-  border-left: 0;
-}
-
-.segment.active {
-  background: var(--colour-fill);
-  color: var(--colour-on-fill);
-}
-
 /* ---- The side panel and its handle ----
    One panel wherever a Tier, a claim or a rendered document is summoned in
    place (ADR-0041, ADR-0042 §3.2), and the reader sets its width. */
@@ -302,6 +268,11 @@ select {
   padding: var(--space-3) var(--space-4);
   background: var(--colour-chrome);
   border-bottom: 1px solid var(--colour-rule);
+  /* One row, always. A wrapping chrome pushes every surface below it down
+     and reads as a layout accident rather than a decision — measured on the
+     demo, where the extra provenance banner tipped it over and the bar grew
+     from 48px to 107px. */
+  flex-wrap: nowrap;
 }
 
 /* Wordmark-first: the mark supports the word, it does not replace it
@@ -317,6 +288,8 @@ select {
   display: flex;
   gap: var(--space-2);
   flex: 1;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .workspace-link {
@@ -324,6 +297,9 @@ select {
   border-radius: var(--radius-1);
   text-decoration: none;
   color: var(--colour-text-muted);
+  /* A Workspace name is one thing. "Catalogue & Governance" broken across
+     three lines is not a narrower control, it is a broken one. */
+  white-space: nowrap;
 }
 
 .workspace-link {
@@ -344,6 +320,7 @@ select {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .lens-control {
@@ -1923,10 +1900,17 @@ select {
   align-items: baseline;
   gap: var(--space-2);
   white-space: nowrap;
+  min-width: 0;
 }
 
 .demo-provenance {
   color: var(--colour-text-muted);
+  /* Which snapshot this is stays readable; which commit it came from
+     truncates before anything else in the chrome does. The full value is
+     in the title, and on the surface below. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* The authoring affordance: words first, hue reinforcing (ADR-0041 §2). */
