@@ -47,7 +47,12 @@ Hopyard/Signalpost metaphor family was rejected ("beer plus trains").
 - [x] Main repo live at `telecraft-dev/telecraft`; planning foundation open
       as PR #1.
 
-## Identity direction (seed for `identity.md`)
+## Identity direction (seeded `identity.md`)
+
+> Settled in [`identity.md`](identity.md) and [ADR-0047](../adr/0047-visual-identity-and-design-tokens.md)
+> on 2026-08-19. The direction below is unchanged; it is kept here as the
+> record of where it came from.
+
 
 Warm-industrial craftsmanship, not gaming: wordmark-first, workshop/precision
 aesthetic (calipers, blueprint linework — which also nods to Blueprints as a
