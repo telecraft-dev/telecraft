@@ -20,7 +20,7 @@
 // Usage: node tools/assemble-site.mjs <dist-dir> [--snapshot file] [--domain host]
 
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 
 /**
@@ -62,7 +62,10 @@ async function main() {
   }
 
   if (snapshot) {
-    await copyFile(snapshot, join(dist, 'demo-snapshot.json'))
+    const placed = join(dist, 'demo-snapshot.json')
+    if (resolve(snapshot) !== resolve(placed)) {
+      await copyFile(snapshot, placed)
+    }
   }
   if (domain) {
     // The custom domain has to travel with every deployment, or the next
