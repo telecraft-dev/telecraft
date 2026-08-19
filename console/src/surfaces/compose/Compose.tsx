@@ -19,6 +19,7 @@ import { NodeCanvas } from './NodeCanvas'
 import { Requirements } from './Requirements'
 import { YamlFlyout } from './YamlFlyout'
 import { addEntry, addSuggestion, removeEntry } from './draft'
+import { Button } from '../../ui/Button'
 
 /**
  * The Compose Workspace (ADR-0043): three surfaces over the one open
@@ -188,9 +189,8 @@ function Workspace({
             </Link>
           ))}
         </nav>
-        <button
-          type="button"
-          className={yamlOpen ? 'yaml-toggle open' : 'yaml-toggle'}
+        <Button
+          className={yamlOpen ? 'yaml-toggle selected' : 'yaml-toggle'}
           data-testid="yaml-toggle"
           aria-expanded={yamlOpen}
           onClick={() =>
@@ -201,7 +201,7 @@ function Workspace({
           }
         >
           YAML
-        </button>
+        </Button>
       </header>
 
       {/* The claim flow's draft path (ADR-0042 §6): the selector arrives
@@ -250,14 +250,14 @@ function Workspace({
               </Link>
             </div>
           )}
-          <button
-            type="button"
+          <Button
+            tone="primary"
             data-testid="save-button"
             disabled={blocked || proposal.isPending || verdict.data === undefined}
             onClick={() => proposal.mutate()}
           >
             Save — propose v{proposed.version} as a PR
-          </button>
+          </Button>
           {proposal.isError && (
             <p className="save-error" data-testid="save-error">
               {proposal.error.message}

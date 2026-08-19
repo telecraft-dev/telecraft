@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import type { CollectorRow, EstatePayload, TeamNode } from '../../api/types'
 import { useLens } from '../../chrome/LensControl'
 import { formatObjectRef } from '../../objectref'
+import { Chip } from '../../ui/Chip'
 
 // The flat filter-first estate list (ADR-0042 §1): the InfoSec workflow
 // and the only home of per-collector detail (rule 3.4) — collector counts
@@ -206,12 +207,13 @@ export function FlatList({
               <td>{row.id}</td>
               <td>
                 {row.tier ?? (
-                  <span
+                  <Chip
+                    tone="ungoverned"
                     className={`ungoverned-chip ungoverned-${row.ungoverned}`}
                     data-testid={`ungoverned-${row.id}`}
                   >
                     ungoverned · {row.ungoverned === 'served' ? 'served the Unmatched artefact' : 'foreign'}
-                  </span>
+                  </Chip>
                 )}
               </td>
               <td>{row.team ?? '—'}</td>

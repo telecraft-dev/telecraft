@@ -27,6 +27,8 @@ import { CardPanel } from '../estate/card'
 import { buildTopologyModel, pathHopPairs, pathTierIds, servicePaths } from './model'
 import { TopologyViewSwitcher } from './switcher'
 import { topAnchoredViewportY } from './viewport'
+import { buttonClass } from '../../ui/Button'
+import { chipClass } from '../../ui/Chip'
 
 // The topology flow canvas: xyflow is the interaction substrate (pan,
 // zoom, node lifecycle, constrainable drag); the engine owns every
@@ -325,7 +327,10 @@ export function FlowCanvas() {
                 key={service}
                 type="button"
                 data-testid={`trace-${service}`}
-                className={service === tracedService ? 'trace-button active' : 'trace-button'}
+                className={buttonClass(
+                  'secondary',
+                  service === tracedService ? 'trace-button selected' : 'trace-button',
+                )}
                 onClick={() =>
                   void navigate({
                     to: '/topology',
@@ -345,7 +350,10 @@ export function FlowCanvas() {
             <button
               type="button"
               data-testid="simulate-toggle"
-              className={simulate ? 'trace-button active' : 'trace-button'}
+              className={buttonClass(
+                'secondary',
+                simulate ? 'trace-button selected' : 'trace-button',
+              )}
               aria-pressed={simulate}
               onClick={() => setSimulate(!simulate)}
             >
@@ -357,7 +365,10 @@ export function FlowCanvas() {
               {tracedPaths.map((path, i) => (
                 <span
                   key={path.through.join('→')}
-                  className={`trace-path-chip trace-path-${i % TRACE_COLOURS}`}
+                  className={chipClass('neutral', {
+                    mono: true,
+                    extra: `trace-path-chip trace-path-${i % TRACE_COLOURS}`,
+                  })}
                   data-testid={`trace-path-${i}`}
                 >
                   {pathLabel(payload, path.through)}

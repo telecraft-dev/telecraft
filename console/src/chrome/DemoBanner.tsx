@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { demoMeta } from '../api/demo'
+import { Chip } from '../ui/Chip'
 
 /**
  * The demo's own statement of what it is (issue #50): a build-time
@@ -17,7 +18,7 @@ export function DemoBanner() {
 
   return (
     <span className="demo-banner" data-testid="demo-banner">
-      <strong className="demo-badge">Read-only demo</strong>
+      <Chip className="demo-badge">Read-only demo</Chip>
       {meta.data && (
         <span className="demo-provenance" data-testid="demo-provenance">
           {meta.data.repository ?? 'the demo estate'} at{' '}

@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { IndexedObject } from '../api/types'
 import { deepLinkFor } from '../objectref'
+import { Button } from '../ui/Button'
+import { Icon } from '../ui/Icon'
 
 /**
  * Global jump-to-object search (ADR-0042 §1): object access is served
@@ -59,9 +61,17 @@ export function JumpToObject() {
       }}
     >
       <Dialog.Trigger asChild>
-        <button type="button" className="jump-trigger" data-testid="jump-trigger">
-          Jump to object <kbd>⌘K</kbd>
-        </button>
+        <Button className="jump-trigger" data-testid="jump-trigger">
+          <Icon name="search" />
+          Jump to object
+          {/* Drawn, not typed: Atkinson Hyperlegible does not contain
+              U+2318, so a typed command key renders from whichever fallback
+              face the reader's machine picks (ADR-0047 §6). The shortcut
+              itself takes either modifier. */}
+          <kbd>
+            <Icon name="command" />K
+          </kbd>
+        </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="jump-overlay" />

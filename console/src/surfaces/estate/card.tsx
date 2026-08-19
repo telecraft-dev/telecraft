@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { api } from '../../api/client'
 import type {
   BandName,
-  BandState,
   CardFace,
   Finding,
   Provenance,
@@ -25,6 +24,10 @@ import {
   readingTitle,
 } from '../../estate/readings'
 import { deepLinkFor } from '../../objectref'
+import { buttonClass, Button } from '../../ui/Button'
+import { Chip } from '../../ui/Chip'
+import { BandMark, Mark, markFor, stateLabel } from '../../ui/Mark'
+import { Panel } from '../../ui/Panel'
 
 // The universal card, face and panel (ADR-0041, ADR-0042 §3.2): one
 // component wherever a Tier appears, summoned in place — inspection never
@@ -35,29 +38,6 @@ const BAND_LABEL: Record<BandName, string> = {
   delivery: 'Delivery',
   expectation: 'Expectation',
   conformance: 'Conformance',
-}
-
-function glyph(state: BandState, severity: Severity): string {
-  if (state === 'finding') return severity === 'violation' ? '✗' : '▲'
-  if (state === 'ok') return '✓'
-  return '◌'
-}
-
-function stateLabel(state: BandState): string {
-  switch (state) {
-    case 'ok':
-      return 'ok'
-    case 'finding':
-      return 'finding'
-    case 'not_applicable':
-      return 'not applicable'
-    case 'unknown':
-      return 'unknown'
-    case 'pending_settle':
-      return 'pending settle'
-    case 'stale_demoted':
-      return 'stale, demoted'
-  }
 }
 
 /**
@@ -73,6 +53,14 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
     return null
   }
   return (
+    // The matrix is the one part of a card whose height the payload
+    // decides: four lanes each carrying a reduction and an error reading
+    // measure 410px, against roughly 250px for the common card. Equal
+    // heights at card grain are not negotiable (ADR-0042 §2, P4 rule 3),
+    // so the matrix scrolls inside its own bounds rather than pushing the
+    // foot off the card — the foot carries the door to the flat list, and
+    // a door that silently disappears is worse than one that scrolls.
+    <div className="signal-matrix-scroll">
     <table className="signal-matrix" data-testid={`matrix-${tier}`}>
       <tbody>
         {signals.map((row) => {
@@ -101,6 +89,7 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
         })}
       </tbody>
     </table>
+    </div>
   )
 }
 
@@ -137,9 +126,7 @@ export function CardFaceView({
             const { state, worstSeverity } = card.bands[band]
             return (
               <li key={band} className={`band band-${state} severity-${worstSeverity}`}>
-                <span className="band-glyph" aria-hidden="true">
-                  {glyph(state, worstSeverity)}
-                </span>
+                <BandMark state={state} severity={worstSeverity} />
                 <span className="band-name">{BAND_LABEL[band]}</span>
                 <span className="band-state">{stateLabel(state)}</span>
               </li>
@@ -185,15 +172,15 @@ export function WhyButton({
 }) {
   return (
     <span className="why">
-      <button
-        type="button"
+      <Button
+        tone="quiet"
         className="why-button"
         data-testid={`why-${provenance.key}`}
         aria-expanded={open}
         onClick={onToggle}
       >
         why?
-      </button>
+      </Button>
       {open && (
         <div className="why-popover" data-testid="why-popover">
           <p className="why-claim">{provenance.claim}</p>
@@ -217,7 +204,7 @@ export function WhyButton({
                 lens: prev.lens,
                 object: `service:${provenance.trace?.service}`,
               })}
-              className="who-acts"
+              className={buttonClass('secondary', 'who-acts')}
               data-testid={`why-trace-${provenance.key}`}
             >
               Trace {provenance.trace.service} on the canvas
@@ -240,7 +227,7 @@ function WhoActsChip({ finding }: { finding: Finding }) {
         object: link.object,
         ...(finding.whoActs.lane ? { lane: finding.whoActs.lane } : {}),
       })}
-      className="who-acts"
+      className={buttonClass('secondary', 'who-acts')}
       data-testid={`who-acts-${finding.id}`}
     >
       {finding.whoActs.label}
@@ -278,22 +265,19 @@ export function CardPanel({ card }: { card: CardFace }) {
   }
 
   return (
-    <aside className="card-panel" data-testid="card-panel">
-      <header className="panel-head">
-        <h2 data-testid="panel-title">{card.name}</h2>
-        <button
-          type="button"
-          data-testid="panel-close"
-          onClick={() =>
-            void navigate({
-              to: '.',
-              search: (prev) => ({ ...prev, object: undefined }),
-            })
-          }
-        >
-          Close
-        </button>
-      </header>
+    <Panel
+      name="card"
+      testId="card-panel"
+      title={card.name}
+      titleTestId="panel-title"
+      closeTestId="panel-close"
+      onClose={() =>
+        void navigate({
+          to: '.',
+          search: (prev) => ({ ...prev, object: undefined }),
+        })
+      }
+    >
       <dl className="panel-facts">
         <dt>Tier</dt>
         <dd>{card.tier}</dd>
@@ -331,9 +315,7 @@ export function CardPanel({ card }: { card: CardFace }) {
           const { state, worstSeverity, worstFinding } = card.bands[band]
           return (
             <li key={band} className={`band band-${state} severity-${worstSeverity}`}>
-              <span className="band-glyph" aria-hidden="true">
-                {glyph(state, worstSeverity)}
-              </span>
+              <BandMark state={state} severity={worstSeverity} />
               <span className="band-name">{BAND_LABEL[band]}</span>
               <span className="band-state">{stateLabel(state)}</span>
               {why(`band:${band}`)}
@@ -369,18 +351,16 @@ export function CardPanel({ card }: { card: CardFace }) {
                   data-testid={`finding-${finding.id}`}
                 >
                   <p className="finding-head">
-                    <span className="band-glyph" aria-hidden="true">
-                      {glyph('finding', finding.severity)}
-                    </span>
+                    <Mark name={markFor('finding', finding.severity)} />
                     <span className="finding-kind">{finding.kind}</span>
                     <span className="finding-severity">{severityLabel(finding.severity)}</span>
                     {finding.dampening !== 'none' && (
-                      <span
+                      <Chip
                         className={`dampening dampening-${finding.dampening}`}
                         data-testid={`dampening-${finding.id}`}
                       >
                         {finding.dampening}
-                      </span>
+                      </Chip>
                     )}
                   </p>
                   <p className="finding-summary">{finding.summary}</p>
@@ -391,6 +371,6 @@ export function CardPanel({ card }: { card: CardFace }) {
             </ul>
           ))}
       </section>
-    </aside>
+    </Panel>
   )
 }

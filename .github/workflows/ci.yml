@@ -77,10 +77,12 @@ jobs:
           FORGE_INSTALLATION_ID: ${{ secrets.FORGE_INSTALLATION_ID }}
           FORGE_APP_PRIVATE_KEY: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
 
-  # The console (issue #25, ADR-0045): typecheck, unit tests, build, the
-  # zero-CDN check over the built bundle, and the Playwright suite against
-  # the fixture backend. The air-gap check lives here beside the
-  # vendor-word lint, not in a doc (ADR-0045 §5).
+  # The console (issue #25, ADR-0045): typecheck, unit tests, the palette
+  # check over the design tokens, build, the zero-CDN check over the built
+  # bundle, and the Playwright suite against the fixture backend. The
+  # air-gap check lives here beside the vendor-word lint, not in a doc
+  # (ADR-0045 §5), and ADR-0047 put the accessibility floors beside it for
+  # the same reason: they are numbers, so they can be regressed.
   console:
     name: Console (ADR-0045)
     runs-on: ubuntu-latest
@@ -97,6 +99,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run check:palette
       - run: npm run build
       - run: npm run check:zero-cdn
       - run: npx playwright install --with-deps chromium

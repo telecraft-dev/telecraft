@@ -15,6 +15,8 @@ import { edgePath, layout } from '../../engine/layout'
 import type { EngineModel } from '../../engine/types'
 import { Palette, droppedEntry } from './Composer'
 import { laneOrder } from './draft'
+import { Button } from '../../ui/Button'
+import { Icon } from '../../ui/Icon'
 
 // D · Node canvas, the flow view — explicitly authoring-capable
 // (ADR-0043 §1): remove on every node, drag-authoring drops where the
@@ -48,15 +50,15 @@ function ComposeNodeView({ data }: NodeProps<ComposeNode>) {
       <Handle type="target" position={Position.Left} className="canvas-handle" />
       <span>{data.label}</span>
       {data.editable && (
-        <button
-          type="button"
+        <Button
+          tone="quiet"
           className="lane-remove"
           data-testid={`canvas-remove-${data.signal}-${data.index}`}
           aria-label={`Remove ${data.label} from ${data.signal}`}
           onClick={() => data.onRemove(data.signal, data.index)}
         >
-          ×
-        </button>
+          <Icon name="close" />
+        </Button>
       )}
       <Handle type="source" position={Position.Right} className="canvas-handle" />
     </div>

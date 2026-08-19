@@ -6,6 +6,8 @@ import type { ClaimCandidate, CollectorRow, EstatePayload, Selector } from '../.
 import { useLens } from '../../chrome/LensControl'
 import { formatSelector, suggestSelector } from '../../estate/claim'
 import { usePresentation } from '../../presentation/usePresentation'
+import { Button } from '../../ui/Button'
+import { Panel } from '../../ui/Panel'
 
 /**
  * The claim flow (ADR-0042 §6, ADR-0031): ungoverned to governed, in one
@@ -77,7 +79,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
       search: (prev) => ({ ...prev, herd: undefined }),
     })
 
-  if (collectors.isPending) return <aside className="card-panel">Loading the herd…</aside>
+  if (collectors.isPending) return <aside className="panel">Loading the herd…</aside>
   if (rows.length === 0) return null
 
   const attach = () => {
@@ -109,14 +111,16 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
   }
 
   return (
-    <aside className="card-panel claim-panel" data-testid="claim-panel">
-      <header className="panel-head">
-        <h2 data-testid="claim-title">Claim {rows.length} collectors</h2>
-        <button type="button" data-testid="claim-close" onClick={close}>
-          Close
-        </button>
-      </header>
-
+    <Panel
+      name="claim"
+      testId="claim-panel"
+      className="claim-panel"
+      initialWidth={400}
+      title={`Claim ${rows.length} collectors`}
+      titleTestId="claim-title"
+      closeTestId="claim-close"
+      onClose={close}
+    >
       {/* The herd: live identity from the Unmatched artefact's
           self-telemetry — alive, version X, since when (ADR-0030). */}
       <ul className="claim-herd" data-testid="claim-herd">
@@ -293,26 +297,26 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
 
       <section className="claim-section">
         {mode === 'attach' && (
-          <button
-            type="button"
+          <Button
+            tone="primary"
             className="propose-button"
             data-testid="claim-propose"
             disabled={terms === 0 || target === undefined || claim.isPending}
             onClick={attach}
           >
             {claim.isPending ? 'Proposing…' : 'Propose the claim as a PR'}
-          </button>
+          </Button>
         )}
         {mode === 'draft' && (
-          <button
-            type="button"
+          <Button
+            tone="primary"
             className="propose-button"
             data-testid="claim-draft"
             disabled={terms === 0 || draftTier === undefined}
             onClick={draft}
           >
             Draft in Compose — selector pre-filled
-          </button>
+          </Button>
         )}
         {claim.isError && (
           <p className="surface-status">The claim could not be submitted.</p>
@@ -340,6 +344,6 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
           </div>
         )}
       </section>
-    </aside>
+    </Panel>
   )
 }

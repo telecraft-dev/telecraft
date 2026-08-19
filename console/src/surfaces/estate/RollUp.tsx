@@ -3,6 +3,7 @@ import { BAND_ORDER, type BandName, type EstatePayload } from '../../api/types'
 import { useLens } from '../../chrome/LensControl'
 import { type KindRollup, rollupTree } from '../../estate/rollup'
 import { formatObjectRef } from '../../objectref'
+import { Mark } from '../../ui/Mark'
 
 // The tree-table roll-up (ADR-0042 §1, ADR-0017): ratio-plus-worst per
 // finding kind, never blended, waived counts always alongside. The lens is
@@ -17,8 +18,9 @@ const KIND_LABEL: Record<BandName, string> = {
 }
 
 function KindCell({ kind, rollup }: { kind: BandName; rollup: KindRollup }) {
+  // The worst verdict in the group, as the same mark the band rows use.
   const badge =
-    rollup.worst === 'violation' ? '✗' : rollup.worst === 'advisory' ? '▲' : ''
+    rollup.worst === 'violation' ? 'violation' : rollup.worst === 'advisory' ? 'advisory' : null
   return (
     <td className={`rollup-kind severity-${rollup.worst}`} data-kind={kind}>
       {rollup.counted === 0 ? (
@@ -28,11 +30,7 @@ function KindCell({ kind, rollup }: { kind: BandName; rollup: KindRollup }) {
           <span className="rollup-ratio">
             {rollup.passing}/{rollup.counted}
           </span>
-          {badge && (
-            <span className="band-glyph" aria-hidden="true">
-              {badge}
-            </span>
-          )}
+          {badge && <Mark name={badge} />}
         </>
       )}
       {rollup.waived > 0 && <span className="rollup-waived">{rollup.waived} waived</span>}
