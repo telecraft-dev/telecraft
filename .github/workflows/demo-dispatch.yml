@@ -1,0 +1,64 @@
+name: Demo
+
+# The demo at demo.telecraft.dev is the real console over a curated estate,
+# built and published from telecraft-dev/estate-demo. That repository runs
+# this repository's own evaluators over its YAML and builds the console from
+# this repository's main, so almost any change here changes what the demo
+# shows — and until this workflow existed, nothing told it so. A console
+# change would land, the demo would go on serving the previous build, and
+# nothing anywhere went red to say the site no longer matched the code. The
+# visual identity pass (ADR-0047) shipped and the demo served the palette it
+# replaced, which is how the gap was found.
+#
+# The snapshot generator and the evaluators behind it are code too, so this
+# fires on any change that is not documentation. Only a documentation-only
+# push leaves the demo alone, because only documentation cannot reach it.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs-dispatch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify-demo:
+    name: Notify the demo
+    runs-on: ubuntu-latest
+    steps:
+      # The same App the forge adapter uses (ADR-0014). It needs access to
+      # estate-demo in its installation; without that the token request
+      # fails and this job goes red, which is the point — a console change
+      # that never reaches the demo should be visible, not silent. That is
+      # the same contract docs-dispatch.yml holds for the documentation
+      # site, and it is deliberately not softened here: a stale demo is a
+      # published claim that no longer matches the code.
+      - name: Mint an App token for estate-demo
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.FORGE_APP_ID }}
+          private-key: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
+          owner: telecraft-dev
+          repositories: estate-demo
+
+      # estate-demo's workflow already takes the ref to build from as an
+      # input, so this asks for exactly the build it would run by hand.
+      # Nothing changes over there, which keeps the demo's pipeline the one
+      # thing it has always been: its own.
+      - name: Ask the demo to rebuild from this commit
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          DEMO_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          gh workflow run demo.yml \
+            --repo telecraft-dev/estate-demo \
+            --ref main \
+            -f telecraft_ref=main
+          echo "Asked estate-demo to rebuild the demo from $DEMO_SHA."
