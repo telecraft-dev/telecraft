@@ -6,6 +6,54 @@ on:
   pull_request:
 
 jobs:
+  # What changed decides what runs. A documentation-only pull request has no
+  # business installing a browser or standing up Elasticsearch, and when the
+  # runners are slow that wait is the whole review latency. The vendor-word
+  # lint is the deliberate exception: it scans docs/** as well as code
+  # (vendorlint.yaml), so it runs on everything, always.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      console: ${{ steps.filter.outputs.console }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # A push whose before-sha is unknown (first push, force-push) has no
+          # usable range: run everything rather than guess.
+          if [ -z "${BASE:-}" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "code=true"    >> "$GITHUB_OUTPUT"
+            echo "console=true" >> "$GITHUB_OUTPUT"
+            echo "No usable diff base; running every job."
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE" "$HEAD")
+          echo "Changed files:"; echo "$files" | sed 's/^/  /'
+          # Anything that is not documentation, and not a file only the docs
+          # site consumes, counts as code.
+          if echo "$files" | grep -qvE '^(docs/|README\.md$|\.github/workflows/docs-dispatch\.yml$)'; then
+            code=true
+          else
+            code=false
+          fi
+          if echo "$files" | grep -qE '^(console/|internal/console/|\.github/workflows/ci\.yml$)'; then
+            console=true
+          else
+            console=$code
+          fi
+          echo "code=$code"       >> "$GITHUB_OUTPUT"
+          echo "console=$console" >> "$GITHUB_OUTPUT"
+          echo "code=$code console=$console"
+
   vendor-word-lint:
     name: Vendor-word lint (ADR-0001)
     runs-on: ubuntu-latest
@@ -18,6 +66,8 @@ jobs:
 
   test:
     name: Build and test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +83,8 @@ jobs:
   # A separate job so the plain test job stays Docker-free and fast.
   telemetry-live:
     name: TelemetryProvider live (Elasticsearch)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     services:
       elasticsearch:
@@ -65,6 +117,8 @@ jobs:
   # fail the suite).
   forge-live:
     name: Forge adapter live (GitHub App)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,6 +139,8 @@ jobs:
   # the same reason: they are numbers, so they can be regressed.
   console:
     name: Console (ADR-0045)
+    needs: changes
+    if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -131,6 +187,8 @@ jobs:
   # over the curated one on every push and deploys the result.
   demo:
     name: Demo snapshot and bundle (issue #50)
+    needs: changes
+    if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
