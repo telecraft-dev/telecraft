@@ -49,7 +49,7 @@ end to end, with a console over all four workspaces. Interfaces are still
 free to change, so treat it as early software rather than a stable release.
 
 The decision corpus behind the product lives in
-[`docs/adr/`](docs/adr/) (47 architecture decision records), with
+[`docs/adr/`](docs/adr/) (48 architecture decision records), with
 [requirements](docs/requirements/), [research](docs/research/), and
 [prototype verdicts](docs/prototypes/) beside it.
 
@@ -75,7 +75,7 @@ go test ./...             # unit tests, including the lint's self-test
 go run ./tools/vendorlint # the vendor-word lint over code and docs
 
 cd console
-npm ci && npm run typecheck && npm test && npm run build
+npm ci && npm run typecheck && npm test && npm run check:palette && npm run build
 ```
 
 CI runs six jobs: build and test, the console build, the vendor-word lint,
@@ -95,6 +95,7 @@ CLI output — follows one system.
 | [`docs/branding/identity.md`](docs/branding/identity.md) | What Telecraft looks and sounds like, including the voice the docs are written in |
 | [`docs/branding/design-system.md`](docs/branding/design-system.md) | Token values, type scale, marks, and the accessibility floors |
 | [ADR-0047](docs/adr/0047-visual-identity-and-design-tokens.md) | Why it is the way it is |
+| [ADR-0048](docs/adr/0048-console-primitive-layer.md) | The console's four shared components, and why panel width belongs to the reader |
 
 Four rules carry most of it:
 
@@ -102,7 +103,9 @@ Four rules carry most of it:
   every signal colour ships its lane name. Hue reinforces, it never tells
   (ADR-0041 §2, ADR-0047 §5).
 - **Every colour is defined in exactly two blocks**, never inside a media
-  query, or it is stranded in the unresolved theme state.
+  query, or it is stranded in the unresolved theme state. `npm run
+  check:palette` measures both that and the contrast and colour-vision
+  floors, and fails the build on either.
 - **No asset is fetched from another origin.** Fonts and icons are bundled;
   CI fails the build otherwise (ADR-0019).
 - **British English**, in prose and in identifiers: `colour`, `licence`,

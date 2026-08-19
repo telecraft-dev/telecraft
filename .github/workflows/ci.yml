@@ -77,10 +77,12 @@ jobs:
           FORGE_INSTALLATION_ID: ${{ secrets.FORGE_INSTALLATION_ID }}
           FORGE_APP_PRIVATE_KEY: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
 
-  # The console (issue #25, ADR-0045): typecheck, unit tests, build, the
-  # zero-CDN check over the built bundle, and the Playwright suite against
-  # the fixture backend. The air-gap check lives here beside the
-  # vendor-word lint, not in a doc (ADR-0045 §5).
+  # The console (issue #25, ADR-0045): typecheck, unit tests, the palette
+  # check over the design tokens, build, the zero-CDN check over the built
+  # bundle, and the Playwright suite against the fixture backend. The
+  # air-gap check lives here beside the vendor-word lint, not in a doc
+  # (ADR-0045 §5), and ADR-0047 put the accessibility floors beside it for
+  # the same reason: they are numbers, so they can be regressed.
   console:
     name: Console (ADR-0045)
     runs-on: ubuntu-latest
@@ -97,9 +99,28 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run check:palette
       - run: npm run build
       - run: npm run check:zero-cdn
-      - run: npx playwright install --with-deps chromium
+      # Playwright's browser, cached on the lockfile so a run that has not
+      # changed its dependencies downloads nothing.
+      #
+      # `--with-deps` is deliberately absent. It shells out to apt-get
+      # against the Ubuntu mirrors, and measured over three consecutive
+      # runs it cost 138s, 362s, and then hung past 25 minutes — against
+      # 14s for the suite it exists to enable and ~20s for every other step
+      # in this job combined. The GitHub-hosted ubuntu-latest image already
+      # ships the shared libraries Chromium needs; `--with-deps` is for
+      # containers and self-hosted runners, which this is not. If that ever
+      # stops being true the next step fails immediately and says which
+      # library is missing, which is a better failure than a hang.
+      - uses: actions/cache@v4
+        id: playwright
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('console/package-lock.json') }}
+      - if: steps.playwright.outputs.cache-hit != 'true'
+        run: npx playwright install chromium
       - run: npm run e2e
 
   # The public demo's two halves (issue #50), built here so they cannot

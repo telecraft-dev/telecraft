@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api/client'
+import { buttonClass } from '../ui/Button'
 
 /**
  * The sign-in surface (REQ-017, ADR-0019 §1): rendered by the auth gate
@@ -75,7 +76,12 @@ export function Login() {
                 That sign-in didn't work. Check the email and password.
               </p>
             )}
-            <button type="submit" data-testid="login-submit" disabled={signIn.isPending}>
+            <button
+              type="submit"
+              className={buttonClass('primary')}
+              data-testid="login-submit"
+              disabled={signIn.isPending}
+            >
               Sign in
             </button>
           </form>
@@ -83,7 +89,7 @@ export function Login() {
         {redirects.map((p) => (
           <a
             key={p.name}
-            className="login-redirect"
+            className={buttonClass('secondary', 'login-redirect')}
             data-testid={`login-${p.name}`}
             href={`/api/v1/auth/${encodeURIComponent(p.name)}/start?return_to=${encodeURIComponent(returnTo)}`}
           >

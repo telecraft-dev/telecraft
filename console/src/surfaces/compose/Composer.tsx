@@ -11,6 +11,9 @@ import type {
 import { formatCatalogueKey } from '../../api/types'
 import { formatObjectRef } from '../../objectref'
 import { laneOrder } from './draft'
+import { Button } from '../../ui/Button'
+import { Chip } from '../../ui/Chip'
+import { Icon } from '../../ui/Icon'
 
 // A · Composer, the primary editing surface (ADR-0043 §1): palette left —
 // Catalogue ∩ effective Allow-list, judged live (ADR-0022 §5) — per-signal
@@ -193,7 +196,7 @@ export function Composer({
           {draft.satisfies.map((claim) => (
             // A claim of intent, never of fact (REQ-031): the chip says
             // "claims" and links to the engine's verdict, never a status.
-            <span key={claim} className="claim-chip" data-testid={`claim-${claim}`}>
+            <Chip key={claim} className="claim-chip" data-testid={`claim-${claim}`}>
               claims {claim}
               <Link
                 to="/compose"
@@ -202,7 +205,7 @@ export function Composer({
               >
                 → verdict
               </Link>
-            </span>
+            </Chip>
           ))}
         </div>
         {laneOrder(draft).map((signal) => {
@@ -227,10 +230,10 @@ export function Composer({
               <header className="lane-head">
                 <h3>{signal}</h3>
                 {verdict?.context.floor && (
-                  <span className="floor-chip" data-testid={`floor-chip-${signal}`}>
+                  <Chip className="floor-chip" data-testid={`floor-chip-${signal}`}>
                     floor {verdict.context.floor} ({verdict.context.serviceClass} ·{' '}
                     {verdict.context.environment})
-                  </span>
+                  </Chip>
                 )}
               </header>
               <ol className="lane-components">
@@ -262,18 +265,18 @@ export function Composer({
                         <span className="lane-ref">{ref}</span>
                       )}
                       {stabilityOf(ref, signal) && (
-                        <span className="stability-chip">{stabilityOf(ref, signal)}</span>
+                        <Chip className="stability-chip">{stabilityOf(ref, signal)}</Chip>
                       )}
                       {editable && (
-                        <button
-                          type="button"
+                        <Button
+                          tone="quiet"
                           className="lane-remove"
                           data-testid={`remove-${signal}-${i}`}
                           aria-label={`Remove ${ref} from ${signal}`}
                           onClick={() => onRemove(signal, i)}
                         >
-                          ×
-                        </button>
+                          <Icon name="close" />
+                        </Button>
                       )}
                     </li>
                   )

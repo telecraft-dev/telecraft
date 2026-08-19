@@ -1,0 +1,34 @@
+/*
+ * The two vendored families (ADR-0019, ADR-0047 §3). Every face is a local
+ * file: nothing here resolves to another origin, and
+ * `console/tools/check-zero-cdn.mjs` fails the build if one ever does.
+ *
+ * Both are variable over `wght` 400–700, so one file answers every weight
+ * the console asks for and the browser never synthesises a bold.
+ * `font-display: swap` keeps text readable while a face loads; the fallback
+ * stacks are the closest system faces so the swap barely moves.
+ */
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('./AtkinsonHyperlegibleNext.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  src: url('./AtkinsonHyperlegibleNext-Italic.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./JetBrainsMono.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

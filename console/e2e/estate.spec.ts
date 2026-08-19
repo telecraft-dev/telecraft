@@ -168,7 +168,7 @@ test('an unread lane is last-known-plus-age, never a metered zero', async ({ pag
   await expect(silent.locator('.cell-freshness')).toHaveText('silent')
 })
 
-test('the three reds stay distinct by band position and glyph, not by hue', async ({ page }) => {
+test('the three reds stay distinct by band position and mark, not by hue', async ({ page }) => {
   await page.goto(`/estate?${GATEWAY}`)
 
   // Band order is fixed on every card, so position identifies the kind.
@@ -186,9 +186,28 @@ test('the three reds stay distinct by band position and glyph, not by hue', asyn
   await expect(bands.nth(1)).toContainText('finding')
   await expect(bands.nth(2)).toContainText('finding')
 
-  // The glyph carries the severity where hue only reinforces it.
-  await expect(bands.nth(1).locator('.band-glyph')).toHaveText('▲')
-  await expect(bands.nth(2).locator('.band-glyph')).toHaveText('✗')
+  // The mark carries the severity where hue only reinforces it. Marks are
+  // drawn, not typed, since ADR-0047 §6: asserting the name the mark
+  // renders under holds the mapping without holding its geometry.
+  await expect(bands.nth(1).locator('.mark')).toHaveAttribute('data-mark', 'advisory')
+  await expect(bands.nth(2).locator('.mark')).toHaveAttribute('data-mark', 'violation')
+})
+
+test('the four honest neutrals each render their own mark (ADR-0047 §7)', async ({ page }) => {
+  await page.goto('/estate')
+
+  // gateway-staging is the fixture's neutral card: pending settle, then
+  // unknown, then not applicable. Before this pass all three drew the same
+  // glyph, which said they were one situation. They are three.
+  const bands = page.getByTestId('card-data-flow/gateway-staging').locator('.card-bands .band')
+  await expect(bands.nth(0).locator('.mark')).toHaveAttribute('data-mark', 'pending_settle')
+  await expect(bands.nth(1).locator('.mark')).toHaveAttribute('data-mark', 'unknown')
+  await expect(bands.nth(2).locator('.mark')).toHaveAttribute('data-mark', 'not_applicable')
+
+  // And each still says which it is, in words.
+  await expect(bands.nth(0)).toContainText('pending settle')
+  await expect(bands.nth(1)).toContainText('unknown')
+  await expect(bands.nth(2)).toContainText('not applicable')
 })
 
 test('the card panel shows the flow readings and the restart rate', async ({ page }) => {

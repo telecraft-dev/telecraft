@@ -5,7 +5,9 @@ import { demoMode } from '../api/demo'
 import { DemoBanner } from './DemoBanner'
 import { JumpToObject } from './JumpToObject'
 import { LensControl } from './LensControl'
+import { ThemeControl } from './ThemeControl'
 import { WORKSPACES } from './workspaces'
+import { Button } from '../ui/Button'
 
 // Navigation is activity-first: the four Workspaces are the only top-level
 // entries (ADR-0042 §1). Switching Workspaces keeps the lens (one global
@@ -44,6 +46,7 @@ export function AppShell() {
         </nav>
         <div className="chrome-controls">
           <LensControl />
+          <ThemeControl />
           <JumpToObject />
           {me.data && (
             <span className="chrome-user" data-testid="chrome-user">
@@ -55,14 +58,9 @@ export function AppShell() {
           {demoMode ? (
             <DemoBanner />
           ) : (
-            <button
-              type="button"
-              className="sign-out"
-              data-testid="sign-out"
-              onClick={() => signOut.mutate()}
-            >
+            <Button data-testid="sign-out" onClick={() => signOut.mutate()}>
               Sign out
-            </button>
+            </Button>
           )}
         </div>
       </header>

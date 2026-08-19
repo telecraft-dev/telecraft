@@ -48,14 +48,23 @@ ADR-0042 §3.5.
 | `--colour-rule-soft` | `#1D282C` | `#E6EBE9` |
 | `--colour-text` | `#E9EFEE` | `#101718` |
 | `--colour-text-muted` | `#A0AEAE` | `#4E5A5B` |
-| `--colour-text-faint` | `#788887` | `#6D7879` |
+| `--colour-text-faint` | `#8B9A99` | `#616D6E` |
 | `--colour-fill` | `#E9EFEE` | `#101718` |
 | `--colour-on-fill` | `#0F1518` | `#FFFFFF` |
+| `--colour-link` | `#E9EFEE` | `#101718` |
+| `--colour-ungoverned` | `#2A2620` | `#F3EDDF` |
+| `--colour-scrim` | `rgb(6 10 11 / 0.72)` | `rgb(16 23 24 / 0.32)` |
 
 `--colour-fill` is the accent: the active Workspace and the primary button are
 a solid fill of it. The accent is contrast, not hue, which reserves the colour
 budget for meaning and removes a token that would otherwise need retuning per
-ground.
+ground. `--colour-link` follows from that: with no accent hue to spend,
+interactive text is told apart by its underline and its full-strength ink.
+
+Each theme block also sets `color-scheme`. Selects, checkboxes, scrollbars and
+the caret are painted by the browser, and telling it which ground it is on is
+the only way they follow the theme rather than staying light under a dark
+surface.
 
 ### Severity
 
@@ -63,10 +72,10 @@ Three colours, and nothing else uses them.
 
 | Token | Dark | Light |
 |---|---|---|
-| `--severity-ok` | `#45A94F` | `#067926` |
-| `--severity-advisory` | `#FFD164` | `#E37600` |
-| `--severity-advisory-ink` | `#FFD164` | `#A56700` |
-| `--severity-violation` | `#D96147` | `#913639` |
+| `--severity-ok` | `#44A94E` | `#067826` |
+| `--severity-advisory` | `#FFD166` | `#D66D0C` |
+| `--severity-advisory-ink` | `#FFD166` | `#9B6100` |
+| `--severity-violation` | `#E4694E` | `#943B40` |
 
 Advisory carries an ink twin because amber cannot be both amber-looking and
 4.5:1 against white. The mark, the lane edge and the icon use
@@ -94,7 +103,21 @@ because red already means violation. Seven meaningful colours is more than the
 constrained gamut holds. The rule that follows is ADR-0047 §5: **a signal
 colour never appears without its lane name**, on any surface.
 
-### Brand
+### Traced Paths
+
+| Token | Dark | Light |
+|---|---|---|
+| `--path-0` | `#7FA8E8` | `#2A5D8F` |
+| `--path-1` | `#B295D4` | `#7A4A92` |
+| `--path-2` | `#5FC0B6` | `#1F7A72` |
+| `--path-3` | `#D9A05C` | `#9A5B24` |
+
+One distinct corridor per Path on the topology canvas (ADR-0044 §4). They
+borrow the signal hues, on a canvas where no signal lane is drawn, and every
+corridor carries its Path name on a chip. Separate tokens because they are a
+separate meaning and may need to diverge.
+
+## Brand
 
 `--brand`: `#FFD164` dark, `#8A5A12` light. Marketing surfaces and the mark
 only. Deliberately absent from the console's data surfaces, where amber
@@ -115,11 +138,66 @@ Sizes become tokens. The state being replaced: eighty hardcoded `font-size`
 declarations in `app.css` across twelve distinct values, with the same nominal
 size written as both `em` and `rem` (`0.85rem` seventeen times, `0.85em`
 seventeen times). `em` compounds with its parent and `rem` does not, so two
-rules that look identical render at different sizes depending on nesting.
+rules that look identical render at different sizes depending on nesting. The
+scale is `rem` throughout, so nesting no longer changes a size.
 
-Minimum sizes that matter: per-signal matrix rows are 12.5px with 7px between
-them, band rows 13.5px. The densest information on a surface is never the
-smallest text on it.
+### The scale
+
+| Token | Size | Where |
+|---|---|---|
+| `--text-xs` | 0.78125rem / 12.5px | the per-signal matrix, chips, micro-meta |
+| `--text-s` | 0.84375rem / 13.5px | band rows, secondary text, dense controls |
+| `--text-m` | 0.9375rem / 15px | compact interface text |
+| `--text-base` | 1rem / 16px | body, section headings |
+| `--text-l` | 1.125rem / 18px | panel titles |
+| `--text-xl` | 1.375rem / 22px | surface titles |
+
+Six steps, not a ratio. Two of them are pinned by content instead: the
+per-signal matrix at 12.5px and band rows at 13.5px. **The densest
+information on a surface is never the smallest text on it**, and nothing on
+any surface is smaller than the matrix. Before this pass the matrix's own
+notes were set at `0.9em` of a 12px row, which rendered at 10.8px — the
+smallest text in the console, on its densest data.
+
+Line height is `--leading-tight` 1.25 for headings, `--leading-snug` 1.4 for
+dense rows, `--leading-normal` 1.55 for body. Weights are tokens too:
+`--weight-regular` through `--weight-bold`, 400 to 700, which is the range
+the variable faces carry.
+
+`--numeric: tabular-nums` is set on `body`, not only on the mono face.
+Readings are numbers set to line up, which is the whole visual thesis
+(`identity.md`); it is also why `tnum` survives the font subset.
+
+### The faces, as shipped
+
+The vendored family is Atkinson Hyperlegible **Next**: the same design, and
+the one of the two published as a variable font. The console asks for
+weights 400, 500, 600 and 700, and the original ships only 400 and 700, so
+two of the four would be synthesised by the browser. Three faces —
+upright, italic, and JetBrains Mono — range-instanced to `wght` 400–700 and
+subset to Latin, cost 70 KB. Provenance and the exact subsetting commands
+are in `console/src/fonts/README.md`.
+
+## Space, radius, focus, motion, elevation
+
+| Family | Tokens |
+|---|---|
+| Space | `--space-1` … `--space-6`: 4, 8, 12, 16, 24, 32px |
+| Radius | `--radius-1` 4px, `--radius-2` 8px. Plates, not pills — the identity is datum lines and hairlines, so the largest radius stays small |
+| Focus | `--focus-width` 2px, `--focus-offset` 2px, `--focus-colour` = `--colour-fill`. One ring everywhere, on `:focus-visible`, drawn in the fill colour so it clears 3:1 on both grounds without spending a hue |
+| Motion | `--motion-fast` 90ms, `--motion-base` 160ms, `--motion-ease` `cubic-bezier(0.2, 0, 0.13, 1)` |
+| Elevation | `--elevation-1` for plates, `--elevation-2` for dialogs and popovers. Both carry a colour, so both are defined in two blocks |
+| Layout | `--card-width` 308px, `--card-height` 288px |
+
+Every transition in the console reads one of the two motion durations, which
+is what lets one `prefers-reduced-motion` block in `app.css` guard the lot.
+
+The card grid was re-measured in the browser rather than chosen (ADR-0048).
+The width fits the widest matrix row the fixture estate produces, 274px, plus
+the card's padding. The height fits the common card; the contract's worst
+case is four signal lanes each carrying a reduction and an error reading, at
+410px, and the matrix scrolls inside its own bounds rather than setting the
+height of every card on the shelf or clipping the foot.
 
 ## Marks and icons
 
@@ -152,9 +230,16 @@ Seven state marks, one per ADR-0041 band state:
 | `pending_settle` | clock — the ADR-0038 window has not closed |
 | `stale_demoted` | closed outline, chevron down — judged, then demoted |
 
-The four neutrals are distinct states in the contract but collapse to one
-glyph in `console/src/surfaces/estate/card.tsx` today. Giving each its own
-mark changes that mapping and its tests, not the contract.
+The four neutrals were distinct states in the contract but collapsed to one
+glyph. Each has its own mark now; that changed the mapping and its tests,
+not the contract.
+
+The mapping lives in `console/src/ui/marks.ts` and the geometry in
+`Mark.tsx` beside it, so the product vocabulary can be tested without
+rendering anything (`console/tests/marks.test.ts` holds every state to a
+mark, and the four neutrals to four different ones). Each mark renders with
+`data-mark` naming it, which is what the end-to-end suite asserts: the
+mapping is the contract, the geometry is not.
 
 Every mark is monochrome and keeps its word label. Read any card in greyscale
 and it still says which bands have findings.
@@ -168,39 +253,96 @@ and it still says which bands have findings.
 | Separation | &Delta;E 20 under deuteranopia and protanopia | the severity triad, pairwise |
 | Reduced motion | every transition guarded | all animation |
 
-Measured, not assumed. The severity triad separates at &Delta;E 29.1 on light
-and 20.0 on dark; before this pass it was 6.7 and 3.8, and the light triad sat
-at L\* 38, 42 and 40 — three colours at one lightness, which is why they
-converged. Lightness spread, not saturation, is what fixes this: when hue
-perception fails, lightness is what survives.
+Measured, not assumed — and measured by a program, not by hand. The palette
+proposed alongside ADR-0047 did not in fact clear its own floors: green
+against red separated at only &Delta;E 13.2 on light under deuteranopia,
+and three contrast pairs came in under. The shipped values are the nearest
+set to the proposal that clears everything, found by search rather than by
+eye, and they sit at most &Delta;E 6.6 from what was proposed.
 
-Two known and accepted results:
+As shipped, the worst pair in the triad:
 
-- Advisory and violation still converge under simulation, as amber and red
-  always will. Mitigated structurally by ADR-0041 §2, which is why that rule
-  exists.
-- The four signal lanes converge in places, addressed by ADR-0047 §5 rather
-  than by colour.
+| Ground | Worst pairwise separation | Pair |
+|---|---|---|
+| Light | &Delta;E 20.3 | ok against violation, deuteranopia |
+| Dark | &Delta;E 39.0 | ok against violation, protanopia |
+
+Lightness spread, not saturation, is what buys that: when hue perception
+fails, lightness is what survives. Amber against red separates comfortably
+(&Delta;E 45 to 119) precisely because amber is so much lighter — the
+convergence to design against was always green against red.
+
+One known result stands unchanged: the four signal lanes converge in places
+and cannot be made not to. That is addressed by ADR-0047 §5 — a signal
+colour never appears without its lane name — rather than by colour, and it
+is the one rule here enforced by review instead of by arithmetic.
 
 ### Re-running the checks
 
-There is no tool for this yet; ADR-0047 records that one belongs beside the
-vendor-word lint. Until then the method is: relative luminance per WCAG 2.x
-for contrast, and CIE Lab &Delta;E after simulating the palette through the
-Viénot–Brettel–Mollon matrices for deuteranopia, protanopia and tritanopia.
-Any new severity or signal colour is checked against every other colour in the
-same family before it ships.
+```sh
+cd console && npm run check:palette
+```
+
+`console/tools/check-palette.mjs` reads `tokens.css`, resolves both themes,
+and fails the build on a missed floor. It runs in CI beside the vendor-word
+lint and the zero-CDN check, which is where ADR-0047's consequences said it
+belonged. The method it implements: relative luminance per WCAG 2.x for
+contrast, and CIE Lab &Delta;E76 after simulating the palette through the
+Viénot–Brettel–Mollon matrices.
+
+It also enforces the two-block rule structurally — every colour defined in
+exactly two blocks, none inside a media query — because that is the one
+mistake which produces a console that looks correct in whichever theme the
+author happened to be in and unreadable in the other.
+
+A token used as text must be listed in the check's `TEXT_ON` table against
+every ground it is ever set on, and a mark or edge in `GRAPHIC_ON`. A new
+colour that appears in neither is unchecked, which is the only way to
+regress the floors quietly.
+
+## The primitive layer
+
+ADR-0048 records why this exists: swapping the tokens recoloured nine button
+rules, eleven chip rules and three panel rules faithfully, and left them
+exactly as inconsistent as it found them, because the inconsistency was never
+in the colours.
+
+Four components in `console/src/ui/`, and four is the budget. A fifth is a
+decision, not a convenience.
+
+| Component | Variants | Notes |
+|---|---|---|
+| `Button` | `primary`, `secondary`, `quiet` | Tones are structural, not chromatic: primary is a solid fill of the ink, quiet is underlined text. `.selected` is the pressed state of a toggle |
+| `Chip` | `neutral`, `ok`, `advisory`, `violation`, `ungoverned`, plus `mono` | Tone reinforces the words inside it and never replaces them |
+| `Panel` | — | The side panel, its head, its close control, and its resize handle |
+| `Mark` / `Icon` | seven marks, seven icons | Drawn marks and Lucide utility icons, both on the 16-unit grid at 1.75 stroke |
+
+Each exports a class helper (`buttonClass`, `chipClass`) beside the
+component, because roughly half of these are links rather than buttons and a
+link must stay an anchor.
+
+**Never name a shared modifier `active`.** The router stamps `active` on any
+`Link` whose route matches, so a shared `.active` silently fills any
+who-acts link that happens to point at the surface the reader is already on.
+The pressed state is `selected`.
+
+Panel width is the reader's: drag the handle, arrow-key it, `Home` to reset.
+It is a device preference and lives in `localStorage`, not the URL, which
+follows the theme's rule and is the second documented exception to
+ADR-0042 §3.5.
 
 ## Distribution
 
-Four artefacts, two repositories.
+Five artefacts, two repositories.
 
 | Artefact | Holds | Consumed by |
 |---|---|---|
 | `tokens.css` | Colour, type, space, radius, focus, motion, elevation. Values only, no selectors | console, documentation, `telecraft.dev` |
 | `base.css` | Typography, links, code, tables, controls, focus rings | documentation, `telecraft.dev` |
-| `fonts/*.woff2` | Two families, subset, self-hosted | all |
-| `app.css` | Structure only, reading tokens. Unchanged by this work | console |
+| `fonts/fonts.css` | The `@font-face` declarations, kept out of `tokens.css` so that file stays values only | all |
+| `fonts/*.woff2` | Two families, three faces, subset and self-hosted | all |
+| `app.css` | Structure only, reading tokens | console |
 
 The documentation site is built in a second repository, so the token and base
-sheets are a versioned release rather than a copy.
+sheets are a versioned release rather than a copy. `base.css` is not written
+yet; until it is, that row is a plan and not a file.

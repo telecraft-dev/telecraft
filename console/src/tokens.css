@@ -1,57 +1,230 @@
 /*
- * Design tokens (ADR-0045 §4): the console ships structurally complete and
- * visually token-driven, so the branding pass swaps these values and never
- * touches markup. Fonts are the system stack: nothing external to bundle,
- * nothing external to fetch (ADR-0019, ADR-0045 §5).
+ * Design tokens (ADR-0047). Values only, no selectors: `app.css` carries
+ * structure and reads these, which is the token-swap contract ADR-0045 §4
+ * was written to buy.
  *
- * Hue is enhancement, never load-bearing (ADR-0041 §2): band states render
- * as glyphs and words first; the severity colours only reinforce them.
+ * Three theme states, two blocks. `system`, `light` and `dark`: following
+ * the machine is the honest default and an on/off switch cannot express it.
+ * The bare `:root` block carries the dark values so a browser that has not
+ * run the resolver in `chrome/theme.ts` still renders a complete theme.
+ *
+ * EVERY COLOUR IS DEFINED IN EXACTLY TWO BLOCKS, and never inside a media
+ * query (ADR-0047 §2). A colour whose only definition sits behind
+ * `prefers-colour-scheme` is stranded in the unresolved state.
+ *
+ * Hue is never load-bearing (ADR-0041 §2, ADR-0047 §5): band states render
+ * as a mark and a word first, and a signal colour never appears without its
+ * lane name. Colour reinforces; the mark and the word carry.
+ *
+ * `console/tools/check-palette.mjs` measures the accessibility floors over
+ * this file. It is not a document's promise, it is a build step.
  */
-:root {
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
-  --colour-bg: #f6f7f8;
+:root,
+:root[data-theme='dark'] {
+  /* Native controls — selects, checkboxes, scrollbars, the caret — are
+     painted by the browser, not by us. Telling it which ground it is on is
+     the only way they follow the theme rather than staying light under a
+     dark surface. */
+  color-scheme: dark;
+
+  /* ---- Ground and text ---- */
+  --colour-bg: #0f1518;
+  --colour-surface: #161f22;
+  --colour-surface-raised: #1c272b;
+  --colour-chrome: #121b1e;
+  --colour-rule: #263438;
+  --colour-rule-soft: #1d282c;
+  --colour-text: #e9efee;
+  --colour-text-muted: #a0aeae;
+  --colour-text-faint: #8b9a99;
+
+  /* The accent is contrast, not hue: the active Workspace and the primary
+     button are a solid fill of the text colour. That reserves the whole
+     colour budget for meaning (ADR-0047 §4). */
+  --colour-fill: #e9efee;
+  --colour-on-fill: #0f1518;
+
+  /* Interactive text is told apart by its underline and its full-strength
+     ink, never by a hue of its own — there is no accent hue to spend. */
+  --colour-link: #e9efee;
+
+  /* Ungoverned reads as concern, never failure (ADR-0031): a warm neutral
+     that belongs to no severity. */
+  --colour-ungoverned: #2a2620;
+
+  /* The scrim behind a modal surface. */
+  --colour-scrim: rgb(6 10 11 / 0.72);
+
+  /* ---- Severity: three colours, and nothing else uses them ---- */
+  --severity-ok: #44a94e;
+  --severity-advisory: #ffd166;
+  /* Amber cannot be both amber-looking and 4.5:1 against a light ground, so
+     it carries an ink twin: marks, lane edges and icons take
+     --severity-advisory, words take --severity-advisory-ink. */
+  --severity-advisory-ink: #ffd166;
+  --severity-violation: #e4694e;
+
+  /* ---- Signal lanes: distinctness only, never meaning ----
+     These four do not survive colour-vision deficiency and cannot be made
+     to (ADR-0047 §5). A surface that shows one without its lane name is a
+     defect. */
+  --signal-traces: #7fa8e8;
+  --signal-logs: #5fc0b6;
+  --signal-metrics: #d9a05c;
+  --signal-profiles: #b295d4;
+
+  /* ---- Traced Paths: one distinct corridor per Path (ADR-0044 §4) ----
+     Borrows the signal hues for separation on a canvas where no signal
+     lane is drawn. Every corridor carries its Path name on a chip. */
+  --path-0: #7fa8e8;
+  --path-1: #b295d4;
+  --path-2: #5fc0b6;
+  --path-3: #d9a05c;
+
+  /* ---- Brand: marketing surfaces and the mark only ----
+     Deliberately absent from the console's data surfaces, where amber
+     already means advisory. */
+  --brand: #ffd164;
+
+  /* ---- Elevation ---- */
+  --elevation-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elevation-2: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* ---- Ground and text ---- */
+  --colour-bg: #f3f5f4;
   --colour-surface: #ffffff;
-  --colour-surface-raised: #fcfcfd;
-  --colour-border: #d6d9dd;
-  --colour-text: #1c2126;
-  --colour-text-muted: #5b636b;
-  --colour-accent: #2a5d8f;
-  --colour-accent-contrast: #ffffff;
+  --colour-surface-raised: #fafcfb;
+  --colour-chrome: #ffffff;
+  --colour-rule: #d3dbd9;
+  --colour-rule-soft: #e6ebe9;
+  --colour-text: #101718;
+  --colour-text-muted: #4e5a5b;
+  --colour-text-faint: #616d6e;
 
-  --colour-severity-violation: #a4262c;
-  --colour-severity-advisory: #8a6116;
-  --colour-severity-ok: #2e6b3f;
-  --colour-severity-neutral: #6b7280;
+  --colour-fill: #101718;
+  --colour-on-fill: #ffffff;
 
-  --colour-ungoverned-band: #f3eddf;
-  --colour-dimmed: rgba(28, 33, 38, 0.25);
+  --colour-link: #101718;
 
-  /* Traced-Path overlays cycle these; distinctness is the point (P3). */
-  --colour-trace-0: #2a5d8f;
-  --colour-trace-1: #7a4a92;
-  --colour-trace-2: #1f7a72;
-  --colour-trace-3: #9a5b24;
+  --colour-ungoverned: #f3eddf;
 
-  /* One hue per signal: simulate dots (ADR-0044 §5) and the composer
-     canvas's per-signal edges share it. Distinct, never load-bearing. */
-  --colour-signal-traces: #2a5d8f;
-  --colour-signal-logs: #1f7a72;
-  --colour-signal-metrics: #9a5b24;
-  --colour-signal-profiles: #7a4a92;
+  --colour-scrim: rgb(16 23 24 / 0.32);
 
+  /* ---- Severity ---- */
+  --severity-ok: #067826;
+  --severity-advisory: #d66d0c;
+  --severity-advisory-ink: #9b6100;
+  --severity-violation: #943b40;
+
+  /* ---- Signal lanes ---- */
+  --signal-traces: #2a5d8f;
+  --signal-logs: #1f7a72;
+  --signal-metrics: #9a5b24;
+  --signal-profiles: #7a4a92;
+
+  /* ---- Traced Paths ---- */
+  --path-0: #2a5d8f;
+  --path-1: #7a4a92;
+  --path-2: #1f7a72;
+  --path-3: #9a5b24;
+
+  /* ---- Brand ---- */
+  --brand: #8a5a12;
+
+  /* ---- Elevation ---- */
+  --elevation-1: 0 1px 2px rgb(16 23 24 / 0.08);
+  --elevation-2: 0 8px 24px rgb(16 23 24 / 0.14);
+}
+
+/* Everything below is theme-invariant: one block, both grounds. */
+
+:root {
+  /* ---- Type ----
+     Atkinson Hyperlegible Next for interface text, JetBrains Mono for data
+     (ADR-0047 §3). Both vendored in `src/fonts` and declared in
+     `src/fonts/fonts.css`; the stacks behind them are the nearest system
+     faces, so a swap barely moves the line. */
+  --font-sans: 'Atkinson Hyperlegible Next', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Six steps, replacing eighty hardcoded sizes across twelve values in
+     which the same nominal size appeared as both `em` and `rem`. `em`
+     compounds with its parent and `rem` does not, so two rules that looked
+     identical rendered at different sizes depending on nesting; the scale
+     is `rem` throughout and nesting no longer changes a size.
+
+     Two steps are pinned by content rather than by a ratio, and that is
+     deliberate: the densest information on a surface is never the smallest
+     text on it. --text-xs is the per-signal matrix floor and --text-s is
+     the band row. */
+  --text-xs: 0.78125rem; /* 12.5px — per-signal matrix, chips, micro-meta */
+  --text-s: 0.84375rem; /* 13.5px — band rows, secondary text, dense controls */
+  --text-m: 0.9375rem; /* 15px — compact interface text */
+  --text-base: 1rem; /* 16px — body, section headings */
+  --text-l: 1.125rem; /* 18px — panel titles */
+  --text-xl: 1.375rem; /* 22px — surface titles */
+
+  --leading-tight: 1.25;
+  --leading-snug: 1.4;
+  --leading-normal: 1.55;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Readings are numbers set to line up: figures are tabular everywhere,
+     which is why the `tnum` feature survives the font subset. */
+  --numeric: tabular-nums;
+
+  /* ---- Space ---- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
+  --space-6: 32px;
 
+  /* ---- Radius ----
+     Plates, not pills: the identity is datum lines and hairlines
+     (docs/branding/identity.md), so the largest radius stays small. */
   --radius-1: 4px;
   --radius-2: 8px;
 
-  --card-width: 292px;
-  /* Bands over matrix, at one height for every card: the uniform grid
-     beat collapsing cards on the shelf (P4 rule 3). */
-  --card-height: 232px;
+  /* ---- Focus ----
+     One ring everywhere, drawn in the fill colour so it clears 3:1 on both
+     grounds without spending a hue. */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  --focus-colour: var(--colour-fill);
+
+  /* ---- Motion ----
+     Every transition reads these, and `app.css` zeroes them under
+     `prefers-reduced-motion`, which is what guards them all at once. */
+  --motion-fast: 90ms;
+  --motion-base: 160ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0.13, 1);
+
+  /* ---- Layout ----
+     Bands over matrix at one height for every card: the uniform grid beat
+     collapsing cards on the shelf (P4 rule 3). Both numbers were
+     re-measured for ADR-0047, in the browser: Atkinson is wider than the
+     grotesque they were first set against, and the matrix rows grew from
+     10.8px to 12.5px.
+
+     The width fits the widest matrix row the fixture estate produces
+     (274px) with the card's own padding. The height fits a card with
+     three signal lanes carrying notes, which is the common case; the
+     contract's worst case is four lanes each carrying a reduction and an
+     error reading, at 410px, and a card that tall would set the height of
+     every card on the shelf. That case scrolls inside the matrix instead
+     (`.signal-matrix-scroll`), which is what keeps the bands and the foot
+     on screen whatever the payload carries. */
+  --card-width: 308px;
+  --card-height: 288px;
 }

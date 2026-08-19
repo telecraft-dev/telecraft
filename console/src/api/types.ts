@@ -78,6 +78,20 @@ export type BandState =
   | 'pending_settle'
   | 'stale_demoted'
 
+/**
+ * The same list at runtime, so anything that must cover every state — the
+ * mark mapping in `ui/marks.ts` among them — can be checked against the
+ * contract rather than against a second copy of it.
+ */
+export const BAND_STATES: readonly BandState[] = [
+  'ok',
+  'finding',
+  'not_applicable',
+  'unknown',
+  'pending_settle',
+  'stale_demoted',
+]
+
 export type Severity = 'violation' | 'advisory' | 'none'
 
 export interface Band {

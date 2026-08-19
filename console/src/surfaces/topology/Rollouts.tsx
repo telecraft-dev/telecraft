@@ -10,6 +10,9 @@ import type {
   RolloutProgress,
 } from '../../api/types'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
+import { Chip, chipClass, type ChipTone } from '../../ui/Chip'
+import { Mark } from '../../ui/Mark'
+import { Panel } from '../../ui/Panel'
 import { CardPanel, WhyButton } from '../estate/card'
 import { TopologyViewSwitcher } from './switcher'
 
@@ -25,6 +28,16 @@ const DECISION_LABEL: Record<RolloutDecision, string> = {
   blocked: 'halted — advance withheld',
   advance: 'advance proposed',
   abort: 'abort proposed',
+}
+
+/* The verdict chip's tone. The words above are what carry the decision;
+   the tone only reinforces them (ADR-0041 §2), and holding is a state with
+   no severity at all rather than a quiet failure. */
+const DECISION_TONE: Record<RolloutDecision, ChipTone> = {
+  hold: 'neutral',
+  blocked: 'violation',
+  advance: 'ok',
+  abort: 'violation',
 }
 
 /** One path's running split, `to` leading — the advance evidence number. */
@@ -101,9 +114,13 @@ function CohortRow({
           <PathSplit split={cohort.foreign} />
         )}
         {cohort.foreign.members > 0 && (
-          <span className="advisory-chip" data-testid={`advisory-${rollout.id}-${cohort.index}`}>
+          <Chip
+            tone="ungoverned"
+            className="advisory-chip"
+            data-testid={`advisory-${rollout.id}-${cohort.index}`}
+          >
             advisory
-          </span>
+          </Chip>
         )}
       </td>
     </tr>
@@ -149,7 +166,9 @@ function RolloutSection({
             ...prev,
             object: formatObjectRef({ kind: 'rollout', id: rollout.id }),
           })}
-          className={`decision-chip decision-${rollout.decision}`}
+          className={chipClass(DECISION_TONE[rollout.decision], {
+            extra: `decision-chip decision-${rollout.decision}`,
+          })}
           data-testid={`rollout-decision-${rollout.id}`}
         >
           {DECISION_LABEL[rollout.decision]}
@@ -200,10 +219,10 @@ function RolloutSection({
                   ...prev,
                   object: formatObjectRef({ kind: 'rollout', id: rollout.id }),
                 })}
-                className="halt-chip"
+                className={chipClass('violation', { extra: 'halt-chip' })}
                 data-testid={`rollout-halt-${rollout.id}-${halt.collector}`}
               >
-                ✗ {halt.collector} {halt.condition}
+                <Mark name="violation" /> {halt.collector} {halt.condition}
               </Link>
             </li>
           ))}
@@ -235,22 +254,20 @@ function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
   }
 
   return (
-    <aside className="card-panel rollout-panel" data-testid="rollout-panel">
-      <header className="panel-head">
-        <h2 data-testid="rollout-panel-title">{rollout.name}</h2>
-        <button
-          type="button"
-          data-testid="rollout-panel-close"
-          onClick={() =>
-            void navigate({
-              to: '.',
-              search: (prev) => ({ ...prev, object: undefined }),
-            })
-          }
-        >
-          Close
-        </button>
-      </header>
+    <Panel
+      name="rollout"
+      testId="rollout-panel"
+      className="rollout-panel"
+      title={rollout.name}
+      titleTestId="rollout-panel-title"
+      closeTestId="rollout-panel-close"
+      onClose={() =>
+        void navigate({
+          to: '.',
+          search: (prev) => ({ ...prev, object: undefined }),
+        })
+      }
+    >
       <dl className="panel-facts">
         <dt>Rollout</dt>
         <dd>{rollout.id}</dd>
@@ -288,7 +305,9 @@ function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
       </dl>
       <section className="rollout-verdict" data-testid="rollout-verdict">
         <span
-          className={`decision-chip decision-${rollout.decision}`}
+          className={chipClass(DECISION_TONE[rollout.decision], {
+            extra: `decision-chip decision-${rollout.decision}`,
+          })}
           data-testid="rollout-panel-decision"
         >
           {DECISION_LABEL[rollout.decision]}
@@ -313,11 +332,13 @@ function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
                 data-testid={`halt-${rollout.id}-${halt.collector}`}
               >
                 <p className="finding-head">
-                  <span className="band-glyph" aria-hidden="true">
-                    ✗
-                  </span>
+                  <Mark name="violation" />
                   <span className="finding-kind">{halt.condition}</span>
-                  {halt.path === 'foreign' && <span className="advisory-chip">foreign</span>}
+                  {halt.path === 'foreign' && (
+                    <Chip tone="ungoverned" className="advisory-chip">
+                      foreign
+                    </Chip>
+                  )}
                 </p>
                 <p className="finding-summary">
                   {halt.collector}: {halt.reason}
@@ -327,7 +348,7 @@ function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
           </ul>
         )}
       </section>
-    </aside>
+    </Panel>
   )
 }
 

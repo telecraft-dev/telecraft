@@ -1,4 +1,5 @@
 import type { ComposeVerdict, RequirementVerdict } from '../../api/types'
+import { Button } from '../../ui/Button'
 
 /**
  * B · Requirement-first, the compliance overview (ADR-0043 §1): what this
@@ -63,14 +64,13 @@ export function Requirements({
                 {!row.met && (
                   <>
                     {editable && (
-                      <button
-                        type="button"
+                      <Button
                         data-testid={`suggest-${row.id}`}
                         onClick={() => onSuggest(row)}
                       >
                         Add {row.suggestion.ref ?? row.suggestion.type} to{' '}
                         {row.suggestion.signals.join(', ')}
-                      </button>
+                      </Button>
                     )}
                     <p className="finding-remediation">{row.remediation}</p>
                   </>

@@ -5,6 +5,7 @@ import type { StabilityLevel } from '../../api/types'
 import { STABILITY_LEVELS, formatCatalogueKey } from '../../api/types'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { EntryPanel } from './EntryPanel'
+import { chipClass } from '../../ui/Chip'
 
 /**
  * Catalogue browsing by version (ADR-0020 §9: installed catalogues are
@@ -151,7 +152,13 @@ export function Browse() {
                       {Object.keys(entry.stability)
                         .sort()
                         .map((s) => (
-                          <li key={s} className={`stability-chip stability-${entry.stability[s]}`}>
+                          <li
+                            key={s}
+                            className={chipClass('neutral', {
+                              mono: true,
+                              extra: `stability-chip stability-${entry.stability[s]}`,
+                            })}
+                          >
                             {s}: {entry.stability[s]}
                           </li>
                         ))}

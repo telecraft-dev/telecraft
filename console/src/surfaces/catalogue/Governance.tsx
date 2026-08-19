@@ -3,6 +3,7 @@ import { useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api } from '../../api/client'
 import type { GovernancePayload, TeamNode } from '../../api/types'
+import { Button } from '../../ui/Button'
 
 function flattenTeams(node: TeamNode, out: { id: string; name: string }[] = []) {
   out.push({ id: node.id, name: node.name })
@@ -205,15 +206,15 @@ function GovernanceEditor({
               onChange={(event) => setTitle(event.target.value)}
             />
           </label>
-          <button
-            type="button"
+          <Button
+            tone="primary"
             data-testid="propose"
             className="propose-button"
             disabled={propose.isPending}
             onClick={submit}
           >
             {propose.isPending ? 'Proposing…' : 'Propose as a PR'}
-          </button>
+          </Button>
         </div>
         {propose.isError && (
           <p className="surface-status">The proposal could not be submitted.</p>

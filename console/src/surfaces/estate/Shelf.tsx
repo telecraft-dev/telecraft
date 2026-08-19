@@ -5,6 +5,7 @@ import { useLens } from '../../chrome/LensControl'
 import { cardStanding, orderCards, sectionAllHealthy, totalFindings } from '../../estate/order'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
+import { Button, buttonClass } from '../../ui/Button'
 import { CardFaceView } from './card'
 
 interface Section {
@@ -112,7 +113,7 @@ export function Shelf({
             from="/estate"
             to="/estate"
             search={(prev) => ({ ...prev, view: 'list' as const, ungoverned: true })}
-            className="onboard-cta"
+            className={buttonClass('secondary', 'onboard-cta')}
             data-testid="onboard-cta"
           >
             Onboard them
@@ -168,9 +169,9 @@ function ShelfSection({
     <section className="shelf-section" data-testid={`section-${team.id}`}>
       <header className="section-header">
         <h2>{team.name}</h2>
-        <button type="button" onClick={toggle} data-testid={`section-toggle-${team.id}`}>
+        <Button tone="quiet" onClick={toggle} data-testid={`section-toggle-${team.id}`}>
           {collapsed ? 'Expand' : 'Collapse'}
-        </button>
+        </Button>
       </header>
       {collapsed ? (
         <p className="section-summary" data-testid={`section-summary-${team.id}`}>

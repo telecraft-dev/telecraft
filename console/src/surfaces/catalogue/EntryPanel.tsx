@@ -2,6 +2,9 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import type { CatalogueComponent, CatalogueEntry } from '../../api/types'
 import { formatCatalogueKey } from '../../api/types'
 import { formatObjectRef } from '../../objectref'
+import { buttonClass } from '../../ui/Button'
+import { Panel } from '../../ui/Panel'
+import { chipClass } from '../../ui/Chip'
 
 /**
  * One Catalogue entry, summoned in place (ADR-0042 §3.2): identity with
@@ -29,19 +32,16 @@ export function EntryPanel({
   const deprecations = Object.entries(entry.deprecation ?? {})
 
   return (
-    <aside className="card-panel" data-testid="entry-panel">
-      <header className="panel-head">
-        <h2 data-testid="entry-panel-title">{entry.displayName ?? entry.type}</h2>
-        <button
-          type="button"
-          data-testid="entry-panel-close"
-          onClick={() =>
-            void navigate({ to: '.', search: (prev) => ({ ...prev, object: undefined }) })
-          }
-        >
-          Close
-        </button>
-      </header>
+    <Panel
+      name="entry"
+      testId="entry-panel"
+      title={entry.displayName ?? entry.type}
+      titleTestId="entry-panel-title"
+      closeTestId="entry-panel-close"
+      onClose={() =>
+        void navigate({ to: '.', search: (prev) => ({ ...prev, object: undefined }) })
+      }
+    >
       <dl className="panel-facts">
         <dt>Key</dt>
         <dd className="mono">{key}</dd>
@@ -66,7 +66,13 @@ export function EntryPanel({
           {Object.keys(entry.stability)
             .sort()
             .map((signal) => (
-              <li key={signal} className={`stability-chip stability-${entry.stability[signal]}`}>
+              <li
+                key={signal}
+                className={chipClass('neutral', {
+                  mono: true,
+                  extra: `stability-chip stability-${entry.stability[signal]}`,
+                })}
+              >
                 {signal}: {entry.stability[signal]}
               </li>
             ))}
@@ -113,11 +119,11 @@ export function EntryPanel({
         from="/catalogue"
         to="/catalogue"
         search={(prev) => ({ ...prev, view: 'palette' as const })}
-        className="who-acts"
+        className={buttonClass('secondary', 'who-acts')}
         data-testid="entry-see-palette"
       >
         Is this allowed? See the effective palette
       </Link>
-    </aside>
+    </Panel>
   )
 }

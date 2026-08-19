@@ -8,6 +8,28 @@
          static host answers with a 404. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Telecraft console</title>
+    <!-- The theme, resolved before the first paint. `tokens.css` carries
+         dark on the bare :root so an unstamped document is still complete,
+         which means a reader who chose light would otherwise see one dark
+         frame. This is the only copy of the resolver that runs that early;
+         `src/chrome/theme.ts` owns every later resolution and the two share
+         the storage key, which `tests/theme.test.ts` holds together. -->
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('telecraft.theme')
+          var choice = stored === 'light' || stored === 'dark' ? stored : 'system'
+          document.documentElement.dataset.theme =
+            choice === 'system'
+              ? matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark'
+              : choice
+        } catch (error) {
+          document.documentElement.dataset.theme = 'dark'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

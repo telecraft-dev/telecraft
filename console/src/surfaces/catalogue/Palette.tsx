@@ -6,6 +6,8 @@ import type { TeamNode } from '../../api/types'
 import { formatCatalogueKey } from '../../api/types'
 import type { PaletteRow } from '../../governance/effective'
 import { effectivePalette } from '../../governance/effective'
+import { Button } from '../../ui/Button'
+import { chipClass } from '../../ui/Chip'
 
 function flattenTeams(node: TeamNode, out: { id: string; name: string }[] = []) {
   out.push({ id: node.id, name: node.name })
@@ -154,7 +156,10 @@ export function PaletteView() {
                 <td className="mono">{key}</td>
                 <td>
                   <span
-                    className={`origin-chip origin-${row.allowed ? row.origin : 'excluded'}`}
+                    className={chipClass('neutral', {
+                      mono: true,
+                      extra: `origin-chip origin-${row.allowed ? row.origin : 'excluded'}`,
+                    })}
                     data-testid={`origin-${key}`}
                   >
                     {row.allowed ? row.origin : 'not allowed'}
@@ -162,15 +167,15 @@ export function PaletteView() {
                 </td>
                 <td className="why-cell">
                   <span className="why">
-                    <button
-                      type="button"
+                    <Button
+                      tone="quiet"
                       className="why-button"
                       data-testid={`palette-why-${key}`}
                       aria-expanded={openWhy === key}
                       onClick={() => setOpenWhy(openWhy === key ? undefined : key)}
                     >
                       why?
-                    </button>
+                    </Button>
                     {openWhy === key && (
                       <div className="why-popover" data-testid="palette-popover">
                         {whyContent(row)}
@@ -178,8 +183,7 @@ export function PaletteView() {
                     )}
                   </span>
                   {!row.allowed && (
-                    <button
-                      type="button"
+                    <Button
                       className="who-acts"
                       data-testid={`request-grant-${key}`}
                       onClick={() =>
@@ -196,7 +200,7 @@ export function PaletteView() {
                       }
                     >
                       Request a Grant
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>
