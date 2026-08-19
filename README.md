@@ -53,6 +53,29 @@ go test ./...             # unit tests, including the lint's self-test
 go run ./tools/vendorlint # the vendor-word lint over code and docs
 ```
 
+### Brand and design
+
+Anything a user sees — console surfaces, documentation, `telecraft.dev`, and
+CLI output — follows one system.
+
+| Read this | For |
+|---|---|
+| [`docs/branding/identity.md`](docs/branding/identity.md) | What Telecraft looks and sounds like, including the voice the docs are written in |
+| [`docs/branding/design-system.md`](docs/branding/design-system.md) | Token values, type scale, marks, and the accessibility floors |
+| [ADR-0047](docs/adr/0047-visual-identity-and-design-tokens.md) | Why it is the way it is |
+
+Four rules carry most of it:
+
+- **Colour never carries meaning alone.** Every state ships a mark and a word;
+  every signal colour ships its lane name. Hue reinforces, it never tells
+  (ADR-0041 §2, ADR-0047 §5).
+- **Every colour is defined in exactly two blocks**, never inside a media
+  query, or it is stranded in the unresolved theme state.
+- **No asset is fetched from another origin.** Fonts and icons are bundled;
+  CI fails the build otherwise (ADR-0019).
+- **British English**, in prose and in identifiers: `colour`, `licence`,
+  `normalise`, `--colour-bg`.
+
 ## Licence
 
 Apache-2.0.
