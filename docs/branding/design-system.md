@@ -189,8 +189,8 @@ are in `console/src/fonts/README.md`.
 | Elevation | `--elevation-1` for plates, `--elevation-2` for dialogs and popovers. Both carry a colour, so both are defined in two blocks |
 | Layout | `--card-width` 308px, `--card-height` 288px |
 
-Every transition in the console reads one of the two motion durations, which
-is what lets one `prefers-reduced-motion` block in `app.css` guard the lot.
+Every transition on every surface reads one of the two motion durations, which
+is what lets one `prefers-reduced-motion` block in `base.css` guard the lot.
 
 The card grid was re-measured in the browser rather than chosen (ADR-0048).
 The width fits the widest matrix row the fixture estate produces, 274px, plus
@@ -349,11 +349,45 @@ Five artefacts, two repositories.
 | Artefact | Holds | Consumed by |
 |---|---|---|
 | `tokens.css` | Colour, type, space, radius, focus, motion, elevation. Values only, no selectors | console, documentation, `telecraft.dev` |
-| `base.css` | Typography, links, code, tables, controls, focus rings | documentation, `telecraft.dev` |
+| `base.css` | Typography, links, code, tables, controls, focus rings | all |
 | `fonts/fonts.css` | The `@font-face` declarations, kept out of `tokens.css` so that file stays values only | all |
 | `fonts/*.woff2` | Two families, three faces, subset and self-hosted | all |
 | `app.css` | Structure only, reading tokens | console |
 
-The documentation site is built in a second repository, so the token and base
-sheets are a versioned release rather than a copy. `base.css` is not written
-yet; until it is, that row is a plan and not a file.
+`base.css` is a file: `console/src/base.css`. It came out of the top of
+`app.css` rather than being written fresh, so the console's elements are
+dressed by exactly the rules that dressed them before, and the split is what
+makes ADR-0047 §1's reasoning true in fact rather than in principle — a
+stylesheet crosses a repository boundary and a React component does not. Its
+consumers are all four surfaces, the console included; `app.css` is now
+structure and the console's alone.
+
+Two things in it were never in `app.css`, because the console never needed
+them and a prose surface cannot do without them: bare links, and table
+defaults. The link rule is where `--colour-link` finally lands. Before it,
+an anchor the console had not given a class of its own rendered in the
+browser's link colour — the one hue on the surface that meant nothing, which
+is the thing ADR-0047 §5 forbids everywhere else. Eight anchors in the
+console were in that state and now read as ink.
+
+What `base.css` deliberately does not carry is block rhythm and heading
+sizes. A console panel and a marketing column want neither the same margins
+nor the same scale step for an `h2`, so each surface sets those from the
+scale in its own structure sheet.
+
+### The second repository's copy
+
+ADR-0047's consequences call the documentation site's dependency on these
+sheets "a versioned release, not a copy". It is a copy today, and calling it
+anything else would be false. `telecraft.dev` vendors `tokens.css`,
+`base.css`, `fonts.css`, the three faces and the mark. Each stylesheet
+carries a header naming the commit it was taken from; `tools/vendored.json`
+beside them records the same, with a SHA-256 of every file including the
+binaries, which cannot carry a header; and `node tools/vendor.mjs check`
+fails when a copy and its source disagree, on every pull request there and
+weekly, because drift happens here on a day when nothing changed there. That
+is drift made visible, which is the most a copy can offer. It is not a
+release.
+
+The tagging scheme it is waiting on is issue #86. When there is one, the
+copies become a dependency and this section goes.
