@@ -1,6 +1,6 @@
 ---
 title: Estate layout
-description: The estate repository layout: root files, team directories, the generated rendered tree and CODEOWNERS.
+description: "The estate repository layout: root files, team directories, the generated rendered tree and CODEOWNERS."
 order: 3
 ---
 
