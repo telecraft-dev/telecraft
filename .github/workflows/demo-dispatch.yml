@@ -3,42 +3,139 @@ name: Demo
 # The demo at demo.telecraft.dev is the real console over a curated estate,
 # built and published from telecraft-dev/estate-demo. That repository runs
 # this repository's own evaluators over its YAML and builds the console from
-# this repository's main, so almost any change here changes what the demo
-# shows — and until this workflow existed, nothing told it so. A console
-# change would land, the demo would go on serving the previous build, and
-# nothing anywhere went red to say the site no longer matched the code. The
-# visual identity pass (ADR-0047) shipped and the demo served the palette it
-# replaced, which is how the gap was found.
+# this repository, so almost any change here changes what the demo shows.
 #
-# The snapshot generator and the evaluators behind it are code too, so this
-# fires on any change that is not documentation. Only a documentation-only
-# push leaves the demo alone, because only documentation cannot reach it.
+# It used to build from `main`, and this workflow used to fire on every
+# non-documentation push, because a change that never reached the demo was
+# invisible. The demo is also the first thing most people see of Telecraft,
+# and a bug that reaches main reaches them (issue #86). So the demo now
+# builds from a release, and between releases it lags: that is the ruling in
+# ADR-0049 §4, and the reason it is the right one is that a change on main is
+# already exercised before it merges — ci.yml's demo job builds the snapshot
+# and the demo bundle on every pull request that touches them. A staging site
+# would be a second deployment, a second domain and a second published claim
+# to keep honest, to catch what CI catches first.
+#
+# THE REF THE DEMO CHECKS OUT MUST BE THE SAME FOR EVERY TRIGGER.
+#
+# That constraint is what shapes the rest of this file, and it is not
+# obvious. estate-demo builds on three events: a push to its own estate, a
+# manual run, and the dispatch below. Only the manual run can carry a ref,
+# and a repository dispatch carries no inputs at all. So if the pinned ref
+# arrived in the dispatch payload, an estate content push — a card added, a
+# reading edited — would build against the fallback instead, and which
+# platform version the public site runs would depend on which event happened
+# to fire last. Whatever the fallback names is therefore the pin, and it has
+# to name the current release on every one of those events.
+#
+# A literal tag in estate-demo would satisfy that, at the cost of an edit in
+# a second repository on every release, and it would leave this workflow with
+# nothing to say: a dispatch on a tag push would ask for a rebuild at a ref
+# that had not moved. So the pin is a pointer. `release` is a tag this
+# workflow moves to each new stable version, estate-demo's fallback names it
+# once and never again, and the version tags stay exactly what they were:
+# immutable, and the honest answer to what a release is.
+#
+# `release` is not GitHub's "latest release", which is a mutable property of
+# the releases page that a human can change from the UI. It is a git ref, it
+# moves here or nowhere, and `git rev-parse release` answers what the demo is
+# built from.
+#
+# Nothing orders this against release.yml, which runs on the same push:
+# estate-demo builds the platform from source at the ref, so it needs no
+# artefact that release.yml produces.
 
 on:
   push:
-    branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - '.github/workflows/docs-dispatch.yml'
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # To move the `release` pointer. The dispatch to estate-demo is authorised
+  # separately, by the App token minted below.
+  contents: write
 
 jobs:
-  notify-demo:
-    name: Notify the demo
+  publish-demo:
+    name: Point the demo at this release
     runs-on: ubuntu-latest
     steps:
+      # Every tag, and the history behind them, because the decision below
+      # asks whether this is the newest stable version.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Three cases, and only the first one reaches the public site.
+      #
+      # A new stable tag moves the pointer and asks for a rebuild.
+      #
+      # A pre-release tag does neither. `v0.3.0-rc.1` publishes its artefacts
+      # through release.yml and stops there, which is what makes it a
+      # rehearsal: the whole release path can be exercised without the demo
+      # moving (ADR-0049 §6).
+      #
+      # A tag that is not the newest stable version does neither either. A
+      # v0.2.4 cut after v0.3.0 exists is a fix on an older line, and dragging
+      # the pointer backwards would take the demo with it.
+      #
+      # A manual run asks for a rebuild without moving anything: the pointer
+      # already names the release the demo should be on, and this is how you
+      # ask again after a transient failure over there.
+      - name: Decide what this event means for the demo
+        id: decide
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          move=false
+          notify=false
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            notify=true
+            echo "Manual run: rebuilding at whatever release names now."
+          else
+            case "$TAG" in
+              *-*)
+                echo "$TAG is a pre-release: artefacts only, the demo stays where it is."
+                ;;
+              *)
+                # No `head` in this pipeline: with `pipefail` a reader that
+                # closes early can fail the step for no reason.
+                stable=$(git tag --list 'v*' --sort=-v:refname | grep -v -- '-' || true)
+                newest=$(printf '%s\n' "$stable" | sed -n '1p')
+                if [ "$newest" = "$TAG" ]; then
+                  move=true
+                  notify=true
+                  echo "$TAG is the newest stable version: the demo follows it."
+                else
+                  echo "$TAG is older than $newest: the demo stays on $newest."
+                fi
+                ;;
+            esac
+          fi
+          echo "move=$move"     >> "$GITHUB_OUTPUT"
+          echo "notify=$notify" >> "$GITHUB_OUTPUT"
+
+      # Forced, because a pointer that could not be moved would not be one.
+      # The version tag it now names is untouched and stays the record.
+      - name: Move the release pointer to this tag
+        if: steps.decide.outputs.move == 'true'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git tag --force release "$GITHUB_SHA"
+          git push --force origin refs/tags/release
+          echo "release now names $TAG ($GITHUB_SHA)."
+
       # The same App the forge adapter uses (ADR-0014). It needs access to
       # estate-demo in its installation; without that the token request
-      # fails and this job goes red, which is the point — a console change
-      # that never reaches the demo should be visible, not silent. That is
-      # the same contract docs-dispatch.yml holds for the documentation
-      # site, and it is deliberately not softened here: a stale demo is a
-      # published claim that no longer matches the code.
+      # fails and this job goes red, which is the point — a release that
+      # never reaches the demo should be visible, not silent. That is the
+      # same contract docs-dispatch.yml holds for the documentation site.
       - name: Mint an App token for estate-demo
+        if: steps.decide.outputs.notify == 'true'
         id: token
         uses: actions/create-github-app-token@v1
         with:
@@ -53,11 +150,12 @@ jobs:
       # does not. The first attempt at this used `gh workflow run` and
       # failed with `403 Resource not accessible by integration`.
       #
-      # No inputs travel with a repository dispatch. estate-demo's platform
-      # checkout already falls back to `main` without them, which is the
-      # ref being asked for, so nothing over there needed rewiring beyond
-      # the trigger itself.
-      - name: Ask the demo to rebuild from this commit
+      # The payload is a record, not an instruction. estate-demo checks out
+      # the pointer, for the reason at the top of this file; what travels
+      # here is what that pointer was moved to, so the run over there says in
+      # its own log which release it was asked for.
+      - name: Ask the demo to rebuild from this release
+        if: steps.decide.outputs.notify == 'true'
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           DEMO_SHA: ${{ github.sha }}
@@ -69,4 +167,4 @@ jobs:
             --arg ref "$DEMO_REF" \
             '{event_type: "console-updated", client_payload: {sha: $sha, ref: $ref}}' \
           | gh api -X POST /repos/telecraft-dev/estate-demo/dispatches --input -
-          echo "Asked estate-demo to rebuild the demo from $DEMO_SHA."
+          echo "Asked estate-demo to rebuild the demo from $DEMO_REF."
