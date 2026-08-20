@@ -1,7 +1,7 @@
 ---
 title: Implementing a provider
 description: How to implement each seam, pass its shipped conformance kit, and name the result so the vendor-word lint stays clean.
-order: 4
+order: 5
 ---
 
 # Implementing a provider

@@ -1,7 +1,7 @@
 ---
 title: Console architecture
 description: The four Workspaces, the card data contract, the pure canvas engine, the presentation store, demo mode, and the zero-CDN rule.
-order: 5
+order: 6
 ---
 
 # Console architecture
