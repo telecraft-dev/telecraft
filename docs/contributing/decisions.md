@@ -66,7 +66,7 @@ existing requirement, update the row to cite it.
 
 | Path | What it is |
 |---|---|
-| `docs/adr/` | The decision corpus: 50 records, ADR-0000 to ADR-0049. Normative. This is what code is measured against. |
+| `docs/adr/` | The decision corpus: 51 records, ADR-0000 to ADR-0050. Normative. This is what code is measured against. |
 | `docs/requirements/` | `product-requirements.md`, the numbered requirements the product exists to satisfy, and `traceability.md`, mapping each to the ADRs and build phase that deliver it. Normative. |
 | `docs/research/` | Dated findings dossiers and the archived shaping tickets: the evidence ADRs cite. Not normative, and never edited to match a later decision. It records what was found, when. |
 | `docs/prototypes/` | Verdict one-pagers from throwaway prototypes, plus the normaliser spike's verdict. Prototype code is never merged; the verdict is what survives, and several ADRs rest on one. |
@@ -97,6 +97,7 @@ The rules that hold everywhere.
 - **ADR-0015** Vocabulary aligned to industry and upstream usage
 - **ADR-0019** Pluggable authentication; ownership-derived authorization; air-gap first-class
 - **ADR-0049** Releases are tags on main; the public demo follows a moving pointer
+- **ADR-0050** Elastic License 2.0; the project is source-available, not open source
 
 ### Readings and verdicts
 
