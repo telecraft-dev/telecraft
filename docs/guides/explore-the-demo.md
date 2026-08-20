@@ -239,17 +239,38 @@ chain:
 
 Three different questions, three different owners, on one card.
 
-## Flow readings are absent
+## Flow is declared, and shape still is not
 
-Every card's flow table reads `—`, and the drawers say why:
-
-> the estate's readings file declares no flow readings — volume, freshness and
-> shape are derived on read from a telemetry backend (ADR-0040), which a
-> snapshot has none of
+Every card's flow table carries figures: what each signal lane accepted,
+what it sent, the difference between them, and how long ago the counters
+were read. `storefront/mobile-edge` sheds four fifths of the metrics it
+accepts through a filter, which the table reports as a reduction and never
+as a loss — a filter dropping most of what it sees is doing the job it was
+authored to do (ADR-0040 §3).
 
 A repository cannot hold a running collector estate or the telemetry that
-arrived from it, and the demo declines to invent either. Not knowing is
-rendered as not knowing.
+arrived from it. The demo does not invent either: it *declares* them, and
+`telecraft snapshot` plays them back through the same seams a live instance
+reads (`demo/readings.yaml` in the estate repository). Everything judged
+from them is judged by the product's own evaluators.
+
+Two things are still rendered as not knowing, and both are worth looking at
+because they are the point:
+
+- **`edge-ops/edge-arm` reads unknown on every lane.** Nothing has ever
+  matched that Tier, so no counters exist to read. A zero would be a claim
+  about a Tier we cannot see, and the contract keeps "we cannot see" and
+  "nothing arrived" apart (ADR-0008).
+- **Shape reads unknown on every card**, and the drawer says why:
+
+  > no shape reading exists at pipeline grain — self-telemetry counts items
+  > and not what is inside them, and borrowing the traversing Services'
+  > conformance would blend service-grain into pipeline-grain, which
+  > metering never does
+
+  Self-telemetry counts items passing through a pipeline; it does not open
+  them. The service-grain reading that *would* answer it is a different
+  grain, and ADR-0040 §1 refuses to blend the two.
 
 ## Run the same estate locally
 
