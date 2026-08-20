@@ -1,3 +1,13 @@
 .teach/
 .proto/
 .playwright-mcp/
+
+# Screenshots written beside the working tree. Two have been committed by
+# accident and removed again (e0d7e78, and the commit before this one): a
+# capture lands in the repository root whenever a tool is pointed at a
+# relative path before its output directory exists, and `git add -A` takes
+# it from there. Root level only — docs and the console keep their images
+# in directories, and those are still tracked.
+/*.png
+/*.jpg
+/*.jpeg
