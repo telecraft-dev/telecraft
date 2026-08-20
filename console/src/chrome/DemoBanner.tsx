@@ -20,7 +20,11 @@ export function DemoBanner() {
     <span className="demo-banner" data-testid="demo-banner">
       <Chip className="demo-badge">Read-only demo</Chip>
       {meta.data && (
-        <span className="demo-provenance" data-testid="demo-provenance">
+        <span
+          className="demo-provenance"
+          data-testid="demo-provenance"
+          title={`${meta.data.repository ?? 'the demo estate'} at ${meta.data.commit}, evaluated ${formatInstant(meta.data.evaluatedAt)}`}
+        >
           {meta.data.repository ?? 'the demo estate'} at{' '}
           <code>{meta.data.commit.slice(0, 7)}</code>, evaluated{' '}
           <time dateTime={meta.data.evaluatedAt}>{formatInstant(meta.data.evaluatedAt)}</time>

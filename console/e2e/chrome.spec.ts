@@ -8,9 +8,10 @@ test('the theme resolves in three states and survives a reload', async ({ page }
 
   // Dark and light are stamped on the root element, which is what every
   // colour in tokens.css is selected by.
-  await page.getByTestId('theme-dark').click()
+  const theme = page.getByTestId('theme-control')
+  await theme.selectOption('dark')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.getByTestId('theme-light').click()
+  await theme.selectOption('light')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 
   // The choice is a device preference, so it is remembered — and it is not
@@ -21,8 +22,8 @@ test('the theme resolves in three states and survives a reload', async ({ page }
 
   // `system` is a third state, not the absence of a choice: it follows the
   // machine, which this context reports as light.
-  await page.getByTestId('theme-system').click()
-  await expect(page.getByTestId('theme-system')).toHaveAttribute('aria-pressed', 'true')
+  await theme.selectOption('system')
+  await expect(theme).toHaveValue('system')
   await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/)
 })
 
@@ -89,4 +90,26 @@ test('the resize handle takes the keyboard, not only a pointer', async ({ page }
   // Home returns it to the width the panel ships with.
   await page.keyboard.press('Home')
   expect((await panel.boundingBox())!.width).toBeCloseTo(before, 0)
+})
+
+test('the chrome stays one row, and no Workspace name breaks', async ({ page }) => {
+  // It did not, before this: the theme control pushed the demo's chrome to
+  // 1749px inside 1600px, "Catalogue & Governance" wrapped onto three
+  // lines, and the bar grew from 48px to 107px.
+  for (const width of [1024, 1280, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/estate')
+
+    const chrome = page.locator('.chrome')
+    const box = (await chrome.boundingBox())!
+    expect(box.height, `chrome wraps at ${width}px`).toBeLessThan(64)
+
+    // Every Workspace name sits on one line. One line measures ~33px at
+    // the base size; two would be ~57px, so 40px separates them cleanly
+    // without pinning the exact leading.
+    for (const link of await page.locator('.workspace-link').all()) {
+      const height = (await link.boundingBox())!.height
+      expect(height, `a Workspace name wraps at ${width}px`).toBeLessThan(40)
+    }
+  }
 })
