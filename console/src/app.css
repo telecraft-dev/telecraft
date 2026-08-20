@@ -271,8 +271,12 @@ select {
   /* One row, always. A wrapping chrome pushes every surface below it down
      and reads as a layout accident rather than a decision — measured on the
      demo, where the extra provenance banner tipped it over and the bar grew
-     from 48px to 107px. */
+     from 48px to 107px.
+     Past the point where truncating the provenance is not enough, the bar
+     scrolls. A reader can reach a control that is off the edge; they cannot
+     read one printed on top of another. */
   flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
 /* Wordmark-first: the mark supports the word, it does not replace it
@@ -287,9 +291,13 @@ select {
 .workspaces {
   display: flex;
   gap: var(--space-2);
-  flex: 1;
+  flex: 1 0 auto;
   flex-wrap: nowrap;
-  min-width: 0;
+  /* Never narrower than the names it holds. `min-width: 0` let it shrink
+     past its own content, and because the names do not wrap they ran
+     underneath the controls beside them: the first fix traded a wrapping
+     chrome for an overlapping one, which is worse and harder to see. */
+  min-width: max-content;
 }
 
 .workspace-link {
@@ -320,7 +328,11 @@ select {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-width: 0;
+  /* Nothing in here shrinks below its own content either. Squeezing a
+     control does not make it smaller, it makes its text wrap, and the bar
+     grows again — 109px at 1024px before this. The provenance line gives
+     way at a bounded width, and past that the bar scrolls. */
+  flex-shrink: 0;
 }
 
 .lens-control {
@@ -328,10 +340,15 @@ select {
   align-items: center;
   gap: var(--space-2);
   color: var(--colour-text-muted);
+  white-space: nowrap;
 }
 
 .lens-control select {
   font: inherit;
+}
+
+.jump-trigger {
+  white-space: nowrap;
 }
 
 .jump-trigger kbd {
@@ -1907,10 +1924,13 @@ select {
   color: var(--colour-text-muted);
   /* Which snapshot this is stays readable; which commit it came from
      truncates before anything else in the chrome does. The full value is
-     in the title, and on the surface below. */
+     in the title, and on the surface below. Bounded rather than flexible,
+     so it truncates at a width that still says something instead of being
+     squeezed to nothing. */
+  max-width: 22rem;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+  white-space: nowrap;
 }
 
 /* The authoring affordance: words first, hue reinforcing (ADR-0041 §2). */
