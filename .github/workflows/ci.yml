@@ -64,6 +64,24 @@ jobs:
           go-version: stable
       - run: go run ./tools/vendorlint
 
+  # The documentation front-matter check. Ungated for the same reason the
+  # vendor-word lint is: it scans docs/**, so a documentation-only change is
+  # exactly the change that can break it.
+  #
+  # It exists because the site is built somewhere else (issue #74). The
+  # front matter and docs/nav.yaml together are the whole contract between
+  # this repository and telecraft.dev, and a page whose block does not parse
+  # fails over there, after merge, in a build nobody here is watching.
+  docs-lint:
+    name: Documentation front matter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go run ./tools/docslint
+
   test:
     name: Build and test
     needs: changes

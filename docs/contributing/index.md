@@ -111,6 +111,7 @@ Each remaining job guards something specific:
 |---|---|---|
 | Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, passes vet, and passes its unit tests, with no Docker and no network. |
 | Vendor-word lint (ADR-0001) | `go run ./tools/vendorlint` | The neutral core holds. No vendor word appears in `cmd/`, `internal/`, `console/` or the normative docs, and provider implementations stay product-qualified. |
+| Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the documentation site can read. The site is built in another repository, so a malformed block fails there rather than here. |
 | Console (ADR-0045) | `npm ci`, `npm run typecheck`, `npm test`, `npm run check:palette`, `npm run build`, `npm run check:zero-cdn`, `npm run e2e` | The console typechecks, its unit tests and Playwright suite pass, the design tokens clear their contrast and colour-vision floors (ADR-0047), and the built bundle reaches no external host. |
 | TelemetryProvider live (Elasticsearch) | `go test ./internal/provider/telemetry/ -run Live -v -count=1` against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only against a test double. |
 | Forge adapter live (GitHub App) | `go test ./internal/provider/forge/ -run Live -v -count=1` | The pull-request flow works against the real forge API. The suite skips loudly when the credentials are absent, so the job stays green without them. |
