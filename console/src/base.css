@@ -1,0 +1,155 @@
+/*
+ * The base sheet (ADR-0047 §1): the element layer, sitting between the
+ * values in `tokens.css` and the structure in `app.css`.
+ *
+ * Three sheets, one direction of dependency. `tokens.css` is values and
+ * names no selector. This file gives the bare elements a Telecraft default
+ * — body, headings, links, code, tables, form controls, the focus ring —
+ * and names no component. `app.css` is structure, and belongs to the
+ * console alone.
+ *
+ * The split is not tidiness. ADR-0047 §1 chose a stylesheet over a
+ * component library because a React component cannot cross into the
+ * documentation site's repository and a stylesheet can; separating this
+ * layer out of `app.css` is what makes that true in fact rather than in
+ * principle. The console, the documentation site and `telecraft.dev` are
+ * three structures over one set of elements, and this is the one set.
+ *
+ * Load order is `fonts/fonts.css`, `tokens.css`, then this file. Nothing
+ * below names a hex value, a pixel size or a typeface: every one comes from
+ * a token, which is the swap contract ADR-0045 §4 bought.
+ *
+ * What is deliberately absent is block rhythm — the margins between
+ * paragraphs, lists and headings — and heading sizes. A console panel and a
+ * marketing column do not want the same rhythm or the same scale step for
+ * an `h2`, so each surface sets those from the type scale in its own
+ * structure sheet. The browser's defaults are a known quantity to override,
+ * not a mess to reset.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  background: var(--colour-bg);
+  color: var(--colour-text);
+  /* Readings are numbers set to line up (docs/branding/identity.md): the
+     figures are tabular on every surface, not only in the mono face. */
+  font-variant-numeric: var(--numeric);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-semibold);
+}
+
+/* Interactive text is told apart by its underline and its full-strength
+   ink, never by a hue of its own — there is no accent hue to spend
+   (ADR-0047 §4). Left to the browser, a link is the one thing on the
+   surface painted in a colour that means nothing, which is exactly what
+   ADR-0047 §5 forbids everywhere else; `--colour-link` was minted for this
+   rule and until now had nowhere to land.
+
+   The underline offset is deliberately not set. It would reach every
+   anchor, including the ones a structure sheet has already underlined for
+   its own reasons, and move a rule the surface had already placed. A
+   surface that wants the rule further from the descenders sets it on its
+   own selector. */
+a {
+  color: var(--colour-link);
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  font-variant-numeric: inherit;
+}
+
+/* `.mono` rides with the elements rather than sitting in a structure sheet:
+   splitting it off would mean writing the same declaration twice, and the
+   thing a base sheet exists to prevent is the same value in two places. */
+code,
+pre,
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Text inputs and selects are plates like everything else, so a form on a
+   dark ground does not hand one control back to the browser's defaults.
+   `color-scheme` in tokens.css covers what CSS cannot reach. */
+input,
+select,
+textarea {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text);
+}
+
+select {
+  cursor: pointer;
+}
+
+/* Cells that meet, and headers that read as headers and start where their
+   column starts. Nothing more: the console's tables each carry a class and
+   set their own cells, and a table on a prose surface wants a rule under
+   its header rather than a fill — the identity is datum lines and
+   hairlines (docs/branding/identity.md). */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-weight: var(--weight-medium);
+}
+
+th,
+td {
+  padding: var(--space-2) var(--space-3);
+}
+
+thead th {
+  border-bottom: 1px solid var(--colour-rule);
+}
+
+/* One focus ring, everywhere, in the fill colour rather than a hue of its
+   own. `:focus-visible` rather than `:focus` so a pointer click on a card
+   does not leave a ring behind it. */
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-colour);
+  outline-offset: var(--focus-offset);
+}
+
+/* Every transition on every surface reads one of these two durations, so
+   zeroing them here is what guards the lot (design-system.md, "Reduced
+   motion: every transition guarded"). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

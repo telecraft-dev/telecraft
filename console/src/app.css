@@ -1,90 +1,14 @@
-/* Structure only: every colour, size, and face comes from tokens.css.
- * Nothing below names a hex value, a pixel size, or a typeface — that is
- * the token-swap contract ADR-0045 §4 bought and ADR-0047 spent. */
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
-  background: var(--colour-bg);
-  color: var(--colour-text);
-  /* Readings are numbers set to line up (docs/branding/identity.md): the
-     figures are tabular on every surface, not only in the mono face. */
-  font-variant-numeric: var(--numeric);
-  -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2,
-h3,
-h4 {
-  line-height: var(--leading-tight);
-  font-weight: var(--weight-semibold);
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-  font-variant-numeric: inherit;
-}
-
-code,
-pre,
-.mono {
-  font-family: var(--font-mono);
-}
-
-/* Text inputs and selects are plates like everything else, so a form on a
-   dark ground does not hand one control back to the browser's defaults.
-   `color-scheme` in tokens.css covers what CSS cannot reach. */
-input,
-select,
-textarea {
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--colour-rule);
-  border-radius: var(--radius-1);
-  background: var(--colour-surface-raised);
-  color: var(--colour-text);
-}
-
-select {
-  cursor: pointer;
-}
-
-/* One focus ring, everywhere, in the fill colour rather than a hue of its
-   own. `:focus-visible` rather than `:focus` so a pointer click on a card
-   does not leave a ring behind it. */
-:focus-visible {
-  outline: var(--focus-width) solid var(--focus-colour);
-  outline-offset: var(--focus-offset);
-}
-
-/* Every transition in the console reads one of these two durations, so
-   zeroing them here is what guards the lot (design-system.md, "Reduced
-   motion: every transition guarded"). */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-fast: 0ms;
-    --motion-base: 0ms;
-  }
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* Structure only, and the console's alone: the elements are dressed by
+ * `base.css` beside this file and every value comes from `tokens.css`
+ * (ADR-0047 §1, design-system.md "Distribution"). Nothing below names a hex
+ * value, a pixel size, or a typeface — that is the token-swap contract
+ * ADR-0045 §4 bought and ADR-0047 spent.
+ *
+ * A rule that would be true of a bare element on any Telecraft surface
+ * belongs in `base.css`, not here. Anything below that reaches an element
+ * does so through a class, so the documentation site and `telecraft.dev`
+ * can take the elements without taking the console's structure with them.
+ */
 
 /* ---- Marks and icons (ADR-0047 §6) ----
    Both sit on a 16-unit grid at 1.75 stroke and inherit currentColor, so a
