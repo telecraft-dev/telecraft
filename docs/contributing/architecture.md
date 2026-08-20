@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: The package map, the neutral core boundary the vendor-word lint enforces, the CLI binaries, and how a verdict flows from authored files to output.
-order: 3
+order: 4
 ---
 
 # Architecture

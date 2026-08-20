@@ -1,7 +1,7 @@
 ---
 title: Decisions and the design corpus
 description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the 50 ADRs.
-order: 6
+order: 7
 ---
 
 # Decisions and the design corpus

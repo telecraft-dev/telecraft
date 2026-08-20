@@ -1,7 +1,7 @@
 ---
 title: Writing documentation
 description: The directory structure, the front matter schema, the navigation manifest, the house style, and how to add a page.
-order: 7
+order: 8
 ---
 
 # Writing documentation
