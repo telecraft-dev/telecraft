@@ -123,6 +123,13 @@ separate meaning and may need to diverge.
 only. Deliberately absent from the console's data surfaces, where amber
 already means advisory.
 
+On `telecraft.dev` it is the wordmark's first syllable and the pulse line's
+stroke, both on `--colour-bg`: 12.76:1 on dark, 5.40:1 on light, so it clears
+the text floor as text and the graphic floor as a stroke. It is listed in the
+palette check's `TEXT_ON` table for that ground. Until the marketing site used
+it, it was in neither table and therefore unchecked — which is the failure
+mode described under "Accessibility floors", found by walking into it.
+
 ## Typography
 
 Atkinson Hyperlegible for interface text, JetBrains Mono for data. Both

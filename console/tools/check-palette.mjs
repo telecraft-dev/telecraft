@@ -170,6 +170,13 @@ const TEXT_ON = {
   '--severity-ok': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
   '--severity-advisory-ink': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
   '--severity-violation': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
+  // The brand amber is set on `telecraft.dev` and nowhere else (ADR-0047 §4),
+  // as the wordmark's first syllable and as the pulse line's stroke — text and
+  // graphic, both on the page ground. Listed here rather than in GRAPHIC_ON
+  // because the text floor is the stricter of the two and it clears it. It sat
+  // in neither table until the marketing site used it, which is exactly the
+  // quiet regression design-system.md warns an unlisted colour makes possible.
+  '--brand': ['--colour-bg'],
 }
 
 // Marks, lane edges, focus rings: non-text graphics.
