@@ -74,6 +74,12 @@ func (b *builder) judgeTiers(views map[string]*tierView, set expectation.Set) er
 			ShortfallSince: reading.ShortfallSince,
 		}
 
+		// The flow reading comes through the seam like every other
+		// reading, so the card cannot tell a declared meter from a live
+		// one, and a Tier the estate declares no flow for gets the same
+		// unknown a backend outage would produce (ADR-0040 §6).
+		v.metered = prov.Meter(context.Background(), id, b.window())
+
 		// Persistence is the estate's declaration (ADR-0035 §3): seed the
 		// dampening clock so a silence the estate says began in April is
 		// judged as one, not as a shortfall observed for the first time in

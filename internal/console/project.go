@@ -45,8 +45,8 @@ func (b *builder) face(v *tierView) CardFace {
 		},
 		FindingCounts: counts,
 		Population:    b.populationLine(v),
-		Signals:       b.signalRows(),
-		Churn:         b.churn(),
+		Signals:       b.signalRows(v.metered),
+		Churn:         b.churn(v.metered),
 	}
 	if len(waived) > 0 {
 		face.WaivedCounts = waived
@@ -159,39 +159,121 @@ func (b *builder) populationLine(v *tierView) Population {
 	return line
 }
 
-// signalRows are the per-signal matrix rows. The metering seam derives
-// these on read from a live backend (ADR-0040); an estate that declares no
-// flow readings carries them Known false with the cause said out loud,
-// which is the honest neutral the contract exists to express — never a
-// zero standing in for "we cannot see" (ADR-0008).
-func (b *builder) signalRows() []SignalRow {
-	asOf := b.now.UTC().Format(time.RFC3339)
-	unknown := Reading{Known: false, AsOf: asOf, Cause: flowCause}
+// signalRows are the per-signal matrix rows, projected from the metering
+// reading the seam returned for this Tier (ADR-0040). Knowledge is per
+// signal and per reading all the way down: a lane the meter could not read
+// carries Known false and the cause said out loud beside lanes that carry
+// figures — never a zero standing in for "we cannot see" (ADR-0008).
+func (b *builder) signalRows(m telemetry.Metered) []SignalRow {
+	asOf := m.AsOf.UTC().Format(time.RFC3339)
 	out := make([]SignalRow, 0, len(telemetry.Signals()))
 	for _, kind := range telemetry.Signals() {
+		sig, read := m.Signals[kind]
+		if !read {
+			// A seam that returned no entry for a signal has said
+			// nothing about it, which is not the same as a zero.
+			sig = telemetry.MeteredSignal{Known: false, Cause: flowCause}
+		}
 		out = append(out, SignalRow{
 			Signal:    string(kind),
-			Volume:    VolumeReading{Reading: unknown},
-			Freshness: FreshnessReading{Reading: unknown},
-			Shape:     ShapeReading{Reading: unknown},
+			Volume:    volumeRow(sig, asOf),
+			Freshness: freshnessRow(sig, asOf, m.AsOf),
+			Shape:     ShapeReading{Reading: Reading{Known: false, AsOf: asOf, Cause: shapeCause}},
 		})
 	}
 	return out
 }
 
-// churn is the Tier's restart rate, unknown for the same reason.
-func (b *builder) churn() ChurnReading {
-	return ChurnReading{
-		Reading: Reading{Known: false, AsOf: b.now.UTC().Format(time.RFC3339), Cause: flowCause},
+// volumeRow is one lane's flow through the Tier (ADR-0040 §2, §3). The
+// reduction is a figure and never a grade: a filter processor dropping
+// nine tenths of what it accepted is doing the job it was authored to do.
+// It is signed rather than clamped — a lane fanned out to two exporters
+// sends each item twice, and reporting that as a reduction of zero would
+// hide a real property of the pipeline. The only reds the meter itself
+// sources are the error-rate readings, which travel beside it untouched.
+func volumeRow(sig telemetry.MeteredSignal, asOf string) VolumeReading {
+	if !sig.Known {
+		return VolumeReading{Reading: Reading{Known: false, AsOf: asOf, Cause: sig.Cause}}
+	}
+	return VolumeReading{
+		Reading:       Reading{Known: true, AsOf: asOf},
+		In:            sig.In,
+		Out:           sig.Out,
+		Reduction:     sig.In - sig.Out,
+		Refused:       sig.Refused,
+		SendFailed:    sig.SendFailed,
+		EnqueueFailed: sig.EnqueueFailed,
+		Truncated:     sig.Truncated,
 	}
 }
 
-// flowCause is why the metering readings are absent from a snapshot: they
-// are derived on read from a telemetry backend, and an estate declares its
-// arrivals, not its flow (ADR-0040).
+// freshnessRow is one lane's pipeline-grain freshness: the age of the
+// newest self-telemetry datapoint the counters were read from (ADR-0040
+// §4). A lane whose counters reported nothing in the window is silent — a
+// known-empty window, which the contract keeps distinct from not knowing.
+func freshnessRow(sig telemetry.MeteredSignal, asOf string, at time.Time) FreshnessReading {
+	if !sig.Known {
+		return FreshnessReading{Reading: Reading{Known: false, AsOf: asOf, Cause: sig.Cause}}
+	}
+	row := FreshnessReading{Reading: Reading{Known: true, AsOf: asOf}}
+	if sig.Newest.IsZero() {
+		row.Silent = true
+		return row
+	}
+	row.Newest = sig.Newest.UTC().Format(time.RFC3339)
+	// Collector and console clocks are not the same clock, so a datapoint
+	// can carry a stamp a second or two ahead of the reading's own
+	// instant. Skew reads as fresh, never as a negative age.
+	age := int64(at.Sub(sig.Newest).Seconds())
+	if age < 0 {
+		age = 0
+	}
+	row.AgeSeconds = &age
+	return row
+}
+
+// churn is the Tier's restart rate: distinct collector process
+// incarnations in the window (ADR-0040 §4). It is Tier-wide because a
+// restart takes the whole process with it, and it is known independently
+// of the volume rows — an estate can meter its flow and still not be able
+// to count process starts.
+func (b *builder) churn(m telemetry.Metered) ChurnReading {
+	asOf := m.AsOf.UTC().Format(time.RFC3339)
+	if !m.Incarnations.Known {
+		return ChurnReading{Reading: Reading{Known: false, AsOf: asOf, Cause: m.Incarnations.Cause}}
+	}
+	return ChurnReading{
+		Reading:      Reading{Known: true, AsOf: asOf},
+		Incarnations: m.Incarnations.Count,
+		Truncated:    m.Incarnations.Truncated,
+	}
+}
+
+// flowCause is why the metering readings are absent from a snapshot whose
+// estate declares no flow: they are derived on read from a telemetry
+// backend, and an estate that declares only its arrivals has said nothing
+// about its flow (ADR-0040).
 const flowCause = "the estate's readings file declares no flow readings — " +
 	"volume, freshness and shape are derived on read from a telemetry backend (ADR-0040), " +
 	"which a snapshot has none of"
+
+// shapeCause is why the shape column stays unknown even beside a fully
+// declared flow. Shape is a count of required attributes and missing ones
+// (ADR-0034), and nothing in the product produces that reading yet: the
+// schema_conformance requirement kind is unimplemented, and the metering
+// seam carries no shape field to declare through, because self-telemetry
+// counters count items and know nothing about what is inside them.
+//
+// The one place the answer might be borrowed from is the conformance
+// verdicts of the Services whose Paths traverse the Tier — and that is
+// exactly the blend ADR-0040 §1 refuses. Service-grain and pipeline-grain
+// are never mixed, and a shape figure assembled that way would attribute
+// one Service's instrumentation to every lane of a Tier that merely
+// carried it. Unknown with a stated cause is the true answer here, and a
+// true unknown is worth more than a plausible number.
+const shapeCause = "no shape reading exists at pipeline grain — self-telemetry counts items and " +
+	"not what is inside them, and borrowing the traversing Services' conformance would blend " +
+	"service-grain into pipeline-grain, which metering never does (ADR-0034, ADR-0040 §1)"
 
 // provenance feeds the "why?" popover: claim, the config lines that implied
 // it, and the SHA judged against — fed, never reconstructed (ADR-0041 §3).

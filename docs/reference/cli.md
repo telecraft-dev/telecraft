@@ -237,8 +237,8 @@ function of the estate at `-commit` and the readings the estate declares.
 `-rows` names the conformance estate file, each Service's Effective reading
 per Environment. It's the same file `check` takes as `-estate`, and
 [Exemptions](exemptions.md) documents its fields. `-readings` names the
-readings file, which declares the two runtime readings a repository cannot
-hold: the collector estate and the arrivals.
+readings file, which declares the runtime readings a repository cannot
+hold: the collector estate, the arrivals, and each Tier's flow.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|

@@ -17,13 +17,13 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
-// Readings is the estate's declared runtime evidence: the two readings a
+// Readings is the estate's declared runtime evidence: the readings a
 // repository cannot hold. In production the collector collector estate arrives through
-// the EstateProvider seam (ADR-0008) and the arrivals through the
-// TelemetryProvider seam (ADR-0008, ADR-0039); a static snapshot has
-// neither backend, so the estate declares them here and this package plays
-// them back through the same seams. Everything judged from them is judged
-// by the product's own evaluators.
+// the EstateProvider seam (ADR-0008) and the arrivals, the self-telemetry
+// and the flow through the TelemetryProvider seam (ADR-0008, ADR-0039,
+// ADR-0040); a static snapshot has neither backend, so the estate declares
+// them here and this package plays them back through the same seams.
+// Everything judged from them is judged by the product's own evaluators.
 //
 // Loading is strict and fails closed, matching every other authored file in
 // the estate: an unknown field or a malformed document is an error naming
@@ -167,6 +167,93 @@ type TierReading struct {
 	// reading carries beyond the pipeline components — collector-level
 	// telemetry and synthetic graph nodes. Tolerated, matching nothing.
 	Attributes []map[string]string `yaml:"attributes"`
+
+	// Flow is the Tier's pipeline-grain metering reading. Absent is the
+	// default and stays unknown: a Tier that declares no flow keeps saying
+	// it cannot see, which is a statement, not a zero (ADR-0008).
+	Flow *FlowReading `yaml:"flow"`
+}
+
+// FlowReading is one Tier's declared pipeline-grain flow reading — the
+// metering half of the seam (ADR-0040), as the estate declares it.
+//
+// This is the same predicament the collector estate and the arrivals are
+// in, answered the same way. ADR-0040 §1 already settles where
+// pipeline-grain metering comes from: collector self-telemetry, per
+// (Tier, signal), in = receiver-accepted and out = per-exporter sent. That
+// is precisely the grain the `tiers:` section above already declares —
+// this adds one more field of a seam the file declares two others of, and
+// widens nothing. A snapshot has no backend to derive metering from, so
+// the estate declares the reading and this package plays it back through
+// the Provider seam, exactly as it does for the arrivals: the evaluators
+// and the card contract cannot tell a declared reading from a live one.
+//
+// The declaration mirrors telemetry.Metered field for field on purpose. A
+// declared reading the meter could not have produced is not a reading, and
+// the mirror is what holds the two to the same shape.
+type FlowReading struct {
+	// Signals is the per-signal reading. A signal absent from the map is
+	// Known false with a stated cause — a declaration covering one lane
+	// and not another degrades per lane, never wholesale (ADR-0008).
+	Signals map[string]FlowSignalReading `yaml:"signals"`
+
+	// Incarnations is the Tier-wide restart-rate reading (ADR-0040 §4). It
+	// sits beside the signals rather than inside them because a restart
+	// takes the whole collector process with it.
+	Incarnations *FlowIncarnations `yaml:"incarnations"`
+}
+
+// FlowSignalReading is one signal's declared flow, mirroring
+// telemetry.MeteredSignal.
+type FlowSignalReading struct {
+	// Known distinguishes "the backend cannot say" from "nothing flowed".
+	// Absent defaults to known — the ordinary case in a declared reading.
+	Known *bool  `yaml:"known"`
+	Cause string `yaml:"cause"`
+
+	// In is receiver-accepted items over the window and Out exporter-sent
+	// items, summed across instances. Items are the unit (ADR-0040 §2):
+	// there is no byte field to declare because no byte counter exists on
+	// these surfaces, and an estimated one would be an invention.
+	In  int64 `yaml:"in"`
+	Out int64 `yaml:"out"`
+
+	// Exporters maps each exporter's rendered id — `type` or `type/name`,
+	// exactly as the Blueprint spells it — to its own sent-item count. A
+	// Hop's throughput is its feeding exporter's out-rate (ADR-0040 §1),
+	// and this is where that rate would be read; Out is their sum.
+	Exporters map[string]int64 `yaml:"exporters"`
+
+	// The error-rate readings — the only reds metering itself sources
+	// (ADR-0040 §3). In-minus-out is not among them and never becomes one.
+	Refused       int64 `yaml:"refused"`
+	SendFailed    int64 `yaml:"send_failed"`
+	EnqueueFailed int64 `yaml:"enqueue_failed"`
+
+	// Newest is the timestamp of the newest self-telemetry datapoint the
+	// counters were read from — the pipeline-grain freshness base
+	// (ADR-0040 §4). Absent declares a known-empty window: nothing
+	// reported, which the card renders as silent rather than as unknown.
+	Newest time.Time `yaml:"newest"`
+
+	// Truncated declares that more exporters or instances existed than the
+	// reading summed, so the figures are a floor. Reported, never silent.
+	Truncated bool `yaml:"truncated"`
+}
+
+// FlowIncarnations is the declared restart-rate reading, mirroring
+// telemetry.Incarnations.
+type FlowIncarnations struct {
+	Known *bool  `yaml:"known"`
+	Cause string `yaml:"cause"`
+
+	// Count is how many distinct collector process incarnations reported
+	// in the window. It counts process starts, never health: a Tier that
+	// scaled out and one that crash-looped both raise it, and telling them
+	// apart belongs to the claims, not the meter.
+	Count int `yaml:"count"`
+
+	Truncated bool `yaml:"truncated"`
 }
 
 // emitsAll reports the `all` shorthand.
@@ -186,6 +273,103 @@ func (t TierReading) silentSet() map[string]bool {
 		out[s] = true
 	}
 	return out
+}
+
+// flowProblems validates one Tier's declared flow. The rule it enforces
+// throughout is a single one: the declaration must be a reading the meter
+// could have taken. A figure the counters cannot produce — a negative
+// count off a monotonic counter, an exporter split that does not add up to
+// the out-rate it was summed from, a datapoint newer than the instant the
+// reading was taken — is an authoring mistake, and a snapshot built over
+// it would put a number on a card that no backend would ever have
+// returned. Fails closed, like every other authored file in the estate.
+func (t TierReading) flowProblems(asOf time.Time) []string {
+	if t.Flow == nil {
+		return nil
+	}
+	var problems []string
+	names := make([]string, 0, len(t.Flow.Signals))
+	for name := range t.Flow.Signals {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		sig := t.Flow.Signals[name]
+		where := fmt.Sprintf("tier %s flow %s", t.Tier, name)
+		if !requirements.SignalKind(name).Valid() {
+			problems = append(problems, fmt.Sprintf("%s — the vocabulary is logs, metrics, traces (ADR-0009)", where))
+			continue
+		}
+
+		figures := map[string]int64{
+			"in": sig.In, "out": sig.Out, "refused": sig.Refused,
+			"send_failed": sig.SendFailed, "enqueue_failed": sig.EnqueueFailed,
+		}
+		for _, field := range []string{"in", "out", "refused", "send_failed", "enqueue_failed"} {
+			if figures[field] < 0 {
+				problems = append(problems, fmt.Sprintf("%s declares %s %d — a negative count cannot come off a monotonic counter", where, field, figures[field]))
+			}
+		}
+
+		// An unknown carrying figures says two things at once. Known false
+		// means the counters could not be read, and then every count is
+		// zero and means nothing (ADR-0040 §6).
+		if sig.Known != nil && !*sig.Known {
+			counted := sig.In != 0 || sig.Out != 0 || sig.Refused != 0 ||
+				sig.SendFailed != 0 || sig.EnqueueFailed != 0 || len(sig.Exporters) > 0
+			if counted {
+				problems = append(problems, where+" is marked unknown but carries figures — an unknown reading has no counts, or it is not unknown (ADR-0008)")
+			}
+			if !sig.Newest.IsZero() {
+				problems = append(problems, where+" is marked unknown but carries a newest timestamp")
+			}
+		}
+
+		// Out is the sum of the per-exporter splits by construction: the
+		// meter reads the split and sums it server-side. A declaration
+		// whose parts do not add up to its whole would make the card and
+		// the exporter rates disagree about the same window.
+		if len(sig.Exporters) > 0 {
+			ids := make([]string, 0, len(sig.Exporters))
+			for id := range sig.Exporters {
+				ids = append(ids, id)
+			}
+			sort.Strings(ids)
+
+			var sum int64
+			for _, id := range ids {
+				n := sig.Exporters[id]
+				sum += n
+				if strings.TrimSpace(id) == "" {
+					problems = append(problems, where+" declares an exporter with no id — the id is the rendered `type` or `type/name` (ADR-0040 §1)")
+				}
+				if n < 0 {
+					problems = append(problems, fmt.Sprintf("%s declares exporter %q sending %d items — a negative count cannot come off a monotonic counter", where, id, n))
+				}
+			}
+			if sum != sig.Out {
+				problems = append(problems, fmt.Sprintf("%s declares an exporter split summing to %d against out %d — out is the sum of the exporters' own out-rates (ADR-0040 §1)", where, sum, sig.Out))
+			}
+		}
+
+		if !sig.Newest.IsZero() && !asOf.IsZero() && sig.Newest.After(asOf) {
+			problems = append(problems, fmt.Sprintf("%s declares a newest datapoint at %s, after the as_of the reading was taken at — a reading cannot see past its own instant (ADR-0036 §2)",
+				where, sig.Newest.UTC().Format(time.RFC3339)))
+		}
+	}
+
+	inc := t.Flow.Incarnations
+	if inc == nil {
+		return problems
+	}
+	if inc.Count < 0 {
+		problems = append(problems, fmt.Sprintf("tier %s flow declares %d incarnations — a count of process starts is never negative", t.Tier, inc.Count))
+	}
+	if inc.Known != nil && !*inc.Known && inc.Count != 0 {
+		problems = append(problems, fmt.Sprintf("tier %s flow marks its incarnation count unknown but declares %d — an unknown reading has no count (ADR-0008)", t.Tier, inc.Count))
+	}
+	return problems
 }
 
 // LoadReadings reads and validates one readings file.
@@ -267,6 +451,7 @@ func LoadReadings(path string) (Readings, error) {
 				problems = append(problems, fmt.Sprintf("tier %s reads signal %q — the vocabulary is logs, metrics, traces (ADR-0009)", tier.Tier, name))
 			}
 		}
+		problems = append(problems, tier.flowProblems(r.AsOf)...)
 	}
 	if len(problems) > 0 {
 		return Readings{}, fmt.Errorf("invalid readings in %s:\n  - %s", path, strings.Join(problems, "\n  - "))
@@ -332,6 +517,57 @@ func (s SignalReading) selfSignal(components []telemetry.ComponentTelemetry) tel
 	}
 }
 
+// metered converts one declared signal flow to the seam's shape.
+func (f FlowSignalReading) metered() telemetry.MeteredSignal {
+	if f.Known != nil && !*f.Known {
+		cause := f.Cause
+		if cause == "" {
+			cause = "the declared reading marks this signal's flow unknown"
+		}
+		return telemetry.MeteredSignal{Known: false, Cause: cause}
+	}
+	sig := telemetry.MeteredSignal{
+		Known:         true,
+		In:            f.In,
+		Out:           f.Out,
+		Refused:       f.Refused,
+		SendFailed:    f.SendFailed,
+		EnqueueFailed: f.EnqueueFailed,
+		Newest:        f.Newest,
+		Truncated:     f.Truncated,
+	}
+	for id, n := range f.Exporters {
+		if sig.Exporters == nil {
+			sig.Exporters = map[string]int64{}
+		}
+		sig.Exporters[id] = n
+	}
+	return sig
+}
+
+// incarnations converts the declared restart rate to the seam's shape. An
+// estate that declares flow but no incarnation count gets an unknown
+// churn reading beside known volume rows: knowledge is per reading, and
+// the card says so rather than showing a restful zero (ADR-0008).
+func (f FlowReading) incarnations(tier string) telemetry.Incarnations {
+	if f.Incarnations == nil {
+		return telemetry.Incarnations{
+			Known: false,
+			Cause: "the estate's readings file declares no incarnation count for " + tier +
+				" — restart rate is read from the collector's own instance identity (ADR-0040 §4)",
+		}
+	}
+	inc := *f.Incarnations
+	if inc.Known != nil && !*inc.Known {
+		cause := inc.Cause
+		if cause == "" {
+			cause = "the declared reading marks this Tier's incarnation count unknown"
+		}
+		return telemetry.Incarnations{Known: false, Cause: cause}
+	}
+	return telemetry.Incarnations{Known: true, Count: inc.Count, Truncated: inc.Truncated}
+}
+
 // missing is the reading for a row or signal the estate declared nothing
 // for: Known false with a cause, never a fabricated absence (ADR-0008).
 func missing(what string) telemetry.SignalObservation {
@@ -352,6 +588,11 @@ type provider struct {
 	// rendered from the Tier readings' Emitting declarations.
 	components map[string][]telemetry.ComponentTelemetry
 }
+
+// The playback answers the whole seam, metering included: a partial
+// implementation would mean the snapshot judged declared readings through
+// a different door than a live console does.
+var _ telemetry.Provider = (*provider)(nil)
 
 // Name identifies the reading's origin in stamps and logs. It is the
 // estate's own declaration, not a backend — and says so.
@@ -434,4 +675,42 @@ func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Durat
 		out.Signals[kind] = sig.selfSignal(p.components[tier])
 	}
 	return out
+}
+
+// Meter plays the declared flow reading back through the metering seam
+// (ADR-0040). An estate that declares nothing keeps the honest neutral it
+// has always had: every signal Known false with the cause said out loud,
+// because a snapshot has no backend to derive metering from, and "we
+// cannot see the counters" is never rendered as "nothing flowed"
+// (ADR-0008, ADR-0040 §6).
+//
+// Degradation is per reading, not per Tier. A Tier that declares metrics
+// flow and nothing else carries a metrics row with figures beside a logs
+// row that says why it is empty — which is the whole reason knowledge is
+// held per signal at this seam.
+func (p *provider) Meter(_ context.Context, tier string, window time.Duration) telemetry.Metered {
+	reading, ok := p.readings.tier(tier)
+	if !ok || reading.Flow == nil {
+		return telemetry.MeterUnknown(p.readings.AsOf, window, flowCause)
+	}
+
+	m := telemetry.Metered{
+		AsOf:    p.readings.AsOf,
+		Window:  window,
+		Signals: map[requirements.SignalKind]telemetry.MeteredSignal{},
+	}
+	for _, kind := range telemetry.Signals() {
+		sig, declared := reading.Flow.Signals[string(kind)]
+		if !declared {
+			m.Signals[kind] = telemetry.MeteredSignal{
+				Known: false,
+				Cause: "the estate's readings file declares no " + string(kind) + " flow for " + tier +
+					" — not knowing one lane says nothing about its neighbours (ADR-0008)",
+			}
+			continue
+		}
+		m.Signals[kind] = sig.metered()
+	}
+	m.Incarnations = reading.Flow.incarnations(tier)
+	return m
 }

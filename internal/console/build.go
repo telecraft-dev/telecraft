@@ -19,6 +19,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/serving"
+	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
 // Inputs is everything one snapshot reads. The estate root supplies every
@@ -298,6 +299,13 @@ type tierView struct {
 	expect     expectation.TierResult
 	findings   []Finding
 	provenance []Provenance
+
+	// metered is the Tier's pipeline-grain flow reading, taken through the
+	// metering seam (ADR-0040). judgeTiers fills it for every view before
+	// any face is projected, so the card always renders a reading that was
+	// actually asked for — including a fully unknown one, which is a
+	// reading like any other (ADR-0008).
+	metered telemetry.Metered
 }
 
 func (b *builder) build() (Bundle, error) {
