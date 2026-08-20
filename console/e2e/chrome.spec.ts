@@ -92,24 +92,58 @@ test('the resize handle takes the keyboard, not only a pointer', async ({ page }
   expect((await panel.boundingBox())!.width).toBeCloseTo(before, 0)
 })
 
-test('the chrome stays one row, and no Workspace name breaks', async ({ page }) => {
-  // It did not, before this: the theme control pushed the demo's chrome to
-  // 1749px inside 1600px, "Catalogue & Governance" wrapped onto three
-  // lines, and the bar grew from 48px to 107px.
-  for (const width of [1024, 1280, 1600, 1920]) {
+test('nothing in the chrome wraps, overlaps, or is printed over', async ({ page }) => {
+  // Two regressions live here, one after the other. First the theme
+  // control pushed the demo's chrome to 1749px inside 1600px and
+  // "Catalogue & Governance" wrapped onto three lines. Then the fix for
+  // that let the Workspace navigation shrink past its own content, so the
+  // names ran underneath the controls beside them — a worse failure, and
+  // one the height assertion could not see, because an overlapping row is
+  // still one row.
+  //
+  // So this asserts the property rather than either symptom: every item in
+  // the chrome sits on one line, and no two of them occupy the same space.
+  // 800 and 720 are in the list deliberately. The regression was found on
+  // the demo, whose chrome carries a provenance banner this build does not,
+  // so at ordinary widths this harness cannot reproduce the crowding that
+  // caused it. Narrow enough and it can: the same shrink-below-content
+  // fault wrapped this chrome to 85px at 800 and 109px at 720.
+  for (const width of [720, 800, 1024, 1280, 1600, 1920]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/estate')
+    await expect(page.locator('.workspace-link').first()).toBeVisible()
 
     const chrome = page.locator('.chrome')
-    const box = (await chrome.boundingBox())!
-    expect(box.height, `chrome wraps at ${width}px`).toBeLessThan(64)
+    expect((await chrome.boundingBox())!.height, `chrome wraps at ${width}px`).toBeLessThan(64)
 
-    // Every Workspace name sits on one line. One line measures ~33px at
-    // the base size; two would be ~57px, so 40px separates them cleanly
-    // without pinning the exact leading.
+    // One line each. One line is ~33px at the base size and two would be
+    // ~57px, so 40px separates them without pinning the exact leading.
     for (const link of await page.locator('.workspace-link').all()) {
       const height = (await link.boundingBox())!.height
       expect(height, `a Workspace name wraps at ${width}px`).toBeLessThan(40)
+    }
+
+    // Nothing overlaps anything. Measured over the chrome's own children
+    // and the controls inside them, which is where the collision was.
+    const boxes = await page.evaluate(() => {
+      const items = [
+        ...document.querySelectorAll('.chrome > *, .chrome-controls > *'),
+      ].filter((el) => !el.contains(document.querySelector('.chrome-controls')))
+      return items.map((el) => {
+        const r = el.getBoundingClientRect()
+        return { name: el.className || el.tagName, left: r.left, right: r.right }
+      })
+    })
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]!
+        const b = boxes[j]!
+        const overlap = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+        expect(
+          overlap,
+          `"${a.name}" and "${b.name}" overlap by ${Math.round(overlap)}px at ${width}px`,
+        ).toBeLessThanOrEqual(0)
+      }
     }
   }
 })
