@@ -62,6 +62,19 @@ contributing anything back.
    Font License, whose texts travel with the faces because the licence
    requires it, and the Lucide utility icons under ISC (ADR-0047 §6).
 
+6. **This is the project's licence, not this repository's.** Every
+   repository under `telecraft-dev` carries ELv2 until a decision here says
+   otherwise: the platform, the demo estate, the marketing site, and the
+   private CI fixture. Each gets the licence text at its root rather than a
+   reference to this one, because a repository is obtained on its own and a
+   licence that has to be looked up elsewhere is not granted at the point of
+   use.
+
+   The default matters more than the individual cases. A repository added
+   later inherits ELv2 by being part of the project, so the question at
+   creation is whether to depart from it — not whether to have a licence at
+   all, which is how three of the four came to have none.
+
 ## Consequences
 
 - ELv2 does not conflict with ADR-0001. That ADR governs vendor words in
@@ -77,11 +90,14 @@ contributing anything back.
   agreement and no contributor other than the author, so nothing needed
   anyone's consent; a second contributor makes a CLA a question worth
   asking, and it is not one yet.
-- The sibling repositories still carry no licence. `estate-demo` is
-  authored YAML rather than product code and `telecraft.dev` is a static
-  page, but "no licence" means "no rights granted", which is not what either
-  is for. Both want a decision of their own rather than inheriting this one
-  silently.
+- The sibling repositories carried no licence at all, which meant no rights
+  granted — not what any of them is for. `estate-demo` is authored YAML,
+  `telecraft.dev` is a static page and `estate-fixture` is a private CI
+  fixture, so none is product code; §6 licenses them anyway, because the
+  question a reader asks of a public repository is answered by a file at its
+  root or not at all. The demo estate is the case worth naming: it is the
+  worked example adopters will copy from, and an example nobody has
+  permission to copy is not one.
 - A future move to an OSI licence stays open: relicensing towards more
   permissive terms needs only the copyright holder's agreement, and today
   there is exactly one.

@@ -126,6 +126,9 @@ It is **source-available rather than open source**: the licence is not
 OSI-approved, and the documentation says "source-available" wherever it
 describes the project, because calling it open source would be inaccurate.
 
+The same licence covers every repository in the project — the demo estate
+and the marketing site as well as this one (ADR-0050 §6).
+
 Third-party components keep their own licences, which are more permissive
 and unaffected by this one: the two bundled typefaces ship under the SIL
 Open Font License (`console/src/fonts/*-OFL.txt`), and the utility icons
