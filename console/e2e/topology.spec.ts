@@ -71,6 +71,12 @@ test('drag is row-constrained and persists in the per-user store', async ({ page
   expect(gatewayReloaded.x - edgeReloaded.x).toBeGreaterThan(gapBefore + 40)
 })
 
+// This suite runs the instance build, where simulate starts off: motion on
+// a picture of a real estate would be a claim about throughput the console
+// cannot support. The demo build starts it on for the opposite reason, and
+// that default is verified against the deployed site rather than here —
+// this harness serves one build, and standing up a second for a one-line
+// default is not worth what it costs.
 test('simulate animates journeys and changes nothing persistent', async ({ page }) => {
   await page.goto('/topology')
   const storeBefore = await page.evaluate(() =>

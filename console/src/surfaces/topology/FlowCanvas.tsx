@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { api } from '../../api/client'
+import { demoMode } from '../../api/demo'
 import type { TopologyPayload, TopologyTier } from '../../api/types'
 import {
   MARGIN,
@@ -184,7 +185,15 @@ export function FlowCanvas() {
   // Simulate is a cosmetic toggle: component state only, nothing in the
   // URL and nothing in the presentation store — it changes nothing
   // persistent (ADR-0044 §5).
-  const [simulate, setSimulate] = useState(false)
+  //
+  // It starts on in the demo and off everywhere else. The demo exists to
+  // show what the model holds, and a canvas of still boxes does not show
+  // that Paths run through Tiers — a visitor has to know to look for a
+  // control before the surface says anything. An instance is the opposite
+  // case: it is read as a picture of a real estate, and motion that is not
+  // real throughput would be a claim the console cannot support. The demo
+  // says what it is in the chrome beside it, and the toggle turns it off.
+  const [simulate, setSimulate] = useState(demoMode)
   // Bumped after a drag persists, so the engine re-derives from the store.
   const [, setArrangementVersion] = useState(0)
 
