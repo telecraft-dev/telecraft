@@ -2,7 +2,7 @@
 
 **Craft, govern, and verify OpenTelemetry across your whole estate.**
 
-Telecraft is an open-source fleet and policy management platform for
+Telecraft is a source-available fleet and policy management platform for
 OpenTelemetry. It models your collection topology, composes collector
 configuration from owned, versioned building blocks, and then does the thing
 no other tool does: it derives from the configuration an *expectation* of what
@@ -117,4 +117,19 @@ Four rules carry most of it:
 
 ## Licence
 
-Apache-2.0.
+[Elastic License 2.0](LICENSE). The source is public, and you may read it,
+modify it, and run it — including in production, for your own estate, at no
+cost. Two things it does not permit: offering Telecraft to third parties as
+a hosted or managed service, and removing the licensing notices.
+
+It is **source-available rather than open source**: the licence is not
+OSI-approved, and the documentation says "source-available" wherever it
+describes the project, because calling it open source would be inaccurate.
+
+The same licence covers every repository in the project — the demo estate
+and the marketing site as well as this one (ADR-0050 §6).
+
+Third-party components keep their own licences, which are more permissive
+and unaffected by this one: the two bundled typefaces ship under the SIL
+Open Font License (`console/src/fonts/*-OFL.txt`), and the utility icons
+come from Lucide under ISC.

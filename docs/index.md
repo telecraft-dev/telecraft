@@ -6,7 +6,7 @@ order: 0
 
 # Telecraft documentation
 
-Telecraft is an open-source fleet and policy management platform for
+Telecraft is a source-available fleet and policy management platform for
 OpenTelemetry. It models your collection topology, composes collector
 configuration from owned and versioned building blocks, and checks that
 the telemetry you expected actually arrived.
