@@ -1,0 +1,215 @@
+name: Release
+
+# A release is a tag, and the tag is most of what a release is (ADR-0049).
+# Both public surfaces build this repository from a git ref rather than from
+# something we hand them: estate-demo checks out the platform and runs its
+# evaluators, and the documentation site consumes the token sheets. So the
+# thing that has to exist for issue #86 is not a binary — it is a ref that
+# stopped moving, with the sheets that travel to the second repository
+# attached to it.
+#
+# What this publishes, and what it deliberately does not, is ADR-0049 §3.
+# Go binaries are absent because the documented way to get the CLI is
+# `go build ./cmd/telecraft` (docs/guides/quickstart.md), and publishing a
+# binary buys a platform matrix, checksums per platform and an upgrade path
+# that nothing yet asks for. The console bundle is absent because it is
+# built per deployment — demo mode reads a snapshot beside it, instance mode
+# calls a server (ADR-0045) — so a single prebuilt bundle would be the wrong
+# one for at least one consumer.
+#
+# Cutting a release is one push of one annotated tag. Everything below is
+# the machine's half; docs/contributing/releases.md is the human's.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  # To create the release and attach the design artefact to it. Nothing here
+  # writes to the tree, and no other repository is touched: telling the demo
+  # about a release is demo-dispatch.yml's job, on the same tag push.
+  contents: write
+
+jobs:
+  publish:
+    name: Publish the release
+    runs-on: ubuntu-latest
+    steps:
+      # Full history, because the guard below asks whether this tag sits on
+      # main and a shallow checkout cannot answer that.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Two guards, both for the same footgun: a tag is a push, and a push
+      # has no review. Nothing else stands between a typed command and a
+      # published claim.
+      #
+      # The shape guard rejects anything that is not vMAJOR.MINOR.PATCH with
+      # an optional pre-release suffix, so `v0.2` and `v0.2.0.1` fail here
+      # rather than becoming a version other repositories have to parse.
+      #
+      # The ancestry guard rejects a tag on a branch. Main is the reviewed,
+      # green history (docs/contributing/index.md); a tag anywhere else
+      # publishes code no reviewer saw, and estate-demo would then build the
+      # public demo from it.
+      - name: The tag is well formed and sits on main
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::$TAG is not vMAJOR.MINOR.PATCH[-prerelease] (ADR-0049 §1)"
+            exit 1
+          fi
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$TAG points at $GITHUB_SHA, which is not on main (ADR-0049 §2)"
+            exit 1
+          fi
+          # A pre-release is a rehearsal: it publishes artefacts and never
+          # reaches the public demo (ADR-0049 §6). The suffix is the whole
+          # signal, here and in demo-dispatch.yml.
+          case "$TAG" in
+            *-*) prerelease=true ;;
+            *)   prerelease=false ;;
+          esac
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "$TAG is on main; prerelease=$prerelease"
+
+      # The design artefact: the four distributed files of
+      # docs/branding/design-system.md "Distribution", laid out the way a
+      # consumer serves them. `fonts.css` reaches its faces by relative URL
+      # (`./JetBrainsMono.woff2`), so the fonts directory travels whole or
+      # the sheet resolves to nothing. The two OFL texts travel with the
+      # faces because the licence requires it, not as a courtesy.
+      #
+      # `base.css` is a plan and not a file (design-system.md records that
+      # row as one). It is copied when it exists, so the release that first
+      # carries it needs no change here.
+      - name: Assemble the design artefact
+        id: assemble
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          staged="$RUNNER_TEMP/telecraft-design-$TAG"
+          mkdir -p "$staged/fonts"
+          cp console/src/tokens.css "$staged/"
+          cp console/src/fonts/fonts.css "$staged/fonts/"
+          cp console/src/fonts/*.woff2 "$staged/fonts/"
+          cp console/src/fonts/*-OFL.txt "$staged/fonts/"
+          if [ -f console/src/base.css ]; then
+            cp console/src/base.css "$staged/"
+          else
+            echo "note: base.css is not in the tree yet; the archive carries the tokens and the faces only"
+          fi
+          printf '%s\n' "$TAG" > "$staged/VERSION"
+          cat > "$staged/README.md" <<'CONTENTS'
+          # Telecraft design artefacts
+
+          The token and base sheets, and the two self-hosted families, as
+          consumed by the console, this repository's documentation, and the
+          telecraft.dev site (ADR-0047 §1).
+
+          - `tokens.css` carries values only, no selectors. Load it first.
+          - `base.css` carries typography, links, code, tables, controls and
+            focus rings, and reads the tokens. It is absent until it is
+            written.
+          - `fonts/fonts.css` declares the two families and reaches the
+            `.woff2` files beside it by relative URL, so keep the directory
+            whole.
+          - `fonts/*-OFL.txt` are the licences the faces ship under. They
+            travel with the faces.
+
+          Nothing here reaches another origin. Serve these files from your
+          own host, which is what the air-gap rule requires of the console
+          (ADR-0019) and what a documentation site inherits by using the
+          same sheets.
+          CONTENTS
+          echo "staged=$staged" >> "$GITHUB_OUTPUT"
+          ls -R "$staged"
+
+      # The accessibility floors are numbers, so they can be regressed
+      # (ADR-0047 consequences). CI runs this check over `console/src` when
+      # the console changes; here it runs over the exact bytes about to be
+      # published, because a release is the copy other people build against
+      # and the check is worth more against the artefact than beside it.
+      # The script takes the stylesheet as an argument and needs no install.
+      - name: The palette floors hold on the file being shipped
+        env:
+          STAGED: ${{ steps.assemble.outputs.staged }}
+        run: node console/tools/check-palette.mjs "$STAGED/tokens.css"
+
+      # Packed with sorted names, fixed ownership and the tag's own commit
+      # date, so re-cutting the same tag produces the same archive and the
+      # checksum is a fact about the tag rather than about the runner that
+      # happened to build it.
+      - name: Pack and checksum
+        id: pack
+        env:
+          TAG: ${{ github.ref_name }}
+          STAGED: ${{ steps.assemble.outputs.staged }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/artefacts"
+          mkdir -p "$out"
+          archive="telecraft-design-$TAG.tar.gz"
+          epoch=$(git log -1 --pretty=%ct "$GITHUB_SHA")
+          tar --sort=name --owner=0 --group=0 --numeric-owner \
+              --mtime="@$epoch" \
+              -czf "$out/$archive" \
+              -C "$(dirname "$STAGED")" "$(basename "$STAGED")"
+          cd "$out"
+          sha256sum "$archive" > SHA256SUMS
+          cat SHA256SUMS
+          echo "out=$out" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      # The notes are composed rather than left to `--generate-notes` alone:
+      # the generated half is the commit list, and the half above it says
+      # what the release contains and what it does not, which is the part a
+      # reader arriving from another repository needs. House style applies
+      # to release notes like any other prose
+      # (docs/contributing/documentation.md).
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+          OUT: ${{ steps.pack.outputs.out }}
+          ARCHIVE: ${{ steps.pack.outputs.archive }}
+        run: |
+          set -euo pipefail
+          notes="$RUNNER_TEMP/notes.md"
+          {
+            echo "Telecraft is pre-1.0 and this tag makes no compatibility promise. What a"
+            echo "version number means, and what a release is for, is recorded in ADR-0049"
+            echo "and in [Releases](https://github.com/telecraft-dev/telecraft/blob/$TAG/docs/contributing/releases.md)."
+            echo
+            echo "**In this release**"
+            echo
+            echo "- The source at \`$TAG\`. This is the ref the public demo builds from, and"
+            echo "  the ref to build the CLI from: \`go build -o telecraft ./cmd/telecraft\`."
+            echo "- \`$ARCHIVE\`, the design artefacts: the design tokens, the base sheet once"
+            echo "  it exists, and the two self-hosted families with their licences"
+            echo "  (ADR-0047 §1). \`SHA256SUMS\` covers it."
+            echo
+            echo "**Not in this release**: prebuilt binaries, and the console bundle. Both are"
+            echo "built from the source at this tag, the console per deployment mode."
+            echo
+            gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$TAG" --jq .body
+          } > "$notes"
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file "$notes" \
+            "${flags[@]}" \
+            "$OUT/$ARCHIVE" \
+            "$OUT/SHA256SUMS"
