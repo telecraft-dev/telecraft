@@ -25,6 +25,8 @@ Read the page that matches what you are doing:
   theme.
 - [Documentation](documentation.md) explains how this documentation system
   works and how to add a page.
+- [Releases](releases.md) explains what a version number means, what a
+  release contains, and how to cut one.
 
 ## Before you write code
 
