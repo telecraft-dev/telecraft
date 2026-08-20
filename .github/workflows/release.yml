@@ -106,6 +106,12 @@ jobs:
           else
             echo "note: base.css is not in the tree yet; the archive carries the tokens and the faces only"
           fi
+          # ELv2's Notices clause: anyone who gets a copy of any part of the
+          # software also gets a copy of the terms (ADR-0050). The archive
+          # carries tokens.css and base.css, which are this project's work,
+          # so it carries the licence beside them. The two OFL texts in
+          # fonts/ cover the faces and cover nothing else.
+          cp LICENSE "$staged/"
           printf '%s\n' "$TAG" > "$staged/VERSION"
           cat > "$staged/README.md" <<'CONTENTS'
           # Telecraft design artefacts
@@ -122,7 +128,10 @@ jobs:
             `.woff2` files beside it by relative URL, so keep the directory
             whole.
           - `fonts/*-OFL.txt` are the licences the faces ship under. They
-            travel with the faces.
+            travel with the faces, and cover the faces only.
+          - `LICENSE` is Elastic License 2.0, which covers the stylesheets.
+            You may use, modify and redistribute them; if you pass any part
+            of this on, pass the licence on with it.
 
           Nothing here reaches another origin. Serve these files from your
           own host, which is what the air-gap rule requires of the console
@@ -195,7 +204,9 @@ jobs:
             echo "  the ref to build the CLI from: \`go build -o telecraft ./cmd/telecraft\`."
             echo "- \`$ARCHIVE\`, the design artefacts: the design tokens, the base sheet once"
             echo "  it exists, and the two self-hosted families with their licences"
-            echo "  (ADR-0047 §1). \`SHA256SUMS\` covers it."
+            echo "  (ADR-0047 §1). It carries \`LICENSE\` too, because ELv2 asks that"
+            echo "  anyone given part of the software is given the terms with it"
+            echo "  (ADR-0050). \`SHA256SUMS\` covers the archive."
             echo
             echo "**Not in this release**: prebuilt binaries, and the console bundle. Both are"
             echo "built from the source at this tag, the console per deployment mode."
