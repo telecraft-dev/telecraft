@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+# The local development environment (ADR-0052). From the repository root:
+#
+#   devenv/devenv up                 start everything and follow the loop
+#   devenv/devenv down               stop it and delete its volumes
+#   devenv/devenv status             what is connected, matched and arriving
+#   devenv/devenv logs [service]     container logs
+#   devenv/devenv scenario <name>    drive the estate into a state
+#
+# Scenarios: healthy, broken-pipeline, drift, shrink, unmatched, reset.
+#
+# Needs Docker, Go and curl. Nothing else, and nothing from the network once
+# the images are pulled.
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(cd "$here/.." && pwd)"
+cd "$root"
+
+compose() { docker compose --project-directory "$here" -f "$here/compose.yaml" "$@"; }
+say() { printf '\n>> %s\n' "$*"; }
+die() { printf 'devenv: %s\n' "$*" >&2; exit 1; }
+
+# The commit the estate renders and judges at. Not a real SHA: the estate
+# lives inside the platform's repository, so a real one would make the
+# committed rendered/ tree stale on every platform commit and the recompute
+# invariant would fail perpetually (ADR-0052 §4).
+COMMIT=d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0
+ESTATE="$here/estate"
+CATALOGUE="$(ls "$ESTATE"/catalogues/catalogue-*.json 2>/dev/null | sort | tail -1 || true)"
+
+require_docker() {
+  docker version >/dev/null 2>&1 ||
+    die "the Docker daemon is not running. Start Docker Desktop, then try again."
+}
+
+# render re-renders the estate in place. The renderer is the only writer of
+# rendered/ (ADR-0027), and a snapshot over a stale tree is refused
+# (ADR-0028 §2), so this runs before anything reads it.
+render() {
+  [ -n "$CATALOGUE" ] || die "no Catalogue artefact in $ESTATE/catalogues"
+  go run ./cmd/telecraft render -estate "$ESTATE" -catalogue "$CATALOGUE" -commit "$COMMIT" >/dev/null
+}
+
+# prepare composes each collector's Supervisor configuration: the rendered
+# artefact plus the identity the container runs under. Passing a collector
+# name merges the drift overlay into that one.
+prepare() {
+  local drift="${1:-}"
+  if [ -n "$drift" ]; then
+    go run ./devenv/cmd/telecraft-devenv prepare -estate "$ESTATE" -identity "$here/identity" -out "$here/run" -drift "$drift" -drift-overlay "$here/drift/overlay.yaml" >/dev/null
+  else
+    go run ./devenv/cmd/telecraft-devenv prepare -estate "$ESTATE" -identity "$here/identity" -out "$here/run" >/dev/null
+  fi
+}
+
+cmd_up() {
+  require_docker
+  say "rendering the estate at $COMMIT"
+  render
+  say "composing the Supervisor configurations"
+  prepare
+
+  say "starting the backend, the collectors and the sims"
+  compose up -d --build
+
+  say "waiting for the backend"
+  for _ in $(seq 1 60); do
+    curl -fsS http://localhost:9200/_cluster/health >/dev/null 2>&1 && break
+    sleep 2
+  done
+  curl -fsS http://localhost:9200/_cluster/health >/dev/null ||
+    die "the backend did not come up; try devenv/devenv logs elasticsearch"
+
+  cat <<'EOF'
+
+The environment is up. What is running:
+
+  OpAMP server        127.0.0.1:4320   (the host process below)
+  Console             127.0.0.1:4321   needs `cd console && npm run build:demo`
+  Telemetry backend   127.0.0.1:9200
+
+Leave this running. In another terminal:
+
+  devenv/devenv status
+  devenv/devenv scenario broken-pipeline
+
+EOF
+  say "starting the OpAMP server and the snapshot loop (ctrl-c to stop)"
+  exec go run ./devenv/cmd/telecraft-devenv run \
+    -estate "$ESTATE" -out "$here/run" -console "$root/console/dist"
+}
+
+cmd_down() {
+  require_docker
+  compose --profile unmatched down -v
+  rm -rf "$here/run"
+  say "stopped, volumes and the run directory removed"
+}
+
+cmd_status() {
+  require_docker
+  say "containers"
+  compose ps --format 'table {{.Service}}\t{{.Status}}'
+
+  say "collectors, as the OpAMP server sees them"
+  if [ -f "$here/run/readings.yaml" ]; then
+    # The reading the console is built from, rather than a second opinion.
+    awk '/^collectors:/{c=1;next} /^rows:/{c=0} c' "$here/run/readings.yaml" |
+      grep -E '^\s+(- id|telecraft\.tier|state):' || echo "  none connected yet"
+  else
+    echo "  no reading yet — is \`devenv/devenv up\` running?"
+  fi
+
+  say "what has arrived in the last 5 minutes"
+  for signal in logs metrics traces; do
+    count=$(curl -fsS "http://localhost:9200/${signal}-*/_count" \
+      -H 'Content-Type: application/json' \
+      -d '{"query":{"range":{"@timestamp":{"gte":"now-5m"}}}}' 2>/dev/null |
+      sed -n 's/.*"count":\([0-9]*\).*/\1/p')
+    printf '  %-8s %s\n' "$signal" "${count:-0 (no index yet)}"
+  done
+
+  say "the reported effective configs, for telecraft delivery"
+  ls -1 "$here/run/effective" 2>/dev/null | sed 's/^/  /' || echo "  none reported yet"
+}
+
+cmd_logs() { require_docker; compose logs -f "${@:-}"; }
+
+cmd_scenario() {
+  require_docker
+  local name="${1:-}"
+  case "$name" in
+    healthy|reset)
+      say "every sim running, every collector on the artefact the estate describes"
+      prepare
+      compose up -d
+      # `up -d` creates what is missing; a container an earlier scenario
+      # stopped is neither missing nor running, so start it by name. The
+      # ungoverned collector is stopped after, not before: it has a
+      # container once `scenario unmatched` has run, so starting everything
+      # would otherwise bring it back.
+      compose start $(compose ps -a --services) >/dev/null
+      compose --profile unmatched stop collector-unmatched-1 >/dev/null 2>&1 || true
+      compose restart collector-gateway-1
+      say "back to the resting state. Search still carries its waived metrics finding."
+      ;;
+
+    broken-pipeline)
+      # The verdict no configuration reader can produce: the traces lane is
+      # configured, wired and delivering nothing.
+      say "silencing checkout's traces"
+      compose stop sim-checkout-traces
+      say "the traces pipeline stays configured and nothing arrives. In one"
+      say "window (5 minutes) checkout reads broken_pipeline, not not_configured."
+      ;;
+
+    drift)
+      say "putting gateway-1 out of step with the artefact it was served"
+      prepare gateway-1
+      compose restart collector-gateway-1
+      say "the Supervisor now merges a local file over the served config, so"
+      say "what it reports running is not what the server sent. Once it has"
+      say "reported, compare them with the product's own command:"
+      printf '\n  go run ./cmd/telecraft delivery \\\n    -intended %s \\\n    -effective %s \\\n    -path served\n\n' \
+        "devenv/estate/rendered/platform/gateway.yaml" "devenv/run/effective/gateway-1.yaml"
+      ;;
+
+    shrink)
+      say "stopping one of the gateway Tier's two collectors"
+      compose stop collector-gateway-2
+      say "the Tier's floor is 2. The connection closing takes the collector"
+      say "out of the reading rather than leaving it quietly stale."
+      ;;
+
+    unmatched)
+      say "introducing a collector nobody governs"
+      compose --profile unmatched up -d collector-unmatched-1
+      say "its attributes satisfy no Tier selector, so the server sends it the"
+      say "Unmatched artefact: self-telemetry on, no data pipelines, never an"
+      say "empty config map (ADR-0030)."
+      ;;
+
+    ""|*)
+      die "unknown scenario '${name}'. One of: healthy, broken-pipeline, drift, shrink, unmatched, reset"
+      ;;
+  esac
+}
+
+case "${1:-}" in
+  up)       shift; cmd_up "$@" ;;
+  down)     shift; cmd_down "$@" ;;
+  status)   shift; cmd_status "$@" ;;
+  logs)     shift; cmd_logs "$@" ;;
+  scenario) shift; cmd_scenario "$@" ;;
+  *)
+    sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    exit 2
+    ;;
+esac

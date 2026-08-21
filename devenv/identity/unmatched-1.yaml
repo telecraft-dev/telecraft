@@ -1,0 +1,21 @@
+# A collector nobody governs. Its attributes satisfy no Tier selector, so
+# the server sends it the Unmatched artefact: a real, commit-stamped
+# configuration with self-telemetry on and no data pipelines, never an empty
+# config map (ADR-0030).
+#
+# It takes the gateway Tier as its base only to learn where the server is.
+# Everything that decides its fate is below.
+base_tier: platform/gateway
+overlay:
+  agent:
+    # The collector the Supervisor runs. The image puts it here; see
+    # devenv/collector/Dockerfile.
+    executable: /otelcol-contrib
+    description:
+      # The identity this collector reports, and the only thing the server
+      # matches on (ADR-0007, ADR-0013). The renderer does not emit it:
+      # a collector is never authored, it connects and says what it is.
+      identifying_attributes:
+        telecraft.tier: rogue
+        deployment.environment: production
+        service.instance.id: unmatched-1

@@ -1,0 +1,66 @@
+# The aggregation gateway every Service's Path ends at: arrivals from the
+# edge and from untrusted callers land here, are guarded, batched and
+# exported once.
+#
+# There is deliberately no opamp extension. This Tier is served, so the
+# Supervisor beside the collector owns the OpAMP connection and injects the
+# extension the collector reports through (ADR-0010). An authored one would
+# be a second connection to the same server, reporting the same collector
+# twice.
+name: gateway-standard
+version: 1
+owner: platform-observability
+satisfies:
+  - logs-delivered@1
+  - traces-delivered@1
+  - metrics-delivered@1
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  - name: guard
+    class: processor
+    type: memory_limiter
+    version: 1
+    config:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 20
+  - name: batcher
+    class: processor
+    type: batch
+    version: 1
+    config:
+      send_batch_size: 1024
+      timeout: 2s
+  - name: health
+    class: extension
+    type: health_check
+    version: 1
+    config:
+      endpoint: 0.0.0.0:13133
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: guard
+    - component: batcher
+    - component: platform/backend-exporter@1
+  logs:
+    - component: otlp-in
+    - component: guard
+    - component: batcher
+    - component: platform/backend-exporter@1
+  metrics:
+    - component: otlp-in
+    - component: guard
+    - component: batcher
+    - component: platform/backend-exporter@1
+extensions:
+  - component: health

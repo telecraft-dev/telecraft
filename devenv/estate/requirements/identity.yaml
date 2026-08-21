@@ -1,0 +1,26 @@
+# Identity and shape: the attributes a record needs before a finding is
+# routable and the Environment lens means anything. Expressed as coverage
+# over records, never as a backend query (REQ-023).
+
+- id: trace-identity
+  title: Spans carry their Service and Environment
+  description: >
+    Every span carries service.namespace and deployment.environment.name.
+    Without them a span cannot be attributed to a Service or an Environment,
+    and every verdict built on it would blend the two.
+  version: 1
+  requirement_level: recommended
+  owner: platform-observability
+  environments: [production]
+  signal:
+    kind: traces
+    present: true
+    window: 5m
+    required_attributes:
+      - service.namespace
+      - deployment.environment.name
+    attribute_coverage: 0.95
+  remediation: >
+    Set OTEL_RESOURCE_ATTRIBUTES on the workload, or add the attributes at
+    the node agent, which is the last place the platform owns before the
+    records leave the Service's blast radius.

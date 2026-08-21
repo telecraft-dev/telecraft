@@ -1,0 +1,13 @@
+# The declared Allow-lists (ADR-0021 §5). Platform declares the estate's
+# working set; there is one narrowing team below it, so the palette has an
+# intersection to compute and the governance surface has something to show.
+allow_lists:
+  - team: platform
+    owner: platform-observability
+    allow:
+      - receiver/otlp
+      - receiver/host_metrics
+      - processor/*
+      - exporter/otlp_http
+      - exporter/debug
+      - extension/*

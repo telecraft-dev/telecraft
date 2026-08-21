@@ -1,0 +1,22 @@
+# The estate's single egress. Shared so every Tier exports through one
+# reviewed endpoint and queue policy, and referenced by version so adopting a
+# new one is a change in the consumer's own file (ADR-0026 §3).
+#
+# The endpoint is the backend's OTLP/HTTP intake on the compose network. The
+# exporter appends the signal path, so a span leaves here for
+# /_otlp/v1/traces and lands in the traces-* data stream the
+# TelemetryProvider reads.
+name: backend-exporter
+class: exporter
+type: otlp_http
+version: 1
+owner: platform-observability
+config:
+  endpoint: http://elasticsearch:9200/_otlp
+  compression: gzip
+  sending_queue:
+    enabled: true
+    queue_size: 1000
+  retry_on_failure:
+    enabled: true
+    max_elapsed_time: 60s

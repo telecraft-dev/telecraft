@@ -1,0 +1,200 @@
+# The local development environment (ADR-0052): real collectors under real
+# OpAMP Supervisors, a real telemetry backend, and sims to drive them.
+#
+# The platform's own binaries are not here. `telecraft-devenv run` is a host
+# process, because the tap that reads the collector estate has to be wired
+# into the same OpAMP server instance, and because a developer editing Go
+# wants a rebuild rather than an image build. The collectors reach it at
+# host.docker.internal, which extra_hosts makes resolve everywhere Compose
+# runs rather than only on Docker Desktop.
+#
+# Start it with devenv/devenv, which prepares the Supervisor configurations
+# first. Running `docker compose up` directly serves the last ones prepared.
+
+name: telecraft-devenv
+
+x-collector: &collector
+  build:
+    context: ./collector
+    args:
+      OTELCOL_VERSION: ${OTELCOL_VERSION}
+      SUPERVISOR_VERSION: ${SUPERVISOR_VERSION}
+  command: ["--config", "/etc/telecraft/supervisor.yaml"]
+  # The image runs as its own unprivileged user, and a fresh named volume
+  # is created root-owned, so the Supervisor cannot write the storage
+  # directory it needs to keep its identity across restarts. Running as
+  # root is the devenv's shortcut past that; a real deployment gives the
+  # volume the right owner instead.
+  user: root
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    elasticsearch:
+      condition: service_healthy
+  restart: unless-stopped
+
+x-sim: &sim
+  image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v${OTELCOL_VERSION}
+  restart: unless-stopped
+
+services:
+  # The telemetry backend. Security is off and the heap is small: this holds
+  # minutes of synthetic telemetry and is deleted with `devenv down`.
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${BACKEND_VERSION}
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - backend-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # The gateway Tier: two collectors, which is exactly the floor the Tier
+  # declares. Stop one and the population drops below it.
+  #
+  # Both answer to the `gateway` alias, so the edge agent forwards to the
+  # pair rather than to a named replica.
+  collector-gateway-1:
+    <<: *collector
+    volumes:
+      - ./run/gateway-1/supervisor.yaml:/etc/telecraft/supervisor.yaml:ro
+      - ./drift:/etc/telecraft/drift:ro
+      - gateway-1-storage:/var/lib/telecraft/supervisor
+    environment:
+      TELECRAFT_NODE_NAME: gateway-1
+    networks:
+      default:
+        aliases: [gateway]
+
+  collector-gateway-2:
+    <<: *collector
+    volumes:
+      - ./run/gateway-2/supervisor.yaml:/etc/telecraft/supervisor.yaml:ro
+      - ./drift:/etc/telecraft/drift:ro
+      - gateway-2-storage:/var/lib/telecraft/supervisor
+    environment:
+      TELECRAFT_NODE_NAME: gateway-2
+    networks:
+      default:
+        aliases: [gateway]
+
+  # The node agent: the first Tier on the checkout Service's Path.
+  collector-edge-1:
+    <<: *collector
+    volumes:
+      - ./run/edge-1/supervisor.yaml:/etc/telecraft/supervisor.yaml:ro
+      - ./drift:/etc/telecraft/drift:ro
+      - edge-1-storage:/var/lib/telecraft/supervisor
+    environment:
+      TELECRAFT_NODE_NAME: edge-1
+    networks:
+      default:
+        aliases: [edge]
+
+  # A collector nobody governs. Under a profile, so the estate rests
+  # governed and `devenv scenario unmatched` is what introduces it.
+  collector-unmatched-1:
+    <<: *collector
+    profiles: [unmatched]
+    volumes:
+      - ./run/unmatched-1/supervisor.yaml:/etc/telecraft/supervisor.yaml:ro
+      - ./drift:/etc/telecraft/drift:ro
+      - unmatched-1-storage:/var/lib/telecraft/supervisor
+    environment:
+      TELECRAFT_NODE_NAME: unmatched-1
+
+  # The sims. Each is one Service emitting one signal, which is what makes a
+  # scenario a `stop` rather than a rewrite: silencing one lane of one
+  # Service is stopping one container.
+  #
+  # Resource attributes carry the identity every verdict is keyed on:
+  # service.name selects the row, deployment.environment.name selects the
+  # Environment, and service.namespace is what the identity Requirement
+  # measures coverage of.
+  sim-checkout-traces:
+    <<: *sim
+    command:
+      - traces
+      - --otlp-endpoint=edge:4317
+      - --otlp-insecure
+      - --service=shop/checkout
+      - --otlp-attributes=service.namespace="shop"
+      - --otlp-attributes=deployment.environment.name="production"
+      - --rate=${SIM_RATE}
+      - --duration=24h
+    depends_on: [collector-edge-1]
+
+  sim-checkout-logs:
+    <<: *sim
+    command:
+      - logs
+      - --otlp-endpoint=edge:4317
+      - --otlp-insecure
+      - --service=shop/checkout
+      - --otlp-attributes=service.namespace="shop"
+      - --otlp-attributes=deployment.environment.name="production"
+      - --rate=${SIM_RATE}
+      - --duration=24h
+    depends_on: [collector-edge-1]
+
+  sim-checkout-metrics:
+    <<: *sim
+    command:
+      - metrics
+      - --otlp-endpoint=edge:4317
+      - --otlp-insecure
+      - --service=shop/checkout
+      - --otlp-attributes=service.namespace="shop"
+      - --otlp-attributes=deployment.environment.name="production"
+      - --rate=${SIM_RATE}
+      - --duration=24h
+    depends_on: [collector-edge-1]
+
+  # Search talks to the gateway directly, and emits no metrics. The gap is
+  # covered by an authored Exemption, so the resting state carries one
+  # waived finding and a green that cannot be mistaken for a clean one.
+  sim-search-traces:
+    <<: *sim
+    command:
+      - traces
+      - --otlp-endpoint=gateway:4317
+      - --otlp-insecure
+      - --service=shop/search
+      - --otlp-attributes=service.namespace="shop"
+      - --otlp-attributes=deployment.environment.name="production"
+      - --rate=${SIM_RATE}
+      - --duration=24h
+    depends_on: [collector-gateway-1]
+
+  sim-search-logs:
+    <<: *sim
+    command:
+      - logs
+      - --otlp-endpoint=gateway:4317
+      - --otlp-insecure
+      - --service=shop/search
+      - --otlp-attributes=service.namespace="shop"
+      - --otlp-attributes=deployment.environment.name="production"
+      - --rate=${SIM_RATE}
+      - --duration=24h
+    depends_on: [collector-gateway-1]
+
+volumes:
+  backend-data:
+  # One durable volume per collector. An ephemeral directory mints a new
+  # instance identity on every restart, and the population count churns
+  # (ADR-0010).
+  gateway-1-storage:
+  gateway-2-storage:
+  edge-1-storage:
+  unmatched-1-storage:
+
+networks:
+  default:

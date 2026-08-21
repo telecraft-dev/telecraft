@@ -1,0 +1,7 @@
+# Search talks to the gateway directly, and emits no metrics: the gap is
+# covered by an authored Exemption, so the estate's resting state carries one
+# waived finding and a green that cannot be mistaken for a clean one.
+owner: shop-team
+class: C2
+paths:
+  - through: [platform/gateway]

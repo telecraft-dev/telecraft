@@ -1,0 +1,75 @@
+# Signal delivery. Each of these asserts on both readings, which is what lets
+# the evaluator tell a broken pipeline apart from an uninstrumented Service:
+# a requirement with only a config assertion is satisfied by a collector that
+# delivers nothing, and one with only a signal assertion fails without naming
+# a cause.
+#
+# The windows are five minutes rather than the day a real library would use.
+# A scenario has to be visible while a developer is still looking at it, and
+# the devenv's sims run continuously, so a five-minute silence is already the
+# statement a day's silence would be in production.
+
+- id: logs-delivered
+  title: Logs are collected and delivered
+  description: >
+    The Service's logs reach a backend. Collection may be by file tail or by
+    OTLP: how the logs are gathered is the owner's choice, that they arrive
+    is not.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  config:
+    has_receiver: [file_log, otlp]
+  signal:
+    kind: logs
+    present: true
+    window: 5m
+    min_volume: 1
+  remediation: >
+    Add a file_log or otlp receiver to the collector serving this Service and
+    wire it into a logs pipeline. If a receiver is already present the
+    pipeline is configured but not delivering: check the exporter queue and
+    the collector's own metrics for refused or dropped records.
+
+- id: traces-delivered
+  title: Distributed traces are delivered
+  description: >
+    The Service emits spans. Traces are what make a failure that crosses two
+    Tiers diagnosable at all.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  config:
+    has_receiver: [otlp]
+  signal:
+    kind: traces
+    present: true
+    window: 5m
+    min_volume: 1
+  remediation: >
+    Instrument the Service with an OpenTelemetry SDK or auto-instrumentation
+    agent and point it at the collector's OTLP receiver. Spans arriving with
+    no receiver configured means something is bypassing the managed
+    collector.
+
+- id: metrics-delivered
+  title: Service metrics are delivered
+  description: >
+    The Service emits metrics. Without them there is no baseline for
+    "normal", so no alert threshold can be set honestly.
+  version: 1
+  requirement_level: conditionally_required
+  owner: platform-observability
+  environments: [production]
+  config:
+    has_receiver: [otlp, host_metrics, prometheus]
+  signal:
+    kind: metrics
+    present: true
+    window: 5m
+    min_volume: 1
+  remediation: >
+    Enable metric export in the Service's SDK, or add a host_metrics or
+    prometheus receiver to the collector serving it.

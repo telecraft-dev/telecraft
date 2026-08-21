@@ -73,3 +73,29 @@ scopes:
       - pattern: \bFleet\b
         allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement, "Datadog Fleet Automation", "Fleet Server", "`Fleet`", '\*\*Fleet\*\*', "“Fleet”", capital-F Fleet]
         message: a bare "Fleet" appears nowhere — qualify with the vendor product (ADR-0001)
+
+  # The local development environment (ADR-0052). It is vendor-bound by
+  # construction: it has to start a concrete backend and point a rendered
+  # exporter at it, so it carries the provider tree's discipline rather than
+  # the core's silence — a product may be named, and only fully qualified.
+  #
+  # Two trees are not scanned. The run directory is generated and
+  # gitignored. The Catalogue artefacts are generated too, by the import
+  # pipeline, and every vendor word in one is an upstream component's own
+  # display_name recorded verbatim — "Grafana Cloud Connector", "Amazon
+  # Elastic Container Service Observer". Renaming those would falsify the
+  # record rather than tidy it, which is the same reason the docs scope
+  # excludes the research corpus.
+  - name: devenv
+    include: [devenv/**]
+    exclude: [devenv/run/**, devenv/estate/catalogues/**]
+    rules:
+      - pattern: \bFleet
+        allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement]
+        message: qualify the product — ElasticFleet, never Fleet (ADR-0001)
+      - pattern: \bElastic\b
+        allow: ["Elastic Fleet"]
+        message: name the product, never the company — Elasticsearch or ElasticFleet, never Elastic (ADR-0001)
+      - pattern: \bGrafana\b
+        allow: ["Grafana Fleet Management"]
+        message: name the product, never the company — GrafanaFleetManagement, never Grafana (ADR-0001)

@@ -91,6 +91,13 @@ func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+// MarshalYAML writes the same string form UnmarshalYAML reads, so a
+// document this package wrote loads back into this package. Without it a
+// window round-trips to its nanosecond count, which is a valid YAML integer
+// and not a duration string — a file that writes cleanly and then fails to
+// load, naming a line the writer never typed.
+func (d Duration) MarshalYAML() (any, error) { return time.Duration(d).String(), nil }
+
 func (d Duration) Std() time.Duration { return time.Duration(d) }
 
 // Requirement is one named, versioned assertion with mandatory remediation

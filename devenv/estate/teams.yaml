@@ -1,0 +1,18 @@
+# The team tree (ADR-0017) for the local development estate. Two teams under
+# one root: Platform owns the collection topology and the shared exporter
+# every lane egresses through, Shop owns the Services whose Paths decide how
+# strictly each Tier is judged (ADR-0025 §4).
+#
+# It is deliberately the smallest tree that still has an ancestor: a Grant
+# needs somewhere to come from, and a one-level tree cannot show one.
+teams:
+  - id: engineering
+    name: Engineering
+    owners: [engineering-lead]
+    teams:
+      - id: platform
+        name: Platform Engineering
+        owners: [platform-observability]
+      - id: shop
+        name: Shop
+        owners: [shop-team]
