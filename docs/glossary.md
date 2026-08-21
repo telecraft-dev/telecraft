@@ -90,7 +90,7 @@ session.
 | **Self-telemetry destination** | The estate-level, adopter-declared endpoint every rendered artefact pushes internal telemetry (metrics + logs) to, resolved per Tier at render. A Tier's self-telemetry never depends on that Tier's own data pipelines; transiting another Tier as ordinary data is allowed, with shared fate reading as `Known: false`, never red (ADR-0039). |
 | **Incarnation** | One collector process start, identified by `service.instance.id` (fresh per restart, kept deliberately). Incarnation churn per Tier is the restart-rate reading; joining across restarts uses the substrate identity pattern, when the substrate offers one. |
 
-## Console (ADR-0042–0045)
+## Console (ADR-0042–0045, ADR-0051)
 
 | Term | Meaning |
 |---|---|
@@ -99,7 +99,9 @@ session.
 | **Environment lens** | The global chrome control selecting the leading Environment, default `production` (ADR-0033). Emphasis and evaluation context, never a hard filter: multi-env surfaces keep every row visible; evaluation surfaces treat it as the selected context. Persisted per user; an explicit lens in a URL beats the preference. |
 | **Claim flow** | The onboarding flow from ungoverned collector(s) to governance (the OQ-3 CTA): herd-first multi-select, a suggested selector generalised over shared identity attributes (never enumerated instance ids), attach-to-existing-Tier or draft-new-Tier, exiting always as a user-attributed PR with the rendered impact preview. Distinct from quarantine routing, which is a Compose concern. |
 | **Canvas engine** | The shared pure library (model in, geometry out) rendering both canvases: band/row-constrained deterministic layout plus orthogonal Manhattan routing with per-signal bend offsets. Two vocabularies — composer graph and topology graph — one engine; semantic layout rules are invariants no interaction can violate (ADR-0044). |
-| **Presentation store** | The console's only non-git state: per-user presentation preferences (lens, collapsed sections, within-row canvas arrangement). Never model truth, fully loseable — losing it changes what leads, never what is asserted (ADR-0042 §7). |
+| **Presentation store** | The console's only non-git state: per-user presentation preferences (lens, collapsed sections, within-row canvas arrangement, Tours seen). Never model truth, fully loseable — losing it changes what leads, never what is asserted (ADR-0042 §7). |
+| **Tour** | An authored, ordered sequence of Steps teaching the console over the reader's own estate (ADR-0051). Chrome, never a surface: Tours are data in `console/src/tours/`, rendered by one runner. A Tour narrates — it navigates and it points, it never clicks, authors or invents. Its position lives in the URL like every other console state, so a Step is citable. Teaches the console; the documentation teaches the product. Never called onboarding: that is a collector joining governance (ADR-0031). |
+| **Step** | One stop in a Tour: prose, an optional anchor naming an element by `data-tour`, and an optional destination route. An anchored Step points without blocking; an unanchored Step renders centred, which is what the welcome is. An anchor that resolves nowhere degrades to centred rather than failing (ADR-0051 §4). Never a Rollout stage. |
 
 ## Rules of use
 
