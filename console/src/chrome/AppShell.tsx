@@ -7,12 +7,15 @@ import { JumpToObject } from './JumpToObject'
 import { LensControl } from './LensControl'
 import { ThemeControl } from './ThemeControl'
 import { WORKSPACES } from './workspaces'
+import { TourControl } from '../tours/TourControl'
+import { TourRunner } from '../tours/TourRunner'
 import { Button } from '../ui/Button'
 
 // Navigation is activity-first: the four Workspaces are the only top-level
 // entries (ADR-0042 §1). Switching Workspaces keeps the lens (one global
-// chrome control) and drops the object selection, which belongs to the
-// Workspace that read it. The list itself lives in ./workspaces, because
+// chrome control) and a running Tour (ADR-0051 §3, which rides with it),
+// and drops the object selection, which belongs to the Workspace that read
+// it. The list itself lives in ./workspaces, because
 // the deploy pre-renders an entry document per Workspace URL and the two
 // must not drift.
 
@@ -35,7 +38,7 @@ export function AppShell() {
             <Link
               key={ws.to}
               to={ws.to}
-              search={(prev) => ({ lens: prev.lens })}
+              search={(prev) => ({ lens: prev.lens, tour: prev.tour, step: prev.step })}
               data-testid={ws.testid}
               className="workspace-link"
               activeProps={{ className: 'workspace-link active', 'aria-current': 'page' }}
@@ -48,6 +51,7 @@ export function AppShell() {
           <LensControl />
           <ThemeControl />
           <JumpToObject />
+          <TourControl />
           {me.data && (
             <span className="chrome-user" data-testid="chrome-user">
               {me.data.name}
@@ -67,6 +71,9 @@ export function AppShell() {
       <main className="workspace-body">
         <Outlet />
       </main>
+      {/* Above every surface and beneath none of them: the runner draws
+          whatever Tour the URL names, and nothing when it names none. */}
+      <TourRunner />
     </div>
   )
 }

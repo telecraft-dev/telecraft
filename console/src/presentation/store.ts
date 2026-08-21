@@ -12,11 +12,18 @@ export interface Presentation {
   collapsedSections: Record<string, boolean>
   /** Within-row canvas arrangement (ADR-0044 §3): canvas id → node id → x offset. */
   arrangement: Record<string, Record<string, number>>
+  /**
+   * Which Tours this reader has been offered (ADR-0051 §6, amending
+   * ADR-0042 §7). It records what they have been shown, never what is on
+   * screen, and losing it offers the welcome again — which is the right
+   * way for this one to fail.
+   */
+  toursSeen: Record<string, boolean>
 }
 
-export const PRESENTATION_KEYS = ['lens', 'collapsedSections', 'arrangement'] as const
+export const PRESENTATION_KEYS = ['lens', 'collapsedSections', 'arrangement', 'toursSeen'] as const
 
-const EMPTY: Presentation = { collapsedSections: {}, arrangement: {} }
+const EMPTY: Presentation = { collapsedSections: {}, arrangement: {}, toursSeen: {} }
 
 /** The subset of the Web Storage API the store uses; tests supply a fake. */
 export interface StorageLike {
@@ -53,6 +60,12 @@ export class PresentationStore {
         arrangement:
           typeof record.arrangement === 'object' && record.arrangement !== null
             ? (record.arrangement as Presentation['arrangement'])
+            : {},
+        toursSeen:
+          typeof record.toursSeen === 'object' &&
+          record.toursSeen !== null &&
+          !Array.isArray(record.toursSeen)
+            ? (record.toursSeen as Presentation['toursSeen'])
             : {},
       }
     } catch {

@@ -79,7 +79,7 @@ export function Compose() {
 
   return (
     <div className="compose-layout">
-      <section className="compose-list">
+      <section className="compose-list" data-tour="compose">
         <h1>Compose</h1>
         <ul>
           {blueprints.data.map((bp) => (

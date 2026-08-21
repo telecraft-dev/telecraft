@@ -26,7 +26,7 @@ export function Catalogue() {
       <div className="catalogue-main">
         <header className="catalogue-header">
           <h1>Catalogue &amp; Governance</h1>
-          <nav className="view-switcher" aria-label="Catalogue views">
+          <nav className="view-switcher" aria-label="Catalogue views" data-tour="catalogue">
             {VIEWS.map(({ view: v, label, testid }) => (
               <Link
                 key={v}

@@ -110,6 +110,10 @@ export function CardFaceView({
     <div
       className={`card-face standing-${standing}${selected ? ' selected' : ''}`}
       data-testid={`card-${card.tier}`}
+      // A Tour Step pointing here lands on the first card in the DOM,
+      // which the shelf orders worst-first: the card worth reading
+      // (ADR-0051 §5).
+      data-tour="card"
     >
       <button
         type="button"
@@ -121,7 +125,7 @@ export function CardFaceView({
           <span className="card-name">{card.name}</span>
           {card.serviceClass && <span className="card-class">{card.serviceClass}</span>}
         </header>
-        <ul className="card-bands">
+        <ul className="card-bands" data-tour="card-bands">
           {bands.map((band) => {
             const { state, worstSeverity } = card.bands[band]
             return (

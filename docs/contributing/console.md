@@ -1,6 +1,6 @@
 ---
 title: Console architecture
-description: The four Workspaces, the card data contract, the pure canvas engine, the presentation store, demo mode, and the zero-CDN rule.
+description: The four Workspaces, the card data contract, the pure canvas engine, the presentation store, guided Tours, demo mode, and the zero-CDN rule.
 order: 6
 ---
 
@@ -159,16 +159,58 @@ interface Presentation {
   lens?: string
   collapsedSections: Record<string, boolean>
   arrangement: Record<string, Record<string, number>>
+  toursSeen: Record<string, boolean>
 }
 ```
 
 `lens` is the environment lens preference, which an explicit lens in a URL
 beats. `collapsedSections` holds per-section collapse overrides.
 `arrangement` holds within-row canvas offsets, keyed canvas id then node id.
+`toursSeen` records which guided Tours a reader has already been offered
+(ADR-0051 §6, the one amendment ADR-0042 §7's key list has taken).
 
 Anything resembling domain data added here is a design regression that needs
 an ADR-0042 amendment, not a pull request. `console/tests/presentation.test.ts`
 holds the shape.
+
+## Guided Tours
+
+ADR-0051 adds one thing to the console and deliberately not a twelfth
+surface: a **Tour**, an authored sequence of **Steps** that teaches the
+console over the reader's own estate. Tours live in `console/src/tours/`,
+are registered in one list, and are drawn by one runner built from the
+primitive layer and the dialog jump-to-object already uses. Writing a Tour
+is authoring a file of prose; it builds nothing.
+
+`console/README.md` carries the shape of a Step and the worked example.
+Four rules are what a reviewer should hold a Tour to:
+
+- **It narrates, it never drives.** A Step may navigate, because a
+  destination is a URL and this console already treats a URL as state, and
+  it may point at an element. It may not click a control, author anything,
+  or show invented data. The spotlight takes no pointer events, so the
+  product underneath stays live while a Tour is open.
+- **The position is in the URL.** `tour` and `step` sit at the root beside
+  `lens`, so a Step is citable in a pull-request comment and survives a
+  Workspace switch. What a reader has been *offered* is presentation state;
+  where they are is not.
+- **Anchors are a declared contract**, `data-tour`, never a `data-testid`.
+  A test id is a test's grip on an element and may be renamed with the
+  test; an anchor is content a reader is shown.
+- **A missing anchor degrades, never breaks.** An unknown Tour id, a step
+  index past the end, an anchor no surface carries: the Step renders
+  centred and nothing throws. That is production behaviour, not a licence —
+  `e2e/tour.spec.ts` walks every Step of every registered Tour and fails on
+  an anchor that resolves nowhere.
+
+A Tour teaches *this console*; the documentation teaches the product. A
+Step that starts explaining what an Expectation is has become documentation
+in the wrong repository, and the word budget — roughly sixty words to a
+Step — is the check.
+
+The welcome Tour opens itself once per reader, and only on a bare landing
+URL, because a shared link carries the sender's context. Its first Step is
+the one place any Tour reads differently on the public demo.
 
 ## Demo mode
 

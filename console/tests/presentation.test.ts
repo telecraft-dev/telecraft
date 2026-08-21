@@ -26,6 +26,7 @@ describe('PresentationStore', () => {
       lens: 'staging',
       collapsedSections: { infosec: true },
       arrangement: {},
+      toursSeen: {},
     })
   })
 
@@ -42,7 +43,23 @@ describe('PresentationStore', () => {
     const storage = memoryStorage()
     storage.setItem('telecraft.console.presentation.v1.user-a', '{not json')
     const store = new PresentationStore(storage, 'user-a')
-    expect(store.load()).toEqual({ collapsedSections: {}, arrangement: {} })
+    expect(store.load()).toEqual({ collapsedSections: {}, arrangement: {}, toursSeen: {} })
+  })
+
+  it('remembers which Tours a reader has been offered (ADR-0051 §6)', () => {
+    const storage = memoryStorage()
+    const store = new PresentationStore(storage, 'user-a')
+    store.save({ toursSeen: { welcome: true } })
+    expect(store.load().toursSeen).toEqual({ welcome: true })
+
+    // And it is loseable like everything else here: a nonsense value
+    // reads as "seen nothing", which offers the welcome again rather than
+    // throwing on the way to first paint.
+    storage.setItem(
+      'telecraft.console.presentation.v1.user-a',
+      JSON.stringify({ collapsedSections: {}, arrangement: {}, toursSeen: 7 }),
+    )
+    expect(store.load().toursSeen).toEqual({})
   })
 
   it('holds presentation keys only, never domain data', () => {
@@ -52,6 +69,7 @@ describe('PresentationStore', () => {
       lens: 'production',
       collapsedSections: { 'data-flow': false },
       arrangement: { topology: { 'data-flow/gateway': 24 } },
+      toursSeen: { welcome: true },
     })
     const persisted = JSON.parse([...storage.data.values()][0]!) as Record<string, unknown>
     for (const key of Object.keys(persisted)) {

@@ -1,6 +1,6 @@
 ---
 title: Decisions and the design corpus
-description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the 50 ADRs.
+description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the 51 ADRs.
 order: 7
 ---
 
@@ -66,7 +66,7 @@ existing requirement, update the row to cite it.
 
 | Path | What it is |
 |---|---|
-| `docs/adr/` | The decision corpus: 51 records, ADR-0000 to ADR-0050. Normative. This is what code is measured against. |
+| `docs/adr/` | The decision corpus: 52 records, ADR-0000 to ADR-0051. Normative. This is what code is measured against. |
 | `docs/requirements/` | `product-requirements.md`, the numbered requirements the product exists to satisfy, and `traceability.md`, mapping each to the ADRs and build phase that deliver it. Normative. |
 | `docs/research/` | Dated findings dossiers and the archived shaping tickets: the evidence ADRs cite. Not normative, and never edited to match a later decision. It records what was found, when. |
 | `docs/prototypes/` | Verdict one-pagers from throwaway prototypes, plus the normaliser spike's verdict. Prototype code is never merged; the verdict is what survives, and several ADRs rest on one. |
@@ -80,7 +80,7 @@ The vendor-word lint runs over `docs/**` but excludes the research, prototype
 and branding trees, because those record external reality verbatim: survey
 quotes, product names, collision sweeps.
 
-## A map of the 50 ADRs
+## A map of the 51 ADRs
 
 Read ADR-0000 first, then ADR-0001, ADR-0002, ADR-0003 and ADR-0004. Those
 five carry the principles everything else assumes. After that, read the group
@@ -177,6 +177,7 @@ What the product looks like. See [Console](console.md).
 - **ADR-0045** Console tech stack: boring on purpose, sovereignty where it counts
 - **ADR-0047** Visual identity: our own token layer, dark-first with a light twin, colour never load-bearing
 - **ADR-0048** A console primitive layer, and panel width as a reader's preference
+- **ADR-0051** Guided Tours: authored Steps over the running console, never driving it
 
 ## Proposing a decision
 

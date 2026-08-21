@@ -61,7 +61,7 @@ export function JumpToObject() {
       }}
     >
       <Dialog.Trigger asChild>
-        <Button className="jump-trigger" data-testid="jump-trigger">
+        <Button className="jump-trigger" data-testid="jump-trigger" data-tour="jump">
           <Icon name="search" />
           Jump to object
           {/* Drawn, not typed: Atkinson Hyperlegible does not contain

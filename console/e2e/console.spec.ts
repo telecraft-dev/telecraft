@@ -81,7 +81,7 @@ test('the lens preference persists per user; an explicit URL lens beats it', asy
   })
   expect(stored).not.toBeNull()
   for (const key of Object.keys(stored!)) {
-    expect(['lens', 'collapsedSections', 'arrangement']).toContain(key)
+    expect(['lens', 'collapsedSections', 'arrangement', 'toursSeen']).toContain(key)
   }
 })
 

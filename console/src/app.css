@@ -358,6 +358,97 @@
   color: var(--colour-text-muted);
 }
 
+/* ---- Tours (ADR-0051) ----
+   Two placements of one card. An anchored Step lights what it points at
+   and stays out of the way; an unanchored one is centred over a scrim,
+   which is the welcome. Nothing here is chromatic: the card is the same
+   plate every panel is, and the spotlight is drawn in the fill colour the
+   focus ring already uses. */
+
+.tour-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--colour-scrim);
+}
+
+/* Light, never a lid. The dimming is a shadow that reaches past any
+   viewport, so the anchor sits in a hole in it — and the whole element is
+   transparent to the pointer, which is what keeps the product underneath
+   usable while a Tour runs (ADR-0051 §2). */
+.tour-spotlight {
+  position: fixed;
+  z-index: 40;
+  border: 1px solid var(--colour-fill);
+  border-radius: var(--radius-1);
+  box-shadow: 0 0 0 100vmax var(--colour-scrim-soft);
+  pointer-events: none;
+  transition:
+    top var(--motion-base) var(--motion-ease),
+    left var(--motion-base) var(--motion-ease),
+    width var(--motion-base) var(--motion-ease),
+    height var(--motion-base) var(--motion-ease);
+}
+
+.tour-card {
+  position: fixed;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-2);
+  box-shadow: var(--elevation-2);
+}
+
+/* The centred card is the welcome's shape, and the shape a Step falls back
+   to when its anchor is nowhere (§4). It is laid out here rather than by
+   the placement function, because a modal dialog owns its own position. */
+.tour-centred {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, 92vw);
+}
+
+.tour-progress {
+  margin: 0;
+  color: var(--colour-text-faint);
+  font-size: var(--text-xs);
+  font-variant-numeric: var(--numeric);
+}
+
+.tour-title {
+  margin: 0;
+  font-size: var(--text-l);
+  line-height: var(--leading-tight);
+}
+
+.tour-body {
+  margin: 0;
+  color: var(--colour-text-muted);
+  font-size: var(--text-m);
+  line-height: var(--leading-normal);
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Leaving sits apart from advancing: they are opposite gestures and a
+   mis-click between them ends something the reader wanted. */
+.tour-actions-gap {
+  flex: 1;
+}
+
+.tour-trigger {
+  white-space: nowrap;
+}
+
 /* Workspace body */
 
 .workspace-body {
