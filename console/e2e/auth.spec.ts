@@ -41,6 +41,12 @@ test.describe('signed out', () => {
     await page.getByTestId('login-submit').click()
     await expect(page.getByTestId('shelf')).toBeVisible()
 
+    // This session's reader is brand new, and the welcome Tour opens
+    // itself for exactly that reader (ADR-0051 §7). It is a modal, so it
+    // is in front of the chrome until it is closed — which is what a
+    // welcome is for, and what tour.spec.ts tests.
+    await page.getByTestId('tour-end').click()
+
     await page.getByTestId('sign-out').click()
     await expect(page.getByTestId('login')).toBeVisible()
   })

@@ -44,7 +44,9 @@ npm run e2e            # Playwright against dist/ and the fixture backend
 - `src/chrome/`: the shell (Workspace navigation, the environment lens,
   and jump-to-object search).
 - `src/presentation/`: the per-user presentation store, the console's
-  only non-git state (ADR-0042 §7).
+  only non-git state (ADR-0042 §7, ADR-0051 §6).
+- `src/tours/`: guided Tours (ADR-0051) — the authored Steps, the one
+  runner that draws them, and the chrome control that offers the welcome.
 - `tools/`: the fixture backend and the zero-CDN check.
 - `fixtures/`: the fixture estate, mirroring
   `internal/renderer/testdata/estate`, plus `card-contract.json` — the
@@ -161,6 +163,55 @@ Deep links need the host's single-page fallback: the deploy copies
 `index.html` to `404.html`, which is how a static host serves a URL the
 bundle owns (ADR-0042 §3.5).
 
+## Guided Tours
+
+A **Tour** is an authored sequence of **Steps** teaching the console over
+whatever estate the reader is signed in to (ADR-0051). Tours are data, not
+surfaces: `src/tours/welcome.ts` is the whole of the welcome Tour, and
+`src/tours/TourRunner.tsx` is the only thing that draws one.
+
+To write another, add a file beside it and register it in
+`src/tours/registry.ts`:
+
+```ts
+export const claiming: Tour = {
+  id: 'claiming',
+  title: 'Bringing ungoverned collectors in',
+  summary: 'What the claim flow does, and what it proposes.',
+  steps: [
+    {
+      id: 'herd',
+      title: 'Start from the collectors',
+      body: 'Sixty words at most. Longer than that is documentation, and the documentation lives in docs/.',
+      anchor: 'ungoverned-band',       // a `data-tour` attribute on a surface
+      to: '/estate',                    // the Workspace it is read in
+      search: { view: 'list', ungoverned: true },
+    },
+  ],
+}
+```
+
+Four rules hold, and each is checked rather than remembered:
+
+- **A Tour narrates; it never drives.** A Step navigates and points. It
+  never clicks a control, authors anything, or shows invented data.
+  Anchored Steps take no pointer events, so the product underneath stays
+  usable while one is open.
+- **Anchors are `data-tour`, never `data-testid`.** A test id is a test's
+  grip and may be renamed with the test; an anchor is content a reader is
+  shown. `e2e/tour.spec.ts` walks every Step of every registered Tour and
+  fails on an anchor that resolves nowhere.
+- **A missing anchor degrades to a centred Step**, and an unknown Tour id
+  renders nothing at all. Teaching is never load-bearing.
+- **The position is in the URL** (`?tour=welcome&step=3`), like every other
+  console state. What a reader has already been *offered* is presentation
+  state, in the store beside the lens.
+
+The welcome Tour opens itself once per reader, and only on a bare landing
+URL: a shared link carries the sender's context, and a Tour never lands on
+top of it. Its first Step is the one place a Tour reads differently on the
+public demo.
+
 ## Zero-CDN rule
 
 Every asset is bundled and self-hosted; fonts are the system stack
@@ -225,3 +276,8 @@ Search params are validated by the router (ADR-0045 §3):
 - `request`: a `class/type` entry prefilling a Grant draft in the
   governance view — the browse-and-request door from a non-allowed
   palette row (ADR-0042 §1).
+- `tour`, `step`: the running guided Tour and the Step within it, one-based
+  (ADR-0051 §3). Both ride at the root beside `lens`, so a Tour survives a
+  Workspace switch and a Step is citable in a pull-request comment. An
+  unknown Tour is no Tour; a Step past either end lands on the nearest real
+  one.

@@ -75,6 +75,10 @@ function EngineNodeView({ data }: NodeProps<CanvasNode>) {
       className={`canvas-node kind-${data.kind}${data.dimmed ? ' dimmed' : ''}${
         data.chosen ? ' chosen' : ''
       }${trace}`}
+      // Tier nodes only: a Tour Step about the graph points at one Tier
+      // rather than at the whole canvas, which lights everything and shows
+      // nothing (ADR-0051 §5).
+      data-tour={data.tier ? 'tier-node' : undefined}
     >
       {/* Handles exist so xyflow can anchor derived edges; they are never
           connectable — no gesture draws an edge (ADR-0044 §3). */}

@@ -21,6 +21,10 @@ export interface RootSearch {
   lens?: string
   /** The selected object, as `kind:id` (see objectref.ts). */
   object?: string
+  /** The running Tour, by id (ADR-0051 §3). */
+  tour?: string
+  /** The Step within it, one-based, because a URL is read by people. */
+  step?: number
 }
 
 // Every Workspace sits behind the auth gate (REQ-017, ADR-0019): signed
@@ -33,11 +37,24 @@ function Root() {
   )
 }
 
+/** A numeric search param: a number, or the string a URL carries one as. */
+function numberParam(value: unknown): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value !== 'string' || value.trim() === '') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
 const rootRoute = createRootRoute({
   component: Root,
   validateSearch: (search: Record<string, unknown>): RootSearch => ({
     lens: typeof search.lens === 'string' ? search.lens : undefined,
     object: typeof search.object === 'string' ? search.object : undefined,
+    // A Tour rides with the lens rather than with a Workspace's own state:
+    // it belongs to the console, so it survives every switch. Anything
+    // unreadable here is clamped by the runner, never thrown (ADR-0051 §4).
+    tour: typeof search.tour === 'string' ? search.tour : undefined,
+    step: numberParam(search.step),
   }),
 })
 

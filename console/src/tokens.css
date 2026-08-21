@@ -56,6 +56,11 @@
   /* The scrim behind a modal surface. */
   --colour-scrim: rgb(6 10 11 / 0.72);
 
+  /* And the lighter one behind a surface that is still live: a Tour's
+     spotlight dims what it is not pointing at without taking it away
+     (ADR-0051 §2), so it must not read as a closed door. */
+  --colour-scrim-soft: rgb(6 10 11 / 0.55);
+
   /* ---- Severity: three colours, and nothing else uses them ---- */
   --severity-ok: #44a94e;
   --severity-advisory: #ffd166;
@@ -114,6 +119,7 @@
   --colour-ungoverned: #f3eddf;
 
   --colour-scrim: rgb(16 23 24 / 0.32);
+  --colour-scrim-soft: rgb(16 23 24 / 0.2);
 
   /* ---- Severity ---- */
   --severity-ok: #067826;

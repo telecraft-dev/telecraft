@@ -30,7 +30,7 @@ export function LensControl() {
 
   const environments = estate.data?.environments ?? [DEFAULT_LENS]
   return (
-    <label className="lens-control">
+    <label className="lens-control" data-tour="lens">
       <span>Lens</span>
       <select
         data-testid="lens-control"
