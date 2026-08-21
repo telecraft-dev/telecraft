@@ -15,6 +15,9 @@ Read the page that matches what you are doing:
 
 - [Development](development.md) covers prerequisites and every build, test
   and lint command that CI runs.
+- [Local development environment](devenv.md) runs real collectors under real
+  Supervisors against a real backend, and drives the estate into the states
+  worth looking at.
 - [Continuous integration](ci.md) covers the four workflows, what decides
   which jobs run, and how a change reaches the public demo and the
   documentation site.
@@ -24,7 +27,7 @@ Read the page that matches what you are doing:
   conformance kit.
 - [Console](console.md) covers the four Workspaces, the card data contract,
   the canvas engine, and the zero-CDN rule.
-- [Decisions](decisions.md) explains the ADR process and maps the 51 ADRs by
+- [Decisions](decisions.md) explains the ADR process and maps the 52 ADRs by
   theme.
 - [Documentation](documentation.md) explains how this documentation system
   works and how to add a page.

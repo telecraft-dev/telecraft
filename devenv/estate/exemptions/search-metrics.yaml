@@ -1,0 +1,15 @@
+# An authored waiver (REQ-014, ADR-0037): exactly one Requirement, one
+# Service, a named owner and a mandatory expiry. It waives the count, never
+# the diagnosis. The finding stays visible in the drawer and in every roll-up,
+# marked waived, and the count comes back on its own the day this expires.
+#
+# It is here so the devenv's resting state is not a uniform green: the estate
+# is compliant and carries one waived finding, and the two read differently.
+id: search-metrics-onboarding
+requirement: metrics-delivered
+owner: platform-observability
+service: shop/search
+expires: 2027-06-30
+reason: >
+  Search has no metrics SDK yet. The platform team owns the cutover and has
+  agreed the gap until the end of June.

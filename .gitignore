@@ -11,3 +11,8 @@
 /*.png
 /*.jpg
 /*.jpeg
+
+# The devenv's generated run directory (ADR-0052): composed supervisor
+# configs, the live snapshot, and container state. Everything in it is
+# rebuilt by `devenv/devenv up`.
+devenv/run/

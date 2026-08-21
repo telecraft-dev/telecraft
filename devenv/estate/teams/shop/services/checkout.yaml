@@ -1,0 +1,7 @@
+# The Service that takes the money: C1, the strictest class. Its Path runs
+# through both Tiers, which is what tightens each of them to the C1 floor.
+# Strictness is derived from traversal, never hand-maintained (ADR-0025 §4).
+owner: shop-team
+class: C1
+paths:
+  - through: [platform/edge, platform/gateway]

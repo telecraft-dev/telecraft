@@ -1,0 +1,15 @@
+# The local edit, and the shape of drift a served collector can actually
+# have.
+#
+# The Supervisor applies the served configuration over its local files, so a
+# local value for a key the artefact also sets is simply overwritten: on the
+# served path the estate wins every argument it chooses to have. What
+# survives is a setting the estate never described, and that is the honest
+# drift here — the running collector doing something no reviewed artefact
+# asked for.
+#
+# The gateway artefact sets this component's batch size and timeout, and
+# says nothing about a maximum. This does.
+processors:
+  batch/batcher:
+    send_batch_max_size: 512

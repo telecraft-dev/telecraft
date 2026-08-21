@@ -1,7 +1,7 @@
 ---
 title: Decisions and the design corpus
-description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the 51 ADRs.
-order: 7
+description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the 52 ADRs.
+order: 8
 ---
 
 # Decisions and the design corpus
@@ -66,7 +66,7 @@ existing requirement, update the row to cite it.
 
 | Path | What it is |
 |---|---|
-| `docs/adr/` | The decision corpus: 52 records, ADR-0000 to ADR-0051. Normative. This is what code is measured against. |
+| `docs/adr/` | The decision corpus: 53 records, ADR-0000 to ADR-0052. Normative. This is what code is measured against. |
 | `docs/requirements/` | `product-requirements.md`, the numbered requirements the product exists to satisfy, and `traceability.md`, mapping each to the ADRs and build phase that deliver it. Normative. |
 | `docs/research/` | Dated findings dossiers and the archived shaping tickets: the evidence ADRs cite. Not normative, and never edited to match a later decision. It records what was found, when. |
 | `docs/prototypes/` | Verdict one-pagers from throwaway prototypes, plus the normaliser spike's verdict. Prototype code is never merged; the verdict is what survives, and several ADRs rest on one. |
@@ -80,7 +80,7 @@ The vendor-word lint runs over `docs/**` but excludes the research, prototype
 and branding trees, because those record external reality verbatim: survey
 quotes, product names, collision sweeps.
 
-## A map of the 51 ADRs
+## A map of the 52 ADRs
 
 Read ADR-0000 first, then ADR-0001, ADR-0002, ADR-0003 and ADR-0004. Those
 five carry the principles everything else assumes. After that, read the group
@@ -98,6 +98,7 @@ The rules that hold everywhere.
 - **ADR-0019** Pluggable authentication; ownership-derived authorization; air-gap first-class
 - **ADR-0049** Releases are tags on main; the public demo follows a moving pointer
 - **ADR-0050** Elastic License 2.0; the project is source-available, not open source
+- **ADR-0052** A local development environment that reads the runtime seams for real
 
 ### Readings and verdicts
 

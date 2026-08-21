@@ -1,0 +1,16 @@
+# One of the two collectors in the gateway Tier, whose floor is two. Stop
+# one and the population drops below it.
+base_tier: platform/gateway
+overlay:
+  agent:
+    # The collector the Supervisor runs. The image puts it here; see
+    # devenv/collector/Dockerfile.
+    executable: /otelcol-contrib
+    description:
+      # The identity this collector reports, and the only thing the server
+      # matches on (ADR-0007, ADR-0013). The renderer does not emit it:
+      # a collector is never authored, it connects and says what it is.
+      identifying_attributes:
+        telecraft.tier: gateway
+        deployment.environment: production
+        service.instance.id: gateway-1

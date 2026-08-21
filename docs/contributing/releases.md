@@ -1,7 +1,7 @@
 ---
 title: Releases
 description: What a Telecraft version number means, what a release contains, how to cut one, and how the public demo follows it.
-order: 9
+order: 10
 ---
 
 # Releases

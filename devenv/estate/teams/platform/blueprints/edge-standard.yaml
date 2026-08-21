@@ -1,0 +1,57 @@
+# The node agent: it receives from the workloads beside it and forwards to
+# the gateway, adding nothing but a batch. It exists so the topology has a
+# Hop in it, and so a scenario can break one Tier without breaking the Tier
+# every Service depends on.
+name: edge-standard
+version: 1
+owner: platform-observability
+satisfies:
+  - logs-delivered@1
+  - traces-delivered@1
+  - metrics-delivered@1
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  - name: batcher
+    class: processor
+    type: batch
+    version: 1
+    config:
+      send_batch_size: 512
+      timeout: 2s
+  - name: forward
+    class: exporter
+    type: otlp_http
+    version: 1
+    config:
+      endpoint: http://gateway:4318
+      compression: gzip
+  - name: health
+    class: extension
+    type: health_check
+    version: 1
+    config:
+      endpoint: 0.0.0.0:13133
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: batcher
+    - component: forward
+  logs:
+    - component: otlp-in
+    - component: batcher
+    - component: forward
+  metrics:
+    - component: otlp-in
+    - component: batcher
+    - component: forward
+extensions:
+  - component: health

@@ -6,6 +6,7 @@
   "description": "The Telecraft console: four Workspaces over the documented platform API (ADR-0042, ADR-0045).",
   "scripts": {
     "dev": "vite",
+    "dev:demo": "vite --mode demo",
     "backend": "node tools/fixture-backend.mjs",
     "build": "tsc --noEmit && vite build",
     "build:demo": "tsc --noEmit && vite build --mode demo",

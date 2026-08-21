@@ -1,7 +1,7 @@
 ---
 title: Continuous integration
 description: The four workflows, what decides which jobs run, how the live-backend suites are gated, and how a change reaches the public demo and the documentation site.
-order: 3
+order: 4
 ---
 
 # Continuous integration

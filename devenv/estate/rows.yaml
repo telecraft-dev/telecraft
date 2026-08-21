@@ -1,0 +1,68 @@
+# The Effective reading per (Service, Environment): the collector's own
+# reported running config, pipelines with component order preserved, never a
+# flat component list (ADR-0004).
+#
+# This is the one reading the devenv leaves authored (ADR-0052 §2). Deriving
+# it from the live collectors is possible — a Service's Paths name its Tiers,
+# and the serving matcher already maps a Tier to its collectors — but it
+# needs judgements the product has not made, and a development environment
+# does not get to invent product semantics ahead of the product.
+#
+# Each row is the collector nearest the Service: the first Tier on its Path.
+# So checkout reads the edge agent's pipelines and search reads the gateway's,
+# and both must be kept in step with rendered/ by hand. The component ids are
+# the rendered ones, spelled exactly as the artefact spells them.
+
+# The Grace table (REQ-014): the onboarding window per Service Class,
+# shrinking as the class rises. Nothing here is waived by Grace today,
+# because no Service declares an onboarding date.
+grace:
+  - class: C1
+    window: 168h
+  - class: C2
+    window: 336h
+  - class: C3
+    window: 720h
+
+services:
+  # Path: platform/edge, then platform/gateway. The row is the edge agent.
+  - name: shop/checkout
+    class: C1
+    environments:
+      - name: production
+        pipelines:
+          - name: traces
+            receivers: [otlp/otlp-in]
+            processors: [batch/batcher]
+            exporters: [otlp_http/forward]
+          - name: logs
+            receivers: [otlp/otlp-in]
+            processors: [batch/batcher]
+            exporters: [otlp_http/forward]
+          - name: metrics
+            receivers: [otlp/otlp-in]
+            processors: [batch/batcher]
+            exporters: [otlp_http/forward]
+
+  # Path: platform/gateway only. The row is the gateway, whose untrusted Hop
+  # puts the attribute-shedding processor at the head of every lane.
+  #
+  # Search's metrics lane is configured and nothing emits into it, which is
+  # the broken_pipeline the Exemption waives. The finding stays visible.
+  - name: shop/search
+    class: C2
+    environments:
+      - name: production
+        pipelines:
+          - name: traces
+            receivers: [otlp/otlp-in]
+            processors: [attributes/telecraft.untrusted-hop, memory_limiter/guard, batch/batcher]
+            exporters: [otlp_http/platform.backend-exporter]
+          - name: logs
+            receivers: [otlp/otlp-in]
+            processors: [attributes/telecraft.untrusted-hop, memory_limiter/guard, batch/batcher]
+            exporters: [otlp_http/platform.backend-exporter]
+          - name: metrics
+            receivers: [otlp/otlp-in]
+            processors: [attributes/telecraft.untrusted-hop, memory_limiter/guard, batch/batcher]
+            exporters: [otlp_http/platform.backend-exporter]

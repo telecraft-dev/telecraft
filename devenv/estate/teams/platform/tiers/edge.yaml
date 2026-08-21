@@ -1,0 +1,12 @@
+# The node agent Tier: one collector, served, forwarding into the gateway.
+# Its floor is one, so stopping it is a population finding rather than an
+# empty Tier.
+owner: platform-observability
+environment: production
+blueprint: platform/edge-standard@1
+selector:
+  telecraft.tier: edge
+  deployment.environment: production
+min_expected: 1
+serving:
+  endpoint: ws://host.docker.internal:4320/v1/opamp

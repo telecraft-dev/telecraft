@@ -1,0 +1,24 @@
+# The aggregation gateway, served over OpAMP, so the Supervisor config
+# renders beside the collector artefact (REQ-032).
+#
+# The endpoint names the host from inside a container: the OpAMP server runs
+# on the developer's machine, not in the compose project, because the tap
+# that reads the collector estate has to be wired into the same server
+# instance (ADR-0052 §2).
+#
+# One arrival is untrusted. Trust is a property of the Hop, never of the
+# Tier (ADR-0007), and an undeclared trust level fails safe, so the renderer
+# adds the attribute-shedding processor to every pipeline.
+owner: platform-observability
+environment: production
+blueprint: platform/gateway-standard@1
+selector:
+  telecraft.tier: gateway
+  deployment.environment: production
+min_expected: 2
+serving:
+  endpoint: ws://host.docker.internal:4320/v1/opamp
+hops:
+  - from: internet
+  - from: platform/edge
+    trusted: true

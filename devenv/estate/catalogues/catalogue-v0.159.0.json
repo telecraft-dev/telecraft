@@ -1,0 +1,2839 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "github.com/open-telemetry/opentelemetry-collector-contrib",
+    "ref": "v0.159.0"
+  },
+  "components": [
+    {
+      "class": "connector",
+      "type": "count",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector",
+      "display_name": "Count Connector",
+      "stability": {
+        "logs_to_metrics": "alpha",
+        "metrics_to_metrics": "alpha",
+        "profiles_to_metrics": "alpha",
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "datadog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/datadogconnector",
+      "display_name": "Datadog Connector",
+      "stability": {
+        "traces_to_metrics": "beta",
+        "traces_to_traces": "beta"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "exceptions",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector",
+      "display_name": "Exceptions Connector",
+      "stability": {
+        "traces_to_logs": "alpha",
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "failover",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/failoverconnector",
+      "display_name": "Failover Connector",
+      "stability": {
+        "logs_to_logs": "alpha",
+        "metrics_to_metrics": "alpha",
+        "traces_to_traces": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "forward",
+      "module": "go.opentelemetry.io/collector/connector/forwardconnector",
+      "display_name": "Forward Connector",
+      "stability": {
+        "logs_to_logs": "beta",
+        "metrics_to_metrics": "beta",
+        "profiles_to_profiles": "alpha",
+        "traces_to_traces": "beta"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "grafanacloud",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector",
+      "display_name": "Grafana Cloud Connector",
+      "stability": {
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "metrics_as_logs",
+      "deprecated_type": "metricsaslogs",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/metricsaslogsconnector",
+      "display_name": "Metrics as Logs Connector",
+      "stability": {
+        "metrics_to_logs": "development"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "otlp_json",
+      "deprecated_type": "otlpjson",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/otlpjsonconnector",
+      "display_name": "OTLP JSON Connector",
+      "stability": {
+        "logs_to_logs": "alpha",
+        "logs_to_metrics": "alpha",
+        "logs_to_traces": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "round_robin",
+      "deprecated_type": "roundrobin",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/roundrobinconnector",
+      "display_name": "Round-Robin Connector",
+      "stability": {
+        "logs_to_logs": "beta",
+        "metrics_to_metrics": "beta",
+        "traces_to_traces": "beta"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "routing",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector",
+      "display_name": "Routing Connector",
+      "stability": {
+        "logs_to_logs": "alpha",
+        "metrics_to_metrics": "alpha",
+        "traces_to_traces": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "service_graph",
+      "deprecated_type": "servicegraph",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector",
+      "display_name": "Service Graph Connector",
+      "stability": {
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "signal_to_metrics",
+      "deprecated_type": "signaltometrics",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector",
+      "display_name": "Signal to Metrics Connector",
+      "description": "Signal to metrics connector produces metrics from all signal types (traces, logs, or metrics).",
+      "stability": {
+        "logs_to_metrics": "alpha",
+        "metrics_to_metrics": "alpha",
+        "profiles_to_metrics": "alpha",
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "slow_sql",
+      "deprecated_type": "slowsql",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/slowsqlconnector",
+      "display_name": "Slow SQL Connector",
+      "stability": {
+        "traces_to_logs": "development"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "span_metrics",
+      "deprecated_type": "spanmetrics",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector",
+      "display_name": "Span Metrics Connector",
+      "stability": {
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "connector",
+      "type": "sum",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/sumconnector",
+      "display_name": "Sum Connector",
+      "stability": {
+        "logs_to_metrics": "alpha",
+        "metrics_to_metrics": "alpha",
+        "traces_to_metrics": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "alertmanager",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/alertmanagerexporter",
+      "display_name": "Alertmanager Exporter",
+      "stability": {
+        "logs": "development",
+        "traces": "development"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "alibabacloud_logservice",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/alibabacloudlogserviceexporter",
+      "display_name": "AlibabaCloud LogService Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "awscloudwatchlogs",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awscloudwatchlogsexporter",
+      "display_name": "AWS CloudWatch Logs Exporter",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "awsemf",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awsemfexporter",
+      "display_name": "AWS CloudWatch EMF Exporter",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "awskinesis",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awskinesisexporter",
+      "display_name": "AWS Kinesis Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "awss3",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter",
+      "display_name": "AWS S3 Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "awsxray",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awsxrayexporter",
+      "display_name": "AWS X-Ray Tracing Exporter",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "azure_blob",
+      "deprecated_type": "azureblob",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/azureblobexporter",
+      "display_name": "Azure Blob Storage Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "azure_monitor",
+      "deprecated_type": "azuremonitor",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/azuremonitorexporter",
+      "display_name": "Azure Monitor Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "azuredataexplorer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/azuredataexplorerexporter",
+      "display_name": "Azure Data Explorer Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "bmc_helix",
+      "deprecated_type": "bmchelix",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/bmchelixexporter",
+      "display_name": "BMC Helix Exporter",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "cassandra",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/cassandraexporter",
+      "display_name": "Cassandra Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "clickhouse",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter",
+      "display_name": "ClickHouse Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "alpha",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "coralogix",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/coralogixexporter",
+      "display_name": "Coralogix Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "datadog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter",
+      "display_name": "Datadog Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "dataset",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datasetexporter",
+      "display_name": "DataSet Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "debug",
+      "module": "go.opentelemetry.io/collector/exporter/debugexporter",
+      "display_name": "Debug Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "profiles": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "doris",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/dorisexporter",
+      "display_name": "Apache Doris Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "elasticsearch",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter",
+      "display_name": "Elasticsearch Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "development",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "faro",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter",
+      "display_name": "Faro Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "file",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter",
+      "display_name": "File Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "profiles": "development",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "google_cloud_storage",
+      "deprecated_type": "googlecloudstorage",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudstorageexporter",
+      "display_name": "Google Cloud Storage Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "development"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "googlecloud",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter",
+      "display_name": "Google Cloud Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "googlecloudpubsub",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter",
+      "display_name": "Google Cloud Pub/Sub Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "googlemanagedprometheus",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlemanagedprometheusexporter",
+      "display_name": "Google Cloud Managed Prometheus Exporter",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "honeycomb_marker",
+      "deprecated_type": "honeycombmarker",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/honeycombmarkerexporter",
+      "display_name": "Honeycomb Marker Exporter",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "influxdb",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/influxdbexporter",
+      "display_name": "InfluxDB Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "kafka",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter",
+      "display_name": "Kafka Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "load_balancing",
+      "deprecated_type": "loadbalancing",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter",
+      "display_name": "Load Balancing Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "logicmonitor",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/logicmonitorexporter",
+      "display_name": "LogicMonitor Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "logzio",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/logzioexporter",
+      "display_name": "Logz.io Exporter",
+      "stability": {
+        "logs": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "mezmo",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/mezmoexporter",
+      "display_name": "Mezmo Exporter",
+      "stability": {
+        "logs": "deprecated"
+      },
+      "deprecation": {
+        "logs": {
+          "date": "2026-07-30",
+          "migration": "Use the OTLP/HTTP exporter to send logs directly to Mezmo instead. See https://docs.mezmo.com/telemetry-pipelines/otel-collector and https://docs.mezmo.com/telemetry-pipelines/open-telemetry-source for migration guidance. This component will be removed in a future release."
+        }
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "nop",
+      "module": "go.opentelemetry.io/collector/exporter/nopexporter",
+      "display_name": "No-op Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "opensearch",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/opensearchexporter",
+      "display_name": "OpenSearch Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "otelarrow",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter",
+      "display_name": "OpenTelemetry Arrow Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "otlp_grpc",
+      "deprecated_type": "otlp",
+      "module": "go.opentelemetry.io/collector/exporter/otlpexporter",
+      "display_name": "OTLP gRPC Exporter",
+      "stability": {
+        "logs": "stable",
+        "metrics": "stable",
+        "profiles": "alpha",
+        "traces": "stable"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "otlp_http",
+      "deprecated_type": "otlphttp",
+      "module": "go.opentelemetry.io/collector/exporter/otlphttpexporter",
+      "display_name": "OTLP HTTP Exporter",
+      "stability": {
+        "logs": "stable",
+        "metrics": "stable",
+        "profiles": "alpha",
+        "traces": "stable"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "prometheus",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter",
+      "display_name": "Prometheus Exporter",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "prometheus_remote_write",
+      "deprecated_type": "prometheusremotewrite",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter",
+      "display_name": "Prometheus Remote Write Exporter",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "pulsar",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/pulsarexporter",
+      "display_name": "Pulsar Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "rabbitmq",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/rabbitmqexporter",
+      "display_name": "RabbitMQ Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "sematext",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sematextexporter",
+      "display_name": "Sematext Exporter",
+      "stability": {
+        "logs": "development",
+        "metrics": "development"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "sentry",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sentryexporter",
+      "display_name": "Sentry Exporter",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "signalfx",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/signalfxexporter",
+      "display_name": "SignalFx Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "deprecated"
+      },
+      "deprecation": {
+        "traces": {
+          "date": "2026-05-29",
+          "migration": "Traces pipeline is no longer necessary for trace correlation, trace correlation is supported via OTLP. Trace functionality will be removed from this exporter in December 2026."
+        }
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "splunk_hec",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter",
+      "display_name": "Splunk HTTP Event Collector (HEC) Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "stef",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/stefexporter",
+      "display_name": "STEF Exporter",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "sumologic",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sumologicexporter",
+      "display_name": "Sumo Logic Exporter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "syslog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter",
+      "display_name": "Syslog Exporter",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "tencentcloud_logservice",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/tencentcloudlogserviceexporter",
+      "display_name": "TencentCloud LogService Exporter",
+      "stability": {
+        "logs": "beta"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "tinybird",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/tinybirdexporter",
+      "display_name": "Tinybird Exporter",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "exporter",
+      "type": "zipkin",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter",
+      "display_name": "Zipkin Exporter",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "ack",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension",
+      "display_name": "ACK Extension",
+      "description": "This extension allows acking of data upon successful processing. The upstream agent can choose to send event again\nif ack fails.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "asapclient",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/asapauthextension",
+      "display_name": "ASAP Client Authentication Extension",
+      "description": "This extension provides [Atlassian Service Authentication Protocol](https://s2sauth.bitbucket.io/) (ASAP) client \ncredentials for HTTP or gRPC based exporters.",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "avro_log_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/avrologencodingextension",
+      "display_name": "AVRO Log Encoding Extension",
+      "description": "The `avrolog` encoding extension is used to unmarshal AVRO and insert it into the body of a log record. Marshalling is not supported.",
+      "stability": {
+        "extension": "development"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "aws_iam_db_auth",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/dbauth/awsiamdbauthextension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "aws_logs_encoding",
+      "deprecated_type": "awslogs_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/awslogsencodingextension",
+      "display_name": "AWS Logs Encoding Extension",
+      "description": "This extension unmarshalls logs encoded in formats produced by AWS services.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "awscloudwatchmetricstreams_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/awscloudwatchmetricstreamsencodingextension",
+      "display_name": "AWS CloudWatch Metric Streams Encoding Extension",
+      "description": "This extension unmarshalls metrics encoded in formats produced by [Amazon CloudWatch Metric Streams](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Metric-Streams.html).",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "awsproxy",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/awsproxy",
+      "display_name": "AWS Proxy Extension",
+      "description": "The AWS proxy accepts requests without any authentication of AWS signatures applied and forwards them to the\nAWS API, applying authentication and signing. This allows applications to avoid needing AWS credentials to access\na service, instead configuring the AWS exporter and/or proxy in the OpenTelemetry collector and only providing the\ncollector with credentials.",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "azure_auth",
+      "deprecated_type": "azureauth",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/azureauthextension",
+      "display_name": "Azure Authenticator Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "azure_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/azureencodingextension",
+      "display_name": "Azure Logs/Traces/Metrics Encoding Extension",
+      "description": "This extension is designed for unmarshaling logs/traces/metrics encoded in specific format produced by [Azure Diagnostic Settings Export](https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/diagnostic-settings) or [Azure Data Collection Rules (DCRs)](https://learn.microsoft.com/en-us/azure/azure-monitor/data-collection/data-collection-rule-overview)",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "basicauth",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension",
+      "display_name": "Basic Auth Authenticator Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "bearertokenauth",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension",
+      "display_name": "Bearer Token Authenticator Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "cfgarden_observer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/cfgardenobserver",
+      "display_name": "Cloud Foundry Garden Observer Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "cgroup_runtime",
+      "deprecated_type": "cgroupruntime",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/cgroupruntimeextension",
+      "display_name": "Cgroup Go Runtime Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "datadog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/datadogextension",
+      "display_name": "Datadog Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "db_storage",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/dbstorage",
+      "display_name": "Database Storage Extension",
+      "description": "The Database Storage Extension can persist state to a relational database.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "docker_observer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/dockerobserver",
+      "display_name": "Docker Observer Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "ecs_observer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/ecsobserver",
+      "display_name": "Amazon Elastic Container Service Observer",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "file_storage",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage",
+      "display_name": "File Storage Extension",
+      "description": "The File Storage Extension can persist state to the local file system.",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "google_cloud_logentry_encoding",
+      "deprecated_type": "googlecloudlogentry_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/googlecloudlogentryencodingextension",
+      "display_name": "Google Cloud LogEntry Encoding Extension",
+      "description": "This extension can be used to unmarshall a [Cloud Logging LogEntry](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry) message type.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "googleclientauth",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension",
+      "display_name": "Google Client Auth Extension",
+      "description": "This extension provides Google OAuth2 Client Credentials and Metadata for gRPC and http based exporters.",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "headers_setter",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension",
+      "display_name": "Headers Setter Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "health_check",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension",
+      "display_name": "Health Check Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "healthcheckv2",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckv2extension",
+      "display_name": "Health Check Extension V2",
+      "stability": {
+        "extension": "development"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "host_observer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/hostobserver",
+      "display_name": "Host Observer Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "http_forwarder",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/httpforwarderextension",
+      "display_name": "HTTP Forwarder Extension",
+      "description": "This extension accepts HTTP requests, optionally adds headers to them and forwards them.\nThe RequestURIs of the original requests are preserved by the extension.",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "jaeger_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jaegerencodingextension",
+      "display_name": "Jaeger Encoding Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "jaegerremotesampling",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling",
+      "display_name": "Jaeger Remote Sampling Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "json_log_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension",
+      "display_name": "JSON Log Encoding Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "k8s_leader_elector",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/k8sleaderelector",
+      "display_name": "Kubernetes Leader Elector Extension",
+      "description": "This extension enables OpenTelemetry components to run in HA mode across a Kubernetes cluster. The component that owns\nthe lease becomes the leader and becomes the active instance.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "k8s_observer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/observer/k8sobserver",
+      "display_name": "Kubernetes Observer Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "mcp",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/mcp",
+      "display_name": "MCP Server",
+      "stability": {
+        "extension": "development"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "memory_limiter",
+      "module": "go.opentelemetry.io/collector/extension/memorylimiterextension",
+      "display_name": "Memory Limiter Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "oauth2client",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension",
+      "display_name": "OAuth2 Client Credentials Authenticator Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "oidc",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/oidcauthextension",
+      "display_name": "OIDC Authenticator Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "opamp",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension",
+      "display_name": "OpAMP Agent Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "otlp_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension",
+      "display_name": "OTLP Encoding Extension",
+      "description": "This extension unmarshals and marshals data encoded according to the [OTLP specification](https://opentelemetry.io/docs/specs/otlp/).",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "pebble_tail_storage",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/tailstorage/pebbletailstorageextension",
+      "display_name": "Pebble Tail Storage Extension",
+      "description": "Stores pending trace data for tail sampling in a local Pebble database.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "pprof",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension",
+      "display_name": "Performance Profiler Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "redis_storage",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/redisstorageextension",
+      "display_name": "Redis Storage Extension",
+      "description": "The Redis Storage Extension can persist state to a Redis cluster.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "remotetap",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/remotetapextension",
+      "display_name": "Remote Tap Extension",
+      "stability": {
+        "extension": "development"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "sd_notify",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/sdnotifyextension",
+      "display_name": "sd_notify Extension",
+      "stability": {
+        "extension": "development"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "sigv4auth",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension",
+      "display_name": "SigV4 Authenticator Extension",
+      "description": "This extension provides Sigv4 authentication for making requests to AWS services. You can read about the\n[Sigv4 process](https://docs.aws.amazon.com/general/latest/gr/signature-version-4.html).",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "skywalking_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/skywalkingencodingextension",
+      "display_name": "Skywalking Encoding Extension",
+      "description": "The `Skywalking` encoding extension is used to unmarshal Apache Skywalking segment traces. Marshalling is not supported.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "solarwindsapmsettings",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/solarwindsapmsettingsextension",
+      "display_name": "Solarwinds APM Settings extension",
+      "stability": {
+        "extension": "development"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "sumologic",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/sumologicextension",
+      "display_name": "Sumo Logic Extension",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "text_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension",
+      "display_name": "Text Encoding Extension",
+      "description": "The `text_encoding` extension is an encoding extension that can unmarshal and marshal logs.",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "zipkin_encoding",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/zipkinencodingextension",
+      "display_name": "Zipkin Encoding Extension",
+      "description": "This extension supports marshaling and unmarshalling Zipkin data representing traces.",
+      "stability": {
+        "extension": "alpha"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "zpages",
+      "module": "go.opentelemetry.io/collector/extension/zpagesextension",
+      "display_name": "zPages Extension",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "attributes",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor",
+      "display_name": "Attributes Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "aws_ecs_attributes",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/awsecsattributesprocessor",
+      "display_name": "AWS ECS Attributes Processor",
+      "description": "The `aws_ecs_attributes` processor enriches logs, metrics, traces and profiles with\nAWS ECS metadata for daemonset-style deployments on EC2, where a single collector\nruns per host and processes telemetry for all containers on that host.",
+      "stability": {
+        "logs": "development",
+        "metrics": "development",
+        "profiles": "development",
+        "traces": "development"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "batch",
+      "module": "go.opentelemetry.io/collector/processor/batchprocessor",
+      "display_name": "Batch Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "cardinality_guardian",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/cardinalityguardianprocessor",
+      "display_name": "Cardinality Guardian Processor",
+      "description": "An OpenTelemetry Collector processor that catches metric cardinality explosions before\nthey reach your TSDB.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "coralogix",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/coralogixprocessor",
+      "display_name": "Coralogix Processor",
+      "description": "The Coralogix processor adds attributes to spans that enable features in Coralogix.",
+      "stability": {
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "cumulative_to_delta",
+      "deprecated_type": "cumulativetodelta",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor",
+      "display_name": "Cumulative to Delta Processor",
+      "description": "The cumulative to delta processor (`cumulativetodeltaprocessor`) converts monotonic sum, histogram, and exponential\nhistogram metrics from cumulative to delta aggregation temporality. Non-monotonic sums are excluded. Delta metrics are\nexcluded from any conversion and forwarded without changes.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "delta_to_cumulative",
+      "deprecated_type": "deltatocumulative",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor",
+      "display_name": "Delta to Cumulative Processor",
+      "description": "The Delta to Cumulative Processor (`deltatocumulativeprocessor`) converts metrics from delta temporality to\ncumulative, by accumulating samples in memory.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "delta_to_rate",
+      "deprecated_type": "deltatorate",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatorateprocessor",
+      "display_name": "Delta to Rate Processor",
+      "description": "The Delta to Rate Processor (`deltatorateprocessor`) converts delta sum metrics to rate metrics. This rate is a gauge.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "drain",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/drainprocessor",
+      "display_name": "Drain Processor",
+      "description": "The Drain Processor applies the Drain log clustering algorithm to log records as they pass through the pipeline, deriving a template string (e.g. \"user \u003c*\u003e logged in from \u003c*\u003e\") and attaching it as an attribute on each record.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "dynamic_sampling",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/dynamicsamplingprocessor",
+      "display_name": "Dynamic Sampling Processor",
+      "description": "The Dynamic Sampling Processor performs adaptive trace sampling using first-match\nrules-based routing to dynamic samplers. Each sampler produces a known sample rate\nwhich is encoded as `ot=th` in W3C TraceState for correct downstream metric weighting.",
+      "stability": {
+        "traces": "development"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "filter",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor",
+      "display_name": "Filter Processor",
+      "description": "The Filter Processor allows dropping spans, span events, metrics, datapoints, and logs from the collector.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "profiles": "development",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "gen_ai_normalizer",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/genainormalizerprocessor",
+      "display_name": "GenAI Normalizer Processor",
+      "stability": {
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "geoip",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/geoipprocessor",
+      "display_name": "GeoIP Processor",
+      "description": "The geoIP processor `geoipprocessor` enhances the attributes of a span, log, or metric by appending information about\nthe geographical location of an IP address.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "groupbyattrs",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor",
+      "display_name": "Group by Attributes Processor",
+      "description": "This processor re-associates spans, log records and metric datapoints to a *Resource* that matches with the specified\nattributes. As a result, all spans, log records or metric datapoints with the same values for the specified attributes\nare \"grouped\" under the same *Resource*.",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "groupbytrace",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbytraceprocessor",
+      "display_name": "Group by Trace Processor",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "interval",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/intervalprocessor",
+      "display_name": "Interval Processor",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "isolationforest",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/isolationforestprocessor",
+      "display_name": "Isolation Forest Processor",
+      "description": "The **Isolation Forest processor** adds inline, unsupervised anomaly detection to any OpenTelemetry Collector pipeline\n(traces, metrics, or logs). It embeds a lightweight implementation of the Isolation Forest algorithm that automatically\nlearns normal behaviour from recent telemetry and tags, scores, or optionally drops anomalies *in‑flight* – no\nexternal ML service required.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "k8s_attributes",
+      "deprecated_type": "k8sattributes",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor",
+      "display_name": "Kubernetes Attributes Processor",
+      "description": "The Kubernetes Attributes Processor allows adding k8s metadata to resource attributes for spans, metrics and logs.",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "log_dedup",
+      "deprecated_type": "logdedup",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/logdedupprocessor",
+      "display_name": "Log DeDuplication Processor",
+      "description": "The Log DeDuplication Processor is used to deduplicate logs by detecting identical logs over a range of time and\nemitting a single log with the count of logs that were deduplicated.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "logstransform",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/logstransformprocessor",
+      "display_name": "Logs Transform Processor",
+      "stability": {
+        "logs": "development"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "lookup",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/lookupprocessor",
+      "display_name": "Lookup Processor",
+      "description": "The lookup processor enriches telemetry signals by performing external lookups to retrieve additional data. It\nevaluates an [OTTL](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/pkg/ottl/README.md) value\nexpression to extract a lookup key, queries a lookup source, and writes the results as new attributes.",
+      "stability": {
+        "logs": "development",
+        "metrics": "development",
+        "traces": "development"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "memory_limiter",
+      "module": "go.opentelemetry.io/collector/processor/memorylimiterprocessor",
+      "display_name": "Memory Limiter Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "metric_start_time",
+      "deprecated_type": "metricstarttime",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor",
+      "display_name": "Metric Start Time Processor",
+      "description": "The Metric Start Time Processor (`metric_start_time`) is used to set the start\ntime for metric points with a cumulative aggregation temporality. It is\ncommonly used with the `prometheus` receiver, which usually produces metric\npoints without a start time.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "metrics_transform",
+      "deprecated_type": "metricstransform",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstransformprocessor",
+      "display_name": "Metrics Transform Processor",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "metricsgeneration",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricsgenerationprocessor",
+      "display_name": "Metrics Generation Processor",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "probabilistic_sampler",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor",
+      "display_name": "Probabilistic Sampling Processor",
+      "stability": {
+        "logs": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "queuebatch",
+      "module": "go.opentelemetry.io/collector/processor/queuebatchprocessor",
+      "display_name": "Queue Batch Processor",
+      "stability": {
+        "logs": "development",
+        "metrics": "development",
+        "profiles": "development",
+        "traces": "development"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "redaction",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor",
+      "display_name": "Redaction Processor",
+      "description": "This processor deletes span, log, and metric datapoint attributes that don't match a list of allowed\nattributes. It also masks attribute values that match a blocked value\nlist. Attributes that aren't on the allowed list are removed before any\nvalue checks are done.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "remotetap",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/remotetapprocessor",
+      "display_name": "Remote Tap Processor",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "resource",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor",
+      "display_name": "Resource Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "resource_detection",
+      "deprecated_type": "resourcedetection",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor",
+      "display_name": "Resource Detection Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "schema",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/schemaprocessor",
+      "display_name": "Schema Processor",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "span",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor",
+      "display_name": "Span Processor",
+      "stability": {
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "span_pruning",
+      "deprecated_type": "spanpruning",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanpruningprocessor",
+      "display_name": "Span Pruning Processor",
+      "stability": {
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "sumologic",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/sumologicprocessor",
+      "display_name": "Sumo Logic Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "tail_sampling",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor",
+      "display_name": "Tail Sampling Processor",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "transform",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor",
+      "display_name": "Transform Processor",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "unroll",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/processor/unrollprocessor",
+      "display_name": "Unroll Processor",
+      "description": "The Unroll Processor takes log records with slice bodies and expands each element of the slice into its own log\nrecord. This allows for better processing and analysis of structured log data that contains arrays or lists.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "active_directory_ds",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/activedirectorydsreceiver",
+      "display_name": "Active Directory Domain Services Receiver",
+      "description": "The Active Directory Domain Services Receiver scrapes metrics relating to an Active Directory domain controller using\nthe Windows Performance Counters.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "active_directory_inv",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/activedirectoryinvreceiver",
+      "display_name": "Windows Active Directory Inventory Receiver",
+      "description": "The Windows Active Directory Inventory receiver collects inventory data from Active\nDirectory. This includes information such as computer names, user names, email addresses,\nand location information. This receiver is only supported on Windows servers.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "aerospike",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/aerospikereceiver",
+      "display_name": "Aerospike Receiver",
+      "description": "The Aerospike receiver is designed to collect performance metrics from one or more Aerospike nodes.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "apache",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/apachereceiver",
+      "display_name": "Apache Web Server Receiver",
+      "description": "The Apache Web Server Receiver fetches stats from an Apache Web Server instance using the `server-status?auto` endpoint.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "apache_spark",
+      "deprecated_type": "apachespark",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/apachesparkreceiver",
+      "display_name": "Apache Spark Receiver",
+      "description": "The Apache Spark Receiver fetches metrics for an Apache Spark cluster through the Apache Spark REST API - specifically,\nthe `/metrics/json`, `/api/v1/applications/[app-id]/stages`, `/api/v1/applications/[app-id]/executors`, and\n`/api/v1/applications/[app-id]/jobs` endpoints.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "aws_cloudwatch",
+      "deprecated_type": "awscloudwatch",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver",
+      "display_name": "AWS CloudWatch Receiver",
+      "description": "The AWS CloudWatch Receiver receives Cloudwatch events from [AWS CloudWatch](https://aws.amazon.com/cloudwatch/) via\nthe [AWS SDK for Cloudwatch Logs](https://docs.aws.amazon.com/sdk-for-go/api/service/cloudwatchlogs/)",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "aws_lambda",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awslambdareceiver",
+      "display_name": "AWS Lambda Receiver",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "awscontainerinsightreceiver",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscontainerinsightreceiver",
+      "display_name": "AWS Container Insights Receiver",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "awsecscontainermetrics",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver",
+      "display_name": "AWS ECS Container Metrics Receiver",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "awsfirehose",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsfirehosereceiver",
+      "display_name": "AWS Kinesis Data Firehose Receiver",
+      "description": "The AWS Kinesis Data Firehose Receiver is for ingesting delivery stream messages and parsing the records received\nbased on the configured record type.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "awss3",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver",
+      "display_name": "AWS S3 Receiver",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "awsxray",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsxrayreceiver",
+      "display_name": "AWS X-Ray Receiver",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "azure_blob",
+      "deprecated_type": "azureblob",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/azureblobreceiver",
+      "display_name": "Azure Blob Receiver",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "azure_event_hub",
+      "deprecated_type": "azureeventhub",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/azureeventhubreceiver",
+      "display_name": "Azure Event Hub Receiver",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "azure_functions",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/azurefunctionsreceiver",
+      "display_name": "Azure Functions Receiver",
+      "stability": {
+        "logs": "development"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "azure_monitor",
+      "deprecated_type": "azuremonitor",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/azuremonitorreceiver",
+      "display_name": "Azure Monitor Receiver",
+      "description": "The Azure Monitor Receiver scrapes the Azure Monitor API for resource metrics.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "carbon",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/carbonreceiver",
+      "display_name": "Carbon Receiver",
+      "description": "The [Carbon](https://github.com/graphite-project/carbon) Receiver supports Carbon's\n[plaintext protocol](https://graphite.readthedocs.io/en/stable/feeding-carbon.html#the-plaintext-protocol).",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "chrony",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/chronyreceiver",
+      "display_name": "Chrony Receiver",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "cisco_os",
+      "deprecated_type": "ciscoos",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/ciscoosreceiver",
+      "display_name": "Cisco OS Receiver",
+      "description": "The Cisco OS Receiver is a modular receiver that collects metrics from Cisco network devices via SSH connections. It\nsupports multiple scrapers for comprehensive network monitoring and provides native OpenTelemetry OTLP metrics\ngeneration.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "cloud_foundry",
+      "deprecated_type": "cloudfoundry",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudfoundryreceiver",
+      "display_name": "Cloud Foundry Receiver",
+      "description": "The Cloud Foundry Receiver connects to the RLP (Reverse Log Proxy) Gateway of the Cloud Foundry installation,\ntypically available at the URL `https://log-stream.\u003ccf-system-domain\u003e`.",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "cloudflare",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver",
+      "display_name": "Cloudflare Receiver",
+      "description": "The Cloudflare Receiver allows Cloudflare's [LogPush Jobs](https://developers.cloudflare.com/logs/logpush/) to send\nlogs over HTTPS from the Cloudflare logs aggregation system to an OpenTelemetry collector.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "collectd",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/collectdreceiver",
+      "display_name": "CollectD `write_http` plugin JSON receiver",
+      "description": "This receiver can receive data exported by the CollectD's `write_http` plugin. Only JSON format is supported.\nAuthentication is not supported at this time.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "couchdb",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/couchdbreceiver",
+      "display_name": "CouchDB Receiver",
+      "description": "This receiver fetches stats from a CouchDB server using the `/_node/{node-name}/_stats/couchdb`\n[endpoint](https://docs.couchdb.org/en/latest/api/server/common.html#node-node-name-stats).",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "datadog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver",
+      "display_name": "Datadog Receiver",
+      "description": "The Datadog receiver enables translation between Datadog and OpenTelemetry-compatible backends. It currently has\nsupport for Datadog's APM traces, metrics, and logs.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "dns_check",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dnscheckreceiver",
+      "display_name": "DNS Check Receiver",
+      "description": "The DNS Check Receiver can be used for synthetic checks against DNS servers.",
+      "stability": {
+        "metrics": "development"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "docker_stats",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/dockerstatsreceiver",
+      "display_name": "Docker Stats Receiver",
+      "description": "The Docker Stats receiver queries the local Docker daemon's container stats API for\nall desired running containers on a configured interval.  These stats are for container\nresource usage of cpu, memory, network, and the\n[blkio controller](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt).",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "elasticsearch",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/elasticsearchreceiver",
+      "display_name": "Elasticsearch Receiver",
+      "description": "This receiver queries the Elasticsearch [node stats](https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-nodes-stats.html),\n[cluster health](https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html) and\n[index stats](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-stats.html) endpoints in order\nto scrape metrics from a running Elasticsearch cluster.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "envoy_als",
+      "deprecated_type": "envoyals",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/envoyalsreceiver",
+      "display_name": "Envoy ALS (Access Log Service) Receiver",
+      "description": "This is a receiver for the [Envoy gRPC ALS](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/access_loggers/grpc/v3/als.proto#envoy-v3-api-msg-extensions-access-loggers-grpc-v3-httpgrpcaccesslogconfig)\nsink.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "expvar",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/expvarreceiver",
+      "display_name": "Expvar Receiver",
+      "description": "An Expvar Receiver scrapes metrics from [expvar](https://pkg.go.dev/expvar), \nwhich exposes data in JSON format from an HTTP endpoint. The metrics are\nextracted from the `expvar` variable [memstats](https://pkg.go.dev/runtime#MemStats),\nwhich exposes various information about the Go runtime.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "faro",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/faroreceiver",
+      "display_name": "Faro Receiver",
+      "description": "This receiver can receive telemetry data in [Faro format](https://github.com/grafana/faro) that adheres to the\n[Faro OpenAPI schema](https://github.com/grafana/faro/blob/main/spec/gen/faro.gen.yaml).",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "file_log",
+      "deprecated_type": "filelog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver",
+      "display_name": "File Log Receiver",
+      "description": "This receiver tails and parses logs from files.",
+      "stability": {
+        "logs": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "file_stats",
+      "deprecated_type": "filestats",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver",
+      "display_name": "File Stats Receiver",
+      "description": "The File Stats receiver collects metrics from files specified with a glob pattern.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "flink_metrics",
+      "deprecated_type": "flinkmetrics",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/flinkmetricsreceiver",
+      "display_name": "FlinkMetrics Receiver",
+      "description": "This receiver uses Flink's [REST API](https://nightlies.apache.org/flink/flink-docs-release-1.14/docs/ops/metrics/#rest-api-integration)\nto collect Jobmanager, Taskmanager, Job, Task and Operator metrics.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "fluent_forward",
+      "deprecated_type": "fluentforward",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver",
+      "display_name": "Fluent Forward Receiver",
+      "description": "This receiver runs a TCP server that accepts events via the\n[Fluent Forward protocol](https://github.com/fluent/fluentd/wiki/Forward-Protocol-Specification-v1).",
+      "stability": {
+        "logs": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "github",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver",
+      "display_name": "GitHub Receiver",
+      "stability": {
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "gitlab",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/gitlabreceiver",
+      "display_name": "GitLab Receiver",
+      "stability": {
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "google_cloud_spanner",
+      "deprecated_type": "googlecloudspanner",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudspannerreceiver",
+      "display_name": "Google Cloud Spanner Receiver",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "googlecloudmonitoring",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudmonitoringreceiver",
+      "display_name": "Google Cloud Monitoring Receiver",
+      "description": "The primary objective of the Google Cloud Monitoring Receiver is to gather time series metrics data from all Google\nservices and convert this data into a pipeline format that facilitates further use.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "googlecloudpubsub",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver",
+      "display_name": "Google Pub/Sub Receiver",
+      "description": "This receiver gets OTLP messages from a Google Cloud [Pubsub](https://cloud.google.com/pubsub) subscription.",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "googlecloudpubsubpush",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubpushreceiver",
+      "display_name": "Google Pub/Sub Push Receiver",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "haproxy",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/haproxyreceiver",
+      "display_name": "HAProxy Receiver",
+      "description": "The HAProxy receiver generates metrics by polling periodically the HAProxy process through a dedicated socket or HTTP URL.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "host_metrics",
+      "deprecated_type": "hostmetrics",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver",
+      "display_name": "Host Metrics Receiver",
+      "description": "The Host Metrics receiver generates metrics about the host system scraped\nfrom various sources and host entity event as log. This is intended to be\nused when the collector is deployed as an agent.",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "http_check",
+      "deprecated_type": "httpcheck",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/httpcheckreceiver",
+      "display_name": "HTTP Check Receiver",
+      "description": "The HTTP Check Receiver can be used for synthetic checks against HTTP endpoints.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "huaweicloudcesreceiver",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/huaweicloudcesreceiver",
+      "display_name": "Huawei Cloud CES Receiver",
+      "description": "This receiver contains the implementation of the Huawei Cloud\n[Cloud Eye Service](https://www.huaweicloud.com/intl/en-us/product/ces.html) (CES) receiver for the OpenTelemetry\nCollector. The receiver collects metrics from Huawei Cloud's CES service and sends them to the OpenTelemetry Collector\nfor processing and exporting.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "icmpcheckreceiver",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/icmpcheckreceiver",
+      "display_name": "ICMP Check Receiver",
+      "description": "The ICMP Check Receiver can be used for synthetic checks against network endpoints. This receiver will send ICMP Echo\nRequests (pings) to the specified `targets`. It provides device availability monitoring and interface statistics with\nnative OpenTelemetry OTLP metrics generation.",
+      "stability": {
+        "metrics": "development"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "iis",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/iisreceiver",
+      "display_name": "Microsoft IIS Receiver",
+      "description": "The Microsoft IIS Receiver grabs metrics about an IIS instance using the Windows Performance Counters. Because of\nthis, it is a Windows only receiver.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "influxdb",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver",
+      "display_name": "InfluxDB Receiver",
+      "description": "This receiver accepts metrics data as [InfluxDB Line Protocol](https://docs.influxdata.com/influxdb/v2.0/reference/syntax/line-protocol/).",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "jaeger",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver",
+      "display_name": "Jaeger Receiver",
+      "description": "The Jaeger Receiver receives trace data in the [Jaeger](https://www.jaegertracing.io/) format.",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "journald",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/journaldreceiver",
+      "display_name": "Journald Receiver",
+      "description": "The Journald Receiver parses Journald events from systemd journal.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "k8s_cluster",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver",
+      "display_name": "Kubernetes Cluster Receiver",
+      "description": "The Kubernetes Cluster receiver collects cluster-level metrics and entity events from the Kubernetes\nAPI server. It uses the K8s API to listen for updates. A single instance of this\nreceiver should be used to monitor a cluster.",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "k8s_events",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8seventsreceiver",
+      "display_name": "Kubernetes Events Receiver",
+      "description": "The Kubernetes Events Receiver collects events from the Kubernetes\nAPI server. It collects all the new or updated events that come in.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "k8s_objects",
+      "deprecated_type": "k8sobjects",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver",
+      "display_name": "Kubernetes Objects Receiver",
+      "description": "The Kubernetes Objects Receiver collects (pull/watch) objects from the Kubernetes API server.",
+      "stability": {
+        "logs": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "kafka",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver",
+      "display_name": "Kafka Receiver",
+      "description": "The Kafka Receiver receives telemetry data from Kafka, with configurable topics and encodings. If used in conjunction\nwith the `kafkaexporter` configured with `include_metadata_keys`, The Kafka Receiver will also propagate the Kafka\nheaders to the downstream pipeline, giving access to the rest of the pipeline to arbitrary metadata keys and values.",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "kafka_metrics",
+      "deprecated_type": "kafkametrics",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkametricsreceiver",
+      "display_name": "Kafka Metrics Receiver",
+      "description": "The Kafka Metrics Receiver collects kafka metrics (brokers, topics, partitions, consumer groups) from a kafka server,\nand converts them into otlp.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "kubelet_stats",
+      "deprecated_type": "kubeletstats",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver",
+      "display_name": "Kubelet Stats Receiver",
+      "description": "The Kubelet Stats Receiver pulls node, pod, container, and volume metrics from the API server on a kubelet\nand sends it down the metric pipeline for further processing.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "libhoney",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/libhoneyreceiver",
+      "display_name": "Libhoney Receiver",
+      "description": "The Libhoney Receiver will accept Trace and Logs signals that are emitted from applications that are\ninstrumented using [Libhoney](https://docs.honeycomb.io/send-data/logs/structured/libhoney/) libraries.",
+      "stability": {
+        "logs": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "loki",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/lokireceiver",
+      "display_name": "Loki Receiver",
+      "description": "The Loki receiver implements the [Loki push api](https://grafana.com/docs/loki/latest/clients/promtail/#loki-push-api)\nas specified in [Loki HTTP API: Ingest logs](https://grafana.com/docs/loki/latest/reference/loki-http-api/#ingest-logs).\nIt allows Promtail instances to specify the open telemetry collector as their lokiAddress.\n\nThis receiver runs HTTP and GRPC servers to ingest log entries in Loki format.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "macos_unified_logging",
+      "deprecated_type": "macosunifiedlogging",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/macosunifiedloggingreceiver",
+      "display_name": "macOS Unified Logging Receiver",
+      "description": "The macOS Unified Logging Receiver collects logs from macOS systems using the native `log` command. This receiver\nsupports both live system logs and archived log files (`.logarchive`).",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "memcached",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/memcachedreceiver",
+      "display_name": "Memcached Receiver",
+      "description": "This receiver can fetch stats from a Memcached instance using the [stats\ncommand](https://github.com/memcached/memcached/wiki/Commands#statistics). A\ndetailed description of all the stats available is at\nhttps://github.com/memcached/memcached/blob/master/doc/protocol.txt#L1159.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "mongodb",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mongodbreceiver",
+      "display_name": "MongoDB Receiver",
+      "description": "This receiver fetches stats from a MongoDB instance using the \n[golang mongo driver](https://github.com/mongodb/mongo-go-driver). Stats are collected via MongoDB's `dbStats` and\n`serverStatus` commands.",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "mongodb_atlas",
+      "deprecated_type": "mongodbatlas",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mongodbatlasreceiver",
+      "display_name": "MongoDB Atlas Receiver",
+      "description": "The MongoDB Atlas Receiver receives metrics from [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) \nvia their [monitoring APIs](https://docs.atlas.mongodb.com/reference/api/monitoring-and-logs/),\nas well as alerts via a configured [webhook](https://www.mongodb.com/docs/atlas/tutorial/third-party-service-integrations/)\nand events from [events APIs](https://www.mongodb.com/docs/atlas/reference/api/events/).",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "mysql",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/mysqlreceiver",
+      "display_name": "MySQL Receiver",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "named_pipe",
+      "deprecated_type": "namedpipe",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/namedpipereceiver",
+      "display_name": "Named Pipe Receiver",
+      "description": "This receiver supports opening a Unix Named Pipe (aka FIFO), and reading logs from it.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "netflow",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/netflowreceiver",
+      "display_name": "Netflow Receiver",
+      "description": "The Netflow Receiver can listen for [netflow](https://en.wikipedia.org/wiki/NetFlow),\n[sflow](https://en.wikipedia.org/wiki/SFlow), and [ipfix](https://en.wikipedia.org/wiki/IP_Flow_Information_Export)\ndata and convert it to OpenTelemetry logs. The receiver is based on the\n[goflow2](https://github.com/netsampler/goflow2) project.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "nginx",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/nginxreceiver",
+      "display_name": "NGINX Receiver",
+      "description": "This receiver can fetch stats from a NGINX instance using the `ngx_http_stub_status_module` module's `status`\nendpoint.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "nop",
+      "module": "go.opentelemetry.io/collector/receiver/nopreceiver",
+      "display_name": "No-op Receiver",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "profiles": "alpha",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "nsxt",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/nsxtreceiver",
+      "display_name": "NSX-T Receiver",
+      "description": "This receiver fetches metrics important to run virtual networking using NSX-T. The receiver ingests metrics via the\n[NSX Rest API](https://docs.vmware.com/en/VMware-NSX-Data-Center-for-vSphere/6.4/nsx_64_api.pdf).",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "ntp",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/ntpreceiver",
+      "display_name": "NTP Receiver",
+      "description": "This receiver periodically retrieves the clock offset from a NTP server.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "oracledb",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/oracledbreceiver",
+      "display_name": "Oracle DB Receiver",
+      "description": "This receiver periodically queries an Oracle Database host to collect metrics.",
+      "stability": {
+        "logs": "development",
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "osquery",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/osqueryreceiver",
+      "display_name": "osquery Receiver",
+      "description": "The osquery Receiver runs queries run on an [osquery](https://osquery.io/)'s daemon on a schedule and converts the\noutput to logs.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "otelarrow",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver",
+      "display_name": "Apache Arrow OTLP Receiver",
+      "description": "Receives telemetry data using [OpenTelemetry Protocol with Apache\nArrow](https://github.com/open-telemetry/otel-arrow) and standard\n[OTLP](\nhttps://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/otlp.md)\nprotocol via gRPC.",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "otlp",
+      "module": "go.opentelemetry.io/collector/receiver/otlpreceiver",
+      "display_name": "OTLP Receiver",
+      "stability": {
+        "logs": "stable",
+        "metrics": "stable",
+        "profiles": "alpha",
+        "traces": "stable"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "otlp_json_file",
+      "deprecated_type": "otlpjsonfile",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver",
+      "display_name": "OTLP JSON File Receiver",
+      "description": "This receiver will read pipeline data from JSON files. The data is written in\n[Protobuf JSON\n  encoding](https://developers.google.com/protocol-buffers/docs/proto3#json)\nusing [OpenTelemetry\nprotocol](https://github.com/open-telemetry/opentelemetry-proto).",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "profiles": "development",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "podman_stats",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/podmanreceiver",
+      "display_name": "Podman Stats Receiver",
+      "description": "The Podman Stats Receiver queries the Podman service API to fetch stats for all running containers\non a configured interval.  These stats are for container resource usage of cpu, memory, network, and\nthe [blkio controller](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt).",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "postgresql",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/postgresqlreceiver",
+      "display_name": "PostgreSQL Receiver",
+      "description": "This receiver queries the PostgreSQL [statistics collector](https://www.postgresql.org/docs/13/monitoring-stats.html).",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "pprof",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/pprofreceiver",
+      "display_name": "Pprof Receiver",
+      "description": "The Pprof Receiver collects profiles from files specified with a glob pattern, from a remote endpoint or the running collector.",
+      "stability": {
+        "profiles": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "prometheus",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver",
+      "display_name": "Prometheus Receiver",
+      "description": "The Prometheus Receiver receives metric data in [Prometheus](https://prometheus.io/) format.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "prometheus_remote_write",
+      "deprecated_type": "prometheusremotewrite",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusremotewritereceiver",
+      "display_name": "Prometheus Remote Write Receiver",
+      "description": "This receiver implements the\n[Prometheus Remote Write 2.0 protocol](https://prometheus.io/docs/specs/prw/remote_write_spec_2_0/).",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "prometheus_simple",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/simpleprometheusreceiver",
+      "display_name": "Simple Prometheus Receiver",
+      "description": "This receiver provides a simple configuration interface to configure the\nprometheus receiver to scrape metrics from a single target.",
+      "stability": {
+        "metrics": "unmaintained"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "pulsar",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/pulsarreceiver",
+      "display_name": "Pulsar Receiver",
+      "description": "The Pulsar Receiver receives logs, metrics, and traces from [Apache Pulsar](https://pulsar.apache.org/).",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "purefa",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/purefareceiver",
+      "display_name": "Pure Storage FlashArray Receiver",
+      "description": "The Pure Storage FlashArray Receiver receives metrics from the Pure Storage FlashArray.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "purefb",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/purefbreceiver",
+      "display_name": "Pure Storage FlashBlade Receiver",
+      "description": "The Pure Storage FlashBlade receiver, receives metrics from Pure Storage FlashBlade via the\n[Pure Storage FlashBlade OpenMetrics Exporter](https://github.com/PureStorage-OpenConnect/pure-fb-openmetrics-exporter)",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "rabbitmq",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/rabbitmqreceiver",
+      "display_name": "RabbitMQ Receiver",
+      "description": "This receiver fetches stats from a RabbitMQ node using the [RabbitMQ Management Plugin](https://www.rabbitmq.com/management.html).",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "receiver_creator",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/receivercreator",
+      "display_name": "Receiver Creator",
+      "description": "This receiver can instantiate other receivers at runtime based on whether observed endpoints match a configured rule.",
+      "stability": {
+        "logs": "alpha",
+        "metrics": "beta",
+        "profiles": "alpha",
+        "traces": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "redfish",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/redfishreceiver",
+      "display_name": "Redfish Receiver",
+      "description": "This receiver fetches metrics for a server running a [Redfish](https://en.wikipedia.org/wiki/Redfish_(specification))\nAPI.",
+      "stability": {
+        "metrics": "development"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "redis",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/redisreceiver",
+      "display_name": "Redis Receiver",
+      "description": "The Redis Receiver is designed to retrieve Redis INFO data from a single Redis\ninstance, build metrics from that data, and send them to the next consumer at a\nconfigurable interval.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "riak",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/riakreceiver",
+      "display_name": "Riak Receiver",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "saphana",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/saphanareceiver",
+      "display_name": "SAP HANA Receiver",
+      "description": "This receiver can fetch stats from a SAP HANA instance. It leverages the [driver](https://github.com/SAP/go-hdb)\nwritten by SAP for connecting to SAP HANA with the golang sql module to execute several monitoring queries.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "signalfx",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/signalfxreceiver",
+      "display_name": "SignalFx Receiver",
+      "stability": {
+        "logs": "deprecated",
+        "metrics": "deprecated"
+      },
+      "deprecation": {
+        "logs": {
+          "date": "2026-02-13",
+          "migration": "Use the OTLP receiver instead. This component will be removed in a future release."
+        },
+        "metrics": {
+          "date": "2026-02-13",
+          "migration": "Use the OTLP receiver instead. This component will be removed in a future release."
+        }
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "skywalking",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/skywalkingreceiver",
+      "display_name": "SkyWalking Receiver",
+      "description": "Receives trace data and metric data in [SkyWalking](https://skywalking.apache.org/) format.",
+      "stability": {
+        "metrics": "development",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "snmp",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/snmpreceiver",
+      "display_name": "SNMP Receiver",
+      "description": "This receiver fetches stats from an SNMP enabled host using a [golang\nsnmp client](https://github.com/gosnmp/gosnmp). Metrics are collected\nbased upon different configurations in the config file.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "snowflake",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/snowflakereceiver",
+      "display_name": "Snowflake Receiver",
+      "description": "This receiver collects metrics from a Snowflake account by connecting to and querying a Snowflake deployment.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "solace",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/solacereceiver",
+      "display_name": "Solace Receiver",
+      "description": "The Solace Receiver receives trace data from a [Solace PubSub+ Event Broker](https://solace.com/products/event-broker/).",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "splunk_enterprise",
+      "deprecated_type": "splunkenterprise",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkenterprisereceiver",
+      "display_name": "Splunk Enterprise Receiver",
+      "description": "The Splunk Enterprise Receiver is a pull based tool which enables the ingestion of performance metrics describing the operational status of a user's Splunk Enterprise deployment to an appropriate observability tool.\nIt is designed to leverage several different data sources to gather these metrics including the [introspection api endpoint](https://help.splunk.com/en/splunk-enterprise/leverage-rest-apis/rest-api-reference/9.1/introspection-endpoints/introspection-endpoint-descriptions) and serializing\nresults from ad-hoc searches. Because of this, care must be taken by users when enabling metrics as running searches can effect your Splunk Enterprise Deployment and introspection may fail to report for Splunk\nCloud deployments. The primary purpose of this receiver is to empower those tasked with the maintenance and care of a Splunk Enterprise deployment to leverage opentelemetry and their observability toolset in their\njobs.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "splunk_hec",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/splunkhecreceiver",
+      "display_name": "Splunk HEC Receiver",
+      "description": "The Splunk HEC receiver accepts events in the [Splunk HEC\nformat](https://help.splunk.com/en/splunk-enterprise/get-data-in/get-started-with-getting-data-in/10.0/get-data-with-http-event-collector/format-events-for-http-event-collector).\nThis allows the collector to receive logs and metrics.\nThe collector accepts data formatted as JSON [HEC events](https://help.splunk.com/en/splunk-enterprise/get-data-in/get-started-with-getting-data-in/10.0/get-data-with-http-event-collector/format-events-for-http-event-collector#ariaid-title5)\nunder any path or as EOL separated log [raw data](https://help.splunk.com/en/splunk-enterprise/get-data-in/get-started-with-getting-data-in/10.0/get-data-with-http-event-collector/format-events-for-http-event-collector#raw-event-parsing-0)\nif sent to the `raw_path` path.",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "sql_query",
+      "deprecated_type": "sqlquery",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlqueryreceiver",
+      "display_name": "SQL Query Receiver",
+      "description": "The SQL Query Receiver uses custom SQL queries to generate logs and/or metrics from a database connection.",
+      "stability": {
+        "logs": "development",
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "sqlserver",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sqlserverreceiver",
+      "display_name": "Microsoft SQL Server Receiver",
+      "description": "The `sqlserver` receiver grabs metrics/logs about a Microsoft SQL Server instance. The receiver works by either using the\nWindows Performance Counters, or by directly connecting to the instance and querying it. Windows Performance Counters\nare only available when running on Windows.",
+      "stability": {
+        "logs": "development",
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "ssh_check",
+      "deprecated_type": "sshcheck",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/sshcheckreceiver",
+      "display_name": "SSH Check Receiver",
+      "description": "This receiver creates stats by connecting to an SSH server which may be an SFTP server.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "statsd",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/statsdreceiver",
+      "display_name": "StatsD Receiver",
+      "description": "StatsD receiver for ingesting StatsD messages(https://github.com/statsd/statsd/blob/master/docs/metric_types.md) into\nthe OpenTelemetry Collector. Note: This receiver does not support horizontally scaled collector deployments. It is\nintended to run in agent mode, where a single collector instance receives StatsD input.",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "stef",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/stefreceiver",
+      "display_name": "STEF Receiver",
+      "description": "Receives data via gRPC in OTel/STEF format.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "syslog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver",
+      "display_name": "Syslog Receiver",
+      "description": "Parses Syslogs received over TCP or UDP.",
+      "stability": {
+        "logs": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "systemd",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/systemdreceiver",
+      "display_name": "Systemd Receiver",
+      "description": "The Systemd Receiver gathers metrics for locally running systemd units.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "tcp_check",
+      "deprecated_type": "tcpcheck",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcpcheckreceiver",
+      "display_name": "TCP Check Receiver",
+      "description": "This receiver creates stats by connecting to a TCP server.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "tcp_log",
+      "deprecated_type": "tcplog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver",
+      "display_name": "TCP Log Receiver",
+      "description": "The TCP Log Receiver receives logs over TCP.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "tls_check",
+      "deprecated_type": "tlscheck",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tlscheckreceiver",
+      "display_name": "TLS Check Receiver",
+      "description": "This receiver emits metrics about x.509 certificates.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "udp_log",
+      "deprecated_type": "udplog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/udplogreceiver",
+      "display_name": "UDP Log Receiver",
+      "description": "The UDP Log Receiver receives logs over UDP.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "vcenter",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver",
+      "display_name": "vCenter Receiver",
+      "description": "This receiver fetches metrics from a vCenter or ESXi host running VMware vSphere APIs.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "vcr",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcrreceiver",
+      "display_name": "VCR Receiver",
+      "description": "The OpenTelemetry **Verbatim Capture \u0026 Replay (VCR) toolset** enables full-fidelity capture and replay of all\ntelemetry data stored on disk. It replays previously captured telemetry while **preserving original event timestamps**,\nallowing you to simulate realistic traffic timing independent of when the data was captured.",
+      "stability": {
+        "logs": "development",
+        "metrics": "development",
+        "profiles": "development",
+        "traces": "development"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "wavefront",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/wavefrontreceiver",
+      "display_name": "Wavefront Receiver",
+      "stability": {
+        "metrics": "deprecated"
+      },
+      "deprecation": {
+        "metrics": {
+          "date": "2026-02-13",
+          "migration": "There is no replacement. This component will be removed in a future release."
+        }
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "webhook_event",
+      "deprecated_type": "webhookevent",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/webhookeventreceiver",
+      "display_name": "Webhook Event Receiver",
+      "description": "The Webhook Event Receiver is a push based event collector component meant to act as a generally available receiver\nfor any webhook style data source. It is designed to work alongside other pipeline components like the\n[transform processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor)\nto allow the ingestion of generic events as logs into the opentelemetry collector.",
+      "stability": {
+        "logs": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "windows_event_log",
+      "deprecated_type": "windowseventlog",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/windowseventlogreceiver",
+      "display_name": "Windows Event Log Receiver",
+      "description": "This receiver tails and parses logs from windows event log API using the\n[opentelemetry-log-collection](https://github.com/open-telemetry/opentelemetry-log-collection) library.",
+      "stability": {
+        "logs": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "windows_service",
+      "deprecated_type": "windowsservice",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/windowsservicereceiver",
+      "display_name": "Windows Service Receiver",
+      "description": "The Windows Service Receiver is a receiver for scraping information about the state of services running on a Windows\nmachine.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "windowsperfcounters",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/windowsperfcountersreceiver",
+      "display_name": "Windows Performance Counters Receiver",
+      "description": "This receiver, for Windows only, captures the configured system, application, or\ncustom performance counter data from the Windows registry using the [PDH\ninterface](https://docs.microsoft.com/en-us/windows/win32/perfctrs/using-the-pdh-functions-to-consume-counter-data).",
+      "stability": {
+        "metrics": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "yang_grpc",
+      "deprecated_type": "yanggrpc",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/yanggrpcreceiver",
+      "display_name": "YANG gRPC Receiver",
+      "description": "The YANG/gRPC receiver receives metrics offered using the\n[YANG (Yet Another New Generation) data model](https://en.wikipedia.org/wiki/YANG), expressed over\n[gRPC](https://ciscolearning.github.io/cisco-learning-codelabs/posts/yangsuite-restconf/#0).",
+      "stability": {
+        "metrics": "alpha"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "zipkin",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver",
+      "display_name": "Zipkin Receiver",
+      "description": "This receiver receives spans from [Zipkin](https://zipkin.io/) (V1 and V2).",
+      "stability": {
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "zookeeper",
+      "module": "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zookeeperreceiver",
+      "display_name": "Zookeeper Receiver",
+      "description": "The Zookeeper Receiver collects metrics from a Zookeeper instance, using the `mntr` command. The `mntr` 4 letter word\ncommand needs to be enabled for the receiver to be able to collect metrics.",
+      "stability": {
+        "metrics": "alpha"
+      }
+    }
+  ]
+}

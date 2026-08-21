@@ -9,6 +9,11 @@ order: 2
 Everything CI runs, you can run locally. Nothing in the default test path
 needs Docker, a network, or a credential.
 
+This page is the build, test and lint commands. To watch the product work
+against real collectors and a real backend, see the
+[local development environment](devenv.md), which is the only thing here that
+wants Docker.
+
 ## Prerequisites
 
 - **Go 1.26 or later.** `go.mod` declares `go 1.26.1`; CI uses the current
