@@ -66,7 +66,7 @@ existing requirement, update the row to cite it.
 
 | Path | What it is |
 |---|---|
-| `docs/adr/` | The decision corpus: 53 records, ADR-0000 to ADR-0052. Normative. This is what code is measured against. |
+| `docs/adr/` | The decision corpus: 54 records, ADR-0000 to ADR-0053. Normative. This is what code is measured against. |
 | `docs/requirements/` | `product-requirements.md`, the numbered requirements the product exists to satisfy, and `traceability.md`, mapping each to the ADRs and build phase that deliver it. Normative. |
 | `docs/research/` | Dated findings dossiers and the archived shaping tickets: the evidence ADRs cite. Not normative, and never edited to match a later decision. It records what was found, when. |
 | `docs/prototypes/` | Verdict one-pagers from throwaway prototypes, plus the normaliser spike's verdict. Prototype code is never merged; the verdict is what survives, and several ADRs rest on one. |
@@ -80,7 +80,7 @@ The vendor-word lint runs over `docs/**` but excludes the research, prototype
 and branding trees, because those record external reality verbatim: survey
 quotes, product names, collision sweeps.
 
-## A map of the 52 ADRs
+## A map of the 53 ADRs
 
 Read ADR-0000 first, then ADR-0001, ADR-0002, ADR-0003 and ADR-0004. Those
 five carry the principles everything else assumes. After that, read the group
@@ -165,6 +165,7 @@ The contracts a vendor implementation answers. See
 - **ADR-0035** `InventoryProvider` floors; `never_seen` teeth and `under_populated`
 - **ADR-0036** The `EstateProvider` contract: capability declaration, `as_of`, staleness demotion, shipped test kit
 - **ADR-0039** Self-telemetry ingestion: a rendered pattern over the `TelemetryProvider` seam
+- **ADR-0053** The renderer completes the self-telemetry endpoint per signal
 - **ADR-0040** Metering: derived flow readings, computed on read, stored nowhere
 
 ### The console

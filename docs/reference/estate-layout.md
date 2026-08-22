@@ -58,6 +58,19 @@ reparenting a team rewrites no path and breaks no id.
   (a map from Environment name to an overriding endpoint), and
   `new_pipeline_telemetry` (boolean, default `false`).
 
+  `endpoint` is the base endpoint, the same string you would give a pipeline's
+  OTLP exporter. Over `http/protobuf` the renderer appends the signal path per
+  block, so `https://otlp.example:4318` renders as
+  `https://otlp.example:4318/v1/metrics` in the metrics reader and
+  `https://otlp.example:4318/v1/logs` in the logs processor. The exporters
+  under `service::telemetry` take the endpoint as the complete URL and append
+  nothing themselves, so writing the path in is what makes both signals land.
+  Trailing slashes are dropped, and an endpoint or an override that already
+  ends in `/v1/metrics`, `/v1/logs`, or `/v1/traces` is a load error: declare
+  the base endpoint instead. Over `grpc` there is no request path, so the
+  endpoint renders exactly as you wrote it. The decision behind this is
+  ADR-0053.
+
 `allow-lists.yaml`, `grants.yaml`
 : The Allow-list policy. Both optional; an absent file is the default posture.
   See [Allow-lists and Grants](allow-lists.md).
