@@ -119,7 +119,7 @@ devenv/devenv scenario broken-pipeline
 |---|---|---|
 | `healthy` | Every sim running, every collector on the artefact the estate describes | The resting state. Compliant, with one waived finding on search's metrics. |
 | `broken-pipeline` | Stops checkout's traces sim | The traces lane stays configured and nothing arrives. After one window, `broken_pipeline`, never `not_configured`. |
-| `drift` | Merges a local configuration file into `gateway-1`'s Supervisor | What the collector reports running is no longer what the server sent. |
+| `drift` | Merges a local configuration file into `gateway-1`'s Supervisor | `send_batch_max_size` in force on `gateway-1` and not on `gateway-2`. Read [the note below](#two-things-that-do-not-work-yet) first: the comparison is noisy. |
 | `shrink` | Stops one of the gateway Tier's two collectors | The population drops below the Tier's declared floor of two. |
 | `unmatched` | Starts a collector whose attributes satisfy no selector | It is served the Unmatched artefact: self-telemetry on, no data pipelines, never an empty config map. |
 | `reset` | Everything back to healthy | |
@@ -137,6 +137,23 @@ go run ./cmd/telecraft delivery \
   -effective devenv/run/effective/gateway-1.yaml \
   -path served
 ```
+
+### Two things that do not work yet
+
+The environment runs the real thing, so it shows you the real thing's gaps.
+Both of these are the environment working, not failing.
+
+**Drift reads red on every collector.** A collector running exactly what it was
+served reports `drifted` with 77 changes, because it reports its fully
+defaulted configuration and the artefact is sparse. Real drift is in there, one
+line among many. See
+[issue #110](https://github.com/telecraft-dev/telecraft/issues/110).
+
+**Self-telemetry lands nowhere.** The collectors push their own metrics and
+logs to the estate's declared destination and get `405` on every attempt: one
+endpoint cannot address two signal paths. So the expectation band stays at
+`pending_settle`, and nothing downstream of ADR-0039's ingestion has run here.
+See [issue #109](https://github.com/telecraft-dev/telecraft/issues/109).
 
 The same estate answers `telecraft check`, against the live backend:
 
@@ -212,6 +229,11 @@ handling, and it is worth reading as one before bumping it.
   the fixture backend.
 - **The Foreign path.** Every collector here is served over OpAMP. A
   git-delivered collector reporting through the collector's own `opamp`
-  extension is a second shape and not this one.
+  extension is a second shape and not this one
+  ([issue #113](https://github.com/telecraft-dev/telecraft/issues/113)).
 - **Live rows.** The Effective reading per Service is authored, as it is in the
-  platform today.
+  platform today
+  ([issue #112](https://github.com/telecraft-dev/telecraft/issues/112)).
+- **A runnable Supervisor artefact.** `devenv/identity/` supplies the identity
+  the rendered artefact does not carry, which every adopter will also have to
+  ([issue #111](https://github.com/telecraft-dev/telecraft/issues/111)).
