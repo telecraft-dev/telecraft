@@ -179,29 +179,40 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 // stay off in v1 — experimental upstream, and no claim consumes them. The
 // localhost Prometheus default is left untouched, so local debugging keeps
 // working.
+//
+// Each signal's endpoint is completed here, not authored: over
+// http/protobuf the estate's base endpoint gains `/v1/metrics` or
+// `/v1/logs`, because these exporters append nothing themselves (ADR-0053,
+// issue #109).
 func emitSelfTelemetry(in Inputs, resource *yaml.Node, environment, ctx string) (*yaml.Node, []string) {
 	telemetry := mapping()
 	appendPair(telemetry, scalar("resource"), resource)
 
-	exporter := map[string]any{
-		"otlp": map[string]any{
-			"protocol": in.SelfTelemetry.protocol(),
-			"endpoint": in.SelfTelemetry.Resolve(environment),
-		},
+	// One exporter per signal, not one shared between them: these are the
+	// OTel SDK's declarative-config exporters, which take `endpoint` as the
+	// complete URL and append nothing, so the two blocks address two URLs
+	// (ADR-0053 §1).
+	exporter := func(signal string) map[string]any {
+		return map[string]any{
+			"otlp": map[string]any{
+				"protocol": in.SelfTelemetry.protocol(),
+				"endpoint": in.SelfTelemetry.signalEndpoint(environment, signal),
+			},
+		}
 	}
 	metrics, err := configNode(map[string]any{
 		"level":   "normal",
-		"readers": []any{map[string]any{"periodic": map[string]any{"exporter": exporter}}},
+		"readers": []any{map[string]any{"periodic": map[string]any{"exporter": exporter("metrics")}}},
 	})
 	if err != nil {
 		return nil, []string{fmt.Sprintf("%s: self-telemetry metrics block: %v", ctx, err)}
 	}
 	metricsKey := scalar("metrics")
-	metricsKey.HeadComment = "Self-telemetry pushes to the estate's declared destination over its\nown exporter and connection — never through this Tier's own data\npipelines (REQ-053, ADR-0039 §2). Internal traces stay off in v1."
+	metricsKey.HeadComment = "Self-telemetry pushes to the estate's declared destination over its\nown exporter and connection — never through this Tier's own data\npipelines (REQ-053, ADR-0039 §2). Internal traces stay off in v1.\nThese exporters take the endpoint as the complete URL, so the signal\npath is rendered in rather than appended at run time (ADR-0053)."
 	appendPair(telemetry, metricsKey, metrics)
 
 	logs, err := configNode(map[string]any{
-		"processors": []any{map[string]any{"batch": map[string]any{"exporter": exporter}}},
+		"processors": []any{map[string]any{"batch": map[string]any{"exporter": exporter("logs")}}},
 	})
 	if err != nil {
 		return nil, []string{fmt.Sprintf("%s: self-telemetry logs block: %v", ctx, err)}
