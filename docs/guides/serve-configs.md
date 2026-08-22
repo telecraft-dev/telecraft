@@ -1,6 +1,6 @@
 ---
 title: Serve configurations
-description: Run the stateless OpAMP server, and understand what it needs from collectors and from git.
+description: Run the stateless OpAMP server, install a collector that matches its Tier, and compare what was sent with what is running.
 order: 5
 ---
 
@@ -146,6 +146,11 @@ defaults:
 - `storage.directory` must be a durable volume. An ephemeral directory mints a
   new identity on every pod replacement, and the population count churns.
 
+That file is not runnable as delivered. It says where the server is and how
+the Supervisor behaves, and nothing about which collector this is or which
+binary to run. Both are yours, and
+[installing a served collector](#install-a-served-collector) is where they go.
+
 A Tier with no `serving:` block renders no supervisor artefact. Those
 collectors are git-delivered, which the platform calls the Foreign path:
 legitimate, not lesser, and visible as a property of each collector.
@@ -165,6 +170,10 @@ selector:
 Matching is equality over every authored pair. The most specific satisfied
 selector, meaning the one with the most pairs, wins; an equal-specificity tie
 resolves to the first Tier in id order, so replicas cannot disagree.
+
+The attributes on the other side of that comparison come from the collector's
+installation. Nothing in git supplies them, which is what
+[installing a served collector](#install-a-served-collector) covers.
 
 ## The Unmatched artefact
 
@@ -204,6 +213,202 @@ governed by nobody rather than being silent. It lives at
 
 Ungoverned collectors are counted against nobody: they appear in no compliance
 denominator. They appear in the estate view, which is a different thing.
+
+## Install a served collector
+
+The rendered Supervisor artefact is not a finished configuration, and a
+Supervisor started on it unchanged gets you a collector the server cannot
+place. The file carries what the estate decides: where the server is, which
+capabilities to turn on, where to keep state. It carries nothing about which
+collector this is, and nothing about which binary to run. You supply both at
+install, by merging an overlay over the rendered file.
+
+Two keys are missing, for two different reasons:
+
+- `agent.description.identifying_attributes` is the identity the collector
+  reports, and the only thing the server matches on. Without it the collector
+  reports nothing a selector can satisfy, so it is served the Unmatched
+  artefact. That is the server behaving correctly, and it is not what you
+  wanted.
+- `agent.executable` is the collector binary the Supervisor starts as a child.
+  It is a property of the image or the package you installed rather than of
+  the estate, so nothing in git knows it.
+
+### The overlay, and the selector it satisfies
+
+These two files are one sentence. The Tier authors the first half:
+
+```yaml
+# teams/data-flow/tiers/gateway.yaml, authored
+selector:
+  telecraft.tier: gateway
+  deployment.environment: production
+```
+
+The install supplies the second half, merged over
+`rendered/data-flow/gateway.supervisor.yaml`:
+
+```yaml
+agent:
+  # The collector binary the Supervisor forks: the package path on a VM,
+  # the image path in a container.
+  executable: /usr/bin/otelcol-contrib
+  description:
+    identifying_attributes:
+      # Every pair the selector names, spelled as the selector spells it.
+      # Matching is equality, so a typo here is an Unmatched collector.
+      telecraft.tier: gateway
+      deployment.environment: production
+      # Unique per collector, and not part of matching. It is how you tell
+      # two collectors in the same Tier apart.
+      service.instance.id: gateway-1
+```
+
+Report more than the selector names and matching still succeeds: a selector is
+equality over the pairs it authors and says nothing about the rest. Report
+fewer and it fails. So a collector meant for a Tier carries every pair in that
+Tier's selector, plus whatever else you want to see.
+
+Merge the overlay over the rendered file as a deep merge: maps merge key by
+key, and everything else replaces. Keep the two halves in separate files. The
+base is reproducible from the estate at a commit, the overlay is yours, and a
+single hand-edited file loses that boundary.
+
+The [local development environment](../contributing/devenv.md) runs this
+pattern for real. `devenv/identity/` holds one overlay per collector, each
+naming the Tier whose artefact it starts from, and `telecraft-devenv prepare`
+merges each over that artefact before the Supervisors start.
+
+### Where the values come from
+
+The pairs the selector names are the same for every collector in the Tier, so
+one file serves the whole workload. The values that are unique per collector
+come from the substrate, and the two substrates hand them over differently.
+
+#### Kubernetes
+
+Nothing upstream deploys a supervised collector. Neither the OpenTelemetry
+Operator nor the collector Helm chart knows the Supervisor exists, and a
+sidecar container does not work either, because the Supervisor forks the
+collector and signals it directly. The Supervisor and the collector go in one
+container, in an image you build, with the Supervisor as the entry point. So
+the workload is yours to write, which is where the values come from:
+
+```yaml
+# The gateway Tier. A StatefulSet rather than a Deployment because the
+# Supervisor keeps its identity on disk, so each replica needs its own
+# durable volume and a stable name.
+apiVersion: apps/v1
+kind: StatefulSet
+spec:
+  template:
+    spec:
+      containers:
+        - name: collector
+          image: registry.internal/telecraft/supervised-collector:0.159.0
+          env:
+            # The rendered collector artefact reads this as
+            # ${env:TELECRAFT_NODE_NAME}. The Downward API is what makes one
+            # manifest yield per-node identity.
+            - name: TELECRAFT_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: supervisor-config
+              mountPath: /etc/telecraft
+              readOnly: true
+            - name: supervisor-storage
+              mountPath: /var/lib/telecraft/supervisor
+      volumes:
+        - name: supervisor-config
+          configMap:
+            # The rendered artefact with your overlay merged over it.
+            name: gateway-supervisor
+  volumeClaimTemplates:
+    - metadata:
+        name: supervisor-storage
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi
+```
+
+`TELECRAFT_NODE_NAME` is read by the collector and not by the Supervisor. It
+lands in the collector artefact's self-telemetry resource as `k8s.node.name`,
+which is a reading rather than an identity, and it takes no part in matching.
+The renderer emits the indirection so that one manifest yields per-node
+identity across a DaemonSet, and feeding the variable from `spec.nodeName` is
+the half you own.
+
+The Supervisor reads one file, so a value that differs per collector has to
+differ in that file. Either template the file per replica, or leave
+`service.instance.id` out and let the identity the Supervisor persists be the
+unique one. Nothing in matching depends on either choice.
+
+#### systemd
+
+On a VM the Supervisor has real packaging. The `opampsupervisor` deb and rpm
+install a unit, a system user, an `EnvironmentFile` at
+`/etc/opampsupervisor/opampsupervisor.conf`, and an example configuration, and
+the unit's `StateDirectory=opampsupervisor` gives you a durable
+`/var/lib/opampsupervisor` for nothing. Three steps turn that into a served
+collector:
+
+1. Install the collector and the Supervisor as separate packages, then
+   **disable the collector's own unit**. Under the Supervisor the collector
+   runs as a child on a configuration file the Supervisor generates, so
+   leaving `otelcol-contrib.service` enabled gets you two collectors racing
+   for the same ports. Nothing upstream disables it and nothing warns you.
+2. Write the merged configuration to `/etc/opampsupervisor/config.yaml`, with
+   `agent.executable` pointing at the collector binary the package installed.
+   The unit asserts that the path exists and does not start until it does, so
+   a fresh install is enabled and inert until you write the file.
+3. Set `TELECRAFT_NODE_NAME` in the `EnvironmentFile`. There is no Downward
+   API here, and the collector inherits the Supervisor's environment, so this
+   is where the value the artefact reads comes from.
+
+### Give the storage directory a durable volume
+
+The Supervisor mints a UUID on first run and keeps it under
+`storage.directory`. That UUID is the collector's identity on the wire and is
+meant to survive restarts. Point the directory at something ephemeral and
+every restart mints a new one: the server reads an arrival rather than a
+return, and the Tier's population churns while the collectors under it sit
+still.
+
+The rendered artefact already sets the path. Making the path durable is yours:
+
+- A packaged VM install has it right by default, because systemd owns
+  `/var/lib/opampsupervisor`. Either create the rendered path and give it to
+  the Supervisor's user, or point `storage.directory` at systemd's directory
+  in your overlay.
+- In Kubernetes an `emptyDir` is the wrong answer, and it is the answer you
+  get by not deciding. Use a volume claim per replica, or a `hostPath` where
+  identity should be node-lifetime rather than pod-lifetime.
+- Whichever volume it is, the user the Supervisor runs as has to be able to
+  write it. A fresh volume owned by root under an unprivileged container is
+  the same failure wearing a different message.
+
+### Why the renderer does not fill this in
+
+The renderer could write the identifying attributes itself. It knows them:
+they are the Tier's selector, authored a few lines away. **That option is
+rejected.** An artefact that carries the attributes its own selector matches
+is self-matching, so matching would confirm the renderer's output instead of
+reading the collector. Identity would be assigned by the platform rather than
+reported by the collector, and reported identity is what the delivery model
+rests on (ADR-0007, ADR-0013): a collector is never authored, it connects and
+says what it is. A collector could then never be wrong about which Tier it
+belongs to, and being wrong is one of the things the platform exists to show
+you. Rendering them would not even remove the overlay, because
+`agent.executable` and anything unique per collector still come from the
+install.
+
+The artefact does not carry the keys as commented placeholders either.
+`rendered/` is written by the renderer and never edited by a human (ADR-0027),
+and a placeholder is an invitation to edit it there.
 
 ## Compare what was sent with what is running
 

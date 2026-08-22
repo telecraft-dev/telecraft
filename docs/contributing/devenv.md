@@ -170,7 +170,7 @@ go run ./cmd/telecraft check \
 |---|---|
 | `devenv/estate/` | The authored estate: two teams, two Tiers, two Services, a small requirements library, and one Exemption |
 | `devenv/estate/rendered/` | Renderer-written, and committed. Re-render after any authored change |
-| `devenv/identity/` | One file per collector: which Tier's Supervisor artefact it starts from, and the identity it reports |
+| `devenv/identity/` | One file per collector: which Tier's Supervisor artefact it starts from, and the identity it reports. It is the install overlay [Install a served collector](../guides/serve-configs.md#install-a-served-collector) documents, and every adopter writes one |
 | `devenv/drift/` | The local configuration the `drift` scenario merges |
 | `devenv/collector/` | The collector image: the Supervisor, with the collector it runs |
 | `devenv/cmd/telecraft-devenv/` | The tool that composes the Supervisor configurations and runs the loop |
@@ -234,6 +234,3 @@ handling, and it is worth reading as one before bumping it.
 - **Live rows.** The Effective reading per Service is authored, as it is in the
   platform today
   ([issue #112](https://github.com/telecraft-dev/telecraft/issues/112)).
-- **A runnable Supervisor artefact.** `devenv/identity/` supplies the identity
-  the rendered artefact does not carry, which every adopter will also have to
-  ([issue #111](https://github.com/telecraft-dev/telecraft/issues/111)).
