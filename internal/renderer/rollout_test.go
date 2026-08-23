@@ -269,7 +269,7 @@ stages:
 			want: "empty cohort spec",
 		},
 		{
-			name: "second rollout on the same Tier",
+			name:    "second rollout on the same Tier",
 			rollout: scratchRollout,
 			extra: map[string]string{
 				"teams/pipelines/rollouts/second.yaml": scratchRollout,

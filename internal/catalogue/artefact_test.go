@@ -163,7 +163,9 @@ func TestLoadFailsClosed(t *testing.T) {
 		want  string
 	}{
 		"unknown field": {
-			func(s string) string { return strings.Replace(s, `"format_version"`, `"invented_field": 1, "format_version"`, 1) },
+			func(s string) string {
+				return strings.Replace(s, `"format_version"`, `"invented_field": 1, "format_version"`, 1)
+			},
 			"invented_field",
 		},
 		"future format version": {
