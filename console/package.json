@@ -15,7 +15,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "check:zero-cdn": "node tools/check-zero-cdn.mjs dist",
-    "check:palette": "node tools/check-palette.mjs"
+    "check:palette": "node tools/check-palette.mjs",
+    "check:bundle-budget": "node tools/check-bundle-budget.mjs dist"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
