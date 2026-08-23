@@ -68,8 +68,8 @@ The decision corpus behind the product lives in
 
 ## Development
 
-Go 1.26 or later, and Node.js for the console. The full set of checks that CI
-runs:
+Go 1.26 or later, and Node.js 24 or later for the console, which is the
+version CI installs. The full set of checks that CI runs:
 
 ```sh
 go build ./...            # the core and the CLI
