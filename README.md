@@ -10,8 +10,9 @@ telemetry should arrive, and checks it. Green means "the configuration
 worked", never merely "the configuration applied".
 
 See it running: **[demo.telecraft.dev](https://demo.telecraft.dev)** is the
-real console over a public demo estate, read-only and rebuilt from git on
-every push.
+real console over a public demo estate, read-only; it follows a moving
+`release` pointer and lags `main` between releases
+([ADR-0049](docs/adr/0049-releases-tags-on-main-and-the-demo-pin.md)).
 
 Three separately-adoptable rungs, in any order:
 
@@ -49,7 +50,7 @@ end to end, with a console over all four workspaces. Interfaces are still
 free to change, so treat it as early software rather than a stable release.
 
 The decision corpus behind the product lives in
-[`docs/adr/`](docs/adr/) (48 architecture decision records), with
+[`docs/adr/`](docs/adr/), with
 [requirements](docs/requirements/), [research](docs/research/), and
 [prototype verdicts](docs/prototypes/) beside it.
 
@@ -66,8 +67,8 @@ The decision corpus behind the product lives in
 
 ## Development
 
-Go 1.26 or later, and Node.js for the console. The full set of checks that CI
-runs:
+Go 1.26 or later, and Node.js 24 or later for the console. The full set
+of checks that CI runs:
 
 ```sh
 go build ./...            # the core and the CLI
