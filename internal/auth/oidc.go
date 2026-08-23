@@ -362,16 +362,26 @@ func nonceFrom(state string) string {
 
 // verifierFrom binds the PKCE code verifier to the caller's CSRF state the
 // same way nonceFrom binds the nonce, so the authorization code is bound to
-// this sign-in attempt without a server-side store. The state is already a
-// high-entropy secret held only in the caller's signed cookie, and the
-// label keeps this derivation separate from the nonce's, so neither value
-// discloses the other. The result is 43 unreserved characters, which is
-// what RFC 7636 asks a verifier to be.
+// this sign-in attempt without a server-side store. The label keeps this
+// derivation separate from the nonce's, so neither value discloses the
+// other. The result is 43 unreserved characters, which is what RFC 7636
+// asks a verifier to be.
 //
-// The instance holds a client secret, so PKCE here is defence in depth
-// rather than the only thing binding the code. It is what OAuth 2.1
-// requires, and it costs no coordination, which is what keeps ADR-0019's
-// air-gapped deployment free of shared state.
+// Be precise about what this buys. The state is high-entropy, but it is
+// not a secret: it travels in the authorisation URL and comes back in the
+// callback query, where the handler reads it. Anyone holding the callback
+// can therefore recompute the verifier from this source. Against an
+// intercepted authorisation code, which is the attack PKCE was written
+// for, the derivation adds nothing, and the client secret is still what
+// binds the code to this instance.
+//
+// What it does buy is conformance with OAuth 2.1, which makes PKCE
+// mandatory, and refusal of a code substituted from a different sign-in
+// attempt, whose state derives a different verifier. It costs no
+// coordination, which is what keeps ADR-0019's air-gapped deployment free
+// of shared state. Deriving the verifier from separate random material
+// carried in the signed cookie would close the interception gap too, at
+// the price of a change to the RedirectProvider seam.
 func verifierFrom(state string) string {
 	sum := sha256.Sum256([]byte("telecraft-oidc-verifier." + state))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
