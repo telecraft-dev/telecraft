@@ -110,6 +110,40 @@ services:
     environment:
       TELECRAFT_NODE_NAME: unmatched-1
 
+  # The git-delivered collector (REQ-041, the Foreign path). No Supervisor:
+  # the collector image runs directly, and its configuration is the rendered
+  # artefact mounted straight out of the tree the renderer wrote. Nothing
+  # delivers it anything — that file changes when somebody merges a change
+  # and re-renders, which is what git delivery is.
+  #
+  # It still reports, through the opamp extension its Blueprint authors: the
+  # platform sees what is running and does not decide it. That extension is
+  # also where its identity comes from, because the collector's own OpAMP
+  # support fixes the identifying attributes to service.name,
+  # service.version and service.instance.id, and everything a Tier selector
+  # reads has to travel beside them.
+  #
+  # The second --config is the operator's own file, which supplies the
+  # instance id the artefact does not carry. `devenv scenario foreign-drift`
+  # rewrites that file, which is how a collector nobody serves gets out of
+  # step with its artefact.
+  collector-appliance-1:
+    image: otel/opentelemetry-collector-contrib:${OTELCOL_VERSION}
+    command:
+      - --config=/etc/telecraft/collector.yaml
+      - --config=/etc/telecraft/local.yaml
+    volumes:
+      - ./estate/rendered/platform/appliance.yaml:/etc/telecraft/collector.yaml:ro
+      - ./run/appliance-1/local.yaml:/etc/telecraft/local.yaml:ro
+    environment:
+      TELECRAFT_NODE_NAME: appliance-1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
   # The sims. Each is one Service emitting one signal, which is what makes a
   # scenario a `stop` rather than a rewrite: silencing one lane of one
   # Service is stopping one container.

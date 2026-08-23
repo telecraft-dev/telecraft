@@ -109,7 +109,7 @@ disk. `devenv/devenv logs collector-gateway-1` follows one container.
 
 ## Drive it
 
-Six scenarios put the estate into a state worth looking at:
+Seven scenarios put the estate into a state worth looking at:
 
 ```sh
 devenv/devenv scenario broken-pipeline
@@ -120,6 +120,7 @@ devenv/devenv scenario broken-pipeline
 | `healthy` | Every sim running, every collector on the artefact the estate describes | The resting state. Compliant, with one waived finding on search's metrics. |
 | `broken-pipeline` | Stops checkout's traces sim | The traces lane stays configured and nothing arrives. After one window, `broken_pipeline`, never `not_configured`. |
 | `drift` | Merges a local configuration file into `gateway-1`'s Supervisor | `drifted` on `gateway-1`, naming the pipeline nobody rendered, and `in_sync` on `gateway-2`. The local `send_batch_max_size` is deliberately not drift: the artefact never mentions that key, and the cross judges the keys it asserts (ADR-0054). |
+| `foreign-drift` | Rewrites the git-delivered collector's local file and restarts it | `send_batch_size` at 64 where the artefact says 512. Nothing puts it back until you reset, because nothing delivers to this collector. |
 | `shrink` | Stops one of the gateway Tier's two collectors | The population drops below the Tier's declared floor of two. |
 | `unmatched` | Starts a collector whose attributes satisfy no selector | It is served the Unmatched artefact: self-telemetry on, no data pipelines, never an empty config map. |
 | `reset` | Everything back to healthy | |

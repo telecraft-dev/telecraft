@@ -1,0 +1,23 @@
+# The local edit a git-delivered collector can actually have, and the reason
+# ADR-0005 is written the way it is.
+#
+# `devenv scenario foreign-drift` copies this over devenv/run/appliance-1's
+# local file and restarts the collector, which is what an operator editing
+# the file on the box does. Nothing puts it back until the next prepare.
+#
+# The lever is a value the artefact does describe. On the served path that
+# edit cannot survive: the Supervisor applies what the server sent over the
+# local files, so the estate wins every argument it chooses to have, and the
+# only drift left is a setting no artefact ever described
+# (devenv/drift/local.yaml). Here nothing is sent, so the artefact says 512
+# and the collector runs 64, which is the case the Intended × Effective
+# cross is really for.
+#
+# The identity is repeated because this file replaces the local one whole.
+service:
+  telemetry:
+    resource:
+      service.instance.id: appliance-1
+processors:
+  batch/batcher:
+    send_batch_size: 64

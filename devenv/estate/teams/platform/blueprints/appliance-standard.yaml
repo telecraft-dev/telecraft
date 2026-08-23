@@ -1,0 +1,93 @@
+# The git-delivered collector: receives, batches, exports once, and reports
+# what it is running to the platform without being delivered to.
+#
+# The opamp extension below is the whole point, and it is the opposite of
+# the convention the served Blueprints follow. A served Tier carries no
+# opamp extension, because the Supervisor beside the collector owns that
+# connection and an authored one would report the same collector twice
+# (gateway-standard.yaml says so). A Tier with no `serving:` block has no
+# Supervisor, so an authored extension is the only way it reports at all.
+#
+# The extension reports effective config and health and cannot accept
+# remote config: the collector's own OpAMP support has no remote-config
+# side. That is exactly the Foreign shape — the platform sees what is
+# running and does not deliver it — and it is what the delivery reading
+# reads a git-delivered collector by.
+#
+# Whether "no serving means an authored opamp extension" is an authoring
+# convention, a Blueprint property, or something the renderer derives is not
+# settled anywhere. Here it is a convention, held by a test.
+name: appliance-standard
+version: 1
+owner: platform-observability
+satisfies:
+  - logs-delivered@1
+  - traces-delivered@1
+  - metrics-delivered@1
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+    config:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  - name: batcher
+    class: processor
+    type: batch
+    version: 1
+    config:
+      send_batch_size: 512
+      timeout: 2s
+  - name: health
+    class: extension
+    type: health_check
+    version: 1
+    config:
+      endpoint: 0.0.0.0:13133
+  - name: reporting
+    class: extension
+    type: opamp
+    version: 1
+    config:
+      server:
+        ws:
+          # The same endpoint the served Tiers' Supervisors connect to. The
+          # host resolves from inside a container; the OpAMP server runs on
+          # the developer's machine (ADR-0052 §2).
+          endpoint: ws://host.docker.internal:4320/v1/opamp
+      capabilities:
+        # Report, and only report. There is no remote-config capability to
+        # turn on here, and that absence is what the platform reads this
+        # collector's delivery path from.
+        reports_effective_config: true
+        reports_health: true
+      agent_description:
+        # The identity this collector reports, and the only thing the
+        # server matches on (ADR-0007, ADR-0013). The extension's
+        # identifying attributes are fixed to service.name, service.version
+        # and service.instance.id, so everything a selector reads travels
+        # as a non-identifying attribute; the server flattens both sets
+        # before matching.
+        non_identifying_attributes:
+          telecraft.tier: appliance
+          deployment.environment: production
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: batcher
+    - component: platform/backend-exporter@1
+  logs:
+    - component: otlp-in
+    - component: batcher
+    - component: platform/backend-exporter@1
+  metrics:
+    - component: otlp-in
+    - component: batcher
+    - component: platform/backend-exporter@1
+extensions:
+  - component: health
+  - component: reporting

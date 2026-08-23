@@ -7,7 +7,8 @@
 #   devenv/devenv logs [service]     container logs
 #   devenv/devenv scenario <name>    drive the estate into a state
 #
-# Scenarios: healthy, broken-pipeline, drift, shrink, unmatched, reset.
+# Scenarios: healthy, broken-pipeline, drift, foreign-drift, shrink,
+# unmatched, reset.
 #
 # Needs Docker, Go and curl. Nothing else, and nothing from the network once
 # the images are pulled.
@@ -42,15 +43,19 @@ render() {
   go run ./cmd/telecraft render -estate "$ESTATE" -catalogue "$CATALOGUE" -commit "$COMMIT" >/dev/null
 }
 
-# prepare composes each collector's Supervisor configuration: the rendered
-# artefact plus the identity the container runs under. Passing a collector
-# name merges the drift overlay into that one.
+# prepare writes what each collector needs beside the rendered tree: a
+# composed Supervisor configuration for every served collector, and the
+# operator's local file for every git-delivered one. Passing a collector
+# name merges the drift overlay into that one's Supervisor configuration.
+#
+# It also puts a git-delivered collector's local file back, which is what
+# makes `scenario reset` undo `scenario foreign-drift`.
 prepare() {
   local drift="${1:-}"
   if [ -n "$drift" ]; then
-    go run ./devenv/cmd/telecraft-devenv prepare -estate "$ESTATE" -identity "$here/identity" -out "$here/run" -drift "$drift" -drift-overlay "$here/drift/overlay.yaml" >/dev/null
+    go run ./devenv/cmd/telecraft-devenv prepare -estate "$ESTATE" -identity "$here/identity" -foreign "$here/foreign" -out "$here/run" -drift "$drift" -drift-overlay "$here/drift/overlay.yaml" >/dev/null
   else
-    go run ./devenv/cmd/telecraft-devenv prepare -estate "$ESTATE" -identity "$here/identity" -out "$here/run" >/dev/null
+    go run ./devenv/cmd/telecraft-devenv prepare -estate "$ESTATE" -identity "$here/identity" -foreign "$here/foreign" -out "$here/run" >/dev/null
   fi
 }
 
@@ -142,7 +147,7 @@ cmd_scenario() {
       # would otherwise bring it back.
       compose start $(compose ps -a --services) >/dev/null
       compose --profile unmatched stop collector-unmatched-1 >/dev/null 2>&1 || true
-      compose restart collector-gateway-1
+      compose restart collector-gateway-1 collector-appliance-1
       say "back to the resting state. Search still carries its waived metrics finding."
       ;;
 
@@ -166,6 +171,22 @@ cmd_scenario() {
         "devenv/estate/rendered/platform/gateway.yaml" "devenv/run/effective/gateway-1.yaml"
       ;;
 
+    foreign-drift)
+      # The drift a served collector structurally cannot have. Nothing
+      # delivers to this one, so an edit on the box survives: the estate
+      # has no argument to win (ADR-0005).
+      say "editing the git-delivered collector's local file on the box"
+      [ -d "$here/run/appliance-1" ] || die "no run directory for appliance-1 — is \`devenv/devenv up\` running?"
+      cp "$here/drift/appliance-local.yaml" "$here/run/appliance-1/local.yaml"
+      compose restart collector-appliance-1
+      say "it now runs a batch size the artefact does describe and a maximum"
+      say "no reviewed artefact ever mentioned. Once it has reported, compare"
+      say "them with the product's own command, under the git profile:"
+      printf '\n  go run ./cmd/telecraft delivery \\\n    -intended %s \\\n    -effective %s \\\n    -path git\n\n' \
+        "devenv/estate/rendered/platform/appliance.yaml" "devenv/run/effective/appliance-1.yaml"
+      say "\`devenv/devenv scenario reset\` writes the authored file back."
+      ;;
+
     shrink)
       say "stopping one of the gateway Tier's two collectors"
       compose stop collector-gateway-2
@@ -182,7 +203,7 @@ cmd_scenario() {
       ;;
 
     ""|*)
-      die "unknown scenario '${name}'. One of: healthy, broken-pipeline, drift, shrink, unmatched, reset"
+      die "unknown scenario '${name}'. One of: healthy, broken-pipeline, drift, foreign-drift, shrink, unmatched, reset"
       ;;
   esac
 }

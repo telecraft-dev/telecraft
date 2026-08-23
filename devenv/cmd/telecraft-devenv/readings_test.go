@@ -27,6 +27,7 @@ func TestComposeCarriesTheCollectorEstate(t *testing.T) {
 			},
 			Effective: seam.Effective{Known: true, AsOf: base.Add(-2 * time.Second)},
 		}}, asOf: base},
+		Delivery:  fakeDelivery("served"),
 		Telemetry: fakeTelemetry{},
 		Now:       func() time.Time { return base },
 	}
@@ -46,11 +47,32 @@ func TestComposeCarriesTheCollectorEstate(t *testing.T) {
 	if col.Version != "0.159.0" {
 		t.Errorf("version %q — the collector reported one", col.Version)
 	}
-	if col.State != "reporting" || col.Delivery != "served" {
-		t.Errorf("state %q delivery %q — every collector here is on a live connection to the platform's own server", col.State, col.Delivery)
+	if col.State != "reporting" {
+		t.Errorf("state %q — every collector in this reading is on a live connection to the platform's own server", col.State)
 	}
 	if !col.LastSeen.Equal(base.Add(-2 * time.Second)) {
 		t.Errorf("last seen %v — the reading's own instant, not the composer's", col.LastSeen)
+	}
+}
+
+func TestComposeCarriesTheDeliveryPathTheWireShowed(t *testing.T) {
+	c := &composer{
+		Collectors: fakeEstate{collectors: []seam.Collector{{
+			Identity: map[string]string{"telecraft.tier": "appliance", "service.instance.id": "appliance-1"},
+		}}, asOf: base},
+		// A collector that reports here and takes nothing this server
+		// sends. Carrying it as served would put the whole estate on one
+		// delivery path by assertion, which is what the topology's
+		// delivery split has been until now (REQ-041).
+		Delivery:  fakeDelivery("git"),
+		Telemetry: fakeTelemetry{},
+		Now:       func() time.Time { return base },
+	}
+
+	got := c.compose(context.Background()).Collectors[0]
+
+	if got.Delivery != "git" {
+		t.Errorf("delivery %q — the reading did not carry the path the wire showed", got.Delivery)
 	}
 }
 
@@ -58,6 +80,7 @@ func TestComposeNamesAnIdentityWithNoInstanceIDByItsWholeIdentity(t *testing.T) 
 	identity := map[string]string{"telecraft.tier": "gateway", "deployment.environment": "production"}
 	c := &composer{
 		Collectors: fakeEstate{collectors: []seam.Collector{{Identity: identity}}, asOf: base},
+		Delivery:   fakeDelivery("served"),
 		Telemetry:  fakeTelemetry{},
 		Now:        func() time.Time { return base },
 	}
@@ -241,6 +264,12 @@ type fakeEstate struct {
 func (f fakeEstate) Estate(context.Context) seam.Estate {
 	return seam.Estate{AsOf: f.asOf, Collectors: f.collectors}
 }
+
+// fakeDelivery answers the delivery reading with one fixed path, so a test
+// about anything else does not have to fabricate a wire.
+type fakeDelivery string
+
+func (f fakeDelivery) Path(map[string]string) string { return string(f) }
 
 // fakeTelemetry answers the TelemetryProvider seam from a map. A row it was
 // not given reads as an empty observation, which is what a backend holding
