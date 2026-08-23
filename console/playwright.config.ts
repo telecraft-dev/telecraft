@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import { OUTPUT_DIR } from './tools/capture'
 
 // The suite runs the built console against the fixture backend: the same
 // server serves the documented API and the bundle, so every test exercises
@@ -7,6 +8,15 @@ import { defineConfig } from '@playwright/test'
 // persists the session; auth.spec.ts opts back out to test the gate.
 export default defineConfig({
   testDir: 'e2e',
+  // Everything the browser harness writes lands here, absolute and resolved
+  // from the console package rather than from the working directory (issue
+  // #99): failure traces and per-test artefacts, and the captures
+  // `npm run capture` takes. Leaving it unset put a relative path at the
+  // mercy of the directory the command was run from, and twice a screenshot
+  // landed in the repository root and was committed by accident.
+  // `console/.gitignore` ignores the directory, and the suite clears it at
+  // the start of every run.
+  outputDir: OUTPUT_DIR,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

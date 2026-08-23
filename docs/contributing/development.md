@@ -221,6 +221,35 @@ npm run build:demo       # VITE_DEMO=1: the console reads a snapshot, not /api
 then generate the snapshot beside it with `go run ./cmd/telecraft snapshot`.
 The [console page](console.md#demo-mode) covers what demo mode changes.
 
+### Captures
+
+Everything the browser harness writes goes to one directory,
+`console/test-results/`, which `playwright.config.ts` sets as `outputDir` and
+`console/.gitignore` ignores. That covers the suite's traces and per-test
+artefacts, and it covers a screenshot you take by hand:
+
+```sh
+npm run backend -- --dist dist         # the API and the built bundle
+npm run capture -- /estate estate      # writes test-results/estate.png
+npm run capture -- /topology topology --full-page
+```
+
+The command takes a name rather than a path, so a capture cannot land
+anywhere else. Before it existed, a screenshot went wherever the relative
+path it was given resolved, which for a command run at the repository root
+was the repository root, and two of them were committed by accident
+(issue #99).
+
+A route resolves against the fixture backend on port 4700, and against that
+backend the command signs the fixture user in the way the Playwright suite's
+setup project does, so a capture shows the console rather than the login
+gate. Pass a full URL to capture anything else, such as `npm run dev` on port
+5173, which is captured exactly as it answers.
+
+Playwright clears the directory at the start of every run, so a capture is a
+working file rather than an archive. Copy anything worth keeping out of the
+repository.
+
 ## The live-backend suites
 
 Four suites talk to a real system. Each one reads its configuration from the
