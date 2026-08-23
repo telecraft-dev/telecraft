@@ -1,176 +1,214 @@
-# The Effective side of issue #110: what a collector running EXACTLY the
-# artefact in intended.yaml reports back through the Supervisor.
+# One collector's reported effective configuration, captured verbatim from a
+# real otelcol-contrib 0.159.0 running under an OpAMP Supervisor in the local
+# development environment (ADR-0052), beside the artefact it was served.
 #
-# Reconstructed from the evidence on issue #110 rather than captured live —
-# devenv/run/ is gitignored, and this fixture has to survive in the tree.
-# It carries every class the issue counted, so a change that stops any one
-# of them being neutralised fails here:
+# Captured rather than written, because the shapes that matter here are the
+# ones a collector actually produces: defaults expanded, durations
+# re-spelled, and service.telemetry.resource re-encoded as a list of
+# {name, value} entries inside a map. A hand-written stand-in got that last
+# shape wrong and the comparer passed its own test while failing against a
+# real collector (issue #110).
 #
-#   * default expansion (71 of the 77): every component defaults its own
-#     unset settings, and the artefact mentions none of them;
-#   * duration re-spelling: `max_elapsed_time: 60s` comes back `1m0s`;
-#   * enum casing: `service.telemetry.metrics.level: normal` comes back
-#     `Normal`;
-#   * the shape rewrite: `service.telemetry.resource` is re-encoded from a
-#     map into the SDK's list of `{name, value}` entries;
-#   * environment expansion: `${env:TELECRAFT_NODE_NAME}` arrives as the
-#     node's own name;
-#   * the Supervisor's own injections (ADR-0046 §4), and cosmetic key
-#     re-ordering, because reports never come back byte-identical.
-receivers:
-  otlp/otlp-in:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317
-        transport: tcp
-        max_recv_msg_size_mib: 0
-        max_concurrent_streams: 0
-        read_buffer_size: 524288
-        write_buffer_size: 0
-        include_metadata: false
-      http:
-        endpoint: 0.0.0.0:4318
-        max_request_body_size: 20971520
-        include_metadata: false
-        compression_algorithms:
-          - ""
-          - gzip
-          - zstd
-          - zlib
-          - snappy
-          - deflate
-          - lz4
-processors:
-  attributes/telecraft.untrusted-hop:
-    actions:
-      - action: delete
-        pattern: ^telecraft\.
-        key: ""
-        from_attribute: ""
-        from_context: ""
-        converted_type: ""
-  batch/batcher:
-    send_batch_size: 1024
-    timeout: 2s
-    send_batch_max_size: 0
-    metadata_keys: []
-    metadata_cardinality_limit: 1000
-  memory_limiter/guard:
-    check_interval: 1s
-    limit_percentage: 75
-    spike_limit_percentage: 20
-    limit_mib: 0
-    spike_limit_mib: 0
+# Only the backend host is edited, to a neutral name: this tree is the
+# neutral core and no vendor word appears in it (ADR-0001).
+connectors: {}
 exporters:
-  otlp_http/platform.backend-exporter:
-    endpoint: http://backend.observability.svc.cluster.local:4318/_otlp
-    compression: gzip
-    encoding: proto
-    timeout: 30s
-    max_idle_conns: 100
-    idle_conn_timeout: 1m30s
-    disable_keep_alives: false
-    read_buffer_size: 0
-    write_buffer_size: 524288
-    retry_on_failure:
-      enabled: true
-      initial_interval: 5s
-      randomization_factor: 0.5
-      multiplier: 1.5
-      max_interval: 30s
-      max_elapsed_time: 1m0s
-    sending_queue:
-      enabled: true
-      num_consumers: 10
-      queue_size: 1000
-      block_on_overflow: false
+    otlp_http/platform.backend-exporter:
+        compression: gzip
+        encoding: proto
+        endpoint: http://backend.internal:9200/_otlp
+        force_attempt_http2: true
+        idle_conn_timeout: 1m30s
+        logs_endpoint: ""
+        max_idle_conns: 100
+        metrics_endpoint: ""
+        profiles_endpoint: ""
+        retry_on_failure:
+            enabled: true
+            initial_interval: 5s
+            max_elapsed_time: 1m0s
+            max_interval: 30s
+            multiplier: 1.5
+            randomization_factor: 0.5
+        sending_queue:
+            batch: null
+            block_on_overflow: false
+            num_consumers: 10
+            queue_size: 1000
+            sizer: {}
+            storage: null
+            wait_for_result: false
+        timeout: 30s
+        traces_endpoint: ""
+        write_buffer_size: 524288
 extensions:
-  health_check/health:
-    endpoint: 0.0.0.0:13133
-    path: /
-    response_body: null
-    check_collector_pipeline:
-      enabled: false
-      interval: 5m
-      exporter_failure_threshold: 5
-  opamp:
-    server:
-      ws:
-        endpoint: ws://127.0.0.1:41273/v1/opamp
+    health_check/health:
+        check_collector_pipeline:
+            enabled: false
+            exporter_failure_threshold: 5
+            interval: 5m
+        component_health: null
+        cors: null
+        endpoint: 0.0.0.0:13133
+        grpc: null
+        http: null
+        idle_timeout: 0s
+        path: /
+        read_header_timeout: 0s
+        response_body: null
+        tls: null
+        transport: tcp
+        use_v2: false
+        write_timeout: 0s
+    opamp:
+        agent_description:
+            include_resource_attributes: false
+            non_identifying_attributes: {}
+        capabilities:
+            accepts_restart_command: false
+            reports_available_components: false
+            reports_effective_config: true
+            reports_health: true
+        instance_uid: 01a02b66-808a-71b5-a603-35398f92b5fc
+        ppid: 1
+        ppid_poll_interval: 5s
+        server:
+            ws:
+                endpoint: ws://127.0.0.1:42867/v1/opamp
+                tls:
+                    insecure: true
+processors:
+    attributes/telecraft.untrusted-hop:
+        actions:
+            - action: delete
+              converted_type: ""
+              default_value: null
+              from_attribute: ""
+              from_context: ""
+              key: ""
+              pattern: ^telecraft\.
+              value: null
+        exclude: null
+        include: null
+    batch/batcher:
+        metadata_cardinality_limit: 1000
+        metadata_keys: []
+        send_batch_max_size: 0
+        send_batch_size: 1024
+        timeout: 2s
+    memory_limiter/guard:
+        check_interval: 1s
+        limit_mib: 0
+        limit_percentage: 75
+        max_gc_interval_when_hard_limited: 30s
+        max_gc_interval_when_soft_limited: 30s
+        min_gc_interval_when_hard_limited: 0s
+        min_gc_interval_when_soft_limited: 10s
+        spike_limit_mib: 0
+        spike_limit_percentage: 20
+receivers:
+    otlp/otlp-in:
+        protocols:
+            grpc:
+                endpoint: 0.0.0.0:4317
+                keepalive:
+                    enforcement_policy: {}
+                    server_parameters: {}
+                read_buffer_size: 524288
+                transport: tcp
+            http:
+                cors: null
+                endpoint: 0.0.0.0:4318
+                idle_timeout: 0s
+                keep_alives_enabled: true
+                logs_url_path: /v1/logs
+                metrics_url_path: /v1/metrics
+                read_header_timeout: 0s
+                tls: null
+                traces_url_path: /v1/traces
+                transport: tcp
+                write_timeout: 0s
 service:
-  extensions:
-    - health_check/health
-    - opamp
-  pipelines:
-    logs:
-      receivers:
-        - otlp/otlp-in
-      processors:
-        - attributes/telecraft.untrusted-hop
-        - memory_limiter/guard
-        - batch/batcher
-      exporters:
-        - otlp_http/platform.backend-exporter
-    metrics:
-      receivers:
-        - otlp/otlp-in
-      processors:
-        - attributes/telecraft.untrusted-hop
-        - memory_limiter/guard
-        - batch/batcher
-      exporters:
-        - otlp_http/platform.backend-exporter
-    traces:
-      receivers:
-        - otlp/otlp-in
-      processors:
-        - attributes/telecraft.untrusted-hop
-        - memory_limiter/guard
-        - batch/batcher
-      exporters:
-        - otlp_http/platform.backend-exporter
-  telemetry:
-    resource:
-      - name: k8s.node.name
-        value: devenv-gateway-2
-      - name: telecraft.commit
-        value: d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0
-      - name: telecraft.tier
-        value: platform/gateway
-    logs:
-      level: Info
-      development: false
-      encoding: console
-      output_paths:
-        - stderr
-      error_output_paths:
-        - stderr
-      processors:
-        - batch:
-            export_timeout: 30000
-            max_export_batch_size: 512
-            max_queue_size: 2048
-            schedule_delay: 1000
-            exporter:
-              otlp:
-                endpoint: http://backend.observability.svc.cluster.local:4318/_otlp
-                protocol: http/protobuf
-                compression: ""
-                timeout: 10000
-                insecure: false
-    metrics:
-      level: Normal
-      readers:
-        - periodic:
-            interval: 60000
-            timeout: 30000
-            exporter:
-              otlp:
-                endpoint: http://backend.observability.svc.cluster.local:4318/_otlp
-                protocol: http/protobuf
-                compression: ""
-                timeout: 10000
-                insecure: false
-    traces:
-      level: Basic
-      processors: []
+    extensions:
+        - opamp
+        - health_check/health
+    pipelines:
+        logs:
+            exporters:
+                - otlp_http/platform.backend-exporter
+            processors:
+                - attributes/telecraft.untrusted-hop
+                - memory_limiter/guard
+                - batch/batcher
+            receivers:
+                - otlp/otlp-in
+        metrics:
+            exporters:
+                - otlp_http/platform.backend-exporter
+            processors:
+                - attributes/telecraft.untrusted-hop
+                - memory_limiter/guard
+                - batch/batcher
+            receivers:
+                - otlp/otlp-in
+        traces:
+            exporters:
+                - otlp_http/platform.backend-exporter
+            processors:
+                - attributes/telecraft.untrusted-hop
+                - memory_limiter/guard
+                - batch/batcher
+            receivers:
+                - otlp/otlp-in
+    telemetry:
+        logs:
+            encoding: json
+            error_output_paths:
+                - stderr
+            level: info
+            output_paths:
+                - stdout
+            processors:
+                - batch:
+                    exporter:
+                        otlp:
+                            endpoint: http://backend.internal:9200/_otlp/v1/logs
+                            protocol: http/protobuf
+            sampling:
+                enabled: true
+                initial: 10
+                thereafter: 100
+                tick: 10s
+        metrics:
+            level: Normal
+            readers:
+                - periodic:
+                    exporter:
+                        otlp:
+                            endpoint: http://backend.internal:9200/_otlp/v1/metrics
+                            protocol: http/protobuf
+        resource:
+            attributes:
+                - name: deployment.environment
+                  value: production
+                - name: host.arch
+                  value: arm64
+                - name: host.name
+                  value: 4d2bd0e7444d
+                - name: os.description
+                  value: Alpine 3.24.1
+                - name: os.type
+                  value: linux
+                - name: service.instance.id
+                  value: 01a02b66-808a-71b5-a603-35398f92b5fc
+                - name: service.name
+                  value: otelcol-contrib
+                - name: service.version
+                  value: 0.159.0
+                - name: telecraft.tier
+                  value: platform/gateway
+                - name: k8s.node.name
+                  value: gateway-2
+                - name: telecraft.commit
+                  value: d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0
+            schema_url: https://opentelemetry.io/schemas/1.40.0

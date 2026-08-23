@@ -291,11 +291,34 @@ func mapTelemetryResource(doc any) any {
 	if !ok {
 		return root
 	}
-	list, ok := tel["resource"].([]any)
-	if !ok {
+	// Two encodings arrive here. A collector reports the block as a map
+	// carrying `attributes` beside `schema_url`; the bare list is the
+	// SDK's other documented form. Both flatten to the authored map, and
+	// anything else is left alone.
+	var (
+		list  []any
+		extra map[string]any
+	)
+	switch held := tel["resource"].(type) {
+	case []any:
+		list = held
+	case map[string]any:
+		inner, ok := held["attributes"].([]any)
+		if !ok {
+			return root
+		}
+		list = inner
+		extra = make(map[string]any, len(held)-1)
+		for k, v := range held {
+			if k != "attributes" {
+				extra[k] = v
+			}
+		}
+	default:
 		return root
 	}
-	attrs := make(map[string]any, len(list))
+
+	attrs := make(map[string]any, len(list)+len(extra))
 	for _, e := range list {
 		entry, ok := e.(map[string]any)
 		if !ok || len(entry) > 2 {
@@ -314,6 +337,15 @@ func mapTelemetryResource(doc any) any {
 			}
 		}
 		attrs[name] = entry["value"]
+	}
+	// Whatever sat beside the attributes stays beside them. An attribute
+	// colliding with one of those keys is a shape this cannot read, so it
+	// is left alone rather than resolved by preferring one of them.
+	for k, v := range extra {
+		if _, dup := attrs[k]; dup {
+			return root
+		}
+		attrs[k] = v
 	}
 	tel["resource"] = attrs
 	return root
