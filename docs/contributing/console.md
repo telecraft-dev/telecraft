@@ -62,6 +62,12 @@ Workspace, view-switchers preserve selection, filters and lens; and a
 finding's who-acts chip deep-links to the surface that can act on it.
 Inspection stays where you are, and only action travels.
 
+That chip is one primitive on every surface that has one: the secondary
+button, worn by a router link so it stays an anchor. A link that only
+inspects is not one of them and carries no class at all.
+`docs/branding/design-system.md` records why the name does not make it a
+`Chip`.
+
 ## The card data contract
 
 ADR-0041 makes one payload the sole source for every card surface. The canvas

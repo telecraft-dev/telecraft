@@ -11,6 +11,11 @@ import type { HTMLAttributes, ReactNode } from 'react'
  * Tone is reinforcement only (ADR-0041 §2). A chip's words carry its
  * meaning; a reader who cannot see the tone loses nothing, which is why
  * there is no tone that has no word beside it.
+ *
+ * A chip states what something is, and nothing here routes. ADR-0042's
+ * "who-acts chip" is therefore not one of these despite its name: it is a
+ * door to the surface that can fix a thing, and it is drawn with the
+ * secondary button (issue #97).
  */
 
 export type ChipTone = 'neutral' | 'ok' | 'advisory' | 'violation' | 'ungoverned'

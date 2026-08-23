@@ -19,7 +19,7 @@ import { NodeCanvas } from './NodeCanvas'
 import { Requirements } from './Requirements'
 import { YamlFlyout } from './YamlFlyout'
 import { addEntry, addSuggestion, removeEntry } from './draft'
-import { Button } from '../../ui/Button'
+import { Button, buttonClass } from '../../ui/Button'
 
 /**
  * The Compose Workspace (ADR-0043): three surfaces over the one open
@@ -243,7 +243,7 @@ function Workspace({
               <Link
                 to="/catalogue"
                 search={(prev) => ({ lens: prev.lens })}
-                className="who-acts"
+                className={buttonClass('secondary', 'who-acts')}
                 data-testid="request-grant"
               >
                 Request a Grant in Governance

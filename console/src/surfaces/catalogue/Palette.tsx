@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 import { api } from '../../api/client'
 import type { TeamNode } from '../../api/types'
 import { formatCatalogueKey } from '../../api/types'
 import type { PaletteRow } from '../../governance/effective'
 import { effectivePalette } from '../../governance/effective'
-import { Button } from '../../ui/Button'
+import { Button, buttonClass } from '../../ui/Button'
 import { chipClass } from '../../ui/Chip'
 
 function flattenTeams(node: TeamNode, out: { id: string; name: string }[] = []) {
@@ -183,24 +183,20 @@ export function PaletteView() {
                     )}
                   </span>
                   {!row.allowed && (
-                    <Button
-                      className="who-acts"
+                    <Link
+                      from="/catalogue"
+                      to="/catalogue"
+                      search={(prev) => ({
+                        ...prev,
+                        view: 'governance' as const,
+                        request: key,
+                        team,
+                      })}
+                      className={buttonClass('secondary', 'who-acts')}
                       data-testid={`request-grant-${key}`}
-                      onClick={() =>
-                        void navigate({
-                          from: '/catalogue',
-                          to: '/catalogue',
-                          search: (prev) => ({
-                            ...prev,
-                            view: 'governance' as const,
-                            request: key,
-                            team,
-                          }),
-                        })
-                      }
                     >
                       Request a Grant
-                    </Button>
+                    </Link>
                   )}
                 </td>
               </tr>

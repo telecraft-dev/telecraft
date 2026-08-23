@@ -17,6 +17,12 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
  * `buttonClass` exists because roughly half of these are links rather than
  * buttons — a who-acts chip routes, it does not act — and a link must stay
  * an anchor. Same class, same look, right element.
+ *
+ * Every who-acts control in the console is `buttonClass('secondary',
+ * 'who-acts')` on a router `Link` (issue #97). "Chip" there is ADR-0042's
+ * vocabulary and predates this layer: it names the thing, not the primitive
+ * that draws it. The control is a door to another surface, and a door is
+ * something you press.
  */
 
 export type ButtonTone = 'primary' | 'secondary' | 'quiet'

@@ -2254,8 +2254,13 @@
   align-self: flex-start;
 }
 
-/* A who-acts control routes to whoever can act, so it wraps rather than
-   pushing the finding's text out of the panel. */
+/* A who-acts control routes to whoever can act (ADR-0042 §3.3). It is the
+   secondary button on every surface that has one, worn by a Link so it
+   stays an anchor, which is why nothing below re-decides padding, border or
+   radius: `.button-secondary` already did. What is left is only what makes
+   this use different. Its label is a sentence rather than a word, so it
+   wraps rather than pushing the finding's text out of the panel, and it
+   takes its own width rather than its column's. */
 .who-acts {
   align-self: flex-start;
   white-space: normal;
