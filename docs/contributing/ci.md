@@ -39,7 +39,7 @@ running them because someone fixed a typo in a guide spends a service
 container and leaves external side effects behind for no reading. When the
 runners are slow, that wait is the whole review latency.
 
-**Three checks are the deliberate exception.** All three run on
+**Four checks are the deliberate exception.** All four run on
 everything, always, because none of them reads only code, which makes a
 documentation-only change exactly the change that can break them. The
 vendor-word lint reads code and prose alike, and a vendor word arrives as
@@ -52,7 +52,11 @@ is watching. That is not hypothetical — `docs/reference/estate-layout.md`
 carried an unquoted colon in its description and took the whole
 documentation build down. The tracked-executable check reads the index, so
 its subject is not a language at all: a build artefact committed beside a
-guide is as much a hit as one committed beside a Go file.
+guide is as much a hit as one committed beside a Go file. The formatting
+check reads the index too, and the tree holds Go that `code` counts as
+documentation: `docs/prototypes/normaliser-spike` is a module of its own,
+so a branch touching only it sets `code` false, and `go build ./...` never
+compiles it either.
 
 Two details worth knowing before you rely on this:
 
@@ -74,13 +78,14 @@ Two details worth knowing before you rely on this:
 | Vendor-word lint (ADR-0001) | `go run ./tools/vendorlint` | The neutral core holds: no vendor word in `cmd/`, `internal/`, `console/` or the normative docs, and provider implementations stay product-qualified |
 | Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the site can read — the contract between this repository and the site built from it |
 | No tracked binaries (issue #122) | `go run ./tools/binlint` | No tracked file is a compiled executable. Build artefacts are built, never committed, and never shipped in a clone or a source tarball |
+| Go formatting (issue #146) | `go run ./tools/fmtlint` | Every tracked Go file is `gofmt` clean, and the ones that are not are named |
 | Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests — with no Docker and no network |
 | TelemetryProvider live | the `Live` suite against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only a test double |
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
 | Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling |
 | Demo snapshot and bundle | `build:demo`, `check:zero-cdn`, `telecraft snapshot`, the entry-document check | The public demo's two halves keep working: the snapshot the real evaluators produce, and the console bundle that reads it |
 
-Five of those guard rules that are otherwise unenforceable in review.
+Seven of those guard rules that are otherwise unenforceable in review.
 
 **The vendor-word lint** exists because ADR-0001's neutral core is a
 property of the whole tree, and no reviewer reads the whole tree.
@@ -96,6 +101,32 @@ sat at the repository root from the first scaffolding commit until issue
 in review was ever going to notice it. The check reads magic bytes rather
 than the executable bit, which is set on every checked-in shell script and
 says nothing about what a file is.
+
+**The formatting check** exists because nothing else in the repository
+reads layout. `go build` and `go test` compile and run the code, `go vet`
+reports suspicious constructs rather than formatting, and a reviewer
+reading a diff sees the lines that changed rather than the ones beside
+them. Three test files were unformatted for months and went green on every
+check there was (issue #146).
+
+It is `go run ./tools/fmtlint` rather than a `gofmt -l .` step, and the
+reason is worth knowing before you replace it with the shorter thing:
+**`gofmt -l` exits 0 whether or not it names a file.** A `run: gofmt -l .`
+step prints the offending paths and passes, which is the failure mode this
+whole page exists to avoid. The tool exits 1 on a finding, asks git for
+the tracked files rather than walking the working tree, and formats with
+`go/format` from the standard library, so the verdict comes from the
+toolchain that builds it rather than from whichever `gofmt` binary is
+first on `PATH`. Its self-test runs the check over this repository, which
+means the next drift fails `go test ./...` on your own machine before it
+reaches a runner.
+
+Scope is every tracked `.go` file, with no exemption for `testdata`. The
+only Go under a testdata directory here is the repository's own lint
+fixtures; the vendored upstream fixtures under
+`internal/catalogue/testdata` are `go.mod` and `metadata.yaml` files and
+carry no Go at all. The exemption list would be empty, and an empty
+exemption is a door held open for the next file that wants through.
 
 **`check:zero-cdn`** runs over the *built bundle*, not the source, because
 the air-gap rule is about what the browser fetches and a bundler can
@@ -152,6 +183,7 @@ go build ./... && go vet ./... && go test ./...
 go run ./tools/vendorlint
 go run ./tools/docslint
 go run ./tools/binlint
+go run ./tools/fmtlint
 
 cd console
 npm ci
