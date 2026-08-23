@@ -102,9 +102,9 @@ func TestKitFailsABrokenProviderWithActionableOutput(t *testing.T) {
 	c.DeliveryStatus = estate.DeliveryStatus{} // ...but a silent gap: no reading, no cause
 	reordered := append([]estate.Pipeline(nil), c.Effective.Pipelines...)
 	reordered[0], reordered[1] = reordered[1], reordered[0]
-	c.Effective.Pipelines = reordered // resorted wiring: order did not survive
-	c.Effective.AsOf = time.Time{}    // populated without a timestamp
-	p.est.Collectors[1].Identity = nil                               // a reading belonging to nobody
+	c.Effective.Pipelines = reordered  // resorted wiring: order did not survive
+	c.Effective.AsOf = time.Time{}     // populated without a timestamp
+	p.est.Collectors[1].Identity = nil // a reading belonging to nobody
 
 	got := Violations(context.Background(), Kit{Provider: p, Seeded: seeds})
 	for _, want := range []string{

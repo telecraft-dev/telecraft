@@ -29,4 +29,5 @@ __pycache__/
 # tracked file that is a compiled executable.
 /binlint
 /docslint
+/fmtlint
 /vendorlint

@@ -48,8 +48,10 @@ go vet ./...
 go test ./...
 ```
 
-`go test ./...` covers every package, including the lint's own self-test and
-the provider conformance kits. The live provider suites are compiled and run
+`go test ./...` covers every package, including the lints' own self-tests and
+the provider conformance kits. Two of those self-tests run their check over
+this repository, so `go test ./...` fails on a tracked binary or an
+unformatted Go file without your running either tool separately. The live provider suites are compiled and run
 by this command too, and skip themselves when their environment variables are
 absent, so a clean checkout gives you a green run with no setup.
 
@@ -90,6 +92,35 @@ it fails, the fix is `git rm --cached` on the path it names, plus a line in
 from the tools themselves is already ignored: `go build ./tools/vendorlint`
 writes into the working directory, which is how a 3.4 MB binary came to
 live at the repository root (issue #122).
+
+## Run the Go formatting check
+
+```sh
+go run ./tools/fmtlint
+```
+
+The check asks git for the tracked `.go` files and fails when `gofmt`
+would rewrite one, naming it. A clean run prints how many files it scanned
+and exits 0. One flag exists: `-root` names the repository to scan,
+defaulting to `.`.
+
+`gofmt -w` on the paths it names is the fix. `go fmt ./...` is the shorter
+form and covers the main module, but not the separate modules under
+`docs/prototypes/`, which the check reads and `go build ./...` does not.
+
+Two things about this one are worth knowing.
+
+**Do not replace it with `gofmt -l`.** That command names the offending
+files and then exits 0, so a step built on it reports success while
+printing the problem. Nothing else in the repository reads layout either:
+`go build` and `go test` compile and run the code, and `go vet` reports
+suspicious constructs rather than formatting, which is how three test
+files stayed unformatted for months (issue #146).
+
+**You do not have to remember to run it.** Its self-test runs the check
+over this repository, so `go test ./...` fails on an unformatted file too.
+The separate command is there for when you want the check on its own, and
+for CI.
 
 ## Golden files
 
