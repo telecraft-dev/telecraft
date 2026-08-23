@@ -10,8 +10,10 @@ telemetry should arrive, and checks it. Green means "the configuration
 worked", never merely "the configuration applied".
 
 See it running: **[demo.telecraft.dev](https://demo.telecraft.dev)** is the
-real console over a public demo estate, read-only and rebuilt from git on
-every push.
+real console over a public demo estate, read-only and built from the latest
+release rather than from `main`. Between releases it lags, deliberately: the
+demo is a claim about the product rather than a preview of it
+([ADR-0049](docs/adr/0049-releases-tags-on-main-and-the-demo-pin.md)).
 
 Three separately-adoptable rungs, in any order:
 
