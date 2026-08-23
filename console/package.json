@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "capture": "node tools/capture.mjs",
     "check:zero-cdn": "node tools/check-zero-cdn.mjs dist",
     "check:palette": "node tools/check-palette.mjs",
     "check:bundle-budget": "node tools/check-bundle-budget.mjs dist"

@@ -1,5 +1,11 @@
 node_modules/
 dist/
 playwright-report/
+
+# The browser harness's output directory: `outputDir` in
+# playwright.config.ts, and the only place a capture goes (issue #99).
+# Failure traces, per-test artefacts, and everything `npm run capture`
+# writes land here, and the suite clears it at the start of every run.
 test-results/
+
 e2e/.auth/
