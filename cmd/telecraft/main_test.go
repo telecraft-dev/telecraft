@@ -128,3 +128,36 @@ func TestPaletteCommandRequiresItsFlags(t *testing.T) {
 		t.Fatalf("exit %d, want 2", code)
 	}
 }
+
+func TestRunWithNoArgsPrintsUsage(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{}, &stdout, &stderr); code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Errorf("stderr does not contain usage line:\n%s", stderr.String())
+	}
+}
+
+func TestRunRefusesUnknownSubcommand(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"nosuchcommand"}, &stdout, &stderr); code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "usage:") {
+		t.Errorf("stderr does not contain usage line:\n%s", stderr.String())
+	}
+}
+
+func TestEnvOrReturnsEnvVarWhenSet(t *testing.T) {
+	const key = "TELECRAFT_TEST_ENVVAR_SENTINEL"
+	t.Setenv(key, "from-env")
+	if got := envOr(key, "fallback"); got != "from-env" {
+		t.Errorf("got %q, want %q", got, "from-env")
+	}
+}
+
+// The passwd branch of run hardcodes os.Stdin, so it cannot be exercised
+// through the run entrypoint without touching the process's real stdin.
+// passwd's own behaviour is fully covered by the tests in passwd_test.go,
+// which call runPasswd directly with a controlled reader.

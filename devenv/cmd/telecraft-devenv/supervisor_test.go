@@ -227,3 +227,37 @@ func TestWithOverlayRefusesADocumentItDidNotWrite(t *testing.T) {
 		t.Fatal("a file with no generated header was merged into anyway")
 	}
 }
+
+func TestReadOverlayParsesAValidFragment(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "overlay.yaml")
+	if err := os.WriteFile(path, []byte("agent:\n  executable: /otelcol\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readOverlay(path)
+	if err != nil {
+		t.Fatalf("readOverlay: %v", err)
+	}
+	agent, ok := got["agent"].(map[string]any)
+	if !ok {
+		t.Fatalf("agent key missing or wrong type: %T", got["agent"])
+	}
+	if agent["executable"] != "/otelcol" {
+		t.Errorf("executable %q, want /otelcol", agent["executable"])
+	}
+}
+
+func TestReadOverlayFailsWhenFileIsAbsent(t *testing.T) {
+	if _, err := readOverlay("/nonexistent/overlay.yaml"); err == nil {
+		t.Fatal("no error for a file that does not exist")
+	}
+}
+
+func TestReadOverlayFailsOnInvalidYAML(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bad.yaml")
+	if err := os.WriteFile(path, []byte(":\tbad\t:yaml\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readOverlay(path); err == nil {
+		t.Fatal("no error for invalid YAML")
+	}
+}

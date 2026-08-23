@@ -56,3 +56,10 @@ func TestTheLocalFileNamesWhatTheComposeFileMounts(t *testing.T) {
 		t.Errorf("wrote %s, which is not the file devenv/compose.yaml mounts", filepath.Base(path))
 	}
 }
+
+func TestWriteLocalFileFailsWhenSourceIsAbsent(t *testing.T) {
+	_, err := writeLocalFile("/nonexistent/local.yaml", t.TempDir())
+	if err == nil {
+		t.Fatal("no error for a source file that does not exist")
+	}
+}
