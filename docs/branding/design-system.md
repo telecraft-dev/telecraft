@@ -213,7 +213,7 @@ Three tiers, three different sourcing rules.
 | Tier | Source | Why |
 |---|---|---|
 | State marks | Drawn by us | ADR-0041 makes glyphs a mapping from states; they are product vocabulary |
-| Domain marks | Drawn by us, later | Collector, Tier, Blueprint, Component, Service — the product's nouns |
+| Domain marks | Drawn by us | Collector, Tier, Blueprint, Component, Service — the product's nouns |
 | Utility icons | Lucide (ISC) | No product meaning, no reason to draw by hand |
 
 All drawn marks share one 16-unit grid, 1.75 stroke, round caps and joins, and
@@ -247,6 +247,32 @@ rendering anything (`console/tests/marks.test.ts` holds every state to a
 mark, and the four neutrals to four different ones). Each mark renders with
 `data-mark` naming it, which is what the end-to-end suite asserts: the
 mapping is the contract, the geometry is not.
+
+Five domain marks, one per noun ADR-0047 §6 names. Each draws the glossary
+entry rather than the industry's picture of the same word, which is the
+whole reason they are not taken from a pack: a pack's server icon for a
+Collector draws a machine, where a Collector is a running otelcol process
+nobody authored, and a pack's ranked bars for a Tier draw criticality, which
+a Tier never means.
+
+| Object | Mark | Why that shape means that word here |
+|---|---|---|
+| Collector | funnel — a rim, converging walls, one stem | Many streams poured in, one running process, one stream out. Open and inverted where `advisory`'s triangle is solid and upright |
+| Tier | three rules, the middle one spanning the grid | A position in the collection topology: the layer that carries the policy for everything at that position, between the layers it sits between. Equal weight, because a Tier is a place and never a ranking |
+| Blueprint | a frame holding two rules of unequal length | The authored, versioned artefact you own, whose content is per-signal lanes ordered separately per signal |
+| Component | a solid block on a lane, a stub either side | One configured instance wired into a lane: an in, an out, and a thing rather than a container. Filled for the reason `advisory` is — an outline that small closes up at 16px |
+| Service | a solid dot and two arcs opening right | The governed unit: `service.name` is the origin and the arcs are what leaves it for every surface that judges it. They open right because the console draws flow left to right |
+
+The vocabulary lives in `console/src/ui/domain.ts` and the geometry in
+`DomainMark.tsx` beside it, the same split for the same reason. Each mark
+renders with `data-domain-mark` naming it. `console/tests/domain-marks.test.ts`
+holds every domain object in the vocabulary to a mark and a word, holds the
+five drawings apart from each other, and holds all five apart from the seven
+state marks: the two sets share surfaces, so one may never be read for the
+other.
+
+A domain mark says which kind of object a reader is looking at; a state mark
+says how it is doing. Neither ever appears without its word (ADR-0047 §5).
 
 Every mark is monochrome and keeps its word label. Read any card in greyscale
 and it still says which bands have findings.
@@ -322,7 +348,7 @@ decision, not a convenience.
 | `Button` | `primary`, `secondary`, `quiet` | Tones are structural, not chromatic: primary is a solid fill of the ink, quiet is underlined text. `.selected` is the pressed state of a toggle |
 | `Chip` | `neutral`, `ok`, `advisory`, `violation`, `ungoverned`, plus `mono` | Tone reinforces the words inside it and never replaces them |
 | `Panel` | — | The side panel, its head, its close control, and its resize handle |
-| `Mark` / `Icon` | seven marks, seven icons | Drawn marks and Lucide utility icons, both on the 16-unit grid at 1.75 stroke |
+| `Mark` / `DomainMark` / `Icon` | seven state marks, five domain marks, seven icons | Drawn marks and Lucide utility icons, both on the 16-unit grid at 1.75 stroke. `DomainMark` is the mark row's second half rather than a fifth component: same grid, same stroke, same prop surface, a different half of the vocabulary |
 
 Each exports a class helper (`buttonClass`, `chipClass`) beside the
 component, because roughly half of these are links rather than buttons and a
