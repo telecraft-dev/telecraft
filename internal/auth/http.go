@@ -192,15 +192,29 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	}
 	state := base64.RawURLEncoding.EncodeToString(raw)
 
-	to, err := provider.Begin(r.Context(), state, h.callbackURL(r, provider.Name()))
+	// The PKCE verifier is separate random material so it is never derivable
+	// from the state that travels in the redirect URL (RFC 7636 §4.1).
+	vraw := make([]byte, 32)
+	if _, err := rand.Read(vraw); err != nil {
+		writeError(w, http.StatusInternalServerError, "sign-in failed")
+		return
+	}
+	verifier := base64.RawURLEncoding.EncodeToString(vraw)
+
+	to, err := provider.Begin(r.Context(), state, verifier, h.callbackURL(r, provider.Name()))
 	if err != nil {
 		writeError(w, http.StatusBadGateway, fmt.Sprintf("the identity provider is not reachable: %v", err))
 		return
 	}
 
-	// The round trip's CSRF anchor: state and return path, signed, in a
-	// short-lived cookie — nothing stored server-side (ADR-0013 posture).
-	blob := state + "|" + returnTo
+	// The round trip's CSRF anchor: state, PKCE verifier and return path,
+	// signed, in a short-lived HttpOnly cookie — nothing stored server-side
+	// (ADR-0013 posture). The verifier must stay out of URLs, hence the
+	// cookie; HttpOnly keeps it out of scripts too. returnTo is last so that
+	// a pipe in a safe return path cannot corrupt the parse: state and
+	// verifier are base64url and can never contain a pipe, so two left-to-
+	// right Cuts are unambiguous regardless of what returnTo contains.
+	blob := state + "|" + verifier + "|" + returnTo
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: blob + "." + h.cfg.Sessions.sign(blob), Path: "/api/v1/auth/",
 		MaxAge: 600, HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
@@ -219,13 +233,13 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "this sign-in attempt did not start here, or took longer than ten minutes")
 		return
 	}
-	state, returnTo, ok := h.verifyStateCookie(cookie.Value)
+	state, returnTo, verifier, ok := h.verifyStateCookie(cookie.Value)
 	if !ok || state != r.URL.Query().Get("state") {
 		writeError(w, http.StatusBadRequest, "this sign-in attempt did not start here, or took longer than ten minutes")
 		return
 	}
 
-	id, err := provider.Complete(r.Context(), state, h.callbackURL(r, provider.Name()), r.URL.Query())
+	id, err := provider.Complete(r.Context(), state, verifier, h.callbackURL(r, provider.Name()), r.URL.Query())
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, fmt.Sprintf("sign-in failed: %v", err))
 		return
@@ -300,16 +314,23 @@ func (h *Handler) setSession(w http.ResponseWriter, id Identity) error {
 	return nil
 }
 
-func (h *Handler) verifyStateCookie(value string) (state, returnTo string, ok bool) {
+func (h *Handler) verifyStateCookie(value string) (state, returnTo, verifier string, ok bool) {
 	blob, sig, found := strings.Cut(value, ".")
 	if !found || !hmac.Equal([]byte(h.cfg.Sessions.sign(blob)), []byte(sig)) {
-		return "", "", false
+		return "", "", "", false
 	}
-	state, returnTo, found = strings.Cut(blob, "|")
-	if !found || state == "" || !safeReturnTo(returnTo) {
-		return "", "", false
+	// Blob is state|verifier|returnTo. state and verifier are base64url, so
+	// two left-to-right Cuts are unambiguous: returnTo takes the remainder
+	// and may contain pipes without corrupting the parse.
+	state, rest, found := strings.Cut(blob, "|")
+	if !found || state == "" {
+		return "", "", "", false
 	}
-	return state, returnTo, true
+	verifier, returnTo, found = strings.Cut(rest, "|")
+	if !found || verifier == "" || !safeReturnTo(returnTo) {
+		return "", "", "", false
+	}
+	return state, returnTo, verifier, true
 }
 
 func (h *Handler) callbackURL(r *http.Request, provider string) string {

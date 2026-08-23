@@ -30,6 +30,10 @@ type fakeIdP struct {
 
 	// tokenStatus lets a test fail the exchange.
 	tokenStatus int
+
+	// wantChallenge, when non-empty, makes the token endpoint perform S256
+	// verification: it rejects any code_verifier whose SHA256 does not match.
+	wantChallenge string
 }
 
 func newFakeIdP(t *testing.T) *fakeIdP {
@@ -57,6 +61,13 @@ func newFakeIdP(t *testing.T) *fakeIdP {
 		if err := r.ParseForm(); err != nil || r.PostForm.Get("code") == "" || r.PostForm.Get("client_secret") != "s3cret" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
 			return
+		}
+		if idp.wantChallenge != "" {
+			got := sha256.Sum256([]byte(r.PostForm.Get("code_verifier")))
+			if base64.RawURLEncoding.EncodeToString(got[:]) != idp.wantChallenge {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_grant"})
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"id_token": idp.signJWT(t, idp.claims)})
 	})
@@ -111,13 +122,19 @@ func (idp *fakeIdP) provider() *OIDC {
 	return &OIDC{Issuer: idp.issuer, ClientID: "telecraft-console", ClientSecret: "s3cret"}
 }
 
-const testCallback = "http://console.example/api/v1/auth/oidc/callback"
+const (
+	// testVerifier is a fixed PKCE code verifier for tests that do not
+	// exercise the verifier path itself — 43 base64url characters, the
+	// RFC 7636 minimum.
+	testVerifier = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	testCallback = "http://console.example/api/v1/auth/oidc/callback"
+)
 
 func TestOIDCBeginBuildsTheAuthorizationRequest(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
 
-	to, err := o.Begin(context.Background(), "state-1", testCallback)
+	to, err := o.Begin(context.Background(), "state-1", testVerifier, testCallback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +170,7 @@ func TestOIDCCompleteVerifiesTheCodeFlow(t *testing.T) {
 	o := idp.provider()
 	idp.claims = idp.goodClaims(o.ClientID, "state-1")
 
-	id, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}, "state": {"state-1"}})
+	id, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}, "state": {"state-1"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +203,7 @@ func TestOIDCCompleteRejectsBadTokens(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			idp.claims = tc.claims
-			_, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}})
+			_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Complete = %v, want an error naming the %s", err, tc.want)
 			}
@@ -212,7 +229,7 @@ func TestOIDCCompleteRejectsAForgedSignature(t *testing.T) {
 		TokenEndpoint:         rogue.URL,
 		JWKSURI:               idp.issuer + "/jwks",
 	}
-	_, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}})
+	_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
 	if err == nil || !strings.Contains(err.Error(), "signature") {
 		t.Fatalf("Complete = %v, want a signature failure", err)
 	}
@@ -234,19 +251,19 @@ func TestOIDCCompleteRejectsUnsignedAlgorithms(t *testing.T) {
 func TestOIDCCompleteSurfacesProviderErrors(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
-	_, err := o.Complete(context.Background(), "state-1", testCallback,
+	_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback,
 		url.Values{"error": {"access_denied"}, "error_description": {"the human said no"}})
 	if err == nil || !strings.Contains(err.Error(), "access_denied") {
 		t.Fatalf("Complete = %v", err)
 	}
-	if _, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{}); err == nil {
+	if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{}); err == nil {
 		t.Fatal("Complete accepted a callback with no code")
 	}
 }
 
 func TestOIDCDiscoveryFailuresAreNamed(t *testing.T) {
 	o := &OIDC{Issuer: "", ClientID: ""}
-	if _, err := o.Begin(context.Background(), "s", testCallback); err == nil {
+	if _, err := o.Begin(context.Background(), "s", testVerifier, testCallback); err == nil {
 		t.Fatal("Begin ran with no issuer configured")
 	}
 
@@ -255,9 +272,87 @@ func TestOIDCDiscoveryFailuresAreNamed(t *testing.T) {
 	}))
 	defer srv.Close()
 	o = &OIDC{Issuer: srv.URL, ClientID: "c"}
-	_, err := o.Begin(context.Background(), "s", testCallback)
+	_, err := o.Begin(context.Background(), "s", testVerifier, testCallback)
 	if err == nil || !strings.Contains(err.Error(), "discovery") {
 		t.Fatalf("Begin = %v, want a discovery error", err)
+	}
+}
+
+// TestOIDCBeginCarriesPKCEChallenge ensures the authorisation request
+// includes an S256 code_challenge that is the SHA256 of the supplied verifier.
+func TestOIDCBeginCarriesPKCEChallenge(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+
+	const verifier = "test-verifier-one-BBBBBBBBBBBBBBBBBBBBBBBBB"
+	to, err := o.Begin(context.Background(), "state-1", verifier, testCallback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := u.Query()
+	if q.Get("code_challenge_method") != "S256" {
+		t.Fatalf("code_challenge_method = %q, want S256", q.Get("code_challenge_method"))
+	}
+	sum := sha256.Sum256([]byte(verifier))
+	wantChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
+	if q.Get("code_challenge") != wantChallenge {
+		t.Fatalf("code_challenge = %q, want %q", q.Get("code_challenge"), wantChallenge)
+	}
+}
+
+// TestOIDCCompletePKCEVerifierMustMatch proves that a code_verifier whose
+// SHA256 does not match the challenge registered at authorisation time is
+// rejected by the token endpoint. This is the core PKCE security property:
+// an attacker who holds the code but not the verifier cannot redeem it.
+func TestOIDCCompletePKCEVerifierMustMatch(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+	idp.claims = idp.goodClaims(o.ClientID, "state-1")
+
+	// verifier1 was used in Begin; its S256 challenge is what the IdP stored.
+	const verifier1 = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+	sum := sha256.Sum256([]byte(verifier1))
+	idp.wantChallenge = base64.RawURLEncoding.EncodeToString(sum[:])
+
+	// verifier2 produces a different challenge — the IdP must reject it.
+	const verifier2 = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+	_, err := o.Complete(context.Background(), "state-1", verifier2, testCallback, url.Values{"code": {"c0de"}})
+	if err == nil || !strings.Contains(err.Error(), "token exchange") {
+		t.Fatalf("Complete = %v, want a token exchange failure for a mismatched code verifier", err)
+	}
+}
+
+// TestOIDCCompleteRejectsNotYetValidToken checks that a token whose nbf is
+// further into the future than the skew window is refused.
+func TestOIDCCompleteRejectsNotYetValidToken(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+	claims := idp.goodClaims(o.ClientID, "state-1")
+	claims["nbf"] = time.Now().Add(5 * time.Minute).Unix()
+	idp.claims = claims
+
+	_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
+	if err == nil || !strings.Contains(err.Error(), "not yet valid") {
+		t.Fatalf("Complete = %v, want a not-yet-valid error", err)
+	}
+}
+
+// TestOIDCCompleteAcceptsTokenWithinSkewWindow checks that a token whose
+// exp is just barely in the past but within the clock-skew window is still
+// accepted — an issuer whose clock runs slightly ahead would produce this.
+func TestOIDCCompleteAcceptsTokenWithinSkewWindow(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+	claims := idp.goodClaims(o.ClientID, "state-1")
+	claims["exp"] = time.Now().Add(-10 * time.Second).Unix()
+	idp.claims = claims
+
+	if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}}); err != nil {
+		t.Fatalf("Complete = %v, want acceptance within the skew window", err)
 	}
 }
 

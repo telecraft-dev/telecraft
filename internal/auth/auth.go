@@ -98,18 +98,26 @@ type PasswordProvider interface {
 // it across the round trip in a signed cookie, and passes the same value
 // to both calls so a provider can bind its own artefacts (an OIDC nonce, a
 // SAML RelayState) to it without server-side storage.
+//
+// Verifier is the PKCE code verifier: the HTTP layer generates it alongside
+// state, carries it in the same signed HttpOnly cookie, and passes it to
+// both calls. It must never appear in a URL — Begin derives the S256
+// challenge from it; Complete sends it as code_verifier in the token
+// exchange.
 type RedirectProvider interface {
 	Provider
 
 	// Begin returns the identity provider URL that starts the round trip.
-	// callbackURL is where the provider sends the human back — Complete's
-	// address.
-	Begin(ctx context.Context, state, callbackURL string) (string, error)
+	// verifier is the raw PKCE code verifier; Begin computes the S256
+	// challenge from it. callbackURL is where the provider sends the human
+	// back — Complete's address.
+	Begin(ctx context.Context, state, verifier, callbackURL string) (string, error)
 
 	// Complete consumes the callback parameters and returns the verified
-	// identity. It fails when the callback carries a provider error, the
+	// identity. verifier is the PKCE code verifier to send to the token
+	// endpoint. It fails when the callback carries a provider error, the
 	// state does not match, or the identity assertion does not verify.
-	Complete(ctx context.Context, state, callbackURL string, params url.Values) (Identity, error)
+	Complete(ctx context.Context, state, verifier, callbackURL string, params url.Values) (Identity, error)
 }
 
 // ErrBadCredentials is the uniform password-verification failure: wrong

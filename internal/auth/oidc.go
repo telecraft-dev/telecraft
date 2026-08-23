@@ -52,21 +52,24 @@ type oidcDiscovery struct {
 }
 
 // Begin implements RedirectProvider: the authorization request URL. The
-// nonce is derived from the caller's state, so replay protection needs no
-// server-side storage — Complete recomputes it and requires the ID token
-// to carry it.
-func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, error) {
+// nonce is derived from state for stateless replay protection; the S256
+// challenge is derived from the caller-supplied verifier, which travels in
+// a signed HttpOnly cookie and never in any URL (RFC 7636 §4.1).
+func (o *OIDC) Begin(ctx context.Context, state, verifier, callbackURL string) (string, error) {
 	disc, err := o.discover(ctx)
 	if err != nil {
 		return "", err
 	}
+	challengeSum := sha256.Sum256([]byte(verifier))
 	q := url.Values{
-		"response_type": {"code"},
-		"client_id":     {o.ClientID},
-		"redirect_uri":  {callbackURL},
-		"scope":         {"openid profile email"},
-		"state":         {state},
-		"nonce":         {nonceFrom(state)},
+		"response_type":         {"code"},
+		"client_id":             {o.ClientID},
+		"redirect_uri":          {callbackURL},
+		"scope":                 {"openid profile email"},
+		"state":                 {state},
+		"nonce":                 {nonceFrom(state)},
+		"code_challenge":        {base64.RawURLEncoding.EncodeToString(challengeSum[:])},
+		"code_challenge_method": {"S256"},
 	}
 	sep := "?"
 	if strings.Contains(disc.AuthorizationEndpoint, "?") {
@@ -77,7 +80,7 @@ func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, er
 
 // Complete implements RedirectProvider: exchange the code, verify the ID
 // token, return the claims as an Identity.
-func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params url.Values) (Identity, error) {
+func (o *OIDC) Complete(ctx context.Context, state, verifier, callbackURL string, params url.Values) (Identity, error) {
 	if e := params.Get("error"); e != "" {
 		return Identity{}, fmt.Errorf("the identity provider refused the sign-in: %s %s", e, params.Get("error_description"))
 	}
@@ -96,6 +99,7 @@ func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params u
 		"redirect_uri":  {callbackURL},
 		"client_id":     {o.ClientID},
 		"client_secret": {o.ClientSecret},
+		"code_verifier": {verifier},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, disc.TokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -138,12 +142,20 @@ func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params u
 	return id, nil
 }
 
+// clockSkewSeconds is the maximum clock difference tolerated between this
+// host and the token issuer. 30 s covers NTP jitter in air-gap deployments
+// where clocks drift but still receive periodic correction, while keeping
+// the acceptance window short enough to matter for replay prevention.
+const clockSkewSeconds = 30
+
 // idClaims is the slice of the ID token this flow reads.
 type idClaims struct {
 	Issuer            string   `json:"iss"`
 	Subject           string   `json:"sub"`
 	Audience          audience `json:"aud"`
 	Expires           int64    `json:"exp"`
+	IssuedAt          int64    `json:"iat"`
+	NotBefore         int64    `json:"nbf"`
 	Nonce             string   `json:"nonce"`
 	Name              string   `json:"name"`
 	PreferredUsername string   `json:"preferred_username"`
@@ -168,7 +180,8 @@ func (a *audience) UnmarshalJSON(raw []byte) error {
 }
 
 // verifyIDToken checks signature (RS256 against the issuer's JWKS), issuer,
-// audience, expiry and nonce. Anything else the token carries is ignored.
+// audience, expiry, iat, nbf and nonce. Anything else the token carries is
+// ignored.
 func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, wantNonce string) (idClaims, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {
@@ -210,13 +223,18 @@ func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, want
 	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
 		return idClaims{}, fmt.Errorf("id_token claims: %w", err)
 	}
+	now := time.Now().Unix()
 	switch {
 	case claims.Issuer != o.Issuer:
 		return idClaims{}, fmt.Errorf("id_token issuer %q is not the configured issuer %q", claims.Issuer, o.Issuer)
 	case !claims.Audience.contains(o.ClientID):
 		return idClaims{}, fmt.Errorf("id_token audience does not include this client")
-	case time.Now().Unix() >= claims.Expires:
+	case now > claims.Expires+clockSkewSeconds:
 		return idClaims{}, fmt.Errorf("id_token has expired")
+	case claims.IssuedAt != 0 && now < claims.IssuedAt-clockSkewSeconds:
+		return idClaims{}, fmt.Errorf("id_token was issued in the future")
+	case claims.NotBefore != 0 && now < claims.NotBefore-clockSkewSeconds:
+		return idClaims{}, fmt.Errorf("id_token is not yet valid")
 	case claims.Nonce != wantNonce:
 		return idClaims{}, fmt.Errorf("id_token nonce does not match this sign-in attempt")
 	}
@@ -328,3 +346,4 @@ func nonceFrom(state string) string {
 	sum := sha256.Sum256([]byte("telecraft-oidc-nonce." + state))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
+
