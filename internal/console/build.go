@@ -180,6 +180,7 @@ func Build(in Inputs) (Bundle, error) {
 		own:            own,
 		renderFindings: rendered.Findings,
 		bpFindings:     bpFindings,
+		exporters:      rendered.Exporters,
 		now:            readings.AsOf,
 	}
 	return b.build()
@@ -284,6 +285,12 @@ type builder struct {
 	renderFindings []renderer.Finding
 	bpFindings     []blueprint.Finding
 
+	// exporters is the exporter side of every Tier's wiring, as the render
+	// recorded it (ADR-0040 §1). It is the only join from a Hop to the
+	// exporter feeding it: a Hop is authored on the receiving Tier and
+	// names no component (ADR-0007).
+	exporters map[string]renderer.LaneExporters
+
 	now time.Time
 }
 
@@ -359,7 +366,7 @@ func (b *builder) build() (Bundle, error) {
 			Topology: TopologyDoc{
 				Sources:  b.sources(),
 				Delivery: delivery,
-				Hops:     b.hops(),
+				Hops:     b.hops(views),
 				Paths:    b.paths(),
 			},
 			Services:     b.services(),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { CARD_CONTRACT_VERSION } from '../src/api/types'
 import type { Band, BandName, CardFace, TeamNode } from '../src/api/types'
 import { rollupTree } from '../src/estate/rollup'
 
@@ -16,7 +17,7 @@ function card(
   extras: Partial<Pick<CardFace, 'findingCounts' | 'waivedCounts'>> = {},
 ): CardFace {
   return {
-    contractVersion: 3,
+    contractVersion: CARD_CONTRACT_VERSION,
     tier,
     name: tier,
     team,

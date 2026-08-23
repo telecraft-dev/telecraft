@@ -209,14 +209,14 @@ export interface Population {
  * console/fixtures/card-contract.json, which the engine writes and
  * `tests/card-contract.test.ts` reads.
  */
-export const CARD_CONTRACT_VERSION = 3
+export const CARD_CONTRACT_VERSION = 4
 
 /**
  * The card face, contract version 3: the card unit is the Tier, and the
  * shelf groups and sorts from these fields alone (ADR-0041, ADR-0042 §2).
  */
 export interface CardFace {
-  contractVersion: 3
+  contractVersion: 4
   /** Tier id: the contract keys on Tier id, never on a pair. */
   tier: string
   name: string
@@ -294,7 +294,7 @@ export interface Provenance {
 
 /** GET /api/v1/drawer?tier= returns the on-demand drawer payload (ADR-0041 §3). */
 export interface CardDrawer {
-  contractVersion: 3
+  contractVersion: 4
   tier: string
   findings: Finding[]
   provenance: Provenance[]
@@ -393,12 +393,39 @@ export interface TopologySource {
   name: string
 }
 
+/**
+ * One signal's throughput along a Hop: the out-rate of the exporter
+ * feeding it (ADR-0040 §1).
+ *
+ * The exporter is named because a Hop names none itself (ADR-0007). The
+ * join comes from the exporter side the render recorded when it wired the
+ * sending Tier's lane, so an edge carries what actually flows along it
+ * rather than a Tier total divided by an edge count.
+ */
+export interface TopologyHopFlow extends Reading {
+  /** The feeding exporter's rendered id, where the lane names exactly one. */
+  exporter?: string
+  /**
+   * The exporter's sent-item count over the window. Absent rather than
+   * zero when the reading is unknown, because a rendered 0 is the same
+   * shape as a Hop that carried nothing (ADR-0008, ADR-0040 §6).
+   */
+  items?: number
+}
+
 /** A Hop: trust is a property of the Hop, never the Tier (ADR-0007). */
 export interface TopologyHop {
   from: string
   to: string
   trusted: boolean
   signals: string[]
+  /**
+   * Per-signal throughput, keyed over the same signals `signals` lists:
+   * one entry per edge the canvas draws for this Hop (ADR-0044 §1). Every
+   * signal is present, the unknown ones included, so an unreadable Hop is
+   * drawn unlabelled rather than as idle.
+   */
+  throughput?: Record<string, TopologyHopFlow>
 }
 
 /** A Service's Paths through Tiers (ADR-0007). */

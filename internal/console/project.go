@@ -11,6 +11,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
 	"github.com/telecraft-dev/telecraft/internal/expectation"
 	"github.com/telecraft-dev/telecraft/internal/inventory"
+	"github.com/telecraft-dev/telecraft/internal/metering"
 	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
@@ -487,18 +488,75 @@ func (b *builder) sources() []TopologySource {
 }
 
 // hops projects the authored arrivals. Trust is the Hop's, never the
-// Tier's (ADR-0007); the signals are the lanes the source Tier routes.
-func (b *builder) hops() []TopologyHop {
+// Tier's (ADR-0007); the signals are the lanes the source Tier routes,
+// and each of those lanes carries its own throughput.
+func (b *builder) hops(views map[string]*tierView) []TopologyHop {
 	var out []TopologyHop
 	for _, t := range b.topo.SortedTiers() {
 		for _, h := range t.Hops {
+			signals := b.hopSignals(h.From)
 			out = append(out, TopologyHop{
-				From:    h.From,
-				To:      t.ID(),
-				Trusted: h.Trusted,
-				Signals: b.hopSignals(h.From),
+				From:       h.From,
+				To:         t.ID(),
+				Trusted:    h.Trusted,
+				Signals:    signals,
+				Throughput: b.hopThroughput(views, h.From, signals),
 			})
 		}
+	}
+	return out
+}
+
+// hopThroughput labels each of a Hop's signals with the out-rate of the
+// exporter feeding it (ADR-0040 §1).
+//
+// The join runs the other way round from the Hop: a Hop is authored on the
+// receiving Tier and names no component, so the exporter is found on the
+// *sending* side, in the exporter wiring the render recorded when it
+// compiled that Tier's lanes. Nothing here reads an endpoint string, and
+// nothing divides a Tier total by an edge count: a Tier exporting through
+// two exporters gives each lane's edge that lane's own exporter, and a
+// lane that fans out reports that it cannot say (ADR-0008).
+func (b *builder) hopThroughput(views map[string]*tierView, from string, signals []string) map[string]TopologyHopFlow {
+	if len(signals) == 0 {
+		return nil
+	}
+
+	asOf := b.now.UTC().Format(time.RFC3339)
+	unknown := func(cause string) map[string]TopologyHopFlow {
+		out := make(map[string]TopologyHopFlow, len(signals))
+		for _, signal := range signals {
+			out[signal] = TopologyHopFlow{Reading: Reading{Known: false, AsOf: asOf, Cause: cause}}
+		}
+		return out
+	}
+
+	v, governed := views[from]
+	if !governed {
+		// An ungoverned arrival runs no collector the platform describes
+		// (ADR-0031), so there is no exporter and no self-telemetry behind
+		// this edge. That is a permanent, statable answer, not a gap.
+		return unknown("the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)")
+	}
+	lanes, recorded := b.exporters[from]
+	if !recorded {
+		return unknown("no rendered artefact was available for the sending Tier, so the exporter feeding this Hop was never established")
+	}
+
+	pipeline := metering.ForTier(from, v.metered, b.now)
+	readingAsOf := v.metered.AsOf.UTC().Format(time.RFC3339)
+	out := make(map[string]TopologyHopFlow, len(signals))
+	for _, signal := range signals {
+		flow := pipeline.HopFlow(requirements.SignalKind(signal), lanes[signal])
+		row := TopologyHopFlow{
+			Reading:  Reading{Known: flow.Known, AsOf: readingAsOf, Cause: flow.Cause},
+			Exporter: flow.Exporter,
+		}
+		if flow.Known {
+			items := flow.Items
+			row.Items = &items
+		}
+		out[signal] = row
 	}
 	return out
 }

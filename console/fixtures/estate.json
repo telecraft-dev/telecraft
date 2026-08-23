@@ -1,5 +1,5 @@
 {
-  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population: per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5): platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams. Collector rows carry the reported identifying attributes Tier selectors match on (ADR-0013); `selectors` holds each Tier's authored selector, the claim flow's proximity and blast-radius material (ADR-0042 §6). Rows without a `tier` are the ungoverned population (ADR-0031): a payments-team edge DaemonSet nobody authored a Tier for (served the Unmatched artefact, ADR-0030) and two foreign host watchers read through the estate provider. Unlike governed counts, these few rows are the whole ungoverned population, so preview arithmetic over them is exact. `rollouts` holds the authored Rollout objects (ADR-0029) with the two rendered artefacts' facts (hash and component set) the running reading compares on; the `to` binding names a sibling Blueprint authored as the candidate (ADR-0029 §3). `rolloutReadings` is each target-Tier collector's reading: the served path's acknowledged config hash, the foreign path's telecraft.tier stamp reading (self-telemetry component identity, ADR-0039 §5), and silence past the staleness horizon. Both rollout Tiers' whole populations are in the collectors sample, so cohort arithmetic over them is exact. The gateway Tier's population is deliberately mixed (two served, one git-delivered) so both delivery paths appear in one cohort; the staging trial's one member took the new config and went dark, the abort signature (§6).",
+  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population: per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5): platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams. Collector rows carry the reported identifying attributes Tier selectors match on (ADR-0013); `selectors` holds each Tier's authored selector, the claim flow's proximity and blast-radius material (ADR-0042 §6). Rows without a `tier` are the ungoverned population (ADR-0031): a payments-team edge DaemonSet nobody authored a Tier for (served the Unmatched artefact, ADR-0030) and two foreign host watchers read through the estate provider. Unlike governed counts, these few rows are the whole ungoverned population, so preview arithmetic over them is exact. `rollouts` holds the authored Rollout objects (ADR-0029) with the two rendered artefacts' facts (hash and component set) the running reading compares on; the `to` binding names a sibling Blueprint authored as the candidate (ADR-0029 §3). `rolloutReadings` is each target-Tier collector's reading: the served path's acknowledged config hash, the foreign path's telecraft.tier stamp reading (self-telemetry component identity, ADR-0039 §5), and silence past the staleness horizon. Both rollout Tiers' whole populations are in the collectors sample, so cohort arithmetic over them is exact. The gateway Tier's population is deliberately mixed (two served, one git-delivered) so both delivery paths appear in one cohort; the staging trial's one member took the new config and went dark, the abort signature (§6).",
   "me": {
     "id": "demo-user",
     "name": "Demo user",
@@ -36,7 +36,7 @@
   },
   "cards": [
     {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "tier": "data-flow/edge",
       "name": "edge",
       "team": "data-flow",
@@ -130,7 +130,7 @@
       }
     },
     {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "tier": "data-flow/gateway",
       "name": "gateway",
       "team": "data-flow",
@@ -254,7 +254,7 @@
       }
     },
     {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "tier": "data-flow/gateway-staging",
       "name": "gateway-staging",
       "team": "data-flow",
@@ -371,7 +371,7 @@
       }
     },
     {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "tier": "product/storefront-edge",
       "name": "storefront-edge",
       "team": "product",
@@ -466,7 +466,7 @@
   ],
   "drawers": {
     "data-flow/gateway": {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "tier": "data-flow/gateway",
       "findings": [
         {
@@ -584,7 +584,7 @@
       ]
     },
     "data-flow/edge": {
-      "contractVersion": 3,
+      "contractVersion": 4,
       "tier": "data-flow/edge",
       "findings": [],
       "provenance": [
@@ -1121,7 +1121,24 @@
           "traces",
           "logs",
           "metrics"
-        ]
+        ],
+        "throughput": {
+          "traces": {
+            "known": false,
+            "asOf": "2026-08-18T11:59:00Z",
+            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)"
+          },
+          "logs": {
+            "known": false,
+            "asOf": "2026-08-18T11:59:00Z",
+            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)"
+          },
+          "metrics": {
+            "known": false,
+            "asOf": "2026-08-18T11:59:00Z",
+            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)"
+          }
+        }
       },
       {
         "from": "data-flow/edge",
@@ -1130,7 +1147,21 @@
         "signals": [
           "traces",
           "logs"
-        ]
+        ],
+        "throughput": {
+          "traces": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "exporter": "otlphttp/gateway-traces",
+            "items": 812000
+          },
+          "logs": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "exporter": "otlphttp/gateway-logs",
+            "items": 1100000
+          }
+        }
       },
       {
         "from": "product/storefront-edge",
@@ -1139,7 +1170,20 @@
         "signals": [
           "traces",
           "logs"
-        ]
+        ],
+        "throughput": {
+          "traces": {
+            "known": true,
+            "asOf": "2026-08-18T11:59:00Z",
+            "exporter": "otlphttp/gateway",
+            "items": 240000
+          },
+          "logs": {
+            "known": false,
+            "asOf": "2026-08-18T11:59:00Z",
+            "cause": "the sending Tier's logs lane leaves through 2 exporters and a Hop names none of them (ADR-0007), so which one feeds this Hop is not in the model"
+          }
+        }
       }
     ],
     "paths": [

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { CARD_CONTRACT_VERSION } from '../src/api/types'
 import type { Band, BandName, CardFace } from '../src/api/types'
 import { cardStanding, orderCards, sectionAllHealthy } from '../src/estate/order'
 
@@ -14,7 +15,7 @@ function card(
   findingCounts: Record<string, number> = {},
 ): CardFace {
   return {
-    contractVersion: 3,
+    contractVersion: CARD_CONTRACT_VERSION,
     tier,
     name: tier,
     team: 'data-flow',

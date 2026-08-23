@@ -67,6 +67,43 @@ describe('the fixture topology at P3-verdict scale', () => {
   })
 })
 
+describe("each edge carries its own Hop's reading", () => {
+  // ADR-0040 §1: a Hop's throughput is its feeding exporter's out-rate.
+  // The model must carry that per signal, because one Hop becomes one edge
+  // per lane and the lanes can leave through different exporters.
+  const model = buildTopologyModel(payload)
+  const edgeFor = (from: string, to: string, signal: string) =>
+    model.edges.find((e) => e.from === from && e.to === to && e.signal === signal)
+
+  it("gives each lane of one Hop its own exporter's rate", () => {
+    const traces = edgeFor('data-flow/edge', 'data-flow/gateway', 'traces')
+    const logs = edgeFor('data-flow/edge', 'data-flow/gateway', 'logs')
+    expect(traces?.throughput?.known).toBe(true)
+    expect(logs?.throughput?.known).toBe(true)
+    // Two lanes of one Hop, two different exporters, two different rates.
+    // A Tier total split by edge count would make these equal.
+    expect(traces?.throughput?.exporter).not.toBe(logs?.throughput?.exporter)
+    expect(traces?.throughput?.items).not.toBe(logs?.throughput?.items)
+  })
+
+  it('leaves an unreadable lane unknown, never zero', () => {
+    const fannedOut = edgeFor('product/storefront-edge', 'data-flow/gateway', 'logs')
+    expect(fannedOut?.throughput?.known).toBe(false)
+    expect(fannedOut?.throughput?.cause).toBeTruthy()
+    // The absence of a figure is the point: a rendered 0 is the same shape
+    // as a Hop that carried nothing (ADR-0008).
+    expect(fannedOut?.throughput?.items).toBeUndefined()
+  })
+
+  it('says an ungoverned arrival reports no exporter of its own', () => {
+    for (const signal of ['traces', 'logs', 'metrics']) {
+      const edge = edgeFor('internet', 'data-flow/gateway', signal)
+      expect(edge?.throughput?.known).toBe(false)
+      expect(edge?.throughput?.items).toBeUndefined()
+    }
+  })
+})
+
 describe('derived, never drawn edges', () => {
   it('derives every model edge from a Hop, one lane per signal', () => {
     const model = buildTopologyModel(payload)
