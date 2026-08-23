@@ -9,7 +9,11 @@
 // invented delivery states (ADR-0004). The comparison is the
 // normalised layer-2 cross of the artefact in git against the collector's
 // own reported config, under the delivery path's Mutation profile
-// (ADR-0005, ADR-0046), qualified by the commit stamps both sides carry
+// (ADR-0005, ADR-0046). The cross judges the keys the artefact asserts — a
+// key it never mentions is not drift, whatever the collector defaults it
+// to — beside a structural check at component and pipeline grain, which is
+// what keeps an addition nobody rendered detectable (ADR-0054). It is
+// qualified by the commit stamps both sides carry
 // (ADR-0013): agreeing configs are in sync; disagreeing configs with two
 // different stamps are stale (the collector runs another commit — a
 // delivery lag); disagreeing configs without that explanation are drifted,
@@ -149,8 +153,18 @@ type Status struct {
 	EffectiveCommit string
 
 	// Changes is the layer-3 localisation, present exactly when the
-	// comparison found disagreement (ADR-0005: computed only then).
+	// comparison found disagreement (ADR-0005: computed only then). It
+	// covers the keys the Intended artefact asserts and nothing else
+	// (ADR-0054 §1).
 	Changes []normalise.Change
+
+	// Undescribed is the structural check's finding: components and
+	// pipelines the collector is running that the artefact never describes
+	// (ADR-0054 §2). Reported apart from Changes because it answers a
+	// different question — "something appeared that nobody rendered", not
+	// "a value you asserted is wrong" — and it is what makes judging only
+	// asserted keys payable.
+	Undescribed []normalise.Structural
 }
 
 // Compute crosses one collector's readings into its delivery status. The
@@ -194,20 +208,30 @@ func Compute(path Path, profile normalise.Profile, intended Intended, effective 
 	st.IntendedCommit = stampOf(in)
 	st.EffectiveCommit = stampOf(eff)
 
+	// The cross judges the keys the artefact asserts, against the
+	// projection of the report onto those keys (ADR-0054 §1), and
+	// separately asks whether the collector is running anything the
+	// artefact never described (ADR-0054 §2). Both must be clean to be in
+	// sync; either alone is enough to be out of it.
+	judged := normalise.Asserted(in, eff)
+	st.Undescribed = normalise.Undescribed(in, eff)
+
 	inDigest, err := normalise.Digest(in, profile)
 	if err != nil {
 		return Status{}, err
 	}
-	effDigest, err := normalise.Digest(eff, profile)
+	judgedDigest, err := normalise.Digest(judged, profile)
 	if err != nil {
 		return Status{}, err
 	}
 
-	if inDigest == effDigest {
+	if inDigest == judgedDigest && len(st.Undescribed) == 0 {
 		st.Comparison = ComparisonInSync
 		return st, nil
 	}
-	st.Changes = normalise.Layer3(in, eff)
+	if inDigest != judgedDigest {
+		st.Changes = normalise.Layer3(in, judged)
+	}
 	if st.IntendedCommit != "" && st.EffectiveCommit != "" && st.IntendedCommit != st.EffectiveCommit {
 		st.Comparison = ComparisonStale
 	} else {
@@ -241,6 +265,9 @@ func (s Status) Summary() string {
 	}
 	if n := len(s.Changes); n > 0 {
 		fmt.Fprintf(&b, " changes=%d", n)
+	}
+	if n := len(s.Undescribed); n > 0 {
+		fmt.Fprintf(&b, " undescribed=%d", n)
 	}
 	return b.String()
 }

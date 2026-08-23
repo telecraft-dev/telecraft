@@ -15,7 +15,10 @@ config:
   endpoint: http://elasticsearch:9200/_otlp
   compression: gzip
   sending_queue:
-    enabled: true
+    # No `enabled` key: the collector dropped it, and a queue is enabled by
+    # being configured. Authoring it here would assert a key that never
+    # reaches the running config, which the delivery cross reports as drift
+    # and is right to (ADR-0054).
     queue_size: 1000
   retry_on_failure:
     enabled: true

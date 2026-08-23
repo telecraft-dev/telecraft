@@ -80,10 +80,20 @@ func runDelivery(args []string, stdout, stderr io.Writer) int {
 	} else {
 		fmt.Fprintf(stdout, "comparison        %s\n", st.Comparison)
 	}
+	// The two findings print apart because they answer different
+	// questions: changes are the keys the artefact asserts that the
+	// collector disagrees with, undescribed is what it is running that the
+	// artefact never mentioned (ADR-0054).
 	if len(st.Changes) > 0 {
 		fmt.Fprintln(stdout, "changes:")
 		for _, c := range st.Changes {
 			fmt.Fprintf(stdout, "  %s\n", c)
+		}
+	}
+	if len(st.Undescribed) > 0 {
+		fmt.Fprintln(stdout, "undescribed:")
+		for _, u := range st.Undescribed {
+			fmt.Fprintf(stdout, "  %s\n", u)
 		}
 	}
 	return 0

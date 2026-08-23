@@ -119,7 +119,7 @@ devenv/devenv scenario broken-pipeline
 |---|---|---|
 | `healthy` | Every sim running, every collector on the artefact the estate describes | The resting state. Compliant, with one waived finding on search's metrics. |
 | `broken-pipeline` | Stops checkout's traces sim | The traces lane stays configured and nothing arrives. After one window, `broken_pipeline`, never `not_configured`. |
-| `drift` | Merges a local configuration file into `gateway-1`'s Supervisor | `send_batch_max_size` in force on `gateway-1` and not on `gateway-2`. Read [the note below](#two-things-that-do-not-work-yet) first: the comparison is noisy. |
+| `drift` | Merges a local configuration file into `gateway-1`'s Supervisor | `drifted` on `gateway-1`, naming the pipeline nobody rendered, and `in_sync` on `gateway-2`. The local `send_batch_max_size` is deliberately not drift: the artefact never mentions that key, and the cross judges the keys it asserts (ADR-0054). |
 | `shrink` | Stops one of the gateway Tier's two collectors | The population drops below the Tier's declared floor of two. |
 | `unmatched` | Starts a collector whose attributes satisfy no selector | It is served the Unmatched artefact: self-telemetry on, no data pipelines, never an empty config map. |
 | `reset` | Everything back to healthy | |
@@ -137,17 +137,6 @@ go run ./cmd/telecraft delivery \
   -effective devenv/run/effective/gateway-1.yaml \
   -path served
 ```
-
-### One thing that does not work yet
-
-The environment runs the real thing, so it shows you the real thing's gaps.
-This is the environment working, not failing.
-
-**Drift reads red on every collector.** A collector running exactly what it was
-served reports `drifted` with 77 changes, because it reports its fully
-defaulted configuration and the artefact is sparse. Real drift is in there, one
-line among many. See
-[issue #110](https://github.com/telecraft-dev/telecraft/issues/110).
 
 The same estate answers `telecraft check`, against the live backend:
 

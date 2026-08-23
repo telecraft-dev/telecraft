@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Mutation is one allow-listed delivery-path mutation: a transform applied
@@ -61,12 +62,14 @@ func Exact() Profile {
 	return Profile{Name: "exact"}
 }
 
-// Supervisor neutralises the OpAMP Supervisor's catalogued injections: the
-// shape-matched `extensions.opamp` block at an ephemeral localhost port,
-// and the `opamp` entry it appends to `service.extensions` (ADR-0005). The
-// profile for the platform's own serving path.
+// Supervisor neutralises the OpAMP Supervisor's catalogued reading-path
+// mutations: the shape-matched `extensions.opamp` block at an ephemeral
+// localhost port, the `opamp` entry it appends to `service.extensions`
+// (ADR-0005), and the re-encoding of `service.telemetry.resource` into the
+// SDK's list form (ADR-0054 §3). The profile for the platform's own
+// serving path.
 func Supervisor() Profile {
-	return Profile{Name: "supervisor", Mutations: []Mutation{stripSupervisorInjection}}
+	return Profile{Name: "supervisor", Mutations: []Mutation{stripSupervisorInjection, mapTelemetryResource}}
 }
 
 // hashDomain separates this encoding's digests from every other use of
@@ -101,6 +104,7 @@ func Normalised(raw []byte, p Profile) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	doc = foldTelemetryLevels(doc)
 	for _, m := range p.Mutations {
 		doc = m(doc)
 	}
@@ -122,6 +126,79 @@ func Digest(doc any, p Profile) (string, error) {
 	io.WriteString(h, ":")
 	encodeCanonical(h, doc)
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// --- type-aware value canonicalisation --------------------------------------
+
+// telemetryLevelKeys are the `service.telemetry` sub-sections whose `level`
+// is an enum: the collector parses the authored spelling into a level and
+// re-emits its own, so an artefact saying `normal` comes back `Normal`
+// (issue #110).
+//
+// This is canonical form, not a delivery-path Mutation, for one reason:
+// the Effective reading is the collector's own report on BOTH delivery
+// paths (ADR-0004), so a git-delivered collector title-cases its levels
+// exactly as a served one does. A profile-scoped fix would leave the git
+// path reporting a casing difference as drift (ADR-0054 §3).
+//
+// The fold is scoped to these paths rather than applied to strings at
+// large: endpoints, attribute values and regular expressions are
+// case-sensitive, and a case-blind comparer would digest two genuinely
+// different configs equal — silent no-drift, the one failure ADR-0005
+// fears most.
+var telemetryLevelKeys = []string{"metrics", "logs", "traces"}
+
+// foldTelemetryLevels lower-cases the enum levels under
+// `service.telemetry`, so `normal` and `Normal` are the same level.
+func foldTelemetryLevels(doc any) any {
+	root, ok := doc.(map[string]any)
+	if !ok {
+		return doc
+	}
+	svc, ok := root["service"].(map[string]any)
+	if !ok {
+		return root
+	}
+	tel, ok := svc["telemetry"].(map[string]any)
+	if !ok {
+		return root
+	}
+	for _, key := range telemetryLevelKeys {
+		section, ok := tel[key].(map[string]any)
+		if !ok {
+			continue
+		}
+		if level, ok := section["level"].(string); ok {
+			section["level"] = strings.ToLower(level)
+		}
+	}
+	return root
+}
+
+// durationLiteral is the shape `time.ParseDuration` reads, narrowed to
+// require a unit on every component. The narrowing matters: without it the
+// bare string "0" would canonicalise to "0s" and compare equal to it,
+// which is a guess about a value that may be a count, a version or a name.
+var durationLiteral = regexp.MustCompile(`^[+-]?(\d+(\.\d+)?(ns|us|µs|μs|ms|s|m|h))+$`)
+
+// canonicalDuration rewrites a duration literal into Go's canonical
+// spelling, so `60s` and `1m0s` are the same duration (issue #110). Every
+// otelcol setting that reads a duration reads it through this same
+// grammar, and an author's spelling of one is not a change to it.
+//
+// It runs in the canonical encoding rather than on the tree so that a
+// layer-3 finding still prints the value the collector actually reported;
+// the diff and the digest agree about equality because both go through
+// here (see scalarEqual).
+func canonicalDuration(s string) string {
+	if !durationLiteral.MatchString(s) {
+		return s
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return s
+	}
+	return d.String()
 }
 
 // --- the supervisor allow-list ----------------------------------------------
@@ -183,6 +260,95 @@ func isSupervisorOpamp(v any) bool {
 	}
 	ep, ok := ws["endpoint"].(string)
 	return ok && supervisorEndpoint.MatchString(ep)
+}
+
+// mapTelemetryResource rewrites `service.telemetry.resource` from the SDK's
+// list-of-`{name, value}` encoding back into the authored map, so the two
+// encodings of one resource compare equal.
+//
+// The Supervisor re-encodes the block on the way out, which under a
+// key-level comparison is worse than noisy: every attribute the artefact
+// stamps — `telecraft.tier`, `telecraft.commit` (ADR-0013) — reads as
+// ABSENT, and a stamp going missing is the one thing on that line worth an
+// alarm (issue #110). Reading the map back also restores the Effective
+// commit stamp, without which a served collector's stale-versus-drifted
+// split has nothing to split on (ADR-0004).
+//
+// It is a shape match, never a literal one (ADR-0046 §4): a list whose
+// every entry is a map carrying a string `name`, and nothing else. Any
+// other shape — a duplicate name, an entry with extra keys — is left alone
+// and reads as drift, because collapsing it would be a guess.
+func mapTelemetryResource(doc any) any {
+	root, ok := doc.(map[string]any)
+	if !ok {
+		return doc
+	}
+	svc, ok := root["service"].(map[string]any)
+	if !ok {
+		return root
+	}
+	tel, ok := svc["telemetry"].(map[string]any)
+	if !ok {
+		return root
+	}
+	// Two encodings arrive here. A collector reports the block as a map
+	// carrying `attributes` beside `schema_url`; the bare list is the
+	// SDK's other documented form. Both flatten to the authored map, and
+	// anything else is left alone.
+	var (
+		list  []any
+		extra map[string]any
+	)
+	switch held := tel["resource"].(type) {
+	case []any:
+		list = held
+	case map[string]any:
+		inner, ok := held["attributes"].([]any)
+		if !ok {
+			return root
+		}
+		list = inner
+		extra = make(map[string]any, len(held)-1)
+		for k, v := range held {
+			if k != "attributes" {
+				extra[k] = v
+			}
+		}
+	default:
+		return root
+	}
+
+	attrs := make(map[string]any, len(list)+len(extra))
+	for _, e := range list {
+		entry, ok := e.(map[string]any)
+		if !ok || len(entry) > 2 {
+			return root
+		}
+		name, ok := entry["name"].(string)
+		if !ok {
+			return root
+		}
+		if _, dup := attrs[name]; dup {
+			return root
+		}
+		if len(entry) == 2 {
+			if _, ok := entry["value"]; !ok {
+				return root
+			}
+		}
+		attrs[name] = entry["value"]
+	}
+	// Whatever sat beside the attributes stays beside them. An attribute
+	// colliding with one of those keys is a shape this cannot read, so it
+	// is left alone rather than resolved by preferring one of them.
+	for k, v := range extra {
+		if _, dup := attrs[k]; dup {
+			return root
+		}
+		attrs[k] = v
+	}
+	tel["resource"] = attrs
+	return root
 }
 
 // --- mutation primitives for provider-composed profiles ---------------------
@@ -275,7 +441,7 @@ func encodeCanonical(w io.Writer, v any) {
 	case float64:
 		io.WriteString(w, "f:"+strconv.FormatFloat(t, 'g', -1, 64))
 	case string:
-		fmt.Fprintf(w, "s:%q", t)
+		fmt.Fprintf(w, "s:%q", canonicalDuration(t))
 	case []any:
 		io.WriteString(w, "[")
 		for i, e := range t {

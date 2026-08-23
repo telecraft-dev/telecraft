@@ -25,7 +25,7 @@ processors:
 exporters:
   otlp_http/platform.backend-exporter:
     compression: gzip
-    endpoint: http://elasticsearch:9200/_otlp
+    endpoint: http://backend.internal:9200/_otlp
     retry_on_failure:
       enabled: true
       max_elapsed_time: 60s
@@ -87,12 +87,12 @@ service:
         - periodic:
             exporter:
               otlp:
-                endpoint: http://elasticsearch:9200/_otlp/v1/metrics
+                endpoint: http://backend.internal:9200/_otlp/v1/metrics
                 protocol: http/protobuf
     logs:
       processors:
         - batch:
             exporter:
               otlp:
-                endpoint: http://elasticsearch:9200/_otlp/v1/logs
+                endpoint: http://backend.internal:9200/_otlp/v1/logs
                 protocol: http/protobuf
