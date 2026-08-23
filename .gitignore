@@ -1,13 +1,27 @@
 .teach/
 .proto/
+
+# The browser MCP server's own output directory, which it creates in
+# whatever directory it is run from. It is the same kind of thing as the
+# console harness's `console/test-results/`, but it belongs to a separate
+# tool that never reads `console/playwright.config.ts`: its location is set
+# on the server itself (`--output-dir`), in a configuration that lives
+# outside this repository. So the entry stays, and captures taken that way
+# are already somewhere git ignores.
 .playwright-mcp/
 
 # Screenshots written beside the working tree. Two have been committed by
-# accident and removed again (e0d7e78, and the commit before this one): a
-# capture lands in the repository root whenever a tool is pointed at a
-# relative path before its output directory exists, and `git add -A` takes
-# it from there. Root level only — docs and the console keep their images
-# in directories, and those are still tracked.
+# accident and removed again (e0d7e78 and #94): a capture lands in the
+# repository root whenever a tool is pointed at a relative path before its
+# output directory exists, and `git add -A` takes it from there. Root level
+# only, because docs and the console keep their images in directories of
+# their own, and those are still tracked.
+#
+# The cause is now configured rather than only caught (issue #99):
+# `console/playwright.config.ts` sets `outputDir` to `console/test-results/`,
+# and `npm run capture` takes a name rather than a path, so nothing writes
+# a capture here to begin with. These three lines are the backstop for the
+# tool nobody has configured yet.
 /*.png
 /*.jpg
 /*.jpeg
