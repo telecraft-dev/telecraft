@@ -1,6 +1,6 @@
 # Product requirements
 
-**Telecraft** — an open-source fleet and policy management platform for
+**Telecraft**: an open-source fleet and policy management platform for
 OpenTelemetry (named 2026-08-12, `docs/branding/naming.md`). Carried from the
 prior shaping effort (`docs/research/2026-08-11-compiled-requirements-original.md`)
 under neutral terminology, extended with four new requirement areas, and
@@ -13,7 +13,7 @@ in `traceability.md`.
 
 - **REQ-001** The platform models collection topologies graphically, generates
   otelcol configurations, judges the estate's conformance, and optionally
-  delivers config — three separately-adoptable rungs: Conformance, Authoring,
+  delivers config, in three separately-adoptable rungs: Conformance, Authoring,
   Serving. Adopting a higher rung is never required to use a lower one.
 - **REQ-002** No component sits in the telemetry path. If the platform is
   down, no telemetry stops flowing. (ADR-0002)
@@ -31,7 +31,7 @@ in `traceability.md`.
 - **REQ-010** A machine-generated component Catalogue, sourced from
   collector-contrib `metadata.yaml`, inventories every receiver, processor,
   exporter, connector and extension type with stability and supported
-  signals. Hand-curation of the component list is prohibited — it is the
+  signals. Hand-curation of the component list is prohibited: it is the
   maintenance burden that kills config libraries. (G2)
 - **REQ-011** Allow-lists select from the Catalogue per Team: only permitted
   component types are offered in the composer palette and accepted by the
@@ -39,7 +39,7 @@ in `traceability.md`.
   G2 decisions. (G2)
 - **REQ-012** Owners and Teams are hierarchical: an Owner is the lowest unit
   of management and belongs to a Team; Teams nest. Compliance rolls up the
-  tree — "a team running N servers at class C1 must run these modules" is
+  tree: "a team running N servers at class C1 must run these modules" is
   expressible and reportable. (ADR-0017, ADR-0035)
 - **REQ-013** Service Class and Sensitivity are two orthogonal first-class
   axes with the adopter's own names and values. Class floors are cumulative
@@ -55,9 +55,9 @@ in `traceability.md`.
   from their Tier; exceptions are expressed by splitting the Tier.
   (ADR-0016)
 - **REQ-016** Components are first-class: configured instances of catalogue
-  types, named, versioned, ownable, and inherited by reference — never by
+  types, named, versioned, ownable, and inherited by reference, never by
   copy. A change by the owning team re-renders every consumer. (ADR-0016)
-- **REQ-017** Authentication is pluggable — OIDC, SAML and basic auth
+- **REQ-017** Authentication is pluggable: OIDC, SAML and basic auth
   first-party; forge OAuth as a convenience. Authorization is derived from
   ownership with one source of truth: generated forge code-ownership where
   supported, a platform merge gate otherwise. Team roll-up is
@@ -66,7 +66,7 @@ in `traceability.md`.
 
 ## 3. Conformance (rung 1)
 
-- **REQ-020** Services are read twice — Effective and Observed — and the
+- **REQ-020** Services are read twice, Effective and Observed, and the
   cross produces the seven outcomes with a severity ordering; delivery
   status (Intended × Effective) sits beside the verdict, per collector.
   (ADR-0004)
@@ -88,7 +88,7 @@ in `traceability.md`.
 
 - **REQ-030** Blueprints are named, versioned compositions of Components
   with phase-ordered assembly (detect → enrich → classify → protect → batch
-  → export); the renderer sorts by phase — union-merge is known to produce
+  → export); the renderer sorts by phase, because union-merge is known to produce
   invalid orderings. Component collisions are resolved and surfaced. (G3)
 - **REQ-031** A blueprint's `satisfies` list is intent, never fact; the UI
   must not blur the two. (ADR-0004, G3)
@@ -102,7 +102,7 @@ in `traceability.md`.
 - **REQ-034** Renderer hard rules: `opamp/<x>` extension naming, node-unique
   attribute via Downward API, untrusted-Hop attribute stripping generated
   automatically. (ADR-0007, ADR-0010)
-- **REQ-035** Generated YAML is visible read-only in the UI — the escape
+- **REQ-035** Generated YAML is visible read-only in the UI: the escape
   hatch is required for trust. (G7)
 - **REQ-036** The topology view survives scale: collectors are never drawn;
   gateway on-ramp emitters (no collector at all) are representable as a Path
@@ -136,17 +136,17 @@ in `traceability.md`.
 - **REQ-052** "Expected but never seen" is surfaced even though there is no
   collector to attach it to; ungoverned (observed, never authored) is
   surfaced without reading as failure. (ADR-0030, ADR-0031, ADR-0035)
-- **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam —
+- **REQ-053** Self-telemetry rides the existing `TelemetryProvider` seam,
   no privileged side channel. (ADR-0039)
 
 ## 7. Non-goals
 
 - **NG-1** Not a collector distribution, not an agent, nothing in the
   telemetry path. (ADR-0002)
-- **NG-2** No enforcement through Elastic Fleet — permanently unavailable,
+- **NG-2** No enforcement through Elastic Fleet: permanently unavailable,
   not deferred. Elastic Fleet is a console, not a source. (ADR-0008)
 - **NG-3** Profiles are out; logs, metrics, traces only. (ADR-0009)
-- **NG-4** No Helm/Kustomize rendering in v1 — known cost accepted.
+- **NG-4** No Helm/Kustomize rendering in v1, known cost accepted.
   (ADR-0011)
 - **NG-5** Drift detection is table stakes, never the pitch; the refuted
   claims ("nobody alerts on missing data", "nobody checks a stream against a

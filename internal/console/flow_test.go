@@ -12,7 +12,7 @@ import (
 // The declared flow readings: the metering half of the seam (ADR-0040)
 // played back from the estate's own declaration, exactly as the arrivals
 // and the collector estate already are. Every assertion below is about the
-// card carrying what the seam returned — and, at least as often, about it
+// card carrying what the seam returned and, at least as often, about it
 // refusing to carry a figure nobody read.
 
 // readingsWith writes the fixture estate's readings file with a flow
@@ -53,7 +53,7 @@ func rowFor(t *testing.T, card console.CardFace, signal string) console.SignalRo
 			return row
 		}
 	}
-	t.Fatalf("no %s row on the card — the matrix carries one lane per signal", signal)
+	t.Fatalf("no %s row on the card: the matrix carries one lane per signal", signal)
 	return console.SignalRow{}
 }
 
@@ -97,21 +97,21 @@ func TestADeclaredFlowReadsThroughToTheCard(t *testing.T) {
 			metrics.Volume.In, metrics.Volume.Out)
 	}
 	if metrics.Volume.Reduction != 230 {
-		t.Errorf("metrics reduction = %d, want in minus out (ADR-0040 §3)", metrics.Volume.Reduction)
+		t.Errorf("metrics reduction = %d, want in minus out", metrics.Volume.Reduction)
 	}
 	if metrics.Volume.Refused != 12 || metrics.Volume.SendFailed != 3 {
-		t.Errorf("metrics error readings = refused %d, send_failed %d; want the declared 12 and 3 — "+
-			"the only reds metering itself sources (ADR-0040 §3)", metrics.Volume.Refused, metrics.Volume.SendFailed)
+		t.Errorf("metrics error readings = refused %d, send_failed %d; want the declared 12 and 3, "+
+			"the only reds metering itself sources", metrics.Volume.Refused, metrics.Volume.SendFailed)
 	}
 	if metrics.Volume.AsOf != "2026-08-19T09:00:00Z" {
-		t.Errorf("metrics volume as-of = %q, want the instant the reading was taken (ADR-0036 §2)", metrics.Volume.AsOf)
+		t.Errorf("metrics volume as-of = %q, want the instant the reading was taken", metrics.Volume.AsOf)
 	}
 
 	if !metrics.Freshness.Known {
 		t.Fatalf("the metrics freshness is unknown though the reading carries a newest datapoint: %s", metrics.Freshness.Cause)
 	}
 	if metrics.Freshness.Newest != "2026-08-19T08:59:45Z" {
-		t.Errorf("metrics newest = %q, want the declared datapoint (ADR-0040 §4)", metrics.Freshness.Newest)
+		t.Errorf("metrics newest = %q, want the declared datapoint", metrics.Freshness.Newest)
 	}
 	if metrics.Freshness.AgeSeconds == nil || *metrics.Freshness.AgeSeconds != 15 {
 		t.Errorf("metrics age = %v, want fifteen seconds between the datapoint and the reading", metrics.Freshness.AgeSeconds)
@@ -122,7 +122,7 @@ func TestADeclaredFlowReadsThroughToTheCard(t *testing.T) {
 
 	// The broken lane: everything accepted, nothing delivered, and the
 	// send failures saying why. Out is zero because it was read as zero,
-	// not because nobody looked — which is the whole distinction.
+	// not because nobody looked, which is the whole distinction.
 	traces := rowFor(t, card, "traces")
 	if !traces.Volume.Known {
 		t.Fatalf("the traces volume is unknown though the estate declared it: %s", traces.Volume.Cause)
@@ -136,7 +136,7 @@ func TestADeclaredFlowReadsThroughToTheCard(t *testing.T) {
 		t.Fatalf("the churn reading is unknown though the estate declared it: %s", card.Churn.Cause)
 	}
 	if card.Churn.Incarnations != 4 {
-		t.Errorf("churn = %d incarnations, want the declared 4 (ADR-0040 §4)", card.Churn.Incarnations)
+		t.Errorf("churn = %d incarnations, want the declared 4", card.Churn.Incarnations)
 	}
 }
 
@@ -160,15 +160,19 @@ func TestAnEstateThatDeclaresNoFlowSaysSoOnEveryLane(t *testing.T) {
 			if reading.Known {
 				t.Errorf("%s %s claims a reading the estate never declared", row.Signal, name)
 			}
-			if !strings.Contains(reading.Cause, "ADR-0040") {
+			want := "a snapshot has none"
+			if name == "shape" {
+				want = "no shape reading exists"
+			}
+			if !strings.Contains(reading.Cause, want) {
 				t.Errorf("%s %s cause = %q, want it to name why metering is absent from a snapshot", row.Signal, name, reading.Cause)
 			}
 		}
 		if row.Volume.In != 0 || row.Volume.Out != 0 || row.Volume.Reduction != 0 {
-			t.Errorf("%s volume carries figures on an unknown reading — an unknown has no counts", row.Signal)
+			t.Errorf("%s volume carries figures on an unknown reading: an unknown has no counts", row.Signal)
 		}
 		if row.Freshness.Silent {
-			t.Errorf("%s freshness is marked silent while unknown — a known-empty window is not the same as not knowing", row.Signal)
+			t.Errorf("%s freshness is marked silent while unknown: a known-empty window is not the same as not knowing", row.Signal)
 		}
 	}
 	if card.Churn.Known || card.Churn.Cause == "" {
@@ -230,7 +234,7 @@ func TestALaneDeclaredUnknownKeepsItsOwnCause(t *testing.T) {
 		t.Fatal("a lane the estate declared unknown reads as known")
 	}
 	if !strings.Contains(traces.Volume.Cause, "never reported their own counters") {
-		t.Errorf("traces cause = %q, want the declared one — the reading says why it cannot see, in its own words", traces.Volume.Cause)
+		t.Errorf("traces cause = %q, want the declared one: the reading says why it cannot see, in its own words", traces.Volume.Cause)
 	}
 	if logs := rowFor(t, card, "logs"); !logs.Volume.Known {
 		t.Error("the known lane beside an unknown one lost its figures")
@@ -242,7 +246,7 @@ func TestALaneDeclaredUnknownKeepsItsOwnCause(t *testing.T) {
 
 func TestALaneWithNoDatapointInTheWindowIsSilentAndNotUnknown(t *testing.T) {
 	// The lane is one gateway-standard wires: a stopped pipeline. Its
-	// metered zero is a reading and stays one — the row that drops its
+	// metered zero is a reading and stays one. The row that drops its
 	// zero is the lane with no pipeline behind it (#98), and these two
 	// are the pair that must never read alike.
 	card := cardFor(t, buildWithFlow(t, `    flow:
@@ -265,11 +269,11 @@ func TestALaneWithNoDatapointInTheWindowIsSilentAndNotUnknown(t *testing.T) {
 		t.Error("a lane whose counters reported nothing in the window is not marked silent")
 	}
 	if traces.Freshness.AgeSeconds != nil || traces.Freshness.Newest != "" {
-		t.Errorf("a silent lane carries an age of %v and a newest of %q — there is nothing to date",
+		t.Errorf("a silent lane carries an age of %v and a newest of %q, but there is nothing to date",
 			traces.Freshness.AgeSeconds, traces.Freshness.Newest)
 	}
 	if !traces.Volume.Known || traces.Volume.In != 0 {
-		t.Error("a metered zero lost its knownness — a read zero is a reading (ADR-0008)")
+		t.Error("a metered zero lost its knownness: a read zero is a reading")
 	}
 }
 
@@ -307,17 +311,17 @@ func TestReductionIsAFigureAndNeverAGrade(t *testing.T) {
 	base := cardFor(t, build(t), "data-flow/gateway")
 	for band, want := range base.Bands {
 		if got := card.Bands[band]; got.State != want.State || got.WorstSeverity != want.WorstSeverity {
-			t.Errorf("%s band moved to %s/%s once a reduction was declared — the meter passes no judgement",
+			t.Errorf("%s band moved to %s/%s once a reduction was declared: the meter passes no judgement",
 				band, got.State, got.WorstSeverity)
 		}
 	}
 	if len(bundle.Estate.Drawers["data-flow/gateway"].Findings) != len(build(t).Estate.Drawers["data-flow/gateway"].Findings) {
-		t.Error("declaring a flow reading changed the finding count — metering sources no findings of its own")
+		t.Error("declaring a flow reading changed the finding count: metering sources no findings of its own")
 	}
 	for _, f := range bundle.Estate.Drawers["data-flow/gateway"].Findings {
 		for _, word := range []string{"reduction", "loss", "lost", "dropped"} {
 			if strings.Contains(strings.ToLower(f.Summary), word) {
-				t.Errorf("finding %q reads a reduction as a fault — a filter dropping nine tenths is doing its job", f.Summary)
+				t.Errorf("finding %q reads a reduction as a fault: a filter dropping nine tenths is doing its job", f.Summary)
 			}
 		}
 	}
@@ -346,7 +350,7 @@ func TestAFlowDeclarationTheMeterCouldNotHaveTakenIsRefused(t *testing.T) {
         events:
           in: 12
 `,
-			want: "the vocabulary is logs, metrics, traces",
+			want: "use logs, metrics, or traces",
 		},
 		{
 			name: "a count off a monotonic counter that went backwards",
@@ -355,7 +359,7 @@ func TestAFlowDeclarationTheMeterCouldNotHaveTakenIsRefused(t *testing.T) {
         metrics:
           in: -1
 `,
-			want: "a negative count cannot come off a monotonic counter",
+			want: "a count is never negative",
 		},
 		{
 			name: "an exporter split that does not add up to its out-rate",
@@ -367,7 +371,7 @@ func TestAFlowDeclarationTheMeterCouldNotHaveTakenIsRefused(t *testing.T) {
           exporters:
             otlp/central: 3000
 `,
-			want: "exporter split summing to 3000 against out 3890",
+			want: "exporter split summing to 3000, but out is 3890",
 		},
 		{
 			name: "an unknown lane carrying figures",

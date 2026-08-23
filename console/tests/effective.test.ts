@@ -49,7 +49,7 @@ function row(palette: ReturnType<typeof effectivePalette>, target: CatalogueEntr
 }
 
 describe('entry patterns', () => {
-  it('matches exact names, families, and single characters — class side exact', () => {
+  it('matches exact names, families, and single characters, class side exact', () => {
     expect(entrySelects('receiver/otlp', OTLP)).toBe(true)
     expect(entrySelects('exporter/kafka*', KAFKA)).toBe(true)
     expect(entrySelects('exporter/kafk?', KAFKA)).toBe(true)
@@ -106,7 +106,7 @@ describe('the effective palette (ADR-0021)', () => {
     expect(palette?.declaredLists).toEqual(['root', 'leaf'])
   })
 
-  it('a Grant overrides its own target\'s declared list — union after intersection (§3)', () => {
+  it('a Grant overrides its own target\'s declared list: union after intersection (§3)', () => {
     const palette = effectivePalette({
       tree,
       team: 'leaf',

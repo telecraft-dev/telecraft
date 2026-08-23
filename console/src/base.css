@@ -4,7 +4,7 @@
  *
  * Three sheets, one direction of dependency. `tokens.css` is values and
  * names no selector. This file gives the bare elements a Telecraft default
- * — body, headings, links, code, tables, form controls, the focus ring —
+ * (body, headings, links, code, tables, form controls, the focus ring)
  * and names no component. `app.css` is structure, and belongs to the
  * console alone.
  *
@@ -19,8 +19,8 @@
  * below names a hex value, a pixel size or a typeface: every one comes from
  * a token, which is the swap contract ADR-0045 §4 bought.
  *
- * What is deliberately absent is block rhythm — the margins between
- * paragraphs, lists and headings — and heading sizes. A console panel and a
+ * What is deliberately absent is block rhythm (the margins between
+ * paragraphs, lists and headings) and heading sizes. A console panel and a
  * marketing column do not want the same rhythm or the same scale step for
  * an `h2`, so each surface sets those from the type scale in its own
  * structure sheet. The browser's defaults are a known quantity to override,
@@ -53,7 +53,7 @@ h4 {
 }
 
 /* Interactive text is told apart by its underline and its full-strength
-   ink, never by a hue of its own — there is no accent hue to spend
+   ink, never by a hue of its own: there is no accent hue to spend
    (ADR-0047 §4). Left to the browser, a link is the one thing on the
    surface painted in a colour that means nothing, which is exactly what
    ADR-0047 §5 forbids everywhere else; `--colour-link` was minted for this
@@ -107,7 +107,7 @@ select {
 /* Cells that meet, and headers that read as headers and start where their
    column starts. Nothing more: the console's tables each carry a class and
    set their own cells, and a table on a prose surface wants a rule under
-   its header rather than a fill — the identity is datum lines and
+   its header rather than a fill: the identity is datum lines and
    hairlines (docs/branding/identity.md). */
 table {
   border-collapse: collapse;

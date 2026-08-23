@@ -46,7 +46,7 @@ func TestEverySectionOfComponentsIsChecked(t *testing.T) {
 }
 
 // A whole pipeline the estate never described is the other grain the
-// check works at — the case a key-level comparison of asserted keys alone
+// check works at, the case a key-level comparison of asserted keys alone
 // would go blind to entirely.
 func TestAPipelineNobodyRenderedIsReported(t *testing.T) {
 	const intended = "service:\n  pipelines:\n    traces:\n      receivers:\n        - otlp\n"
@@ -82,7 +82,7 @@ func TestFindingsAreReportedInAStableOrder(t *testing.T) {
 	}
 	for i, path := range want {
 		if found[i].Path != path {
-			t.Errorf("finding %d is %s, want %s — section order then identifier order", i, found[i].Path, path)
+			t.Errorf("finding %d is %s, want %s: section order then identifier order", i, found[i].Path, path)
 		}
 	}
 }
@@ -96,6 +96,6 @@ func TestAComponentTheCollectorDroppedIsNotAStructuralFinding(t *testing.T) {
 		"processors:\n  batch: {}\n",
 		Exact())
 	if len(found) != 0 {
-		t.Errorf("a dropped component is reported twice — once structurally, once as key drift: %v", found)
+		t.Errorf("a dropped component is reported twice, once structurally, once as key drift: %v", found)
 	}
 }

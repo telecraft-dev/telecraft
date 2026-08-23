@@ -1,5 +1,5 @@
 // Package metering derives the flow readings REQ-050 puts on cards and
-// the canvas — throughput, volume, freshness — from readings taken
+// the canvas (throughput, volume, freshness) from readings taken
 // through the TelemetryProvider seam (ADR-0040). Everything here is a
 // pure function of a reading and an instant: nothing is stored, no
 // metering pipeline exists, and a derived value lives exactly as long as
@@ -16,7 +16,7 @@
 // flow through a Tier does not exist in self-telemetry and dividing one
 // grain by the other would fabricate it.
 //
-// Items are the unit (§2) — spans, metric points, log records, which is
+// Items are the unit (§2): spans, metric points, log records, which is
 // what the helper metrics emit at level `normal`. No byte reading exists
 // on those surfaces, so this package carries no byte field: an estimate
 // derived from item counts would be exactly the invented number the ADR
@@ -25,7 +25,7 @@
 // In-minus-out is reduction, and reduction is presented, never judged
 // (§3). A filter processor dropping ninety per cent of records is doing
 // the job it was authored to do. The only reds this package sources are
-// the error-rate readings — refused, send-failed, enqueue-failed — which
+// the error-rate readings (refused, send-failed, enqueue-failed), which
 // feed the pipeline claims of ADR-0038; the reduction figure feeds
 // nothing that grades anyone.
 //
@@ -53,7 +53,7 @@ type Volume struct {
 }
 
 // Reduction is in minus out: what the Tier's pipelines removed. It is a
-// figure to present, never a grade — the vocabulary stops at "reduction"
+// figure to present, never a grade. The vocabulary stops at "reduction"
 // deliberately, because the word for the same number that implies fault
 // would make every correctly-authored filter look like a fault
 // (ADR-0040 §3). Negative reductions are real and stay negative: a
@@ -62,7 +62,7 @@ type Volume struct {
 func (v Volume) Reduction() int64 { return v.In - v.Out }
 
 // ReductionRatio is the reduction as a fraction of items in, and false
-// when nothing came in — a ratio over zero would be a fabricated one.
+// when nothing came in, because a ratio over zero would be a fabricated one.
 func (v Volume) ReductionRatio() (float64, bool) {
 	if !v.Known || v.In <= 0 {
 		return 0, false
@@ -141,14 +141,14 @@ type PipelineSignal struct {
 	Hops map[string]int64 `json:"hops,omitempty"`
 
 	// Truncated reports that the backend held more incarnations or
-	// exporters than the provider summed — the figure is a floor, and
+	// exporters than the provider summed: the figure is a floor, and
 	// says so.
 	Truncated bool `json:"truncated,omitempty"`
 }
 
 // Churn is a Tier's restart-rate reading: distinct collector process
 // incarnations in the window (ADR-0040 §4, ADR-0039 §6). Presented, not
-// judged — scaling out and crash-looping both raise it, and which one it
+// judged: scaling out and crash-looping both raise it, and which one it
 // was is a claim's question, not the meter's.
 type Churn struct {
 	Known bool   `json:"known"`
@@ -198,7 +198,7 @@ func (p Pipeline) Signal(kind requirements.SignalKind) (PipelineSignal, bool) {
 
 // Hop is the throughput of one Hop out of this Tier: its feeding
 // exporter's out-rate for the signal (ADR-0040 §1). False when the
-// reading is unknown or the exporter reported nothing — the canvas draws
+// reading is unknown or the exporter reported nothing: the canvas draws
 // an unlabelled Hop rather than a confident zero.
 func (p Pipeline) Hop(kind requirements.SignalKind, exporter string) (int64, bool) {
 	sig, ok := p.Signal(kind)
@@ -251,7 +251,7 @@ func ForTier(tier string, m telemetry.Metered, now time.Time) Pipeline {
 }
 
 // ServiceVolume is one signal's service-grain volume: records that landed
-// for the Service in the window. There is no in-and-out at this grain —
+// for the Service in the window. There is no in-and-out at this grain:
 // the Observed data is what arrived, and inventing a matching "in" would
 // be the blend ADR-0040 §1 forbids.
 type ServiceVolume struct {

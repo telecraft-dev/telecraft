@@ -30,7 +30,7 @@ users:
 }
 
 // Acceptance: an air-gapped deployment authenticates with no external
-// dependency (issue #26, REQ-006) — the whole basic-auth story is this
+// dependency (issue #26, REQ-006): the whole basic-auth story is this
 // binary plus the estate's users.yaml.
 func TestBasicAuthRoundTripIsLocalOnly(t *testing.T) {
 	b := Basic{Users: usersWithPassword(t, "correct horse battery")}
@@ -74,7 +74,7 @@ func TestHashSecretFormatAndUniqueness(t *testing.T) {
 		t.Fatal(err)
 	}
 	if h1 == h2 {
-		t.Fatal("two hashes of one secret are equal — the salt is not doing its job")
+		t.Fatal("two hashes of one secret are equal: the salt is not doing its job")
 	}
 	if _, err := HashSecret(""); err == nil {
 		t.Fatal("HashSecret accepted an empty secret")

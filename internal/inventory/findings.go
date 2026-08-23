@@ -15,8 +15,8 @@ type Class string
 
 const (
 	// NeverSeen is a Tier no collector has ever matched into (ADR-0030).
-	// Neutral without a floor — a freshly authored Tier awaiting its
-	// workload is a normal Tuesday — and violation-grade only when a
+	// Neutral without a floor (a freshly authored Tier awaiting its
+	// workload is a normal Tuesday) and violation-grade only when a
 	// floor > 0 and zero matches persist past the grace window (§4).
 	NeverSeen Class = "never_seen"
 
@@ -26,7 +26,7 @@ const (
 
 	// FloorConflict is the two sources disagreeing: a declared floor
 	// above the live derived count. Resolution prefers derived, but the
-	// comparison is never silent — a declared floor above live reality
+	// comparison is never silent: a declared floor above live reality
 	// usually means the estate shrank and someone should notice (§2).
 	FloorConflict Class = "floor_conflict"
 )
@@ -44,7 +44,7 @@ const (
 
 // Finding is one population finding, Tier-attached (ADR-0035 §6): it
 // routes to the Tier's owner and joins the delivery finding kind in the
-// roll-up — a population shortfall is a delivery problem, never a
+// roll-up, because a population shortfall is a delivery problem, never a
 // conformance problem with any Service.
 type Finding struct {
 	Class Class
@@ -64,7 +64,7 @@ type Finding struct {
 	Since time.Time
 
 	// StaleConfig marks an aged neutral never_seen (ADR-0035 §7): the
-	// platform's stale-config signal — an authored Tier never used, a
+	// platform's stale-config signal, an authored Tier never used, a
 	// candidate for deletion. A presentation affordance, never a new
 	// finding class, so the Grade stays Neutral.
 	StaleConfig bool
@@ -86,12 +86,12 @@ type Config struct {
 }
 
 // DefaultGrace is the default persistence window: order of minutes
-// (ADR-0035 §3) — long enough for nodes to join and workload pods to
+// (ADR-0035 §3): long enough for nodes to join and workload pods to
 // schedule, short enough that a real shortfall is not sat on.
 const DefaultGrace = 5 * time.Minute
 
 // DefaultStaleConfigAge is the default age at which a neutral never_seen
-// reads as stale config — the "never matched in 90 days" surface of
+// reads as stale config, the "never matched in 90 days" surface of
 // ADR-0035 §7.
 const DefaultStaleConfigAge = 90 * 24 * time.Hour
 
@@ -119,7 +119,7 @@ type Population struct {
 	// never_seen.
 	EverSeen bool
 
-	// FirstWatched is when the platform started watching this Tier — the
+	// FirstWatched is when the platform started watching this Tier, the
 	// age base for the never_seen stale-config signal (§7). Zero means
 	// the age is unknown and no stale-config flag can raise.
 	FirstWatched time.Time
@@ -131,7 +131,7 @@ type Population struct {
 }
 
 // Findings judges one Tier's population (ADR-0035). The floor is resolved
-// derived > declared > absent; with no floor there are no teeth — the
+// derived > declared > absent; with no floor there are no teeth, so the
 // only possible finding is the neutral never_seen. Toothed findings
 // require the shortfall to have persisted past the grace window. Surplus
 // is never a finding.
@@ -157,7 +157,7 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 			Grade: Advisory,
 			Floor: floor,
 			Seen:  p.Seen,
-			Detail: fmt.Sprintf("declared floor min_expected %d is above the derived count %d — a declared floor above live reality usually means the estate shrank and someone should notice (ADR-0035 §2)",
+			Detail: fmt.Sprintf("declared floor min_expected %d is above the derived count %d. The estate has probably shrunk: check the declared floor",
 				p.Declared, p.Derived.Instances),
 		})
 	}
@@ -169,27 +169,27 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 	case !p.EverSeen:
 		f := Finding{Class: NeverSeen, Tier: p.Tier, Grade: Neutral, Floor: floor, Since: p.FirstWatched}
 		if toothed && persisted {
-			// §4: the one escalation rule — floor > 0 and zero matches
+			// §4: the one escalation rule, floor > 0 and zero matches
 			// persisting past the window. Neutrality is otherwise
 			// untouched.
 			f.Grade = Violation
 			f.Since = p.ShortfallSince
-			f.Detail = fmt.Sprintf("expected ≥%d (%s floor), seen 0 — zero matches have persisted past the %s grace window (ADR-0035 §4)",
+			f.Detail = fmt.Sprintf("expected ≥%d (%s floor), seen 0 for longer than the %s grace window",
 				floor.Min, floor.Source, grace)
 			out = append(out, f)
 			break
 		}
-		f.Detail = "no collector has ever matched this Tier's selector — neutral: a freshly authored Tier awaiting its workload is a normal Tuesday (ADR-0030)"
+		f.Detail = "no collector has ever matched this Tier's selector. This is normal for a newly authored Tier that is still waiting for its workload"
 		if !p.FirstWatched.IsZero() && now.Sub(p.FirstWatched) >= staleAge {
 			f.StaleConfig = true
-			f.Detail = fmt.Sprintf("no collector has matched this Tier's selector in %d days — the stale-config signal: an authored Tier never used is a candidate for deletion (ADR-0035 §7)",
+			f.Detail = fmt.Sprintf("no collector has matched this Tier's selector in %d days. A Tier that is never used may be stale configuration: consider deleting it",
 				int(now.Sub(p.FirstWatched).Hours()/24))
 		}
 		out = append(out, f)
 
 	case toothed && p.Seen < floor.Min && persisted:
 		// §5: collectors present but below the floor, persisting. This
-		// arm also owns the dropped-to-zero case — the Tier has readings
+		// arm also owns the dropped-to-zero case: the Tier has readings
 		// and history, and calling it never_seen would make "0 of 40
 		// running" read as "nothing ever existed".
 		out = append(out, Finding{
@@ -199,7 +199,7 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 			Floor: floor,
 			Seen:  p.Seen,
 			Since: p.ShortfallSince,
-			Detail: fmt.Sprintf("expected ≥%d (%s floor), seen %d — the shortfall has persisted past the %s grace window (ADR-0035 §5)",
+			Detail: fmt.Sprintf("expected ≥%d (%s floor), seen %d for longer than the %s grace window",
 				floor.Min, floor.Source, p.Seen, grace),
 		})
 	}
@@ -208,7 +208,7 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 
 // Damper tracks when each Tier's shortfall began, so the judgement is
 // persistence-dampened (ADR-0035 §3): scale events have an honest
-// transient — nodes joined, workload pods still scheduling — where
+// transient (nodes joined, workload pods still scheduling) where
 // seen < expected for minutes, and a finding raised from one instant
 // would page someone for the autoscaler breathing.
 type Damper struct {
@@ -222,7 +222,7 @@ func NewDamper() *Damper {
 }
 
 // Observe notes one observation of a Tier's population against its
-// resolved floor and returns when the current shortfall began — zero when
+// resolved floor and returns when the current shortfall began, or zero when
 // the Tier meets its floor or has none. The first sub-floor observation
 // starts the clock; recovery clears it, so a fresh shortfall always
 // serves its full grace window.
@@ -240,7 +240,7 @@ func (d *Damper) Observe(tier string, seen int, floor Floor, now time.Time) time
 }
 
 // DeliveryFindings converts population findings into ADR-0017 roll-up
-// findings: Tier-attached, routed to the Tier's owner, delivery-kind —
+// findings: Tier-attached, routed to the Tier's owner, delivery-kind, because
 // a population shortfall is a delivery problem, never a conformance
 // problem with any Service (ADR-0035 §6). Escalated findings enter the
 // denominator; neutral ones are excluded entirely (P2's rule), which is

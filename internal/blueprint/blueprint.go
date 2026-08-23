@@ -1,13 +1,13 @@
 // Package blueprint loads and validates Blueprints and shared Components:
 // the domain-shaped documents the renderer compiles to otelcol YAML
 // (REQ-016, REQ-030, ADR-0024). A Blueprint is never annotated collector
-// config — it serialises per-signal lanes under the upstream signal names,
+// config: it serialises per-signal lanes under the upstream signal names,
 // each an explicitly ordered list of Component references, plus one
 // collector-wide extensions block. The renderer never re-sorts a lane; what
 // you see is what renders.
 //
-// Every lane entry is a Component — a configured instance of a catalogue
-// type, named, integer-versioned, ownable (ADR-0016) — in one of two
+// Every lane entry is a Component (a configured instance of a catalogue
+// type, named, integer-versioned, ownable, ADR-0016) in one of two
 // residences: shared, a standalone file with an explicit owner and the
 // team-qualified id `<team>/<name>`; or local, declared inline in the
 // Blueprint, implicitly owned by the Blueprint's owner and not referenceable
@@ -16,13 +16,13 @@
 // shared reference pins a version by default (`infosec/pii-redaction@3`)
 // with per-reference `track: head` as the opt-in (ADR-0026).
 //
-// Loading is strict and fails closed on structural problems — an unknown
+// Loading is strict and fails closed on structural problems: an unknown
 // field, a malformed document, an unpinned shared reference, a missing
 // mandatory field is a load error naming the file, never a silently lenient
 // document. Problems that cross object boundaries are different: a reference
 // to a missing or retracted Component or version, an extension in a signal
 // lane, an ordering mistake. Those surface as load-time Findings that route
-// to an owner (ADR-0016) and never block anyone else's render (ADR-0022) —
+// to an owner (ADR-0016) and never block anyone else's render (ADR-0022),
 // and never as a downstream renderer crash.
 package blueprint
 
@@ -66,7 +66,7 @@ type Component struct {
 	Name string `yaml:"name"`
 
 	// Class and Type key the catalogue entry this Component configures.
-	// Which catalogue version judges it is the consuming Tier's concern —
+	// Which catalogue version judges it is the consuming Tier's concern:
 	// the Component states what it is, never what may be used (ADR-0020).
 	Class catalogue.Class `yaml:"class"`
 	Type  string          `yaml:"type"`
@@ -76,7 +76,7 @@ type Component struct {
 	// against it.
 	Version int `yaml:"version"`
 
-	// Owner is the accountable party (ADR-0016) — mandatory on a shared
+	// Owner is the accountable party (ADR-0016): mandatory on a shared
 	// Component, forbidden on a local one (a local is implicitly owned by
 	// its Blueprint's owner).
 	Owner string `yaml:"owner"`
@@ -86,7 +86,7 @@ type Component struct {
 	Config map[string]any `yaml:"config"`
 
 	// Team is the owning team's directory segment, derived from the layout
-	// (ADR-0027) — never authored, empty on a local Component.
+	// (ADR-0027), never authored, empty on a local Component.
 	Team string `yaml:"-"`
 }
 
@@ -134,7 +134,7 @@ func (r Reference) String() string {
 	return s
 }
 
-// parseReference parses the authored `component:` string — `<name>` for a
+// parseReference parses the authored `component:` string: `<name>` for a
 // local Component, `<team>/<name>` optionally `@<version>` for a shared one.
 func parseReference(s string) (Reference, error) {
 	if s == "" {
@@ -145,7 +145,7 @@ func parseReference(s string) (Reference, error) {
 	if at := strings.LastIndex(rest, "@"); at >= 0 {
 		v, err := strconv.Atoi(rest[at+1:])
 		if err != nil || v < 1 {
-			return Reference{}, fmt.Errorf("reference %q: the pin after @ is a positive integer version — pins are legible, diffs are version-to-version (ADR-0024)", s)
+			return Reference{}, fmt.Errorf("reference %q: the pin after @ must be a positive integer version", s)
 		}
 		ref.Pin = v
 		rest = rest[:at]
@@ -153,7 +153,7 @@ func parseReference(s string) (Reference, error) {
 	if slash := strings.Index(rest, "/"); slash >= 0 {
 		ref.Team, ref.Name = rest[:slash], rest[slash+1:]
 		if ref.Team == "" || ref.Name == "" || strings.Contains(ref.Name, "/") {
-			return Reference{}, fmt.Errorf("reference %q is not <team>/<name> — the team-qualified id, never a path, is the reference (ADR-0024)", s)
+			return Reference{}, fmt.Errorf("reference %q is not <team>/<name>. Reference a shared Component by its team-qualified id, not a path", s)
 		}
 	} else {
 		ref.Name = rest
@@ -166,8 +166,8 @@ func parseReference(s string) (Reference, error) {
 
 // Entry is one authored lane entry: a Component reference plus its tracking
 // mode. There is deliberately no third field: a lane entry can only ever
-// point at a Component, so raw inline otelcol blocks — invisible to
-// ownership, findings routing and the evaluator — are unrepresentable
+// point at a Component, so raw inline otelcol blocks (invisible to
+// ownership, findings routing and the evaluator) are unrepresentable
 // (ADR-0024 §3).
 type Entry struct {
 	Component string `yaml:"component"`
@@ -196,7 +196,7 @@ type Pipelines struct {
 // Blueprint claims to satisfy, stamped with the requirement version the
 // claim was made against (ADR-0026 §4). A claim is intent, never fact
 // (REQ-031), and the evaluator always judges against the requirement's
-// current version — a claim is never a way to freeze the goalposts.
+// current version: a claim is never a way to freeze the goalposts.
 type Claim struct {
 	Requirement string
 	Version     int
@@ -209,7 +209,7 @@ func (c *Claim) UnmarshalYAML(node *yaml.Node) error {
 	}
 	at := strings.LastIndex(s, "@")
 	if at <= 0 || at == len(s)-1 {
-		return fmt.Errorf("line %d: satisfies claim %q is not version-stamped — <requirement-id>@<version>; an unversioned claim cannot drift detectably (ADR-0026)", node.Line, s)
+		return fmt.Errorf("line %d: satisfies claim %q is not version-stamped. Write it as <requirement-id>@<version>", node.Line, s)
 	}
 	v, err := strconv.Atoi(s[at+1:])
 	if err != nil || v < 1 {
@@ -240,7 +240,7 @@ type Blueprint struct {
 	Extensions []Entry   `yaml:"extensions"`
 
 	// Team is the owning team's directory segment, derived from the layout
-	// (ADR-0027) — never authored.
+	// (ADR-0027), never authored.
 	Team string `yaml:"-"`
 }
 
@@ -292,9 +292,9 @@ func (b Blueprint) lanes() []lane {
 
 // Estate is the loaded, validated authoring model: every shared Component
 // and Blueprint found across the source roots, keyed by team-qualified id.
-// A multi-root load is the source-set abstraction of ADR-0027 — an estate
+// A multi-root load is the source-set abstraction of ADR-0027 (an estate
 // is a set of repos mapped to team subtrees, single-repo the degenerate
-// case — which works precisely because ids, never paths, are the references.
+// case), which works precisely because ids, never paths, are the references.
 type Estate struct {
 	Components map[string]Component
 	Blueprints map[string]Blueprint
@@ -334,7 +334,7 @@ func (e Estate) SortedComponents() []Component {
 
 // resolve finds the Component a reference points at: the Blueprint's own
 // locals for a bare name, the estate's shared Components otherwise. It
-// resolves identity at head — whether the *pinned version* exists is judged
+// resolves identity at head; whether the *pinned version* exists is judged
 // by ReferenceFindings.
 func (e Estate) resolve(b Blueprint, r Reference) (Component, bool) {
 	if r.Local() {

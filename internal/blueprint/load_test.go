@@ -25,7 +25,7 @@ func loadErr(t *testing.T, roots ...string) error {
 	t.Helper()
 	est, _, err := Load(roots...)
 	if err != nil && (len(est.Blueprints) != 0 || len(est.Components) != 0) {
-		t.Fatal("Load failed but returned a non-empty estate — a failed load must fail closed")
+		t.Fatal("Load failed but returned a non-empty estate: a failed load must fail closed")
 	}
 	return err
 }
@@ -90,7 +90,7 @@ func TestFixtureEstateLoads(t *testing.T) {
 
 	// Lane order is the authored order, references parsed: the traces lane
 	// pins the shared processor at @3 and the exporter at @1 (deliberately
-	// behind head — no load-time finding; that is library_drift's job).
+	// behind head, so no load-time finding; that is library_drift's job).
 	traces := bp.Lane(Traces)
 	if len(traces) != 5 {
 		t.Fatalf("traces lane holds %d entries, want 5", len(traces))
@@ -116,7 +116,7 @@ func TestFixtureEstateLoads(t *testing.T) {
 
 // An unknown field fails the load naming the file and the field. The phase
 // concept is dropped (ADR-0024 §6), so an authored phase is exactly such a
-// field — it must die loudly, not be silently ignored.
+// field: it must die loudly, not be silently ignored.
 func TestUnknownFieldFailsClosedWithFileAndField(t *testing.T) {
 	dir := t.TempDir()
 	name := writeGood(t, dir)

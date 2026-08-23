@@ -1,6 +1,6 @@
-# Normaliser spike verdict — three-layer drift hashing (issue #13, ADR-0005)
+# Normaliser spike verdict: three-layer drift hashing (issue #13, ADR-0005)
 
-- Status: **awaiting human review** — merging the PR that carries this file
+- Status: **awaiting human review**. Merging the PR that carries this file
   records the ruling; ADR-0005 amendments land separately after it
 - Date: 2026-08-17
 - Spike code: this directory (nested Go module, never built by root CI)
@@ -12,11 +12,11 @@ configs (edge-on-Kubernetes shaped after the ticket 06 live capture, a
 gateway tier, a GitOps-delivered host-metrics node) with cosmetic variants,
 real delivery-path mutations, and seeded semantic changes:
 
-- **Layer 1** — digest of raw bytes (`Layer1`).
-- **Layer 2** — digest of the canonical form after applying a mutation
+- **Layer 1**: digest of raw bytes (`Layer1`).
+- **Layer 2**: digest of the canonical form after applying a mutation
   allow-list (`Layer2`): parse (YAML or JSON), transform, deterministic
   type-tagged re-encoding, SHA-256.
-- **Layer 3** — structural diff of the normalised trees (`Layer3`), computed
+- **Layer 3**: structural diff of the normalised trees (`Layer3`), computed
   only when layer 2 disagrees.
 
 The allow-listed mutations are exactly the catalogued ones: the OpAMP
@@ -30,7 +30,7 @@ re-marshalling (tickets 02/06/12).
 - **H-1 One canonicalisation move kills four cosmetic axes.** Parse +
   sorted-key, type-tagged re-encode neutralises key order, quoting/flow
   style, anchors/aliases, and YAML-vs-JSON in one mechanism, with no
-  per-case handling. `TestCosmeticVariantsAgreeAtLayer2` — every variant
+  per-case handling. `TestCosmeticVariantsAgreeAtLayer2`: every variant
   agrees at layer 2 under every profile while layer 1 differs.
 - **H-2 Supervisor mutations allow-list as *shapes*.** The injected endpoint
   port is ephemeral, so the allow-list entry is a pattern
@@ -59,7 +59,7 @@ re-marshalling (tickets 02/06/12).
   the cosmetic list.** Equating `batch: {}` with
   `batch: {send_batch_size: 8192, timeout: 200ms}` requires every
   component's default table, which lives in component Go code
-  (`createDefaultConfig`), not in `metadata.yaml` — so the Catalogue (#14)
+  (`createDefaultConfig`), not in `metadata.yaml`, so the Catalogue (#14)
   cannot supply it either. It is also *unnecessary* for the drift check:
   both delivery paths report the merged **input** config, not a
   defaults-expanded form, so rendered-vs-reported never disagrees on
@@ -68,7 +68,7 @@ re-marshalling (tickets 02/06/12).
   `TestExplicitDefaultsDoNotAgree` pins the behaviour.
 - **F-3 The Fleet profile is structurally blind inside redacted values.** A
   rotated exporter credential yields byte-identical layer-2 digests under
-  the elastic-fleet profile — silent no-drift on a real change, the exact
+  the elastic-fleet profile: silent no-drift on a real change, the exact
   failure ADR-0005 fears. It is not a bug; it is the price of comparing
   through a lossy reporter, bounded to the redaction list.
   `TestElasticFleetProfileIsBlindToRedactedValues` pins it so the cost stays
@@ -82,7 +82,7 @@ re-marshalling (tickets 02/06/12).
 - **F-5 The opamp extension body is wholly unverifiable via Fleet.** The
   server block arrives absent (not redacted) and the one surviving field
   (`polling_interval`) surfaces at a different position than authored. The
-  spike therefore empties `opamp*` extension bodies on both sides — entry
+  spike therefore empties `opamp*` extension bodies on both sides: entry
   *presence* still compares, contents do not. Consequence: where the
   extension points cannot be drift-checked through Fleet, only through the
   platform's own delivery path.
@@ -102,7 +102,7 @@ re-marshalling (tickets 02/06/12).
 
 ## Not covered (known edges for the production build)
 
-- Duplicate map keys and YAML merge keys (`<<`) — untested; production
+- Duplicate map keys and YAML merge keys (`<<`): untested; production
   should parse via `yaml.Node` and fail closed on duplicates.
 - The corpus is realistic but synthetic; it should grow from real estate
   captures as they appear.
@@ -113,9 +113,9 @@ re-marshalling (tickets 02/06/12).
 
 | AC | Evidence |
 | --- | --- |
-| Cosmetic variants hash equal at the semantic layer | `TestCosmeticVariantsAgreeAtLayer2`, `TestSupervisorReportAgrees`, `TestElasticFleetReportAgrees` — except explicit defaults, deliberately: F-2 |
+| Cosmetic variants hash equal at the semantic layer | `TestCosmeticVariantsAgreeAtLayer2`, `TestSupervisorReportAgrees`, `TestElasticFleetReportAgrees`, except explicit defaults, deliberately (F-2) |
 | Semantic changes flip the expected layer only | `TestSemanticChangesFlipLayer2AndLocalise` (layer 2 flips under every profile; layer 3 localises; layer 1 trivially differs) |
 | Written spike verdict | this document |
-| Human review recorded before delivery-status work (#21) | pending — merging this PR records the ruling |
+| Human review recorded before delivery-status work (#21) | pending: merging this PR records the ruling |
 
 Run: `go test ./...` in this directory (6 tests).

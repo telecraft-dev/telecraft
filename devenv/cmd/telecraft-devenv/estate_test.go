@@ -88,7 +88,7 @@ func TestDevenvEstateSelectorsMatchWhatTheCollectorsReport(t *testing.T) {
 
 	for _, tier := range in.tiers {
 		if !matched[tier] {
-			t.Errorf("Tier %s has no collector whose reported attributes satisfy its selector — it would sit at zero collectors forever", tier)
+			t.Errorf("Tier %s has no collector whose reported attributes satisfy its selector: it would sit at zero collectors forever", tier)
 		}
 	}
 	// The Unmatched artefact is a surface the devenv is meant to show
@@ -107,7 +107,7 @@ func TestDevenvEstateSelectorsMatchWhatTheCollectorsReport(t *testing.T) {
 // extension the collector reports through, so an authored one would be a
 // second connection reporting the same collector twice. A Tier with no
 // serving block has no Supervisor, so an authored one is the only way it
-// reports at all — and without it the Tier is invisible rather than
+// reports at all, and without it the Tier is invisible rather than
 // git-delivered.
 //
 // Whether this belongs in the renderer, in a Blueprint property, or in a
@@ -124,9 +124,9 @@ func TestOnlyTheGitDeliveredTiersAuthorAnOpAMPExtension(t *testing.T) {
 		attrs, reports := opampIdentity(t, artefactPath(root, tier.ID()))
 		switch {
 		case tier.Serving != nil && reports:
-			t.Errorf("served Tier %s authors an opamp extension — its Supervisor already owns that connection, so the collector would report itself twice", tier.ID())
+			t.Errorf("served Tier %s authors an opamp extension: its Supervisor already owns that connection, so the collector would report itself twice", tier.ID())
 		case tier.Serving == nil && !reports:
-			t.Errorf("Tier %s declares no serving and authors no opamp extension, so nothing it runs would ever report — it would be an invisible Tier, not a git-delivered one (REQ-041)", tier.ID())
+			t.Errorf("Tier %s declares no serving and authors no opamp extension, so nothing it runs would ever report: it would be an invisible Tier, not a git-delivered one", tier.ID())
 		case tier.Serving == nil && len(attrs) == 0:
 			t.Errorf("git-delivered Tier %s reports through an opamp extension that carries no identifying attributes, so it could satisfy no selector", tier.ID())
 		}
@@ -181,7 +181,7 @@ func opampIdentity(t *testing.T, path string) (map[string]string, bool) {
 	t.Helper()
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("%s: %v — every Tier renders a collector artefact", path, err)
+		t.Fatalf("%s: %v: every Tier renders a collector artefact", path, err)
 	}
 	var file struct {
 		Extensions map[string]struct {

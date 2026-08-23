@@ -16,7 +16,7 @@ import (
 
 // Handler serves the auth slice of the documented platform API
 // (console/README.md): how sign-in works on this instance, the sign-in
-// round trips themselves, and /api/v1/me — the signed-in actor as the
+// round trips themselves, and /api/v1/me, the signed-in actor as the
 // console consumes it. Require is the gate the rest of the API mounts
 // behind.
 type Handler struct {
@@ -34,14 +34,14 @@ type HandlerConfig struct {
 	// Each must satisfy PasswordProvider or RedirectProvider.
 	Providers []Provider
 
-	// Secure marks the cookies Secure — the behind-TLS deployment shape.
+	// Secure marks the cookies Secure, the behind-TLS deployment shape.
 	Secure bool
 }
 
 // NewHandler validates the wiring and builds the routes.
 func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	if len(cfg.Providers) == 0 {
-		return nil, fmt.Errorf("an instance with no authentication provider signs nobody in (REQ-017)")
+		return nil, fmt.Errorf("no authentication provider is configured, so nobody could sign in")
 	}
 	seen := map[string]bool{}
 	for _, p := range cfg.Providers {
@@ -52,7 +52,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		switch p.(type) {
 		case PasswordProvider, RedirectProvider:
 		default:
-			return nil, fmt.Errorf("provider %q satisfies neither flow facet", p.Name())
+			return nil, fmt.Errorf("provider %q is neither a password provider nor a redirect provider", p.Name())
 		}
 	}
 
@@ -83,7 +83,7 @@ func ActorFrom(ctx context.Context) (Actor, bool) {
 }
 
 // Require gates next behind a signed-in, resolved actor: a missing or bad
-// session is 401; a session the estate no longer knows is 401 too —
+// session is 401; a session the estate no longer knows is 401 too, because
 // removal from users.yaml revokes at the next request. The resolved actor
 // rides the context.
 func (h *Handler) Require(next http.Handler) http.Handler {
@@ -154,7 +154,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	actor, err := Resolve(id, h.cfg.Users, h.cfg.Tree)
 	if err != nil {
 		// Authenticated but unknown to the estate: indistinguishable from
-		// bad credentials on purpose — which emails exist is not an
+		// bad credentials on purpose: which emails exist is not an
 		// unauthenticated caller's to enumerate.
 		writeError(w, http.StatusUnauthorized, ErrBadCredentials.Error())
 		return
@@ -212,7 +212,7 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The round trip's anchor: state, verifier and return path, signed, in
-	// a short-lived cookie — nothing stored server-side (ADR-0013 posture).
+	// a short-lived cookie, nothing stored server-side (ADR-0013 posture).
 	// HttpOnly is what keeps the verifier a secret the browser carries but
 	// no script in it can read.
 	blob := stateCookieBlob(state, verifier, returnTo)
@@ -252,9 +252,9 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	actor, err := Resolve(id, h.cfg.Users, h.cfg.Tree)
 	if err != nil {
 		// The provider vouched for them but the estate has no place for
-		// them: name the fix — this is an operator conversation, not a
+		// them: name the fix. This is an operator conversation, not a
 		// guessing game (the identity is verified, unlike login's).
-		writeError(w, http.StatusForbidden, fmt.Sprintf("%s authenticated %q, but no user in %s carries that email — ask an estate owner to add one", provider.Name(), id.Email, UsersFile))
+		writeError(w, http.StatusForbidden, fmt.Sprintf("%s signed in %q, but %s has no user with that email. Ask an estate owner to add one", provider.Name(), id.Email, UsersFile))
 		return
 	}
 	if err := h.setSession(w, actor.Identity); err != nil {
@@ -270,7 +270,7 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 }
 
 // mePayload is GET /api/v1/me: the signed-in actor plus the teams their
-// authoring actions cover — the console offers actions exactly on objects
+// authoring actions cover. The console offers actions exactly on objects
 // owned inside editableTeams (ADR-0019 §2 derived from ADR-0016/0017).
 type mePayload struct {
 	ID            string   `json:"id"`
@@ -298,7 +298,7 @@ func (h *Handler) mePayload(actor Actor) mePayload {
 	teams, err := actor.ActionableTeams(h.cfg.Tree)
 	if err != nil {
 		// Resolve vouched for the team; an error here means the tree
-		// changed under us — offer nothing rather than guess.
+		// changed under us, so offer nothing rather than guess.
 		return payload
 	}
 	for _, t := range teams {

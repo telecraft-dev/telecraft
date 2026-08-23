@@ -63,7 +63,7 @@ func TestRenderMatchesGoldenArtefacts(t *testing.T) {
 	}
 	for rel, got := range res.Artefacts {
 		if !bytes.Equal(got, want[rel]) {
-			t.Errorf("artefact %s differs from golden — identical inputs must produce byte-identical artefacts", rel)
+			t.Errorf("artefact %s differs from golden: identical inputs must produce byte-identical artefacts", rel)
 		}
 	}
 }
@@ -116,7 +116,7 @@ func TestOpampExtensionRendersNamespacedNeverBare(t *testing.T) {
 		t.Fatal("gateway artefact has no extensions section")
 	}
 	if _, bare := extensions["opamp"]; bare {
-		t.Error("a bare opamp extension rendered — it silently overrides the Supervisor's injected endpoint (ADR-0010)")
+		t.Error("a bare opamp extension rendered: it silently overrides the Supervisor's injected endpoint") // ADR-0010
 	}
 	if _, ok := extensions["opamp/reporting"]; !ok {
 		t.Error("the authored opamp-type extension did not render as opamp/reporting")
@@ -133,13 +133,13 @@ func TestOpampExtensionRendersNamespacedNeverBare(t *testing.T) {
 		}
 	}
 	if !namespaced {
-		t.Errorf("service.extensions = %v — the opamp extension must be wired under its namespaced id", wired)
+		t.Errorf("service.extensions = %v: the opamp extension must be wired under its namespaced id", wired)
 	}
 }
 
 // Hard rule 2 (REQ-034, ADR-0010): the node-unique identifying attribute
-// arrives via Downward API env indirection — one DaemonSet manifest, per-node
-// identity — and the commit stamp makes the artefact carry its own identity
+// arrives via Downward API env indirection (one DaemonSet manifest, per-node
+// identity), and the commit stamp makes the artefact carry its own identity
 // (ADR-0013).
 func TestIdentityStamps(t *testing.T) {
 	doc, _ := gatewayArtefact(t)
@@ -174,7 +174,7 @@ func TestUntrustedHopStripGeneratedAutomatically(t *testing.T) {
 	for signal, p := range pipelines {
 		chain := p.(map[string]any)["processors"].([]any)
 		if len(chain) == 0 || chain[0] != StripProcessorID {
-			t.Errorf("%s pipeline processors = %v — the strip runs first, before anything observes inbound data", signal, chain)
+			t.Errorf("%s pipeline processors = %v: the strip runs first, before anything observes inbound data", signal, chain)
 		}
 	}
 
@@ -189,7 +189,7 @@ func TestUntrustedHopStripGeneratedAutomatically(t *testing.T) {
 }
 
 // The one policy hard block (ADR-0022 §3): a Blueprint using a catalogue
-// type outside the owning team's effective palette refuses the render — the
+// type outside the owning team's effective palette refuses the render: the
 // artefact tree cannot be produced, which is what makes the PR unmergeable
 // (ADR-0028 §3).
 func TestPaletteViolationRefusesRender(t *testing.T) {
@@ -224,9 +224,9 @@ allow_lists:
 
 	_, err := Render(estateInputs(t, root))
 	if err == nil {
-		t.Fatal("a palette violation rendered — the allow-list check is the one rule that hard-blocks at render (ADR-0022 §3)")
+		t.Fatal("a palette violation rendered, but the allow-list check is the one rule that hard-blocks at render") // ADR-0022 §3
 	}
-	for _, want := range []string{"exporter/kafka", "effective palette", "Grant"} {
+	for _, want := range []string{"exporter/kafka", "Allow-list", "Grant"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("refusal does not mention %q:\n%v", want, err)
 		}
@@ -235,15 +235,15 @@ allow_lists:
 
 // A floor breach is a violation-grade finding routed onward, never a block
 // (ADR-0022 §4, ADR-0023 §5): the artefact still renders, and the sibling
-// staging Tier — same Blueprint, non-production Environment — is judged
+// staging Tier (same Blueprint, non-production Environment) is judged
 // with no floor at all.
 func TestFloorBreachIsAFindingNeverABlock(t *testing.T) {
 	res, err := Render(fixtureInputs(t))
 	if err != nil {
-		t.Fatalf("a floor breach must never refuse the render (ADR-0023 §5): %v", err)
+		t.Fatalf("a floor breach must never refuse the render: %v", err) // ADR-0023 §5
 	}
 	if _, ok := res.Artefacts["rendered/data-flow/gateway.yaml"]; !ok {
-		t.Fatal("the breaching Tier's artefact was withheld — a breach is a finding, not a block")
+		t.Fatal("the breaching Tier's artefact was withheld, but a breach is a finding, not a block")
 	}
 
 	var gateway, staging []Finding
@@ -271,7 +271,7 @@ func TestFloorBreachIsAFindingNeverABlock(t *testing.T) {
 		}
 	}
 	if len(staging) != 0 {
-		t.Errorf("staging floor findings = %v — non-production carries no floor (ADR-0023 §3)", staging)
+		t.Errorf("staging floor findings = %v: non-production carries no floor", staging) // ADR-0023 §3
 	}
 }
 
@@ -291,12 +291,12 @@ func TestSiblingTiersRenderDistinctArtefacts(t *testing.T) {
 		t.Fatal("no staging gateway artefact")
 	}
 	if bytes.Equal(prod, staging) {
-		t.Error("sibling Tiers rendered byte-identical artefacts — each carries its own Tier identity")
+		t.Error("sibling Tiers rendered byte-identical artefacts, but each carries its own Tier identity")
 	}
 }
 
 // REQ-032: exactly one collector artefact per Tier, plus the supervisor
-// config where the Tier is served — and only there.
+// config where the Tier is served, and only there.
 func TestSupervisorRendersOnlyWhereServed(t *testing.T) {
 	res, err := Render(fixtureInputs(t))
 	if err != nil {
@@ -304,7 +304,7 @@ func TestSupervisorRendersOnlyWhereServed(t *testing.T) {
 	}
 	raw, ok := res.Artefacts["rendered/data-flow/gateway.supervisor.yaml"]
 	if !ok {
-		t.Fatal("the served gateway Tier renders no supervisor.yaml (REQ-032)")
+		t.Fatal("the served gateway Tier renders no supervisor.yaml") // REQ-032
 	}
 	var doc map[string]any
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
@@ -316,20 +316,20 @@ func TestSupervisorRendersOnlyWhereServed(t *testing.T) {
 	}
 	capabilities, _ := doc["capabilities"].(map[string]any)
 	if capabilities["accepts_remote_config"] != true {
-		t.Error("accepts_remote_config is not enabled — it is off upstream by default (ADR-0010)")
+		t.Error("accepts_remote_config is not enabled, and it is off upstream by default") // ADR-0010
 	}
 	agent, _ := doc["agent"].(map[string]any)
 	if agent["automatic_config_rollback"] != true {
-		t.Error("automatic_config_rollback is not enabled — revert-on-failure is off upstream (ADR-0010)")
+		t.Error("automatic_config_rollback is not enabled, and revert-on-failure is off upstream") // ADR-0010
 	}
 	storage, _ := doc["storage"].(map[string]any)
 	if storage["directory"] != SupervisorStorageDir {
-		t.Errorf("supervisor storage.directory = %v, want the durable path (ADR-0010)", storage["directory"])
+		t.Errorf("supervisor storage.directory = %v, want the durable path", storage["directory"]) // ADR-0010
 	}
 
 	for rel := range res.Artefacts {
 		if strings.HasSuffix(rel, ".supervisor.yaml") && rel != "rendered/data-flow/gateway.supervisor.yaml" {
-			t.Errorf("unexpected supervisor artefact %s — only served Tiers get one", rel)
+			t.Errorf("unexpected supervisor artefact %s: only served Tiers get one", rel)
 		}
 	}
 }
@@ -376,7 +376,7 @@ owner: pipelines-lead
 
 	_, err := Render(estateInputs(t, root))
 	if err == nil || !strings.Contains(err.Error(), "collision") {
-		t.Fatalf("a rendered-id collision did not refuse the render (ADR-0024 §5): %v", err)
+		t.Fatalf("a rendered-id collision did not refuse the render: %v", err) // ADR-0024 §5
 	}
 }
 
@@ -414,8 +414,8 @@ pipelines:
 	}
 }
 
-// A Tier binding pinned off the Blueprint's head renders head — the only
-// content this tree holds — and surfaces the stale pin as a finding, never
+// A Tier binding pinned off the Blueprint's head renders head (the only
+// content this tree holds) and surfaces the stale pin as a finding, never
 // a silent substitution and never a block (ADR-0026).
 func TestBindingOffHeadIsAFinding(t *testing.T) {
 	root := scratchEstate(t, `
@@ -458,7 +458,7 @@ blueprint: pipelines/flow@1
 		}
 	}
 	if !found {
-		t.Error("no binding finding for a Tier pinned off head (ADR-0026)")
+		t.Error("no binding finding for a Tier pinned off head") // ADR-0026
 	}
 }
 
@@ -494,7 +494,7 @@ blueprint: pipelines/retired@1
 	}
 }
 
-// A lane that compiles to a pipeline no collector accepts refuses —
+// A lane that compiles to a pipeline no collector accepts refuses:
 // mechanical validity, not policy (ADR-0024 §7).
 func TestReceiverlessLaneRefuses(t *testing.T) {
 	root := scratchEstate(t, `
@@ -522,8 +522,8 @@ pipelines:
 	}
 }
 
-// Intended projects lanes through the same compilation the render uses —
-// rendered ids, connector sides, empty lanes absent — so a judgement of
+// Intended projects lanes through the same compilation the render uses
+// (rendered ids, connector sides, empty lanes absent), so a judgement of
 // intent (ADR-0004, internal/drift) can never disagree with what renders.
 func TestIntendedProjectsLanesInRenderedIDs(t *testing.T) {
 	in := fixtureInputs(t)
@@ -538,7 +538,7 @@ func TestIntendedProjectsLanesInRenderedIDs(t *testing.T) {
 		byName[p.Name] = p
 	}
 	if _, ok := byName["profiles"]; ok || len(pipes) != 3 {
-		t.Fatalf("pipelines = %v, want traces, metrics and logs only — an unauthored lane wires nothing", pipes)
+		t.Fatalf("pipelines = %v, want traces, metrics and logs only: an unauthored lane wires nothing", pipes)
 	}
 
 	traces := byName["traces"]
@@ -561,7 +561,7 @@ func TestIntendedProjectsLanesInRenderedIDs(t *testing.T) {
 
 // The Unmatched artefact (ADR-0030): rendered unconditionally at its
 // distinguished path, commit-stamped, labelled governed-by-nobody,
-// self-telemetry only — no data pipelines, no receivers, no exporters —
+// self-telemetry only (no data pipelines, no receivers, no exporters),
 // and non-empty by construction (ADR-0010 rule 6).
 func TestUnmatchedArtefactRendersUnconditionally(t *testing.T) {
 	res, err := Render(fixtureInputs(t))
@@ -570,10 +570,10 @@ func TestUnmatchedArtefactRendersUnconditionally(t *testing.T) {
 	}
 	raw, ok := res.Artefacts[UnmatchedArtefactPath]
 	if !ok {
-		t.Fatalf("no %s artefact — the renderer emits it unconditionally (ADR-0030)", UnmatchedArtefactPath)
+		t.Fatalf("no %s artefact: the renderer emits it unconditionally", UnmatchedArtefactPath) // ADR-0030
 	}
 	if len(raw) == 0 {
-		t.Fatal("the Unmatched artefact is empty — it exists to be the non-empty thing the server serves (ADR-0010 rule 6)")
+		t.Fatal("the Unmatched artefact is empty, but it exists to be the non-empty thing the server serves") // ADR-0010 rule 6
 	}
 
 	var doc map[string]any
@@ -582,7 +582,7 @@ func TestUnmatchedArtefactRendersUnconditionally(t *testing.T) {
 	}
 	for _, section := range []string{"receivers", "processors", "exporters", "connectors"} {
 		if _, has := doc[section]; has {
-			t.Errorf("the Unmatched artefact has a %s section — self-telemetry only, no data pipelines (ADR-0030)", section)
+			t.Errorf("the Unmatched artefact has a %s section, but it is self-telemetry only, no data pipelines", section) // ADR-0030
 		}
 	}
 	service, ok := doc["service"].(map[string]any)
@@ -590,14 +590,14 @@ func TestUnmatchedArtefactRendersUnconditionally(t *testing.T) {
 		t.Fatal("the Unmatched artefact has no service section")
 	}
 	if _, has := service["pipelines"]; has {
-		t.Error("the Unmatched artefact wires pipelines — no data pipelines (ADR-0030)")
+		t.Error("the Unmatched artefact wires pipelines, but it has no data pipelines") // ADR-0030
 	}
 	telemetry, _ := service["telemetry"].(map[string]any)
 	resource, _ := telemetry["resource"].(map[string]any)
 	if resource[CommitAttribute] != fixtureCommit {
-		t.Errorf("commit stamp = %v, want %v — the artefact carries its own identity (ADR-0013)", resource[CommitAttribute], fixtureCommit)
+		t.Errorf("commit stamp = %v, want %v: the artefact carries its own identity", resource[CommitAttribute], fixtureCommit) // ADR-0013
 	}
 	if resource[UnmatchedAttribute] != true {
-		t.Errorf("%s = %v — the unmatched collector is labelled governed-by-nobody (ADR-0030)", UnmatchedAttribute, resource[UnmatchedAttribute])
+		t.Errorf("%s = %v: the unmatched collector is labelled governed-by-nobody", UnmatchedAttribute, resource[UnmatchedAttribute]) // ADR-0030
 	}
 }

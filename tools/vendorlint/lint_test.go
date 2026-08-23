@@ -6,7 +6,7 @@ import (
 )
 
 // TestSeededViolations runs the linter over the fixture tree and asserts the
-// exact finding set: the ADR-0001 acceptance case — a vendor word seeded in a
+// exact finding set: the ADR-0001 acceptance case, a vendor word seeded in a
 // core path fails, and only the seeded lines fail.
 func TestSeededViolations(t *testing.T) {
 	result, err := Run("testdata/repo", "vendorlint.yaml")

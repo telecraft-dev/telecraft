@@ -6,13 +6,14 @@ order: 4
 
 # Author and render
 
-Authoring is the rung where collector configuration stops being copied between
-teams. You compose Blueprints from owned, versioned Components, bind one to a
-Tier, and render plain otelcol YAML into git. Nothing in your delivery path
-changes: the rendered artefacts are ordinary files, and how they reach
+Authoring is the rung where teams stop copying collector configuration from
+each other. You compose Blueprints from owned, versioned Components, bind one
+to a Tier, and render plain otelcol YAML into git. Nothing in your delivery
+path changes: the rendered artefacts are ordinary files, and how they reach
 collectors is a separate decision.
 
-This guide edits a copy of the demo estate. Make one so you can throw it away:
+This guide edits a copy of the demo estate. Make one, so you can throw it
+away:
 
 ```sh
 cp -R ../estate-demo ../my-estate
@@ -21,8 +22,8 @@ rm -rf ../my-estate/.git
 
 ## The estate layout
 
-The layout is the id convention: a file's place derives its name, and one file
-holds one authored object.
+The layout is the id convention: a file's place gives it its name, and one
+file holds one authored object.
 
 ```
 teams.yaml                     the team tree
@@ -43,10 +44,11 @@ CODEOWNERS                     generated from the team tree
 
 ## Check what a team may use
 
-A Blueprint may only reference Components whose Catalogue entry is inside the
-authoring team's effective palette: the Catalogue intersected with every
-Allow-list from the root of the team tree down, plus any Grant an ancestor
-authored. `telecraft palette` prints it, with the provenance of every entry.
+A Blueprint can only reference Components whose Catalogue entry is inside the
+authoring team's effective palette. That palette is the Catalogue, narrowed by
+every Allow-list from the root of the team tree down, plus any Grant an
+ancestor authored. `telecraft palette` prints it, with the provenance of every
+entry.
 
 ```sh
 ./telecraft palette \
@@ -69,8 +71,8 @@ processor/memory_limiter  allow-list
 receiver/otlp             allow-list
 ```
 
-Narrowing runs down the tree only. Widening happens through a Grant, and the
-palette says which one admitted an entry and who authored it:
+Narrowing only runs down the tree. Widening happens through a Grant, and the
+palette says which Grant admitted an entry and who authored it:
 
 ```sh
 ./telecraft palette -team data-flow -estate ../my-estate \
@@ -99,9 +101,9 @@ sees the whole Catalogue, marked `default-allow`.
 
 ## Author a Blueprint
 
-A Blueprint is a named, integer-versioned composition of Components,
-serialised as per-signal lanes plus collector-wide extensions. Lane order is
-pipeline order: there is no separate phase concept.
+A Blueprint is a named, integer-versioned composition of Components, written
+as per-signal lanes plus collector-wide extensions. Lane order is pipeline
+order: there is no separate phase concept.
 
 Write `../my-estate/teams/storefront/blueprints/web-edge.yaml`:
 
@@ -151,12 +153,12 @@ extensions:
   - component: health
 ```
 
-Two kinds of Component appear here. `otlp-in`, `guard`, `batcher` and `health`
-are local: declared inline, owned by this Blueprint's owner, not referenceable
-from anywhere else. `data-flow/gateway-exporter@3` is shared: it lives in
-another team's `components/` directory and is inherited by reference, never by
-copy. The `@3` pins a version, which is the default; a reference that tracks
-head is opt-in.
+Two kinds of Component appear here. `otlp-in`, `guard`, `batcher`, and
+`health` are local: declared inline, owned by this Blueprint's owner, and not
+referenceable from anywhere else. `data-flow/gateway-exporter@3` is shared: it
+lives in another team's `components/` directory, and the Blueprint references
+it rather than copying it. The `@3` pins a version, which is the default; a
+reference that tracks head is opt-in.
 
 `satisfies` is a claim of intent, never of fact. It says which Requirement
 versions this Blueprint means to meet, and the evaluators judge whether it
@@ -184,16 +186,18 @@ hops:
 
 The parts that matter:
 
-- `selector` matches collectors into the Tier. Collectors are never authored:
-  one connects, reports its identifying attributes, and is matched into the
-  Tier whose selector its attributes satisfy. Semantics are equality over
-  every authored pair, and the most specific satisfied selector wins.
+- `selector` matches collectors into the Tier. You never author a collector:
+  one connects, reports its identifying attributes, and Telecraft matches it
+  into the Tier whose selector its attributes satisfy. Matching is equality
+  over every authored pair, and the most specific satisfied selector wins.
 - `min_expected` is the population floor: at least this many collectors should
-  match. It is a floor, never an equality, so surplus is never a finding.
-- `hops` are the arrivals into this Tier. Trust is a property of the Hop, not
-  the Tier, and an undeclared trust level fails safe.
+  match. It is a floor, never an equality, so a surplus is never a finding.
+- `hops` are the arrivals into this Tier. Trust belongs to the Hop, not the
+  Tier, and an undeclared trust level fails safe.
 
 ## Render
+
+To render every Tier in the estate, run:
 
 ```sh
 ./telecraft render \
@@ -230,7 +234,7 @@ wrote /tmp/rendered/rendered/storefront/web-edge.yaml
 The rendered artefact is plain otelcol YAML:
 
 ```yaml
-# Generated by the telecraft renderer — humans never commit here (ADR-0027, ADR-0028).
+# Generated by the telecraft renderer. Do not edit by hand: change the source in git and render again.
 # Tier storefront/web-edge (production), Blueprint storefront/web-edge@1, commit 0000000000000000000000000000000000000000.
 receivers:
   otlp/otlp-in:
@@ -238,9 +242,9 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 processors:
-  # Generated: data crossing an untrusted Hop sheds the platform's
-  # attribute namespace; identity is re-derived from this Tier's own
-  # stamps, never from inbound data (REQ-034, ADR-0007, ADR-0013).
+  # Generated: this Tier receives data over an untrusted Hop, so this
+  # processor drops every telecraft.* attribute on arrival. Identity
+  # comes from this Tier's own stamps, never from inbound data.
   attributes/telecraft.untrusted-hop:
     actions:
       - action: delete
@@ -298,8 +302,8 @@ block are cut here for length. Three things in that output are not in your
 Blueprint:
 
 1. The `attributes/telecraft.untrusted-hop` processor. The Tier declares an
-   arrival from `internet` with no trust level, so inbound data sheds the
-   platform's attribute namespace before anything downstream reads it.
+   arrival from `internet` with no trust level, so inbound data sheds
+   Telecraft's attribute namespace before anything downstream reads it.
 2. The commit stamp and the Tier id under `service.telemetry.resource`. The
    artefact carries its own identity, which is how a reading later joins back
    to the artefact that produced it.
@@ -318,29 +322,29 @@ CODEOWNERS                              projected from the team tree
 ```
 
 The new `storefront/web-edge` Tier declares no `serving:` block, so no
-supervisor artefact renders beside it. That Tier is git-delivered, and
+supervisor artefact renders beside it. That Tier is git-delivered;
 [serve configurations](serve-configs.md) covers the other choice.
 
-`CODEOWNERS` is a projection of the team tree, never a source. Humans edit
-`teams.yaml` and object `owner` fields:
+`CODEOWNERS` is a projection of the team tree, never a source. You edit
+`teams.yaml` and the `owner` field on each object:
 
 ```
 /teams/storefront/ @storefront-team @product-platform @engineering-lead
 /rendered/storefront/ @storefront-team @product-platform @engineering-lead
 ```
 
-That projection is what makes an Exemption impossible to grant yourself: the
+That projection is what stops anyone granting themselves an Exemption: the
 waived Requirement's owner is a required reviewer on the file that waives it.
 
 ## What the renderer refuses
 
 The Allow-list is the only rule that hard-blocks, and it blocks at render.
 Add a Kafka receiver to the Storefront Blueprint, which Storefront's list does
-not carry:
+not include:
 
 ```
 render: render refused:
-  - tier "storefront/web-edge": Component bus-in uses receiver/kafka, outside team "storefront"'s effective palette — the render refuses, and the escape hatch is a Grant, fast and auditable (ADR-0021, ADR-0022 §3)
+  - tier "storefront/web-edge": Component bus-in uses receiver/kafka, which team "storefront"'s Allow-list does not include. Ask for a Grant to add it.
 ```
 
 The command exits 1 and writes nothing. The fix is a Grant from an ancestor
@@ -350,18 +354,18 @@ team, which is one reviewable file.
 or the allow-list hard block), and 2 on a usage or load error.
 
 A stability-floor breach is a finding, not a block. The render completes and
-says so on stderr:
+reports it on stdout, after the `wrote` lines:
 
 ```
-finding floor tier=storefront/mobile-edge lane=metrics: routes metrics through debug-counters (processor/filter), which is alpha for metrics — below the beta floor for Service Class C2 in production, imposed by storefront/catalogue-web (ADR-0023, ADR-0025 §4)
+finding floor tier=storefront/mobile-edge lane=metrics: routes metrics through debug-counters (processor/filter), which is alpha for metrics, below the beta floor for Service Class C2 in production. The floor comes from storefront/catalogue-web.
 ```
 
 ## Keep `rendered/` honest
 
 Rendering is a deterministic function of the authored trees, so the committed
-`rendered/` tree must equal a fresh render of its sources. Check it in CI by
-recomputing at the commit the committed artefacts already stamp themselves
-with, and diffing:
+`rendered/` tree must equal a fresh render of its sources. Check that in CI:
+recompute at the commit the committed artefacts already stamp themselves
+with, then diff:
 
 ```sh
 stamped=$(grep -oE '[0-9a-f]{40}' rendered/_estate/unmatched.yaml | head -1)
@@ -374,10 +378,10 @@ diff -r "$RUNNER_TEMP/recompute/rendered" rendered
 diff "$RUNNER_TEMP/recompute/CODEOWNERS" CODEOWNERS
 ```
 
-The indirection is forced: every artefact carries the SHA that rendered it,
-and no commit can carry its own. Recomputing at the stamp the tree already
-claims is the exact invariant. Anything else changing means the sources moved
-and the tree did not.
+The indirection is necessary: every artefact carries the SHA that rendered
+it, and no commit can carry its own. Recomputing at the stamp the tree already
+claims checks the exact invariant. Any difference means the sources moved and
+the tree did not.
 
 ## What next
 

@@ -84,7 +84,7 @@ anything else.
     no artefact was available to read the lanes off. It is what the config
     in git wires, not what the meter saw.
   - **A `not_applicable` row carries no readings at all.** Its counters
-    would all read `in 0 / out 0`, truthfully — but that is also exactly
+    would all read `in 0 / out 0`, truthfully, but that is also exactly
     how a pipeline that has broken reads, and the two mean opposite
     things. A row with no lane behind it carries no numbers, so there is
     no zero for a reader to mistake for a fault.
@@ -216,14 +216,14 @@ Four rules are what a reviewer should hold a Tour to:
   test; an anchor is content a reader is shown.
 - **A missing anchor degrades, never breaks.** An unknown Tour id, a step
   index past the end, an anchor no surface carries: the Step renders
-  centred and nothing throws. That is production behaviour, not a licence —
+  centred and nothing throws. That is production behaviour, not a licence:
   `e2e/tour.spec.ts` walks every Step of every registered Tour and fails on
   an anchor that resolves nowhere.
 
 A Tour teaches *this console*; the documentation teaches the product. A
 Step that starts explaining what an Expectation is has become documentation
-in the wrong repository, and the word budget — roughly sixty words to a
-Step — is the check.
+in the wrong repository, and the word budget (roughly sixty words to a
+Step) is the check.
 
 The welcome Tour opens itself once per reader, and only on a bare landing
 URL, because a shared link carries the sender's context. Its first Step is

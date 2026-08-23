@@ -67,7 +67,7 @@ func gatewayHealth() *protobufs.ComponentHealth {
 	}
 }
 
-// wantHealth is gatewayHealth converted — the same tree, same recursion.
+// wantHealth is gatewayHealth converted: the same tree, same recursion.
 func wantHealth() *seam.ComponentHealth {
 	return &seam.ComponentHealth{
 		Healthy: true,
@@ -148,7 +148,7 @@ func TestRecordDiesWithTheConnection(t *testing.T) {
 }
 
 // OpAMP compression: a message that carries nothing new re-affirms every
-// held reading — the whole record's as_of advances, so a live, quiet
+// held reading: the whole record's as_of advances, so a live, quiet
 // collector never drifts toward the staleness horizon.
 func TestQuietMessageReaffirmsAsOf(t *testing.T) {
 	p, clk := testProvider()
@@ -159,7 +159,7 @@ func TestQuietMessageReaffirmsAsOf(t *testing.T) {
 
 	c := p.Estate(context.Background()).Lookup(seeds[0].Identity)
 	if !c.Effective.AsOf.Equal(clk.at) {
-		t.Errorf("effective as_of = %v, want the heartbeat instant %v — absence on the wire means unchanged, and unchanged is re-affirmed", c.Effective.AsOf, clk.at)
+		t.Errorf("effective as_of = %v, want the heartbeat instant %v: absence on the wire means unchanged, and unchanged is re-affirmed", c.Effective.AsOf, clk.at)
 	}
 	if !c.Effective.Known || len(c.Effective.Pipelines) == 0 {
 		t.Error("the heartbeat erased the held effective reading")
@@ -167,7 +167,7 @@ func TestQuietMessageReaffirmsAsOf(t *testing.T) {
 }
 
 // An effective config that cannot be read becomes Known false with the
-// parse failure as the cause — never a guess, never a silent drop.
+// parse failure as the cause, never a guess, never a silent drop.
 func TestUnreadableEffectiveConfigIsUnknownWithCause(t *testing.T) {
 	p, _ := testProvider()
 	identity := map[string]string{"service.instance.id": "x"}
@@ -186,21 +186,21 @@ func TestUnreadableEffectiveConfigIsUnknownWithCause(t *testing.T) {
 
 // A connection that never identified itself is no collector reading:
 // nothing could match it, and the server has already asked it for full
-// state — it joins the estate when identity arrives.
+// state; it joins the estate when identity arrives.
 func TestUnidentifiedConnectionIsNotACollector(t *testing.T) {
 	p, _ := testProvider()
 	p.Report("conn-anon", nil, &protobufs.AgentToServer{
 		EffectiveConfig: effectiveConfig(gatewayConfig),
 	})
 	if got := len(p.Estate(context.Background()).Collectors); got != 0 {
-		t.Fatalf("estate holds %d collectors, want 0 — a reading nothing can match belongs to nobody", got)
+		t.Fatalf("estate holds %d collectors, want 0: a reading nothing can match belongs to nobody", got)
 	}
 
 	identity := map[string]string{"service.instance.id": "late"}
 	p.Report("conn-anon", identity, &protobufs.AgentToServer{})
 	c := p.Estate(context.Background()).Lookup(identity)
 	if !c.Effective.Known {
-		t.Error("the pre-identity effective report was lost — it was held on the connection and identity only names it")
+		t.Error("the pre-identity effective report was lost: it was held on the connection and identity only names it")
 	}
 }
 

@@ -9,7 +9,7 @@ import (
 
 // scratchRolloutBlueprint is the base Blueprint of the scratch rollout
 // estate; scratchRolloutCandidate is the sibling Blueprint a Rollout
-// stages the Tier onto — distinct content, so the dual artefacts differ.
+// stages the Tier onto, with distinct content, so the dual artefacts differ.
 const scratchRolloutBlueprint = `
 name: flow
 version: 1
@@ -95,12 +95,12 @@ func TestRolloutRendersDualArtefacts(t *testing.T) {
 	}
 	next, ok := res.Artefacts["rendered/pipelines/gateway@next.yaml"]
 	if !ok {
-		t.Fatal("no @next artefact rendered — a dual-bound Tier renders both artefacts at head (ADR-0029 §3)")
+		t.Fatal("no @next artefact rendered, but a dual-bound Tier renders both artefacts at head") // ADR-0029 §3
 	}
 	if bytes.Equal(base, next) {
-		t.Error("base and @next artefacts are identical — the rollout stages nothing")
+		t.Error("base and @next artefacts are identical, so the rollout stages nothing")
 	}
-	// The candidate's processor renders as batch/batch — a discriminator
+	// The candidate's processor renders as batch/batch, a discriminator
 	// the base cannot carry (the self-telemetry emission uses a bare batch
 	// processor in every artefact, so the bare word discriminates nothing).
 	if !strings.Contains(string(next), "batch/batch") || strings.Contains(string(base), "batch/batch") {
@@ -108,7 +108,7 @@ func TestRolloutRendersDualArtefacts(t *testing.T) {
 	}
 	for name, artefact := range map[string][]byte{"base": base, "@next": next} {
 		if !strings.Contains(string(artefact), fixtureCommit) {
-			t.Errorf("the %s artefact carries no commit stamp — both artefacts carry their own identity (ADR-0013)", name)
+			t.Errorf("the %s artefact carries no commit stamp, but both artefacts carry their own identity", name) // ADR-0013
 		}
 	}
 
@@ -117,7 +117,7 @@ func TestRolloutRendersDualArtefacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(next, again.Artefacts["rendered/pipelines/gateway@next.yaml"]) {
-		t.Error("the @next artefact is not deterministic — identical inputs must produce byte-identical artefacts (ADR-0028 §2)")
+		t.Error("the @next artefact is not deterministic: identical inputs must produce byte-identical artefacts") // ADR-0028 §2
 	}
 }
 
@@ -162,7 +162,7 @@ func TestRolloutLoads(t *testing.T) {
 	}
 }
 
-// Everything that invalidates a Rollout fails the load — a rollout the
+// Everything that invalidates a Rollout fails the load: a rollout the
 // render half-honoured would serve a population nobody reviewed.
 func TestRolloutValidationFailsClosed(t *testing.T) {
 	cases := []struct {
@@ -201,7 +201,7 @@ owner: pipelines-lead
 environment: production
 blueprint: pipelines/flow@2
 `,
-			want: "the Rollout file is the only door",
+			want: "the Rollout file is the only way to rebind",
 		},
 		{
 			name: "same blueprint on both sides",
@@ -293,7 +293,7 @@ stages:
 			root := scratchEstate(t, scratchRolloutBlueprint, tier, extra)
 			_, err := LoadTopology(root)
 			if err == nil {
-				t.Fatal("load succeeded — the problem must fail the load")
+				t.Fatal("load succeeded, but the problem must fail the load")
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error does not name the problem %q:\n%v", tc.want, err)

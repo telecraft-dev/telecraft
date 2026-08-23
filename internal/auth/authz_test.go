@@ -35,7 +35,7 @@ func TestResolveKeepsTheProviderNameClaim(t *testing.T) {
 		t.Fatal(err)
 	}
 	if actor.Identity.Name != "Josephine Author" {
-		t.Fatalf("the provider's name claim authors the change (ADR-0019 §3), got %q", actor.Identity.Name)
+		t.Fatalf("the provider's name claim authors the change, got %q", actor.Identity.Name)
 	}
 }
 
@@ -43,12 +43,12 @@ func TestResolveRefusesAnIdentityTheEstateDoesNotKnow(t *testing.T) {
 	users := writeUsers(t, goodUsers)
 	_, err := Resolve(Identity{Subject: "s", Email: "stranger@example.com"}, users, testTree())
 	if err == nil || !strings.Contains(err.Error(), UsersFile) {
-		t.Fatalf("Resolve = %v — an unknown identity fails closed, naming the seam", err)
+		t.Fatalf("Resolve = %v, want an unknown identity to fail closed, naming the seam", err)
 	}
 }
 
 // Acceptance: the acting user's team membership determines which actions
-// surfaces offer (issue #26) — edit authority is the actor's team subtree,
+// surfaces offer (issue #26): edit authority is the actor's team subtree,
 // never a sibling or ancestor (ADR-0016, ADR-0017; authority points down
 // the tree as in ADR-0021 and ADR-0037).
 func TestCanEditIsTheActorsTeamSubtree(t *testing.T) {

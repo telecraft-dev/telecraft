@@ -1,11 +1,11 @@
 // The zero-CDN check (ADR-0045 §5, REQ-006): no built artefact references
-// an external host — fonts, scripts, styles, everything is vendored. The
+// an external host: fonts, scripts, styles, everything is vendored. The
 // check lives beside the vendor-word lint in CI, not in a doc.
 //
 // Every text file in the bundle is scanned for absolute and
 // protocol-relative URLs. HTML, CSS, and SVG tolerate none that could be
 // fetched. JavaScript additionally tolerates the allowlisted never-fetched
-// string literals below — error-message documentation links; anything else
+// string literals below (error-message documentation links); anything else
 // fails the build.
 //
 // XML namespace identifiers are the one exception everywhere: `xmlns` is a
@@ -71,7 +71,7 @@ for await (const path of walk(dist)) {
 }
 
 if (scanned === 0) {
-  console.error(`zero-CDN check: no text files under ${dist} — was the console built?`)
+  console.error(`zero-CDN check: no text files under ${dist}. Was the console built?`)
   process.exit(2)
 }
 if (violations.length > 0) {

@@ -7,8 +7,8 @@ import (
 )
 
 // Config carries the vendor-neutral connection settings the core and cmd/
-// are allowed to hold. The ADR-0001 lint bars every vendor word — including
-// import paths and constructor names — from cmd/ and the neutral core, so
+// are allowed to hold. The ADR-0001 lint bars every vendor word (including
+// import paths and constructor names) from cmd/ and the neutral core, so
 // this package's neutral New is the only door through which a binary can
 // obtain a provider; which backend answers is wiring inside the provider
 // tree, never knowledge in the caller.
@@ -26,7 +26,7 @@ type Config struct {
 
 // New returns the first-party TelemetryProvider implementation,
 // Elasticsearch. When a second backend lands, Config grows a selector and
-// this becomes a dispatch — the callers do not change (ADR-0008: the seam
+// this becomes a dispatch; the callers do not change (ADR-0008: the seam
 // design is verified by a new implementation needing no core change).
 func New(cfg Config) (seam.Provider, error) {
 	return NewElasticsearch(ElasticsearchConfig{

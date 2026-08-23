@@ -1,113 +1,104 @@
 # Glossary
 
-The ubiquitous language. Binding on code, docs, and UI — these are not
-synonyms to be varied for readability. Vocabulary aligned to industry/upstream
-usage by ADR-0015; the visual companion is `docs/terminology.html`. Terms
-marked ⚠ are placeholders whose definitions will be pinned in the named grill
-session.
+This glossary defines the words Telecraft uses. The documentation, the
+console, and the CLI all use each term exactly as it is defined here, so
+when a word is capitalised in a page it means what this page says. The
+[terminology guide](terminology.html) is the visual companion: it shows where
+Telecraft's words meet OpenTelemetry's, and where the two collide.
 
-## Topology (ADR-0007, names per ADR-0015)
-
-| Term | Meaning |
-|---|---|
-| **Tier** | A position in the collection topology: edge, gateway, or any layer a design needs. An authored, ownable object carrying the policy for everything at that position. Declares exactly one Environment and binds exactly one Blueprint version; the rendering unit — one rendered artefact per Tier (ADR-0025). Matches industry usage ("gateway tier"). Never means criticality. |
-| **Hop** | The directed edge between two Tiers (or Tier → destination). First-class and ownable. Trust is a property of the Hop, not the Tier. |
-| **Path** | One Service's route through the Tier graph. A Service may have several; this is normal. A Path generates the delivery expectation. |
-| **Collector** | A running otelcol process. Derived and read-only: never drawn, never authored, never owned directly — matched into a Tier by selector, inheriting that Tier's policy and owner. Exceptions are expressed by splitting the Tier. |
-| **Estate** | The population of collectors, across all substrates. Deliberate deviation from industry "fleet" (ADR-0015): a bare "fleet" is permanently ambiguous beside the `ElasticFleet` integration. |
-| **Fleet** (capital F) | The Elastic product: Fleet Server plus its UI in Kibana. Never the estate. Appears only as the qualified implementation name `ElasticFleet`. |
-
-## Governance (ADR-0015, ADR-0016)
+## Topology
 
 | Term | Meaning |
 |---|---|
-| **Service** | The governed unit, identified by `service.name`. Assigned a Service Class; judged against its requirements. (Formerly "Application".) |
-| **Service Class** | How much a Service matters: C1 > C2 > C3, adopter-renamable values. Drives the required floor. Cumulative: C1 = C2 plus more. Never rendered as "Tier N". |
-| **Sensitivity** | The orthogonal axis: what the data is (PII, finance…). Drives routing and redaction, never completeness. Service Class ⊥ Sensitivity, never conflated. (Formerly "Classification".) |
-| **Requirement** | A versioned assertion (config and/or signal) with mandatory remediation text. A finding with no suggested fix is a complaint. |
-| **Component** | A configured instance of a catalogue type (receiver, processor, exporter, connector, extension): named, integer-versioned, ownable. Two residences (ADR-0024): **shared** — a standalone file, id `<team>/<name>` — or **local** — declared inline in a Blueprint, owned by its owner, not referenceable outside it. Consumers inherit shared Components by reference, never by copy; references pin a version by default, `track: head` is opt-in (ADR-0026). |
-| **Blueprint** | A named, integer-versioned composition of Components, serialised as per-signal lanes (upstream signal names, explicitly ordered) plus collector-wide extensions (ADR-0024). Bound by exactly one Tier per version binding. Carries the requirement ids it claims to satisfy, version-stamped; `satisfies` is a claim of intent, never of fact. No phase concept — ordering is lane order, advised by evaluator findings. |
-| **Owner** | The accountable party attached to every authored object (ADR-0016). The lowest unit of management; belongs to exactly one Team. |
-| **Team** | A group of Owners and/or child Teams, forming a strict tree (single parent). Compliance rolls up the subtree as ratio-plus-worst per finding kind, waivers always visible (ADR-0017). Supplied through a seam (`teams.yaml` first-party), never owned by the platform. |
-| **Catalogue** | The versioned inventory of otelcol component types — identity, per-signal stability, lifecycle — keyed `(class, type)`, one catalogue per collector release, machine-generated from upstream `metadata.yaml`. Installed catalogues are retained; a collector is judged against the catalogue for the version it runs. Adopter-authored entries layer on top. States what exists, never what may be used (that is the Allow-list). |
-| **Allow-list** | The subset of the Catalogue a Team may use, keyed `(class, type)`. Effective list = parent's effective list ∩ own, plus Grants; narrowing-only down the tree. Absent any list: the whole Catalogue. Authored in git. The only rule that hard-blocks (at render). |
-| **Grant** | An ancestor-authored, owned exception adding named Catalogue entries to a descendant Team's effective Allow-list. Applies to that subtree; narrowable below. Everything usable traces to the root list or a Grant. |
-| **Stability floor** | The minimum upstream stability a Service's components must meet, configured per (Service Class, Environment), evaluated per (component, signal actually used). Breach is a finding, never a block. |
-| **Palette** | What the composer offers a given user: Catalogue ∩ effective Allow-list, judged live by the shared evaluator. Allowed shown; floor-breaching greyed with the reason; non-allowed hidden. Pure presentation — enforces nothing. |
-| **Environment** | The test/staging/production dimension of a Service's deployment, aligned to `deployment.environment.name`. One Service, one owner, many Environments; per-Environment Blueprint bindings are realised through sibling Tiers, each Tier declaring one Environment (ADR-0025). Adopter-defined open vocabulary; `production` is the distinguished value policy defaults attach to. Never called "path" (a Path is topology). |
-| **Satellite repo** | An optional repo holding one Team subtree's authored content and rendered artefacts outside the primary estate repo (ADR-0027). The exception, not the path. Governance never moves: the team stays in the primary `teams.yaml`, the mapping is declared centrally, references run satellite→primary only. Verdicts are estate-public; content may be subtree-private. |
-| **Schema Registry** | The versioned Weaver custom registry the adopter maintains (importing OTel semconv, tightening levels, adding namespaced attributes) — imported and activated like the Catalogue, referenced by `schema_conformance` requirements, never copied into them (ADR-0034). Always written with the qualifier: bare "registry" is ambiguous beside `RegistryProvider`. |
-| **Placement** | Where a `schema_conformance` requirement is evaluated: `landed` (backend-side, through `TelemetryProvider`) or `live` (the tap's emitted findings). Same registry reference and outcome mapping either way (ADR-0034). |
-| **Live-check tap** | The rendered, opt-in governance pattern for collection-time schema checking: a teed, sampled branch off a gateway Tier to an adopter-deployed `weaver registry live-check` service, findings returning as ordinary log records. Never inline, never a platform runtime component (ADR-0034). |
-| **Exemption** | A waiver for one requirement with mandatory owner and expiry, scoped to one object or one Team subtree. Git-resident; valid only with the waived Requirement's owner's review (generated code-ownership — self-forgiveness impossible by construction, ADR-0037). Waives the count, never the diagnosis; renewal is a fresh PR; expired-but-present is an authoring finding. |
-| **Grace Period** | Service-Class-scoped onboarding window during which findings are waived. Shrinks as class rises. |
+| **Tier** | A position in your collection topology, such as edge or gateway. A Tier is an object you author and own, and it carries the policy for every collector at that position. Each Tier declares one Environment and binds one Blueprint version, and Telecraft renders one configuration artefact per Tier. A Tier is never a measure of how much something matters: that is Service Class. |
+| **Hop** | The directed link between two Tiers, or from a Tier to a destination. A Hop is an object you author and own. Trust belongs to the Hop, not to the Tiers at either end. |
+| **Path** | One Service's route through the Tiers to its backend. A Service can have several Paths, and that is normal. Telecraft derives the delivery Expectation for a Service from its Paths. |
+| **Collector** | A running OpenTelemetry Collector process (otelcol). You never author or draw a Collector: Telecraft matches each one into a Tier by selector, and it inherits that Tier's policy and Owner. If one collector needs different policy, split the Tier. |
+| **Estate** | Every collector Telecraft knows about, across all of your infrastructure. Telecraft says Estate rather than "fleet" so that the word never collides with the `ElasticFleet` integration. |
+| **Fleet** (capital F) | The Elastic product: Fleet Server and its UI in Kibana. It is never the Estate. In Telecraft it appears only as the qualified implementation name `ElasticFleet`. |
 
-## Readings and verdicts (ADR-0004, names per ADR-0015)
+## Governance
 
 | Term | Meaning |
 |---|---|
-| **Intended** | The config in git, pinned to a commit SHA. Hand-committed configs included. (This is what GitOps calls "declared" — we say Intended.) |
-| **Effective** | The collector's own reported running config — OpAMP's `EffectiveConfig`, adopted verbatim. Never what an applier holds. (Formerly "Declared".) |
-| **Observed** | Telemetry that landed in a backend over a window. |
-| **Known** | The per-reading flag keeping "we cannot see" distinct from "it is absent". Not knowing is a normal state. |
-| **Outcome** | One of: `compliant`, `not_configured`, `broken_pipeline`, `not_delivered`, `ungoverned`, `misconfigured`, `unknown`, plus `library_drift`. The cross is Effective × Observed, per requirement. |
-| **library_drift** | Passing the version you claim or pin while failing the current one — "the goalposts moved" (ADR-0026). One finding kind with a facet for what drifted: a Requirement (stale `satisfies`) or a Component (pin behind head). Distinct in diagnosis and remediation from "you never complied". |
-| **Delivery status** | OpAMP `RemoteConfigStatus`, verbatim: `UNSET` / `APPLYING` / `APPLIED` / `FAILED`. Intended × Effective, per collector, beside the conformance verdict. |
-| **Mutation profile** | The delivery-path-specific mutation allow-list the normaliser applies before the layer-2 digest (`exact`, `supervisor`, `elastic-fleet`). Part of digest identity — digests from different profiles are never comparable. Entries are shapes/patterns, never literals (ADR-0046). |
-| **Expectation** | A derived, never-authored, checkable claim about what should be observable, computed from the Intended config at a commit SHA: which signals should arrive (from Paths), carrying which attributes (from pipeline enrichment), producing which self-telemetry (from instantiated components). Keyed per (Service, Environment) for data claims, per Tier for pipeline claims. Expectation-red ("the config didn't work") is distinct from conformance-red ("the telemetry is wrong") and delivery-red ("the config never applied"); unavailable readings make an Expectation `unknown`, never failed. What a human demands is a Requirement; what the config implies is an Expectation — the population floor (substrate-sourced) and schema conformance (Registry-sourced) are neither. Engine mechanics per ADR-0038: an Expectation decomposes into Claims judged at the collector's stamped SHA, after a Settle window, persistence-dampened; failures land as existing outcomes (Requirement-backed) or `expectation`-kind findings (unbacked and pipeline) — never a new outcome, never a fourth reading. |
+| **Service** | The unit Telecraft governs, identified by its `service.name`. Every Service has a Service Class and is judged against its Requirements. |
+| **Service Class** | How much a Service matters: C1 matters most, then C2, then C3. You can rename the values. A higher class must meet everything a lower class must, plus more. Never write a Service Class as "Tier N": a Tier is a position in the topology. |
+| **Sensitivity** | What kind of data a Service's telemetry carries, such as personal data or financial data. Sensitivity decides routing and redaction. It is separate from Service Class, which decides how complete the telemetry must be. |
+| **Requirement** | A versioned rule a Service must meet, about its configuration or its telemetry. Every Requirement carries its own fix, so a finding always tells you what to do. |
+| **Component** | A configured, named, versioned instance of a Catalogue type (receiver, processor, exporter, connector, or extension), with an Owner. A shared Component is a standalone file with the id `<team>/<name>`, and Blueprints use it by reference, pinned to a version unless they opt into `track: head`. A local Component is declared inside one Blueprint and cannot be used outside it. |
+| **Blueprint** | A named, versioned composition of Components, written as one ordered lane per signal plus collector-wide extensions. A Tier binds exactly one Blueprint version. A Blueprint's `satisfies` list names the Requirements it intends to meet; Telecraft checks that claim rather than trusting it. |
+| **Owner** | The person or group accountable for an authored object. Every authored object has exactly one Owner, and every Owner belongs to exactly one Team. |
+| **Team** | A group of Owners and child Teams, arranged in a tree where each Team has one parent. Compliance rolls up the tree, so a parent Team sees the results of every Team beneath it, waivers included. You supply Teams from your own source, `teams.yaml` by default. |
+| **Catalogue** | The inventory of collector component types for one collector release, keyed by `(class, type)`: what exists, its stability per signal, and its lifecycle. Telecraft generates it from upstream `metadata.yaml`, keeps one per release, and judges each collector against the Catalogue for the version it runs. You can add entries of your own. The Catalogue says what exists; the Allow-list says what a Team may use. |
+| **Allow-list** | The part of the Catalogue a Team may use, keyed by `(class, type)`. A Team's effective Allow-list is its parent's list narrowed by its own, plus any Grants, so a child Team can narrow but never widen. With no Allow-list, the whole Catalogue is allowed. It is authored in git, and it is the only rule that blocks a render. |
+| **Grant** | An exception, authored and owned by an ancestor Team, that adds named Catalogue entries to a descendant Team's effective Allow-list. It applies to that Team's whole subtree, and Teams below can still narrow it. Everything a Team may use traces back to the root Allow-list or to a Grant. |
+| **Stability floor** | The minimum upstream stability a Service's Components must have, set per Service Class and Environment. Telecraft checks it per Component and per signal the Component handles. Falling below the floor raises a finding; it never blocks a render. |
+| **Palette** | What the composer offers you: the Catalogue entries your Team's Allow-list permits, judged live. Allowed entries show as normal, entries below the Stability floor are greyed with the reason, and entries outside the Allow-list are hidden. The Palette is presentation only; the render enforces the rules. |
+| **Environment** | The test, staging, or production dimension of a Service's deployment, matching `deployment.environment.name`. You define the values, and `production` is the one policy defaults attach to. Each Tier declares one Environment, so a Service in several Environments has sibling Tiers, one per Environment. An Environment is never called a "path": a Path is a route through the topology. |
+| **Satellite repo** | An optional repository that holds one Team subtree's authored content and rendered artefacts outside the main estate repository. Governance stays in the main repository: the Team is still listed in its `teams.yaml`, the mapping is declared centrally, and a satellite can reference the main repository but not the other way round. Verdicts are visible across the Estate even when the content is private to the subtree. |
+| **Schema Registry** | The versioned Weaver registry you maintain to say what your telemetry should look like: it imports the OpenTelemetry semantic conventions, tightens requirement levels, and adds your own namespaced attributes. You import and activate it like the Catalogue, and `schema_conformance` Requirements reference it. Always write the full name: "registry" on its own is ambiguous. |
+| **Placement** | Where a `schema_conformance` Requirement is checked. `landed` checks telemetry in the backend; `live` checks it at collection time through a Live-check tap. Both use the same Schema Registry reference and produce the same outcomes. |
+| **Live-check tap** | An optional, rendered pattern for checking schema conformance at collection time. A gateway Tier tees a sample of its traffic to a `weaver registry live-check` service you run, and the findings come back as ordinary log records. The tap is never inline in the data path, and Telecraft never runs it for you. |
+| **Exemption** | A waiver for one Requirement, scoped to one object or one Team subtree, with a named Owner and an expiry date. It lives in git and needs review from the waived Requirement's Owner, so nobody can exempt themselves. An Exemption waives the count, never the diagnosis: the finding still shows, it stops counting against you. Renewal is a fresh pull request, and an expired Exemption that is still present is itself a finding. |
+| **Grace Period** | An onboarding window, set per Service Class, during which a new Service's findings are waived. The higher the class, the shorter the window. |
 
-## Serving (ADR-0010, ADR-0013)
-
-| Term | Meaning |
-|---|---|
-| **Supervisor** | The upstream OpAMP Supervisor (`opampsupervisor`), mandatory beside every served collector. |
-| **Served** | A collector receiving config from the platform's OpAMP server. |
-| **Foreign** | A collector whose config is delivered by anything else (GitOps, config management, a person). Legitimate, not lesser. |
-| **Delivery path** | Served or git-delivered — a visible property of each collector. |
-| **Forge adapter** | The seam over the git host's API (change proposals, review routing, attribution). Implementations vendor-qualified — GitHub App first (ADR-0014/0028). The mandatory floor beneath it is plain git transport (deploy key / token); governance never depends on a forge feature. |
-
-## Delivery & rollout (ADR-0029–0032)
-
-| Term | Meaning |
-|---|---|
-| **Rollout** | An opt-in authored object, owned by the Tier's owner, staging one Tier's rebinding from one Blueprint version to another. While active the Tier is dual-bound (*from* and *to*) and `rendered/` holds both artefacts at head. Stages advance by platform-proposed, human-merged PRs; halting is the withheld proposal; abort is a proposed PR. One active Rollout per Tier. The default remains the flat rebind — a Rollout is never mandatory ceremony. |
-| **Cohort** | The subset of one Tier's collector population a Rollout stage applies to — never a Tier itself. Specified as enumerated hosts, an attribute selector, and/or a fraction (stable hash over the Tier-matching identifying attributes); membership is a pure function computed at serve time, never stored. Advisory on the Foreign path: lag, never failure. |
-| **Unmatched artefact** | The distinguished, root-team-owned rendered config served to a collector matching no Tier selector: commit-stamped, self-telemetry on, no data pipelines, never empty (ADR-0010). Makes ungoverned-but-served maximally visible. Not the quarantine destination — that is data-level (ADR-0031). |
-| **`never_seen`** | A finding class attached to the Tier, not a conformance outcome: the Tier's selector has matched no collector in any reading. Neutral without a floor — excluded from denominators, never red; its age doubles as the stale-config signal ("never matched in 90 days"). Escalates to violation-grade when the Tier's population floor is > 0 and the zero persists past the grace window (ADR-0035). |
-| **`under_populated`** | The sibling finding class: collectors matched, but fewer than the Tier's population floor, persisting past the grace window ("expected ≥40, seen 12"). Not a degree of `never_seen` — the Tier has readings. Tier-attached, delivery-kind, Tier-owner-routed (ADR-0035). |
-| **Population floor** | The minimum instance count a Tier's selector should match: derived live from the substrate (`InventoryProvider`) or declared as `min_expected` in the Tier file; absent means no teeth. Always a floor, never an equality — surplus is never a finding (ADR-0035). |
-| **Quarantine destination** | The short-retention destination an authored gateway routing rule sends unrecognised `service.name` telemetry to; observed and flagged by the platform ("unknown sources arriving — onboard them"). A rendered governance pattern, never a platform runtime capability. Drains by onboarding, never by retention growth. |
-
-## Pipeline observability (ADR-0038–0041)
+## Readings and verdicts
 
 | Term | Meaning |
 |---|---|
-| **Claim** | The unit of an Expectation: one checkable assertion derived from a rendered artefact at a commit SHA. Three kinds: **arrival** (per (Service, Environment, signal) — the signal should land, derived from Paths through rendered pipelines), **enrichment** (attributes the config *literally* inserts should be present on landed telemetry; component behaviour is never modelled in v1 — no claim means `unknown`, never red), **self-telemetry** (per Tier — each instantiated component should emit its own telemetry). The engine claims only what it reads off the artefact, never what it believes about component semantics (ADR-0038). |
-| **`expectation` (finding kind)** | The finding kind carrying claim failures, joining ADR-0017's roll-up as its own column. Unbacked data claims: Service-attached, advisory-grade, never violation ("fix the pipeline or delete the dead lane" — doubles as dead-config detection). Pipeline claims: Tier-attached, Tier-owner-routed, violation-capable after dampening. Requirement-backed data claims raise no finding of this kind — they decide the Observed leg of the outcome cross instead. |
-| **Settle window** | The per-claim-kind period after a config goes APPLIED at a new SHA, during which its claims read neutral-pending — never red, never green. Self-telemetry settles in seconds; arrival and enrichment claims get longer. Distinct from the observation window a claim looks back over. |
-| **Reduction** | In-minus-out through a Tier, per signal: presented by the meter, judged by nobody — a filter dropping 90% is doing its job. "Loss" is not vocabulary; the meter's only reds are error-rate readings (`refused`, `send_failed`, `enqueue_failed`). |
-| **Metering** | The family of derived flow readings — throughput, volume, freshness — computed on read through `TelemetryProvider`, stored nowhere. Two grains, never blended: **pipeline-grain** (from self-telemetry, per (Tier, signal); a Hop's throughput is its feeding exporter's out-rate) and **service-grain** (from Observed data, per `service.name`). Cardinality follows authored objects, not collectors (ADR-0040). |
-| **Self-telemetry destination** | The estate-level, adopter-declared endpoint every rendered artefact pushes internal telemetry (metrics + logs) to, resolved per Tier at render. A Tier's self-telemetry never depends on that Tier's own data pipelines; transiting another Tier as ordinary data is allowed, with shared fate reading as `Known: false`, never red (ADR-0039). |
-| **Incarnation** | One collector process start, identified by `service.instance.id` (fresh per restart, kept deliberately). Incarnation churn per Tier is the restart-rate reading; joining across restarts uses the substrate identity pattern, when the substrate offers one. |
+| **Intended** | The configuration in git, pinned to a commit SHA. It includes configurations people commit by hand. This is what GitOps calls "declared"; Telecraft says Intended. |
+| **Effective** | The configuration the collector reports it is running, taken from OpAMP's `EffectiveConfig` exactly as the collector sends it. Telecraft never substitutes what an applier holds or what it believes it sent. |
+| **Observed** | The telemetry that arrived in a backend over a time window. |
+| **Known** | A flag on every reading that separates "Telecraft cannot see this" from "this is absent". Not knowing is a normal state, never a failure. |
+| **Outcome** | The verdict for one Requirement on one Service, from crossing Effective with Observed. One of `compliant`, `not_configured`, `broken_pipeline`, `not_delivered`, `ungoverned`, `misconfigured`, or `unknown`, plus `library_drift`, which comes from the Intended reading. |
+| **library_drift** | A finding that says the configuration passes the Requirement version it claims, or the Component version it pins, but fails the current one. The rule moved and the configuration has not caught up. The fix is to review the version diff and open a change proposal, not to instrument again. |
+| **Delivery status** | Whether the collector applied the configuration Telecraft sent it, in OpAMP's own words: `UNSET`, `APPLYING`, `APPLIED`, or `FAILED`. It compares Intended with Effective, per collector, and sits beside the conformance verdict. |
+| **Mutation profile** | The list of changes a delivery path may make to a configuration on its way to the collector: `exact`, `supervisor`, or `elastic-fleet`. Telecraft applies it before it compares digests, so digests from different profiles are never compared with each other. Entries are patterns, never literal values. |
+| **Expectation** | What the Intended configuration implies should be observable: which signals should arrive for each Service and Environment, which attributes they should carry, and which self-telemetry each Tier's Components should emit. Telecraft derives it from the configuration at a commit SHA; you never author one. A failed Expectation means "the configuration did not work", which is different from "the telemetry is wrong" (conformance) and "the configuration never applied" (delivery). When a reading is unavailable the Expectation is `unknown`, never failed. |
 
-## Console (ADR-0042–0045, ADR-0051)
+## Serving
 
 | Term | Meaning |
 |---|---|
-| **Workspace** | One of the console's four activity-first areas — Estate, Topology, Compose, Catalogue & Governance. Surfaces inside a Workspace are view-switchers over one model, never competing candidates; selection, filters and lens survive every switch. Objects are reached by global jump-to-object search, never by object-first navigation. |
-| **Shelf** | The Estate landing surface: a uniform grid of card faces (ADR-0041), grouped team-subtree sections × aligned Environment rows (production leading), ordered worst-severity-first from face summary fields alone. Defaults to the signed-in user's team subtree. Neutral cards sink to the tail but are never hidden; all-healthy sections collapse to a summary line — cards themselves never collapse. |
-| **Environment lens** | The global chrome control selecting the leading Environment, default `production` (ADR-0033). Emphasis and evaluation context, never a hard filter: multi-env surfaces keep every row visible; evaluation surfaces treat it as the selected context. Persisted per user; an explicit lens in a URL beats the preference. |
-| **Claim flow** | The onboarding flow from ungoverned collector(s) to governance (the OQ-3 CTA): herd-first multi-select, a suggested selector generalised over shared identity attributes (never enumerated instance ids), attach-to-existing-Tier or draft-new-Tier, exiting always as a user-attributed PR with the rendered impact preview. Distinct from quarantine routing, which is a Compose concern. |
-| **Canvas engine** | The shared pure library (model in, geometry out) rendering both canvases: band/row-constrained deterministic layout plus orthogonal Manhattan routing with per-signal bend offsets. Two vocabularies — composer graph and topology graph — one engine; semantic layout rules are invariants no interaction can violate (ADR-0044). |
-| **Presentation store** | The console's only non-git state: per-user presentation preferences (lens, collapsed sections, within-row canvas arrangement, Tours seen). Never model truth, fully loseable — losing it changes what leads, never what is asserted (ADR-0042 §7). |
-| **Tour** | An authored, ordered sequence of Steps teaching the console over the reader's own estate (ADR-0051). Chrome, never a surface: Tours are data in `console/src/tours/`, rendered by one runner. A Tour narrates — it navigates and it points, it never clicks, authors or invents. Its position lives in the URL like every other console state, so a Step is citable. Teaches the console; the documentation teaches the product. Never called onboarding: that is a collector joining governance (ADR-0031). |
-| **Step** | One stop in a Tour: prose, an optional anchor naming an element by `data-tour`, and an optional destination route. An anchored Step points without blocking; an unanchored Step renders centred, which is what the welcome is. An anchor that resolves nowhere degrades to centred rather than failing (ADR-0051 §4). Never a Rollout stage. |
+| **Supervisor** | The upstream OpAMP Supervisor (`opampsupervisor`). Every Served collector runs one beside it. |
+| **Served** | A collector that receives its configuration from Telecraft's OpAMP server. |
+| **Foreign** | A collector whose configuration arrives by any other route: GitOps, configuration management, or a person. Foreign collectors are governed exactly like Served ones. |
+| **Delivery path** | How a collector gets its configuration: Served, or delivered through git. Telecraft shows it for every collector. |
+| **Forge adapter** | The interface between Telecraft and your git host's API, used for change proposals, review routing, and attribution. Each implementation is named after the product, starting with the GitHub App. Beneath it, plain git transport over a deploy key or token always works, and governance never depends on a forge feature. |
 
-## Rules of use
+## Delivery & rollout
 
-- Upstream vocabulary is adopted verbatim; local synonyms are a lint error
-  (ADR-0001).
-- Seam names are domain terms; implementations are vendor-product-qualified:
-  `ElasticFleet`, `Elasticsearch`, `GrafanaFleetManagement`.
-- A Service Class is never written "Tier N" (ADR-0015).
-- Every capitalised domain term in an ADR must appear here.
+| Term | Meaning |
+|---|---|
+| **Rollout** | An optional authored object, owned by the Tier's Owner, that moves one Tier from one Blueprint version to another in stages. While a Rollout is active the Tier is bound to both versions and `rendered/` holds both artefacts. Telecraft proposes each stage as a pull request and you merge it; withholding the merge halts the Rollout, and aborting is another proposed pull request. A Tier has at most one active Rollout, and a plain rebind is always available instead. |
+| **Cohort** | The part of a Tier's collectors that a Rollout stage applies to. You specify it as named hosts, an attribute selector, a fraction, or a combination; Telecraft computes membership when it serves, and stores nothing. On the Foreign path a Cohort is advisory: a collector outside it lags, it does not fail. |
+| **Unmatched artefact** | The rendered configuration Telecraft serves to a collector that matches no Tier selector. It is owned by the root Team, stamped with the commit, and has self-telemetry on and no data pipelines, so an ungoverned collector is visible rather than silent. It is not the Quarantine destination, which handles data rather than collectors. |
+| **`never_seen`** | A finding on a Tier whose selector has never matched a collector. Without a Population floor it is neutral: Telecraft leaves it out of the denominators and never shows it red, and its age tells you how stale the Tier is. Once the Tier has a Population floor above zero and the zero persists past the grace window, it becomes a violation. |
+| **`under_populated`** | A finding on a Tier whose selector matches collectors, but fewer than its Population floor, for longer than the grace window (for example, "expected 40, seen 12"). It is not a milder `never_seen`: the Tier has readings. It routes to the Tier's Owner. |
+| **Population floor** | The minimum number of collectors a Tier's selector should match. Telecraft derives it from your infrastructure through the inventory provider, or you declare it as `min_expected` in the Tier file. No floor means no finding. It is a floor, not an exact count: more collectors than expected is never a finding. |
+| **Quarantine destination** | A short-retention destination that a gateway routing rule you author sends telemetry with an unrecognised `service.name` to. Telecraft watches it and flags what arrives, so you can onboard the sources. It is a rendered pattern in your configuration, not something Telecraft runs, and it empties through onboarding, not through retention. |
+
+## Pipeline observability
+
+| Term | Meaning |
+|---|---|
+| **Claim** | One checkable assertion inside an Expectation, derived from a rendered artefact at a commit SHA. An arrival Claim says a signal should land for a Service in an Environment; an enrichment Claim says attributes the configuration inserts should be present on landed telemetry; a self-telemetry Claim says each Component in a Tier should emit its own telemetry. Telecraft claims only what it reads from the artefact, so where the configuration says nothing the result is `unknown`, never red. |
+| **`expectation` (finding kind)** | The finding kind a failed Claim raises, with its own column in the Team roll-up. A data Claim with no Requirement behind it raises an advisory finding on the Service, which also catches dead configuration. A pipeline Claim raises a finding on the Tier, routed to its Owner, and can become a violation once the Settle window has passed. A data Claim backed by a Requirement raises no finding of this kind: it feeds the Observed side of that Requirement's Outcome instead. |
+| **Settle window** | The period after a configuration reaches `APPLIED` at a new commit during which its Claims read as pending, neither red nor green. Self-telemetry Claims settle in seconds; arrival and enrichment Claims take longer. It is separate from the observation window a Claim looks back over. |
+| **Reduction** | How much less data leaves a Tier than enters it, per signal. Telecraft shows the figure and never judges it: a filter that drops 90% of its input is doing its job. The meter's only red readings are error rates (`refused`, `send_failed`, `enqueue_failed`). |
+| **Metering** | The flow readings Telecraft computes on read through the telemetry provider and stores nowhere: throughput, volume, and freshness. Pipeline-grain readings come from self-telemetry, per Tier and signal; service-grain readings come from Observed data, per `service.name`. The two are never mixed. |
+| **Self-telemetry destination** | The endpoint you declare for the Estate where every rendered configuration sends the collector's own metrics and logs. Telecraft resolves it per Tier at render time. A Tier's self-telemetry never depends on that Tier's own data pipelines; if it passes through another Tier and that Tier fails, the reading becomes `Known: false`, never red. |
+| **Incarnation** | One start of a collector process, identified by its `service.instance.id`, which changes on every restart. Incarnation churn per Tier is the restart-rate reading. To follow one collector across restarts, Telecraft uses the infrastructure's own identity where it offers one. |
+
+## Console
+
+| Term | Meaning |
+|---|---|
+| **Workspace** | One of the console's four areas: Estate, Topology, Compose, and Catalogue & Governance. Each Workspace offers several views over the same model, and your selection, filters, and Environment lens survive switching between them. You reach an object through global search, not by browsing to it. |
+| **Shelf** | The landing surface of the Estate Workspace: a grid of cards, one per Tier, grouped by Team subtree and lined up by Environment with production first, with the worst problems first. It starts on your own Team's subtree. Healthy cards sink to the end but never disappear; an all-healthy section collapses to one summary line. |
+| **Environment lens** | The control in the console chrome that picks which Environment leads, `production` by default. It sets emphasis and evaluation context, not a filter: surfaces that show several Environments keep every row visible. Your choice is remembered, and a lens in a URL overrides it. |
+| **Claim flow** | The console flow that takes one or more ungoverned collectors into governance. You start from a group of collectors, the console suggests a selector built from the identity attributes they share (never a list of instance ids), and you attach them to an existing Tier or draft a new one. It always ends as a pull request in your name, with a preview of the rendered impact. It is not quarantine routing, which belongs to Compose. |
+| **Canvas engine** | The shared library that lays out both the composer canvas and the topology canvas: the model goes in and the geometry comes out. Layout is deterministic and row-constrained, with orthogonal routing and per-signal bend offsets, and its layout rules hold no matter how you interact with the canvas. |
+| **Presentation store** | The only state the console keeps outside git: your presentation preferences, such as the Environment lens, collapsed sections, canvas arrangement within a row, and which Tours you have seen. It is never model truth. Losing it changes what the console shows first, never what it asserts. |
+| **Tour** | An ordered sequence of Steps that teaches the console using your own Estate. A Tour navigates and points; it never clicks, authors, or invents. Its position lives in the URL like every other console state, so you can link to a Step. Tours teach the console; the documentation teaches the product. A Tour is not onboarding: onboarding is a collector joining governance. |
+| **Step** | One stop in a Tour: prose, an optional anchor naming an element by `data-tour`, and an optional destination route. An anchored Step points at its element without blocking it; an unanchored Step, such as the welcome, renders centred. If an anchor cannot be found the Step renders centred rather than failing. A Step is not a Rollout stage. |

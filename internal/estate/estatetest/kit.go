@@ -5,15 +5,15 @@
 // violation; Violations is the same judgement as data, which is how the
 // kit's own tests prove a deliberately broken provider is caught.
 //
-// The kit checks what ADR-0036 lists: capability honesty — every reading
+// The kit checks what ADR-0036 lists: capability honesty (every reading
 // kind explicitly declared, incapable readings absent-with-declaration and
-// never populated, capable-but-unknown readings loud with a cause;
-// the minimum populated set — identity attributes on every collector and
-// an as_of timestamp on every reading carried; structural preservation —
+// never populated, capable-but-unknown readings loud with a cause);
+// the minimum populated set (identity attributes on every collector and
+// an as_of timestamp on every reading carried); structural preservation (the
 // pipeline component order and the recursive health tree exactly as
-// seeded; the unknown-collector discipline — Known false, never an error;
-// and staleness demotion — a reading past the declared horizon never
-// survives into evaluation.
+// seeded); the unknown-collector discipline (Known false, never an error);
+// and staleness demotion (a reading past the declared horizon never
+// survives into evaluation).
 //
 // ADR-0008's "verify the seam against a third implementation" stays true
 // through this kit rather than re-litigation: a new implementation passes
@@ -50,17 +50,17 @@ type Kit struct {
 
 // Seed is one collector the harness arranged, and the readings the
 // provider must reproduce for it. Nil or zero expectation fields are not
-// checked — a harness states what it controls.
+// checked: a harness states what it controls.
 type Seed struct {
 	// Identity is the identifying attributes the collector reports; the
 	// provider must return exactly one collector carrying all of them.
 	Identity map[string]string
 
 	// Pipelines, when non-nil, is the exact Effective pipeline list the
-	// collector runs — compared deep and in order (ADR-0004).
+	// collector runs, compared deep and in order (ADR-0004).
 	Pipelines []estate.Pipeline
 
-	// Health, when non-nil, is the exact component-health tree —
+	// Health, when non-nil, is the exact component-health tree,
 	// compared recursively, so a flattened roll-up cannot pass
 	// (ADR-0008).
 	Health *estate.ComponentHealth
@@ -89,25 +89,25 @@ func Violations(ctx context.Context, k Kit) []string {
 		return []string{"the kit was handed no provider"}
 	}
 	if len(k.Seeded) == 0 {
-		return []string{"the kit was handed no seeded collectors — a run over an empty estate passes vacuously and proves nothing"}
+		return []string{"the kit was handed no seeded collectors: a run over an empty estate proves nothing"}
 	}
 
 	decl := k.Provider.Declaration()
 	for _, kind := range estate.Kinds() {
 		if _, declared := decl.Readings[kind]; !declared {
-			fail("the declaration says nothing about reading %q — incapable is a declaration, never an omission (ADR-0036 §1)", kind)
+			fail("the declaration says nothing about reading %q: declare every reading kind, as capable or incapable", kind)
 		}
 	}
 	if decl.RefreshCadence <= 0 {
-		fail("the declaration carries no refresh cadence — freshness is the platform's arithmetic and the cadence is its mandatory input (ADR-0036 §3)")
+		fail("the declaration carries no refresh cadence: Telecraft needs it to tell a fresh reading from a stale one")
 	}
 
 	est := k.Provider.Estate(ctx)
 	if est.AsOf.IsZero() {
-		fail("the estate reading carries no as_of — even an empty estate is a statement with a timestamp (ADR-0036 §2)")
+		fail("the estate reading carries no as_of: even an empty estate needs a timestamp")
 	}
 	if !reflect.DeepEqual(est.Declaration, decl) {
-		fail("the estate reading echoes a declaration different from the provider's — the declaration is static, one truth (ADR-0036 §1)")
+		fail("the estate reading echoes a declaration different from the provider's: the declaration is static, so the two must match")
 	}
 
 	for _, c := range est.Collectors {
@@ -128,23 +128,23 @@ func Violations(ctx context.Context, k Kit) []string {
 func checkCollector(fail func(string, ...any), decl estate.Declaration, c estate.Collector) {
 	name := estate.Fingerprint(c.Identity)
 	if len(c.Identity) == 0 {
-		fail("a collector was returned with no identity attributes — a reading nothing can match belongs to nobody, and absent identity is non-conforming full stop (ADR-0036 §2)")
+		fail("a collector was returned with no identity attributes: a reading nothing can match belongs to nobody")
 		name = "(no identity)"
 	}
 	for _, v := range readings(c) {
 		switch {
 		case !decl.Capable(v.kind):
 			if v.known || v.populated || v.cause != "" {
-				fail("collector %s populates reading %q, which the declaration says it can never populate — declare the capability or stop reporting it (ADR-0036 §1)", name, v.kind)
+				fail("collector %s populates reading %q, which the declaration says it can never populate: declare the capability or stop reporting it", name, v.kind)
 			}
 		case v.known && v.asOf.IsZero():
-			fail("collector %s reading %q is populated without as_of — absent timestamps are non-conforming, full stop (ADR-0036 §2)", name, v.kind)
+			fail("collector %s reading %q is populated without as_of: every reading needs a timestamp", name, v.kind)
 		case !v.known && v.cause == "":
-			fail("collector %s reading %q is a silent gap: declared capable, not delivered, no cause — capable-but-silent is a provider fault and must be loud (ADR-0036 §1)", name, v.kind)
+			fail("collector %s reading %q is a silent gap: declared capable, not delivered, no cause. Say why the reading is missing", name, v.kind)
 		case !v.known && v.asOf.IsZero():
-			fail("collector %s reading %q is unknown without as_of — 'we cannot see' is still a statement with a timestamp (ADR-0036 §2)", name, v.kind)
+			fail("collector %s reading %q is unknown without as_of: an unknown reading still needs a timestamp", name, v.kind)
 		case !v.known && v.populated:
-			fail("collector %s reading %q carries a payload while Known is false — an unknown reading's payload means nothing and must be empty", name, v.kind)
+			fail("collector %s reading %q carries a payload while Known is false: an unknown reading's payload must be empty", name, v.kind)
 		}
 	}
 }
@@ -168,38 +168,38 @@ func checkSeed(fail func(string, ...any), decl estate.Declaration, est estate.Es
 	if seed.Pipelines != nil {
 		switch {
 		case !decl.Capable(estate.EffectiveKind):
-			fail("the kit was seeded with pipelines but the declaration says Effective can never be populated — the harness and the declaration disagree")
+			fail("the kit was seeded with pipelines but the declaration says Effective can never be populated: the harness and the declaration disagree")
 		case !c.Effective.Known:
 			fail("seeded collector %s: Effective is unknown (%s) though the harness arranged a running config", name, c.Effective.Cause)
 		case !reflect.DeepEqual(c.Effective.Pipelines, seed.Pipelines):
-			fail("seeded collector %s: Effective pipelines differ from what the collector runs — order and wiring must survive verbatim, never flattened or resorted (ADR-0004)\n  got:  %+v\n  want: %+v", name, c.Effective.Pipelines, seed.Pipelines)
+			fail("seeded collector %s: Effective pipelines differ from what the collector runs: order and wiring must survive verbatim, never flattened or resorted\n  got:  %+v\n  want: %+v", name, c.Effective.Pipelines, seed.Pipelines)
 		}
 	}
 	if seed.Health != nil {
 		switch {
 		case !decl.Capable(estate.HealthKind):
-			fail("the kit was seeded with a health tree but the declaration says health can never be populated — the harness and the declaration disagree")
+			fail("the kit was seeded with a health tree but the declaration says health can never be populated: the harness and the declaration disagree")
 		case !c.Health.Known:
 			fail("seeded collector %s: health is unknown (%s) though the harness arranged a health report", name, c.Health.Cause)
 		case !reflect.DeepEqual(c.Health.Component, *seed.Health):
-			fail("seeded collector %s: the health tree differs from what the collector reported — the recursive tree must survive verbatim, never the flattened roll-up (ADR-0008)\n  got:  %+v\n  want: %+v", name, c.Health.Component, *seed.Health)
+			fail("seeded collector %s: the health tree differs from what the collector reported: the recursive tree must survive verbatim, never the flattened roll-up\n  got:  %+v\n  want: %+v", name, c.Health.Component, *seed.Health)
 		}
 	}
 	if seed.Delivery != "" {
 		switch {
 		case !decl.Capable(estate.DeliveryStatusKind):
-			fail("the kit was seeded with a delivery state but the declaration says delivery status can never be populated — the harness and the declaration disagree")
+			fail("the kit was seeded with a delivery state but the declaration says delivery status can never be populated: the harness and the declaration disagree")
 		case !c.DeliveryStatus.Known:
 			fail("seeded collector %s: delivery status is unknown (%s) though the harness arranged a report", name, c.DeliveryStatus.Cause)
 		case c.DeliveryStatus.State != seed.Delivery:
-			fail("seeded collector %s: delivery state = %q, want %q — the OpAMP vocabulary crosses verbatim (ADR-0004)", name, c.DeliveryStatus.State, seed.Delivery)
+			fail("seeded collector %s: delivery state = %q, want %q: report the OpAMP state exactly as the collector sends it", name, c.DeliveryStatus.State, seed.Delivery)
 		}
 	}
 }
 
 // checkUnknown holds the unknown-collector discipline (ADR-0008): asking
 // for a collector nobody reported yields Known false with a cause on every
-// capable reading, zero on every incapable one — and never an error, which
+// capable reading, zero on every incapable one, and never an error, which
 // the seam's signature already makes unutterable.
 func checkUnknown(fail func(string, ...any), decl estate.Declaration, est estate.Estate, absent map[string]string) {
 	if len(absent) == 0 {
@@ -210,14 +210,14 @@ func checkUnknown(fail func(string, ...any), decl estate.Declaration, est estate
 		switch {
 		case !decl.Capable(v.kind):
 			if v.known || v.populated || v.cause != "" {
-				fail("unknown collector: incapable reading %q is not zero — incapable stays absent-with-declaration even for a collector nobody can see (ADR-0036 §1)", v.kind)
+				fail("unknown collector: incapable reading %q is not zero: an incapable reading stays empty even for a collector nobody can see", v.kind)
 			}
 		case v.known:
-			fail("unknown collector: reading %q came back Known — not knowing is a normal state and must be reported honestly (ADR-0008)", v.kind)
+			fail("unknown collector: reading %q came back Known: report a collector nobody can see as unknown", v.kind)
 		case v.cause == "":
-			fail("unknown collector: reading %q carries no cause — the caller must learn why nothing is known", v.kind)
+			fail("unknown collector: reading %q carries no cause: say why nothing is known", v.kind)
 		case v.asOf.IsZero():
-			fail("unknown collector: reading %q carries no as_of — 'we cannot see' is still a statement with a timestamp (ADR-0036 §2)", v.kind)
+			fail("unknown collector: reading %q carries no as_of: an unknown reading still needs a timestamp", v.kind)
 		}
 	}
 }
@@ -240,21 +240,21 @@ func checkStaleness(fail func(string, ...any), decl estate.Declaration, est esta
 			}
 			name := estate.Fingerprint(c.Identity)
 			if fresh := readingOf(c.ForEvaluation(decl, v.asOf.Add(horizon)), v.kind); !fresh.known {
-				fail("collector %s reading %q was demoted while still inside the staleness horizon — demotion is for silence, not for freshness (ADR-0036 §3)", name, v.kind)
+				fail("collector %s reading %q was demoted while still inside the staleness horizon: only a reading past the horizon demotes", name, v.kind)
 			}
 			stale := readingOf(c.ForEvaluation(decl, v.asOf.Add(horizon+time.Second)), v.kind)
 			switch {
 			case stale.known:
-				fail("collector %s reading %q survived evaluation past the staleness horizon — a stale reading never feeds a fresh-looking verdict (ADR-0036 §3)", name, v.kind)
+				fail("collector %s reading %q survived evaluation past the staleness horizon: a stale reading cannot feed a verdict", name, v.kind)
 			case stale.populated:
-				fail("collector %s reading %q was demoted but still carries its payload — nothing downstream may quietly use it", name, v.kind)
+				fail("collector %s reading %q was demoted but still carries its payload: clear it so nothing downstream can use it", name, v.kind)
 			case stale.cause == "":
 				fail("collector %s reading %q was demoted without a cause", name, v.kind)
 			}
 			return // one real reading proves the arithmetic
 		}
 	}
-	fail("no seeded collector carries a Known reading with as_of, so staleness demotion could not be exercised — seed at least one populated reading")
+	fail("no seeded collector carries a Known reading with as_of, so staleness demotion could not be exercised: seed at least one populated reading")
 }
 
 // reading is one reading flattened for rule-checking, whatever its kind.

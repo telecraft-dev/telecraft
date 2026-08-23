@@ -1,4 +1,4 @@
-# The staging sibling: same Blueprint, different Environment — claims
+# The staging sibling: same Blueprint, different Environment. Claims
 # derive per (Service, Environment) from that environment's bound config
 # (ADR-0033).
 owner: gateway-owners

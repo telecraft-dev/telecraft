@@ -1,5 +1,5 @@
 # Same config as base.yaml using anchors/aliases for the repeated processor
-# chain and exporter list. Semantically identical — must hash equal at layer 2.
+# chain and exporter list. Semantically identical: must hash equal at layer 2.
 receivers:
   filelog/containers:
     include:

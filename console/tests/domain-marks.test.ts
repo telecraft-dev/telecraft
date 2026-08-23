@@ -11,7 +11,7 @@ import { MARK_TITLE, type MarkName } from '../src/ui/marks'
 // sees them (ADR-0047 §6), which is the relationship `marks.test.ts` holds
 // for states. Three properties matter here and none is about colour: every
 // domain object in the vocabulary has a mark and a word, no two marks are
-// the same drawing, and no domain mark reuses a state mark's silhouette —
+// the same drawing, and no domain mark reuses a state mark's silhouette:
 // the two sets appear on the same surfaces and must never be read for each
 // other.
 
@@ -108,7 +108,7 @@ describe('the object-kind-to-mark mapping', () => {
 
   it('has a mark a Collector could never reach through a kind', () => {
     // A Collector is derived and never authored (ADR-0007), so it is never
-    // an indexed object — its mark is reached by name, from the surfaces
+    // an indexed object: its mark is reached by name, from the surfaces
     // that name collectors.
     expect(KINDS as readonly string[]).not.toContain('collector')
     expect(DOMAIN_OBJECTS).toContain('collector')

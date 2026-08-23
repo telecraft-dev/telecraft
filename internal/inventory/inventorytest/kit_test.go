@@ -79,7 +79,7 @@ func kitFor(p inventory.Provider) Kit {
 	}
 }
 
-// A conforming implementation passes with no violations — the kit is the
+// A conforming implementation passes with no violations: the kit is the
 // contract, and the contract is satisfiable.
 func TestConformingProviderPasses(t *testing.T) {
 	if got := Violations(context.Background(), kitFor(conforming())); len(got) != 0 {
@@ -88,7 +88,7 @@ func TestConformingProviderPasses(t *testing.T) {
 }
 
 // expectViolation runs the kit and demands at least one violation naming
-// the given fragment — proof the kit catches that exact breakage.
+// the given fragment, proof the kit catches that exact breakage.
 func expectViolation(t *testing.T, k Kit, fragment string) {
 	t.Helper()
 	got := Violations(context.Background(), k)

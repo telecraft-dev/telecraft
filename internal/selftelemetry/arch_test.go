@@ -43,8 +43,8 @@ func listPackages(t *testing.T) map[string]struct{ deps, imports []string } {
 }
 
 // The neutral core never reaches a telemetry backend implementation: no
-// package under internal/ outside the provider tree may depend — even
-// transitively — on internal/provider/telemetry. Readings arrive through
+// package under internal/ outside the provider tree may depend, even
+// transitively, on internal/provider/telemetry. Readings arrive through
 // the internal/telemetry seam interface; the provider is wired in by cmd/
 // and dispatched behind it (ADR-0001, ADR-0008).
 func TestCoreNeverImportsTheTelemetryBackend(t *testing.T) {
@@ -54,7 +54,7 @@ func TestCoreNeverImportsTheTelemetryBackend(t *testing.T) {
 		}
 		for _, dep := range info.deps {
 			if dep == providerPkg {
-				t.Errorf("%s depends on %s — self-telemetry ingestion rides the TelemetryProvider seam, never a backend implementation (REQ-053, ADR-0039)", pkg, dep)
+				t.Errorf("%s depends on %s: self-telemetry ingestion rides the TelemetryProvider seam, never a backend implementation", pkg, dep) // REQ-053, ADR-0039
 			}
 		}
 	}
@@ -72,7 +72,7 @@ func TestReadingLayerHoldsNoConnection(t *testing.T) {
 		}
 		for _, imp := range info.imports {
 			if imp == "net/http" || imp == "net" {
-				t.Errorf("%s imports %s — readings are data through the seam; connections belong to providers (ADR-0039)", pkg, imp)
+				t.Errorf("%s imports %s: readings are data through the seam; connections belong to providers", pkg, imp) // ADR-0039
 			}
 		}
 	}

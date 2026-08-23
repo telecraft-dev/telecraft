@@ -6,8 +6,8 @@
 #
 # It starts a throwaway single-node Elasticsearch container, seeds a fixture
 # Service ("checkout": logs present, metrics index empty, traces index never
-# created), runs the CLI against it — including once against an unreachable
-# endpoint to show the degraded readings (criterion 2) — and finishes with
+# created), runs the CLI against it (including once against an unreachable
+# endpoint to show the degraded readings (criterion 2)) and finishes with
 # the gated live test suite. The container is removed on exit.
 #
 # Needs: docker, curl, go. Nothing here runs in CI's default test job; plain
@@ -36,7 +36,7 @@ for _ in $(seq 1 60); do
 done
 curl -fsS "$ENDPOINT/_cluster/health" >/dev/null
 
-echo ">> seeding the fixture Service (checkout): logs only — no metrics or traces index"
+echo ">> seeding the fixture Service (checkout): logs only, no metrics or traces index"
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 curl -fsS -XDELETE "$ENDPOINT/logs-demo?ignore_unavailable=true" >/dev/null
 curl -fsS -XPUT "$ENDPOINT/logs-demo" -H 'Content-Type: application/json' -d '{

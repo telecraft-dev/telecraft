@@ -74,10 +74,10 @@ describe('reading formatting', () => {
 
   it('never puts a number where nobody took a reading', () => {
     const unread = volume({ known: false, cause: 'backend unreachable' })
-    expect(formatVolume(unread)).toBe('—')
+    expect(formatVolume(unread)).toBe('no reading')
     expect(formatReduction(unread)).toBeUndefined()
     expect(errorReadings(unread)).toEqual([])
-    expect(readingTitle(unread, now)).toBe('read 1m ago — backend unreachable')
+    expect(readingTitle(unread, now)).toBe('read 1m ago: backend unreachable')
   })
 
   // ADR-0008: a known-empty window and an unreadable one are different
@@ -92,7 +92,7 @@ describe('reading formatting', () => {
     expect(readingState(fresh)).toBe('known')
 
     expect(formatFreshness(silent)).toBe('silent')
-    expect(formatFreshness(unreadable)).toBe('—')
+    expect(formatFreshness(unreadable)).toBe('no reading')
     expect(formatFreshness(fresh)).toBe('2m')
   })
 
@@ -105,7 +105,7 @@ describe('reading formatting', () => {
     expect(formatShape(clean)).toBe('4 present')
     expect(formatShape(missing)).toBe('1 of 4 missing')
     expect(formatShape(unasked)).toBe('none required')
-    expect(formatShape(unread)).toBe('—')
+    expect(formatShape(unread)).toBe('no reading')
   })
 })
 

@@ -7,8 +7,8 @@ import (
 	"testing"
 )
 
-// serve reads exactly one source: a local checkout or a fetched repo —
-// neither, or both, is a usage error, never a guess.
+// serve reads exactly one source: a local checkout or a fetched repo.
+// Neither, or both, is a usage error, never a guess.
 func TestServeCommandRequiresExactlyOneSource(t *testing.T) {
 	for name, args := range map[string][]string{
 		"no source":    {"serve"},
@@ -85,7 +85,7 @@ func TestServeCommandFailsToStartOnASourceItCannotRead(t *testing.T) {
 	}
 }
 
-// Deliberately uncovered: the clean shutdown path — a started server
+// Deliberately uncovered: the clean shutdown path, a started server
 // waiting on SIGINT or SIGTERM, then stopping. Reaching it from a test
 // means signalling the test binary's own process, which every other test
 // in the package would then be racing.

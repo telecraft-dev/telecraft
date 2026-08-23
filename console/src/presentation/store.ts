@@ -15,7 +15,7 @@ export interface Presentation {
   /**
    * Which Tours this reader has been offered (ADR-0051 §6, amending
    * ADR-0042 §7). It records what they have been shown, never what is on
-   * screen, and losing it offers the welcome again — which is the right
+   * screen, and losing it offers the welcome again, which is the right
    * way for this one to fail.
    */
   toursSeen: Record<string, boolean>

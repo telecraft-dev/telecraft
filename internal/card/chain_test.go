@@ -13,7 +13,7 @@ import (
 // The whole read path in one test: a TelemetryProvider's metering reading
 // becomes derived flow readings, which become the face payload a card
 // surface draws (REQ-050, ADR-0040 §5, ADR-0041 §4). Nothing between the
-// seam and the card writes anything down — the chain is three pure
+// seam and the card writes anything down: the chain is three pure
 // projections over one reading, and the reading is discarded when the
 // request ends.
 type meteringProvider struct {
@@ -68,7 +68,7 @@ func TestSelfTelemetryReachesTheCardFaceThroughTheSeam(t *testing.T) {
 		t.Errorf("the traces lane = %+v, want the provider's reading carried through", traces.Volume)
 	}
 	if traces.Freshness.AgeSeconds != 75 {
-		t.Errorf("freshness age = %ds, want 75 — the newest datapoint at the instant the reading was derived", traces.Freshness.AgeSeconds)
+		t.Errorf("freshness age = %ds, want 75: the newest datapoint at the instant the reading was derived", traces.Freshness.AgeSeconds)
 	}
 	if !logs.Freshness.Silent {
 		t.Errorf("a known-empty lane = %+v, want silent rather than unknown", logs.Freshness)
@@ -81,6 +81,6 @@ func TestSelfTelemetryReachesTheCardFaceThroughTheSeam(t *testing.T) {
 	// no memory, so there is nothing for a second call to have changed.
 	again := Assemble(in)
 	if len(again.Signals) != len(face.Signals) || *again.Signals[0].Volume != *face.Signals[0].Volume {
-		t.Error("two assemblies of one reading disagree — the chain is meant to be a pure projection")
+		t.Error("two assemblies of one reading disagree: the chain is meant to be a pure projection")
 	}
 }

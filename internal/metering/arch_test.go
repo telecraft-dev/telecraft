@@ -2,9 +2,9 @@ package metering
 
 // The architectural guarantee of issue #35 criterion 4: metering is
 // computed on read and introduces no stored state (REQ-050, ADR-0040 §5).
-// The platform holds no metering store and no shadow time series —
+// The platform holds no metering store and no shadow time series:
 // history is a range query against the adopter's backend at the adopter's
-// retention — so the derivation packages must have no way to build one.
+// retention, so the derivation packages must have no way to build one.
 // Held in the import graph and in the package's own declarations, the way
 // the vendorlint holds the naming boundary.
 
@@ -29,7 +29,7 @@ var derivation = []string{module + "/internal/metering", module + "/internal/car
 // is on *direct* imports, deliberately: the authored-object packages
 // these depend on do read files, because authored objects live in git and
 // git is the source of truth (ADR-0003). What must not exist is a
-// derivation package opening a store of its own — that is the metering
+// derivation package opening a store of its own: that is the metering
 // cache ADR-0040 §5 refuses.
 var persistence = map[string]string{
 	"os":            "the filesystem",
@@ -54,7 +54,7 @@ func TestDerivationOpensNoStoreOfItsOwn(t *testing.T) {
 		}
 		for _, imp := range strings.Fields(imports) {
 			if why, banned := persistence[imp]; banned {
-				t.Errorf("%s imports %s (%s) — metering is computed on read and stored nowhere (ADR-0040 §5)", pkg, imp, why)
+				t.Errorf("%s imports %s (%s): metering is computed on read and stored nowhere", pkg, imp, why)
 			}
 		}
 	}
@@ -82,7 +82,7 @@ func TestDerivationHoldsNoPackageState(t *testing.T) {
 			for _, decl := range file.Decls {
 				gen, ok := decl.(*ast.GenDecl)
 				if ok && gen.Tok == token.VAR {
-					t.Errorf("%s declares package-level state — nothing accumulates between reads (ADR-0040 §5)", name)
+					t.Errorf("%s declares package-level state: nothing accumulates between reads", name)
 				}
 			}
 		}

@@ -1,5 +1,5 @@
 # SEMANTIC change vs base.yaml: batch moved before memory_limiter in the
-# logs pipeline. Processor order is semantic (ticket 11 §4) — layer 2 must
+# logs pipeline. Processor order is semantic (ticket 11 §4), so layer 2 must
 # flip, and layer 3 must localise the change to that pipeline's processors.
 receivers:
   filelog/containers:

@@ -6,9 +6,9 @@
 ## Context
 
 Since the Environment axis landed (ADR-0023) everything around the verdict
-went per-environment — sibling Tiers bind different Blueprint versions per
+went per-environment (sibling Tiers bind different Blueprint versions per
 env (ADR-0025), floors key on (Class, Env), and `deployment.environment.name`
-splits the Observed reading — while the seven-outcome cross (ADR-0004)
+splits the Observed reading), while the seven-outcome cross (ADR-0004)
 remained per (Service, Requirement). OQ-16 asked whether Requirements and
 delivery expectations vary per Environment, e.g. completeness demanded in
 production only.
@@ -17,13 +17,13 @@ production only.
 
 1. **The unit of conformance evaluation is `(Service, Environment,
    Requirement)`.** A Service's verdict is always per-Environment; nothing
-   blends across environments. The alternative — verdict per Service with
-   env as a display facet — is rejected: staging's Observed telemetry could
+   blends across environments. The alternative (verdict per Service with
+   env as a display facet) is rejected: staging's Observed telemetry could
    mask a prod outage of the same signal, and under ADR-0025 the two
    environments may be running different config versions, so one verdict
    would judge two configs. Roll-ups (ADR-0017) count `(Service, Env)` pairs
    as rows; estate views default to the `production` lens. A Service simply
-   has no row in an environment where it has no Tier and no telemetry —
+   has no row in an environment where it has no Tier and no telemetry:
    absence of an environment is not a finding.
 2. **A Requirement stays one env-neutral assertion with an optional
    `environments` applicability list; absent means all environments.**
@@ -37,11 +37,11 @@ production only.
    implicit non-coverage.
 3. **Guards on the open env vocabulary**: the strict loader (REQ-021)
    rejects unknown keys; an `environments` entry naming an environment never
-   seen or declared anywhere in the estate raises an authoring finding —
-   visible, not fatal.
+   seen or declared anywhere in the estate raises an authoring finding
+   (visible, not fatal).
 4. **Delivery gets no separate per-env mechanism.** A delivery finding
    attaches to a collector, which matches one Tier, which declares one
-   Environment — the env facet is inherited by construction. Per-env
+   Environment: the env facet is inherited by construction. Per-env
    delivery severity ("FAILED in staging is only a warning") is rejected in
    v1: the reading is identical in every env, urgency is the lens's job, and
    escalation policy was already deliberately deferred (ADR-0022 §4) because
@@ -54,7 +54,7 @@ production only.
 - Ratio denominators change: a Service deployed to three environments
   contributes three rows where it contributed one. The `production` default
   lens keeps headline numbers comparable to before.
-- G6's Expectation engine inherits the same unit — expectations derive per
+- G6's Expectation engine inherits the same unit: expectations derive per
   `(Service, Env)` from that environment's bound config version.
 
 ## Sources

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 // The issue #29 acceptance criteria, end to end: the palette offers only
-// the effective Allow-list (hidden, not greyed traps — ADR-0022 §5), edits
+// the effective Allow-list (hidden, not greyed traps; ADR-0022 §5), edits
 // produce Blueprint documents with ordering findings inline (ADR-0024 §6),
 // the resident YAML flyout is read-only and click-off closes it (REQ-035),
 // Save exits to a PR through the forge adapter with the one hard block
@@ -15,13 +15,13 @@ test('the palette shows only the effective palette; disallowed types are absent'
   page,
 }) => {
   await page.goto(`/compose?${EDGE}&lens=production`)
-  // Allowed entries are present; the Grant-admitted one names its Grant —
+  // Allowed entries are present; the Grant-admitted one names its Grant:
   // the audit chain is total (ADR-0021 §3).
   await expect(page.getByTestId('palette-type:processor/batch')).toBeVisible()
   await expect(page.getByTestId('palette-grant-type:receiver/kafka')).toContainText(
     'kafka-egress-for-data-flow',
   )
-  // Non-allowed types are hidden entirely — absent, not greyed traps —
+  // Non-allowed types are hidden entirely (absent, not greyed traps)
   // with the honest admitted count (ADR-0022 §5).
   await expect(page.getByTestId('palette-type:exporter/debug')).toHaveCount(0)
   await expect(page.getByTestId('palette-type:processor/pii_scrub')).toHaveCount(0)
@@ -49,7 +49,7 @@ test('edits produce Blueprint documents; ordering findings appear inline', async
   await expect(page.getByTestId('lane-traces')).toContainText('memory-limiter')
   await expect(page.getByTestId('lane-logs')).toContainText('memory-limiter')
   // The engine re-judges the edit at once: back-pressure belongs first,
-  // surfaced as a finding while the user works — never a re-sort or a
+  // surfaced as a finding while the user works, never a re-sort or a
   // dedicated ordering UI (ADR-0024 §6).
   const strip = page.getByTestId('findings-strip')
   await expect(strip.locator('.compose-finding', { hasText: 'memory_limiter belongs first' }).first())
@@ -110,7 +110,7 @@ test('the canvas is authoring-capable: remove is a model edit', async ({ page })
   await expect(page.getByTestId('lane-logs')).toContainText('batcher')
 })
 
-test('Save exits to a PR through the forge adapter — the PR decides', async ({ page }) => {
+test('Save exits to a PR through the forge adapter, and the PR decides', async ({ page }) => {
   await page.goto(`/compose?${EDGE}&lens=production`)
   await page.getByTestId('save-button').click()
   const proposal = page.getByTestId('proposal')
@@ -130,7 +130,7 @@ test('the one hard block: Save disabled, different in kind, a Grant the way out'
   const blocked = page.getByTestId('save-blocked')
   await expect(blocked).toContainText('debug-tap')
   await expect(page.getByTestId('request-grant')).toBeVisible()
-  // The allow-list finding renders as blocking — different in kind from
+  // The allow-list finding renders as blocking, different in kind from
   // the advisory strip entries (P1 verdict).
   await expect(page.locator('.compose-finding.blocking')).toHaveCount(1)
   // The environment toggle clears floors, never the allow-list finding.
@@ -144,7 +144,7 @@ test('satisfies renders as a claim linking to the verdict, never a status', asyn
   const chip = page.getByTestId('claim-req-pii-redaction@3')
   await expect(chip).toContainText('claims req-pii-redaction@3')
   await expect(chip).not.toContainText('met')
-  // The link lands on the engine's verdict: claimed, and judged not met —
+  // The link lands on the engine's verdict: claimed, and judged not met:
   // intent and fact side by side, never blended.
   await page.getByTestId('claim-verdict-req-pii-redaction@3').click()
   await expect(page).toHaveURL(/surface=requirements/)

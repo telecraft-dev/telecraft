@@ -5,8 +5,8 @@
  * machine is the honest default and an on/off switch cannot express it, so
  * the stored value is the *choice* and `data-theme` on the root element is
  * the *resolution* of it. `tokens.css` defines every colour in exactly two
- * blocks — the bare `:root` carrying dark, and `:root[data-theme="light"]`
- * — so a browser that never runs this module still renders a complete
+ * blocks (the bare `:root` carrying dark, and `:root[data-theme="light"]`),
+ * so a browser that never runs this module still renders a complete
  * theme rather than a half-painted one.
  *
  * The choice is a device preference, not a property of what is on screen:

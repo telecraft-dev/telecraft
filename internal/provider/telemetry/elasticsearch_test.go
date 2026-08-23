@@ -91,7 +91,7 @@ func TestElasticsearchObserveReading(t *testing.T) {
 		t.Errorf("metrics = %+v, want an observed absence", metrics)
 	}
 	if metrics.AttributeCoverage != nil {
-		t.Errorf("metrics coverage measured over zero records: %v — coverage must be omitted, not fabricated", metrics.AttributeCoverage)
+		t.Errorf("metrics coverage measured over zero records: %v: coverage must be omitted, not fabricated", metrics.AttributeCoverage)
 	}
 
 	traces := obs.Signals[requirements.Traces]
@@ -115,12 +115,12 @@ func TestElasticsearchObserveReading(t *testing.T) {
 	}
 }
 
-// Criterion: an unreachable backend yields Known false readings — never a
+// Criterion: an unreachable backend yields Known false readings, never a
 // crash, never a fabricated value.
 // Criterion (ADR-0033): a reading narrowed to one Environment filters on the
 // environment field, so the same Service in two environments yields
 // independent readings and cross-environment blending is impossible at the
-// source. An unscoped Service carries no environment filter — unchanged
+// source. An unscoped Service carries no environment filter: unchanged
 // behaviour for callers that predate the environment axis.
 func TestElasticsearchObserveEnvironmentScope(t *testing.T) {
 	var captured []byte
@@ -170,7 +170,7 @@ func TestElasticsearchObserveUnreachableBackend(t *testing.T) {
 	}
 }
 
-// Criterion: a missing index yields a Known false reading for that signal —
+// Criterion: a missing index yields a Known false reading for that signal:
 // the provider cannot tell "nothing ever landed" from "wrong index", so it
 // never renders the gap as an observed absence. The other signals stay known.
 func TestElasticsearchObserveMissingIndex(t *testing.T) {
@@ -188,7 +188,7 @@ func TestElasticsearchObserveMissingIndex(t *testing.T) {
 		t.Errorf("logs cause %q should name the index pattern and the ambiguity", logs.Cause)
 	}
 	if metrics := obs.Signals[requirements.Metrics]; !metrics.Known || metrics.Volume != 3 {
-		t.Errorf("metrics = %+v, want a known reading — one signal's missing index says nothing about the others", metrics)
+		t.Errorf("metrics = %+v, want a known reading: one signal's missing index says nothing about the others", metrics)
 	}
 	if traces := obs.Signals[requirements.Traces]; traces.Known {
 		t.Error("traces: Known = true although the index does not exist")
@@ -239,7 +239,7 @@ func TestElasticsearchObserveDegradations(t *testing.T) {
 	}
 }
 
-// Criterion: every reading carries as_of — the degraded paths included.
+// Criterion: every reading carries as_of, the degraded paths included.
 func TestReadingsAlwaysCarryAsOf(t *testing.T) {
 	es, _ := newFake(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "boom", http.StatusInternalServerError)
@@ -283,7 +283,7 @@ func TestElasticsearchAttributeNames(t *testing.T) {
 		}
 	}
 	if names.SampledRecords != 2 || names.TotalRecords != 5 || !names.Truncated {
-		t.Errorf("sampling not reported honestly: %+v — 2 of 5 records inspected must read Truncated", names)
+		t.Errorf("sampling not reported honestly: %+v: 2 of 5 records inspected must read Truncated", names)
 	}
 
 	req := string(captured)

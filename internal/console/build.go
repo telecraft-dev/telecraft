@@ -30,7 +30,7 @@ type Inputs struct {
 	// the committed rendered/ artefacts (ADR-0027).
 	Root string
 
-	// Active is the path of the active Catalogue artefact — the one
+	// Active is the path of the active Catalogue artefact, the one
 	// authoring is judged against.
 	Active string
 
@@ -50,7 +50,7 @@ type Inputs struct {
 	EstateFile string
 
 	// ReadingsFile declares the two runtime readings a repository cannot
-	// hold — see Readings.
+	// hold. See Readings.
 	ReadingsFile string
 
 	// Commit is the estate head the snapshot is taken at (ADR-0013).
@@ -75,7 +75,7 @@ type Inputs struct {
 // prevent.
 func Build(in Inputs) (Bundle, error) {
 	if in.Commit == "" {
-		return Bundle{}, fmt.Errorf("no commit — every artefact and every claim carries the SHA it was judged at (ADR-0013, ADR-0038 §4a)")
+		return Bundle{}, fmt.Errorf("no commit: every artefact and every claim carries the commit it was judged at")
 	}
 
 	tree, err := ownership.LoadTeams(filepath.Join(in.Root, ownership.TeamsFile))
@@ -187,7 +187,7 @@ func Build(in Inputs) (Bundle, error) {
 
 // verifyRendered holds the recompute invariant (ADR-0028 §2): rendering is
 // a pure function of the authored trees, so the committed tree must equal
-// a fresh render. A mismatch names the first offending path — the fix is a
+// a fresh render. A mismatch names the first offending path. The fix is a
 // re-render and a commit, never a snapshot built over it.
 func verifyRendered(root string, res renderer.Result) error {
 	paths := make([]string, 0, len(res.Artefacts))
@@ -198,10 +198,10 @@ func verifyRendered(root string, res renderer.Result) error {
 	for _, rel := range paths {
 		on, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {
-			return fmt.Errorf("%s is missing from the committed tree — rendering is a pure function of the sources, so main is always consistent (ADR-0028 §2): re-render and commit", rel)
+			return fmt.Errorf("%s is missing from the committed tree: re-render and commit, so the rendered tree matches the sources", rel)
 		}
 		if !bytes.Equal(on, res.Artefacts[rel]) {
-			return fmt.Errorf("%s differs from a fresh render of the sources — a snapshot over a stale artefact would show collectors served config the sources no longer describe (ADR-0028 §2): re-render and commit", rel)
+			return fmt.Errorf("%s differs from a fresh render of the sources: re-render and commit, otherwise the snapshot would show collectors serving config the sources no longer describe", rel)
 		}
 	}
 	return nil
@@ -303,7 +303,7 @@ type tierView struct {
 	// metered is the Tier's pipeline-grain flow reading, taken through the
 	// metering seam (ADR-0040). judgeTiers fills it for every view before
 	// any face is projected, so the card always renders a reading that was
-	// actually asked for — including a fully unknown one, which is a
+	// actually asked for, including a fully unknown one, which is a
 	// reading like any other (ADR-0008).
 	metered telemetry.Metered
 }
@@ -405,7 +405,7 @@ func (b *builder) readEstate() (map[string]*tierView, []CollectorRow, error) {
 		}
 		if match.Unmatched {
 			// Ungoverned is a concern, never a failure, and no stigma
-			// attaches to the delivery path — only to matching no
+			// attaches to the delivery path, only to matching no
 			// selector (ADR-0031 §1).
 			row.Ungoverned = c.Delivery
 			if c.Delivery != "served" {

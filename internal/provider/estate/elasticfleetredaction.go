@@ -6,12 +6,12 @@ import "strings"
 // it: fleet-server replaces scalar values whose key name matches a
 // substring list, case-insensitively, with one placeholder string. Under
 // the elastic-fleet Mutation profile a rotated redacted credential
-// therefore yields identical layer-2 digests — an accepted, bounded,
+// therefore yields identical layer-2 digests, an accepted, bounded,
 // contract-tested cost (ADR-0046 §3). The rules live here, versioned with
 // the provider and never hard-coded in core; the elastic-fleet Mutation
 // profile (elasticfleetprofile.go) derives its pattern from this one
 // list, and the live contract test (elasticfleet_live_test.go) holds it
-// against the real API — an Elastic Fleet release changing the list
+// against the real API, so an Elastic Fleet release changing the list
 // surfaces as a contract failure, not estate-wide false drift.
 //
 // Pinned to observed Elastic Fleet behaviour: fleet-server 9.6.x
@@ -22,7 +22,7 @@ import "strings"
 
 // ElasticFleetRedactedValue is the exact placeholder Elastic Fleet
 // substitutes for a redacted scalar. A value equal to it is masked, not
-// absent — a consumer must never confuse the two.
+// absent, and a consumer must never confuse the two.
 const ElasticFleetRedactedValue = "REDACTED"
 
 // ElasticFleetRedactionKeySubstrings is the pinned substring list: a key
@@ -40,7 +40,7 @@ func ElasticFleetRedactionIgnoredKeys() []string {
 }
 
 // ElasticFleetRedacts reports whether Elastic Fleet redacts a scalar value
-// held under the given key — the exemption checked first, exact and
+// held under the given key: the exemption checked first, exact and
 // case-sensitive, then the substring list, case-insensitively, exactly as
 // the upstream traversal does.
 func ElasticFleetRedacts(key string) bool {

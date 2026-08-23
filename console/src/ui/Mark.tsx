@@ -9,7 +9,7 @@ export { markFor, stateLabel, type MarkName } from './marks'
  * Drawn here rather than taken from a pack, because ADR-0041 makes glyphs a
  * mapping from states: they are product vocabulary, and no pack draws
  * `pending_settle` the way this product means it. Unicode is not used for
- * any of them — measured in-browser, Atkinson Hyperlegible contains U+2713
+ * any of them: measured in-browser, Atkinson Hyperlegible contains U+2713
  * and U+25B2 but not U+2717, so a verdict's tick and its cross would render
  * from different typefaces, at different weights, chosen by the reader's
  * machine.
@@ -42,7 +42,7 @@ function shape(name: MarkName) {
       return <path d="M3.25 8H12.75" />
     case 'unknown':
       // A broken outline: we should know this and do not. The gaps are the
-      // point — a closed ring would read as a settled state.
+      // point: a closed ring would read as a settled state.
       return <circle cx="8" cy="8" r="5" strokeDasharray="3.1 2.7" />
     case 'pending_settle':
       // A clock: the ADR-0038 settling window has not closed yet.

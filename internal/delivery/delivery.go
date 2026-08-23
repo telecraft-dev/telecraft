@@ -1,21 +1,21 @@
 // Package delivery is the second cross of ADR-0004: Intended × Effective,
 // judged per collector, producing the delivery status that sits beside the
-// conformance verdict and qualifies it — never blended into it (REQ-020).
+// conformance verdict and qualifies it, never blended into it (REQ-020).
 //
 // The status has two axes, kept separate because they come from different
 // witnesses. The remote reading is the EstateProvider seam's DeliveryStatus
 // (internal/estate): OpAMP's RemoteConfigStatus vocabulary, adopted
-// verbatim — UNSET / APPLYING / APPLIED / FAILED plus the error — with no
+// verbatim (UNSET / APPLYING / APPLIED / FAILED plus the error), with no
 // invented delivery states (ADR-0004). The comparison is the
 // normalised layer-2 cross of the artefact in git against the collector's
 // own reported config, under the delivery path's Mutation profile
-// (ADR-0005, ADR-0046). The cross judges the keys the artefact asserts — a
+// (ADR-0005, ADR-0046). The cross judges the keys the artefact asserts (a
 // key it never mentions is not drift, whatever the collector defaults it
-// to — beside a structural check at component and pipeline grain, which is
+// to) beside a structural check at component and pipeline grain, which is
 // what keeps an addition nobody rendered detectable (ADR-0054). It is
 // qualified by the commit stamps both sides carry
 // (ADR-0013): agreeing configs are in sync; disagreeing configs with two
-// different stamps are stale (the collector runs another commit — a
+// different stamps are stale (the collector runs another commit, a
 // delivery lag); disagreeing configs without that explanation are drifted,
 // with layer 3 saying where.
 //
@@ -42,7 +42,7 @@ import (
 type Path string
 
 const (
-	// PathServed is the platform's own OpAMP serving path — the Supervisor
+	// PathServed is the platform's own OpAMP serving path: the Supervisor
 	// beside the collector applies what the server offers (ADR-0010).
 	PathServed Path = "served"
 
@@ -69,7 +69,7 @@ func (p Path) Profile() normalise.Profile {
 
 // validState reports whether a known remote reading carries the
 // RemoteConfigStatus vocabulary and nothing else (ADR-0004: no invented
-// delivery states). The type is the seam's — estate.DeliveryState — so the
+// delivery states). The type is the seam's (estate.DeliveryState), so the
 // same reading flows from any EstateProvider straight into Compute.
 func validState(s estate.DeliveryState) bool {
 	switch s {
@@ -80,7 +80,7 @@ func validState(s estate.DeliveryState) bool {
 }
 
 // Intended is the per-collector Intended reading: the rendered artefact in
-// git this collector should be running — pinned to a commit by the stamp
+// git this collector should be running, pinned to a commit by the stamp
 // riding inside it (ADR-0004, ADR-0013). A hand-committed config is
 // Intended too.
 type Intended struct {
@@ -111,13 +111,13 @@ const (
 	// (ADR-0004, ADR-0008); the Status.Cause says why.
 	ComparisonUnknown Comparison = "unknown"
 
-	// ComparisonInSync: the layer-2 digests agree under the profile — the
+	// ComparisonInSync: the layer-2 digests agree under the profile: the
 	// collector runs the intended config, modulo the path's catalogued
 	// mutations and nothing else.
 	ComparisonInSync Comparison = "in_sync"
 
 	// ComparisonStale: the configs disagree and the two commit stamps
-	// differ — the collector runs another commit's config. A delivery lag,
+	// differ: the collector runs another commit's config. A delivery lag,
 	// owned by the delivery path (ADR-0004: a fault here can wear a
 	// pipeline fault's clothes).
 	ComparisonStale Comparison = "stale"
@@ -129,14 +129,14 @@ const (
 
 // Status is one collector's delivery status.
 type Status struct {
-	// Path is the collector's delivery path — a visible property (REQ-041).
+	// Path is the collector's delivery path, a visible property (REQ-041).
 	Path Path
 
 	// Profile names the Mutation profile the comparison ran under; part of
 	// digest identity, so part of the status's identity too (ADR-0046).
 	Profile string
 
-	// Remote is the RemoteConfigStatus reading, verbatim — the seam's
+	// Remote is the RemoteConfigStatus reading, verbatim: the seam's
 	// DeliveryStatus (ADR-0008, ADR-0036): Known false with a cause for a
 	// path or provider that cannot report one, never a failure look-alike.
 	Remote estate.DeliveryStatus
@@ -148,7 +148,7 @@ type Status struct {
 	// IntendedCommit and EffectiveCommit are the commit stamps read from
 	// each side's config (ADR-0013: the artefact carries its own identity,
 	// and "which commit is this running" is read from the collector).
-	// Empty when a side carries no stamp — normal for foreign configs.
+	// Empty when a side carries no stamp, which is normal for foreign configs.
 	IntendedCommit  string
 	EffectiveCommit string
 
@@ -161,24 +161,24 @@ type Status struct {
 	// Undescribed is the structural check's finding: components and
 	// pipelines the collector is running that the artefact never describes
 	// (ADR-0054 §2). Reported apart from Changes because it answers a
-	// different question — "something appeared that nobody rendered", not
-	// "a value you asserted is wrong" — and it is what makes judging only
+	// different question ("something appeared that nobody rendered", not
+	// "a value you asserted is wrong"), and it is what makes judging only
 	// asserted keys payable.
 	Undescribed []normalise.Structural
 }
 
 // Compute crosses one collector's readings into its delivery status. The
-// same computation serves both delivery paths (REQ-041) — path and profile
+// same computation serves both delivery paths (REQ-041); path and profile
 // only parameterise it. Unknown readings and configs the normaliser
-// refuses (it fails closed — ADR-0046) yield ComparisonUnknown with a
+// refuses (it fails closed, ADR-0046) yield ComparisonUnknown with a
 // cause, never an error and never a failure look-alike; an error reports a
 // caller bug (invalid path, profile, or remote state), not a reading.
 func Compute(path Path, profile normalise.Profile, intended Intended, effective Effective, remote estate.DeliveryStatus) (Status, error) {
 	if !path.Valid() {
-		return Status{}, fmt.Errorf("unknown delivery path %q — served or git (REQ-041)", path)
+		return Status{}, fmt.Errorf("unknown delivery path %q: use served or git", path)
 	}
 	if remote.Known && !validState(remote.State) {
-		return Status{}, fmt.Errorf("remote state %q is not RemoteConfigStatus vocabulary (ADR-0004)", remote.State)
+		return Status{}, fmt.Errorf("remote state %q is not a RemoteConfigStatus value", remote.State)
 	}
 
 	st := Status{Path: path, Profile: profile.Name, Remote: remote, Comparison: ComparisonUnknown}
@@ -274,7 +274,7 @@ func (s Status) Summary() string {
 
 // stampOf reads the commit stamp out of a normalised config tree:
 // service.telemetry.resource.<renderer.CommitAttribute> (ADR-0013). Absent
-// or non-string means no stamp — normal for foreign configs, never an
+// or non-string means no stamp, which is normal for foreign configs, never an
 // error.
 func stampOf(doc any) string {
 	root, ok := doc.(map[string]any)

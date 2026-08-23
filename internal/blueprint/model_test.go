@@ -23,7 +23,7 @@ func TestParseReference(t *testing.T) {
 			t.Errorf("parseReference(%q) = %+v, want %+v", in, got, want)
 		}
 		if got.String() != in {
-			t.Errorf("Reference(%q).String() = %q — a reference renders as authored", in, got.String())
+			t.Errorf("Reference(%q).String() = %q, want it rendered as authored", in, got.String())
 		}
 	}
 

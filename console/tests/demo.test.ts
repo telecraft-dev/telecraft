@@ -7,8 +7,8 @@ import { demoApi, DemoWriteError } from '../src/api/demo'
 
 // Demo mode (issue #50): the console answering from a build-time snapshot
 // instead of a server. The read paths must project the same documents the
-// live API serves — the surfaces consume the contract, never the transport
-// — and every write path must terminate at the explanatory notice rather
+// live API serves (the surfaces consume the contract, never the transport)
+// and every write path must terminate at the explanatory notice rather
 // than pretending to open a pull request.
 //
 // The snapshot under test is assembled from the fixture estate, which is
@@ -129,6 +129,6 @@ describe('demo mode write paths end at the notice, never at a pull request', () 
   it('names the pull-request exit it stands in for, so the demo teaches it', () => {
     const message = new DemoWriteError('saving').message
     expect(message).toContain('pull request')
-    expect(message).toContain('ADR-0028')
+    expect(message).toContain('the review decides')
   })
 })

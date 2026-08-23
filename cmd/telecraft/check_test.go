@@ -90,13 +90,13 @@ func TestCheckUsageErrors(t *testing.T) {
 		t.Errorf("unknown subcommand: exit %d, want 2", code)
 	}
 	if code, _, msg := runCheckCmd(t); code != 2 || !strings.Contains(msg, "-library") {
-		t.Errorf("missing library: exit %d, stderr %q — want 2 naming the flag", code, msg)
+		t.Errorf("missing library: exit %d, stderr %q: want 2 naming the flag", code, msg)
 	}
 	if code, _, msg := runCheckCmd(t, "-library", t.TempDir()); code != 2 || !strings.Contains(msg, "-estate") {
-		t.Errorf("no estate and no derivation: exit %d, stderr %q — want 2 naming the flag", code, msg)
+		t.Errorf("no estate and no derivation: exit %d, stderr %q: want 2 naming the flag", code, msg)
 	}
 	if code, _, msg := runCheckCmd(t, "-library", t.TempDir(), "-collectors", "collectors.yaml"); code != 2 || !strings.Contains(msg, "-source") {
-		t.Errorf("derivation without a topology: exit %d, stderr %q — want 2 saying which Tier answers is unknown", code, msg)
+		t.Errorf("derivation without a topology: exit %d, stderr %q: want 2 saying which Tier answers is unknown", code, msg)
 	}
 }
 
@@ -119,7 +119,7 @@ func TestCheckMalformedLibraryExitsNonZero(t *testing.T) {
 
 	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 2 {
-		t.Fatalf("exit %d, want 2 — a library that fails to load has judged nothing", code)
+		t.Fatalf("exit %d, want 2: a library that fails to load has judged nothing", code)
 	}
 	if !strings.Contains(msg, filepath.Base(badFile)) || !strings.Contains(msg, "siganl") {
 		t.Errorf("stderr %q should name the file and the unknown field", msg)
@@ -143,7 +143,7 @@ services:
 
 	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 0 {
-		t.Fatalf("exit %d, want 0 — no counting failures exist\nstderr: %s", code, msg)
+		t.Fatalf("exit %d, want 0: no counting failures exist\nstderr: %s", code, msg)
 	}
 	if report.Summary.CountingFailures != 0 || report.Summary.Rows != 1 || report.Summary.FailingRows != 0 {
 		t.Errorf("summary = %+v, want one clean row", report.Summary)
@@ -157,7 +157,7 @@ services:
 }
 
 // Criterion (REQ-024): check exits non-zero exactly when counting failures
-// exist. The same Service passes in production and fails in staging — two
+// exist. The same Service passes in production and fails in staging: two
 // independent rows in one report (ADR-0033), production leading, and the
 // staging failure alone drives the exit code.
 func TestCheckCountsFailuresPerRow(t *testing.T) {
@@ -168,13 +168,13 @@ func TestCheckCountsFailuresPerRow(t *testing.T) {
 
 	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — staging has a counting failure", code)
+		t.Fatalf("exit %d, want 1: staging has a counting failure", code)
 	}
 	if len(report.Rows) != 2 {
-		t.Fatalf("rows = %d, want 2 — one per (Service, Environment)", len(report.Rows))
+		t.Fatalf("rows = %d, want 2: one per (Service, Environment)", len(report.Rows))
 	}
 	if report.Rows[0].Environment != "production" {
-		t.Errorf("row order %q then %q — production leads the report (ADR-0033)",
+		t.Errorf("row order %q then %q: production leads the report",
 			report.Rows[0].Environment, report.Rows[1].Environment)
 	}
 	if report.Rows[0].Worst != "compliant" || report.Rows[1].Worst != "misconfigured" {
@@ -185,7 +185,7 @@ func TestCheckCountsFailuresPerRow(t *testing.T) {
 		t.Errorf("summary = %+v, want exactly the staging failure", report.Summary)
 	}
 
-	// Narrowed to the passing lens, the same estate is clean — and the
+	// Narrowed to the passing lens, the same estate is clean, and the
 	// staging failure is still one command away, never silently gone.
 	code, report, _ = runCheckCmd(t, "-library", libDir, "-estate", estate, "-environment", "production")
 	if code != 0 || len(report.Rows) != 1 {
@@ -196,7 +196,7 @@ func TestCheckCountsFailuresPerRow(t *testing.T) {
 	}
 }
 
-// An unreachable backend leaves signal requirements unknown — not passing,
+// An unreachable backend leaves signal requirements unknown, not passing,
 // so the gate fails rather than passing on blindness (ADR-0008 reported
 // honestly; the outcome and its cause are in the report).
 func TestCheckUnreachableBackendFailsTheGate(t *testing.T) {
@@ -214,7 +214,7 @@ services:
 	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate,
 		"-endpoint", "http://127.0.0.1:1", "-timeout", "5s")
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — an unknown outcome counts as a failure", code)
+		t.Fatalf("exit %d, want 1: an unknown outcome counts as a failure", code)
 	}
 	f := report.Rows[0].Findings[0]
 	if f.Outcome != "unknown" {
@@ -226,7 +226,7 @@ services:
 }
 
 // An environments list matching nothing in the estate surfaces as an
-// authoring finding in the report — visible, never fatal, never silently
+// authoring finding in the report: visible, never fatal, never silently
 // inapplicable (ADR-0033 §3).
 func TestCheckReportsAuthoringFindings(t *testing.T) {
 	dir := t.TempDir()
@@ -247,7 +247,7 @@ func TestCheckReportsAuthoringFindings(t *testing.T) {
 
 	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — the staging misconfiguration still counts", code)
+		t.Fatalf("exit %d, want 1: the staging misconfiguration still counts", code)
 	}
 	if len(report.AuthoringFindings) != 1 || report.AuthoringFindings[0].Requirement != "never-applies" {
 		t.Fatalf("authoring findings = %+v, want the never-matching list surfaced", report.AuthoringFindings)
@@ -255,14 +255,14 @@ func TestCheckReportsAuthoringFindings(t *testing.T) {
 	for _, row := range report.Rows {
 		for _, f := range row.Findings {
 			if f.Requirement == "never-applies" {
-				t.Errorf("never-applies produced a finding on %s/%s — it applies nowhere", row.Service, row.Environment)
+				t.Errorf("never-applies produced a finding on %s/%s: it applies nowhere", row.Service, row.Environment)
 			}
 		}
 	}
 }
 
 // writeExemptions authors one exemption for configOnlyLibrary's requirement
-// — exactly what checkout fails in twoEnvEstate's staging row — and returns
+// (exactly what checkout fails in twoEnvEstate's staging row) and returns
 // the exemptions directory.
 func writeExemptions(t *testing.T, dir, expires, subject string) string {
 	t.Helper()
@@ -279,8 +279,8 @@ reason: onboarding
 }
 
 // Criterion (REQ-014, ADR-0037): a waived finding still appears with its
-// diagnosis plus the waiver — in the findings, in the row score, and in the
-// summary roll-up — while giving up only its count and with it the exit code.
+// diagnosis plus the waiver, in the findings, in the row score, and in the
+// summary roll-up, while giving up only its count and with it the exit code.
 func TestCheckWaivedFindingStaysVisible(t *testing.T) {
 	dir := t.TempDir()
 	libDir := filepath.Join(dir, "library")
@@ -290,7 +290,7 @@ func TestCheckWaivedFindingStaysVisible(t *testing.T) {
 
 	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
 	if code != 0 {
-		t.Fatalf("exit %d, want 0 — the only failure is waived\nstderr: %s", code, msg)
+		t.Fatalf("exit %d, want 0: the only failure is waived\nstderr: %s", code, msg)
 	}
 
 	staging := report.Rows[1]
@@ -299,7 +299,7 @@ func TestCheckWaivedFindingStaysVisible(t *testing.T) {
 	}
 	f := staging.Findings[0]
 	if f.Outcome != "misconfigured" || len(f.Detail) == 0 {
-		t.Errorf("finding = %+v — the waiver must never replace the diagnosis", f)
+		t.Errorf("finding = %+v: the waiver must never replace the diagnosis", f)
 	}
 	if f.Waived != "exempt" {
 		t.Errorf("waived = %q, want exempt", f.Waived)
@@ -313,12 +313,12 @@ func TestCheckWaivedFindingStaysVisible(t *testing.T) {
 		t.Errorf("staging score = %+v, want the failure waived", staging.Score)
 	}
 	if report.Summary.Waived != 1 || report.Summary.CountingFailures != 0 {
-		t.Errorf("summary = %+v — the waived count must ride the roll-up", report.Summary)
+		t.Errorf("summary = %+v: the waived count must ride the roll-up", report.Summary)
 	}
 }
 
 // Criterion: an expired Exemption reverts to the raw finding with no manual
-// step — the gate fails again — and the file still in the tree surfaces as
+// step (the gate fails again), and the file still in the tree surfaces as
 // an authoring finding (ADR-0037 §3), visible but never in the exit code.
 func TestCheckExpiredExemptionReverts(t *testing.T) {
 	dir := t.TempDir()
@@ -329,7 +329,7 @@ func TestCheckExpiredExemptionReverts(t *testing.T) {
 
 	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — an expired exemption waives nothing", code)
+		t.Fatalf("exit %d, want 1: an expired exemption waives nothing", code)
 	}
 	f := report.Rows[1].Findings[0]
 	if f.Waived != "" || f.WaiverReason != "" {
@@ -346,7 +346,7 @@ func TestCheckExpiredExemptionReverts(t *testing.T) {
 }
 
 // Criterion (REQ-014): an Exemption without owner or expiry fails load, and
-// through this gate that is exit 2 — never a run that silently counted
+// through this gate that is exit 2, never a run that silently counted
 // findings someone believes are waived.
 func TestCheckInvalidExemptionsExitTwo(t *testing.T) {
 	dir := t.TempDir()
@@ -391,7 +391,7 @@ services:
 
 	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
 	if code != 0 {
-		t.Fatalf("exit %d, want 0 — the failure falls inside the C1 grace window\nstderr: %s", code, msg)
+		t.Fatalf("exit %d, want 0: the failure falls inside the C1 grace window\nstderr: %s", code, msg)
 	}
 	f := report.Rows[0].Findings[0]
 	if f.Outcome != "misconfigured" || f.Waived != "grace" {
@@ -433,7 +433,7 @@ teams:
 
 	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-exemptions", exDir)
 	if code != 2 || !strings.Contains(msg, "no ownership model") {
-		t.Fatalf("without -ownership: exit %d, stderr %q — want a refusal naming the missing model", code, msg)
+		t.Fatalf("without -ownership: exit %d, stderr %q: want a refusal naming the missing model", code, msg)
 	}
 
 	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
@@ -443,7 +443,7 @@ teams:
 	}
 	f := report.Rows[1].Findings[0]
 	if f.Waived != "exempt" {
-		t.Errorf("finding = %+v — checkout's team sits under engineering, so the subtree exemption covers it", f)
+		t.Errorf("finding = %+v: checkout's team sits under engineering, so the subtree exemption covers it", f)
 	}
 }
 
@@ -467,7 +467,7 @@ func driftSource(t *testing.T, dir string, files map[string]string) string {
 }
 
 // Criteria (#19): library_drift is distinct from every row outcome in the
-// report — its own repo-owned section, never a row's finding — and check
+// report (its own repo-owned section, never a row's finding), and check
 // mode counts each finding at library_drift's severity, driving the exit
 // code. The stale-but-passing claim rides beside it as housekeeping,
 // visible and never counted (ADR-0026 §6).
@@ -527,18 +527,18 @@ pipelines:
 
 	// The two flags go together: floors judge against the active Catalogue.
 	if code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate, "-source", source); code != 2 {
-		t.Fatalf("-source without -catalogue: exit %d, stderr %q — want 2", code, msg)
+		t.Fatalf("-source without -catalogue: exit %d, stderr %q, want 2", code, msg)
 	}
 
 	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
 		"-source", source, "-catalogue", cataloguePath)
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — the behind-head pin is a counting failure\nstderr: %s", code, msg)
+		t.Fatalf("exit %d, want 1: the behind-head pin is a counting failure\nstderr: %s", code, msg)
 	}
 
 	// The rows are untouched: drift is the repo's, never a row's.
 	if len(report.Rows) != 1 || report.Rows[0].Worst != "compliant" || report.Summary.FailingRows != 0 {
-		t.Errorf("rows = %+v — library_drift must never appear as a row outcome", report.Rows)
+		t.Errorf("rows = %+v: library_drift must never appear as a row outcome", report.Rows)
 	}
 	if len(report.LibraryDrift) != 1 {
 		t.Fatalf("library_drift = %+v, want exactly the pinned-reference finding", report.LibraryDrift)
@@ -645,7 +645,7 @@ service:
 	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
 		"-source", source, "-catalogue", cataloguePath)
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — the committed artefact sits below the raised bar\nstderr: %s", code, msg)
+		t.Fatalf("exit %d, want 1: the committed artefact sits below the raised bar\nstderr: %s", code, msg)
 	}
 	if len(report.LibraryDrift) != 1 {
 		t.Fatalf("library_drift = %+v, want the floor drift on the production Tier", report.LibraryDrift)
@@ -655,14 +655,14 @@ service:
 		t.Errorf("finding = %+v, want the Requirement facet on pipelines/gateway production logs", f)
 	}
 	if !strings.Contains(f.Message, "8b7df143d91c716ecfa5fc1730022f6b421b05cd") {
-		t.Errorf("message %q should carry the artefact's own commit stamp (ADR-0013)", f.Message)
+		t.Errorf("message %q should carry the artefact's own commit stamp", f.Message)
 	}
 
 	// The staging lens sees no production drift; the production lens keeps it.
 	code, report, _ = runCheckCmd(t, "-library", libDir, "-estate", estate,
 		"-source", source, "-catalogue", cataloguePath, "-environment", "staging")
 	if code != 0 || len(report.LibraryDrift) != 0 || report.Summary.LibraryDrift != 0 {
-		t.Errorf("staging lens: exit %d with drift %+v — Tier-scoped drift narrows with the lens", code, report.LibraryDrift)
+		t.Errorf("staging lens: exit %d with drift %+v: Tier-scoped drift narrows with the lens", code, report.LibraryDrift)
 	}
 	code, report, _ = runCheckCmd(t, "-library", libDir, "-estate", estate,
 		"-source", source, "-catalogue", cataloguePath, "-environment", "production")
@@ -691,19 +691,19 @@ func TestCheckFlagCombinationsItRefuses(t *testing.T) {
 		},
 		"no estate and no derivation": {
 			args: []string{"-library", libDir},
-			want: "check: -estate is required, unless -collectors derives each row's Effective reading instead (ADR-0055)",
+			want: "check: -estate is required, unless -collectors derives each row's Effective reading instead",
 		},
 		"a derivation with no topology to read": {
 			args: []string{"-library", libDir, "-collectors", "collectors.yaml"},
-			want: "check: -collectors needs -source — the topology says which Tier answers for each row (ADR-0055 §1)",
+			want: "check: -collectors needs -source, because the topology decides which Tier answers for each row",
 		},
 		"a Catalogue with no authored estate to judge": {
 			args: []string{"-library", libDir, "-estate", estate, "-catalogue", "catalogue-v1.json"},
-			want: "check: -catalogue needs -source — floors judge per (component, signal) against the active Catalogue (ADR-0023)",
+			want: "check: -catalogue needs -source, because floors judge each component and signal against the active Catalogue",
 		},
 		"an authored estate with no Catalogue to judge it against": {
 			args: []string{"-library", libDir, "-estate", estate, "-source", dir},
-			want: "check: -source and -catalogue go together — floors judge per (component, signal) against the active Catalogue (ADR-0023)",
+			want: "check: -source and -catalogue go together, because floors judge each component and signal against the active Catalogue",
 		},
 		"a flag that does not exist": {
 			args: []string{"-libraries", libDir},
@@ -717,7 +717,7 @@ func TestCheckFlagCombinationsItRefuses(t *testing.T) {
 		// way a gate can be green without having judged anything.
 		"a lens no row is in": {
 			args: []string{"-library", libDir, "-estate", estate, "-environment", "nowhere"},
-			want: `check: the estate has no row in environment "nowhere" — a gate judging nothing would pass vacuously`,
+			want: `check: the estate has no row in environment "nowhere", so there is nothing to judge`,
 		},
 		// The backend is wired last, so an endpoint the provider refuses
 		// stops the run after the estate loaded and before anything is
@@ -874,7 +874,7 @@ services:
 		"-endpoint", unreachableBackend, "-timeout", "10s")
 
 	if code != 1 {
-		t.Fatalf("exit %d, want 1 — an unknown outcome counts as a failure\nstderr: %s", code, msg)
+		t.Fatalf("exit %d, want 1: an unknown outcome counts as a failure\nstderr: %s", code, msg)
 	}
 	if len(report.Rows) != 1 || len(report.Rows[0].Findings) != 1 {
 		t.Fatalf("report = %+v, want one row carrying one finding", report.Rows)
@@ -920,7 +920,7 @@ services:
 
 // Deliberately uncovered in check: the overrides section, which needs a
 // derived run whose topology, recorded reading and authored estate all
-// answer for the same row; and two edges of the team-subtree waiver test —
+// answer for the same row; and two edges of the team-subtree waiver test:
 // a team id the tree rejects, and a Service the ownership model has never
 // heard of. Both edges belong to internal/ownership, which asserts on them
 // directly rather than through a report this command renders.

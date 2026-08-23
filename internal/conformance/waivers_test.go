@@ -35,7 +35,7 @@ func checkoutRow() EstateRow {
 }
 
 // Criterion: a waived finding keeps its diagnosis. The exemption waives the
-// count and nothing else — outcome and detail survive verbatim, and the
+// count and nothing else: outcome and detail survive verbatim, and the
 // waiver names the exemption, its owner and its expiry (ADR-0004, ADR-0037).
 func TestExemptionWaivesTheCountNeverTheDiagnosis(t *testing.T) {
 	v := brokenVerdict(t)
@@ -87,7 +87,7 @@ func TestExemptionScopeIsExact(t *testing.T) {
 }
 
 // Criterion: an expired Exemption reverts to the raw finding with no manual
-// step — expiry is a property of the clock alone, so the identical call
+// step: expiry is a property of the clock alone, so the identical call
 // that waived before the expiry waives nothing after it.
 func TestExpiredExemptionRevertsAutomatically(t *testing.T) {
 	w := Waivers{Exemptions: []Exemption{exemptCheckout()}}
@@ -107,7 +107,7 @@ func TestExpiredExemptionRevertsAutomatically(t *testing.T) {
 	}
 	f := after.Findings[0]
 	if f.Waived != WaiverNone || f.WaiverReason != "" {
-		t.Errorf("at expiry: %+v — the raw finding must be back untouched", f)
+		t.Errorf("at expiry: %+v, the raw finding must be back untouched", f)
 	}
 	if s := after.Score(); s.Failing != 1 || s.Waived != 0 {
 		t.Errorf("score after expiry = %+v, want the failure counting again", s)
@@ -178,7 +178,7 @@ func TestTeamScopedExemption(t *testing.T) {
 }
 
 // Criterion: Grace computation varies by Service Class per a fixture table.
-// One table, one onboarding date, one clock — only the class differs, and
+// One table, one onboarding date, one clock. Only the class differs, and
 // with it whether the window still holds (REQ-014).
 func TestGraceScalesWithServiceClass(t *testing.T) {
 	estate, err := LoadEstate(writeEstate(t, `
@@ -222,7 +222,7 @@ services:
 		t.Fatal(err)
 	}
 
-	// evalAt is 2026-08-17T12:00Z — 84h after onboarding: past C1's 24h
+	// evalAt is 2026-08-17T12:00Z, 84h after onboarding: past C1's 24h
 	// window, inside C2's 168h and C3's 720h.
 	want := map[string]WaiverKind{
 		"pay":    WaiverNone,  // highest class, shortest grace, already over
@@ -240,7 +240,7 @@ services:
 		}
 		f := v.Findings[0]
 		if f.Outcome.Passing() {
-			t.Fatalf("%s: outcome %q — the fixture is built to fail raw", row.Service, f.Outcome)
+			t.Fatalf("%s: outcome %q, but the fixture is built to fail raw", row.Service, f.Outcome)
 		}
 		if f.Waived != want[row.Service] {
 			t.Errorf("%s (class %q): waived = %q, want %q", row.Service, row.Class, f.Waived, want[row.Service])

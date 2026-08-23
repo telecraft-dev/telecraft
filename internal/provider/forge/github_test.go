@@ -133,7 +133,7 @@ func (f *fakeAPI) server(t *testing.T) *httptest.Server {
 				return
 			}
 			// The caller asks for state=all, so a closed proposal is
-			// listed rather than hidden — which is the whole point.
+			// listed rather than hidden, which is the whole point.
 			if !strings.Contains(r.URL.RawQuery, "state=all") {
 				t.Errorf("GET /pulls asked for %q; a state=open query cannot see a proposal GitHub has closed", r.URL.RawQuery)
 			}
@@ -279,14 +279,14 @@ func TestProposeOpensPullRequest(t *testing.T) {
 		t.Errorf("commit branch = %v", branch)
 	}
 
-	// The mutation carries no custom author and no custom committer — the
+	// The mutation carries no custom author and no custom committer, the
 	// exact condition GitHub signs a bot commit under; the acting human
 	// rides as Co-authored-by instead (ADR-0014). This is the regression
 	// guard for the git-data lesson: a custom author forfeits the
 	// signature and is silently copied into the committer.
 	raw, _ := json.Marshal(input)
 	if strings.Contains(string(raw), `"author"`) || strings.Contains(string(raw), `"committer"`) {
-		t.Errorf("commit input carries custom identity fields — GitHub will not sign it:\n%s", raw)
+		t.Errorf("commit input carries custom identity fields: GitHub will not sign it:\n%s", raw)
 	}
 	message, _ := input["message"].(map[string]any)
 	if message["headline"] != "Raise the gold tier" {
@@ -294,7 +294,7 @@ func TestProposeOpensPullRequest(t *testing.T) {
 	}
 	body, _ := message["body"].(string)
 	if !strings.Contains(body, "Co-authored-by: Jo Author <jo@example.com>") {
-		t.Errorf("message body does not co-author the acting human (ADR-0014): %q", body)
+		t.Errorf("message body does not co-author the acting human: %q", body)
 	}
 
 	fileChanges, _ := input["fileChanges"].(map[string]any)
@@ -326,7 +326,7 @@ func TestProposeOpensPullRequest(t *testing.T) {
 
 // TestProposeRefreshesExistingProposal: the second propose on the same
 // branch force-moves the ref and updates the open pull request instead of
-// opening a second one — the retry path after a fixed render.
+// opening a second one, the retry path after a fixed render.
 func TestProposeRefreshesExistingProposal(t *testing.T) {
 	api := &fakeAPI{t: t}
 	srv := api.server(t)
@@ -350,10 +350,10 @@ func TestProposeRefreshesExistingProposal(t *testing.T) {
 		t.Errorf("saw %d ref force-moves, want 1", n)
 	}
 	if n := len(api.sent("POST", "/graphql")); n != 2 {
-		t.Errorf("saw %d commit mutations, want 2 — one per propose", n)
+		t.Errorf("saw %d commit mutations, want 2: one per propose", n)
 	}
 	if n := len(api.sent("POST", "/repos/telecraft-dev/estate-fixture/pulls")); n != 1 {
-		t.Errorf("saw %d pull-request creations, want 1 — the second propose must refresh, not duplicate", n)
+		t.Errorf("saw %d pull-request creations, want 1: the second propose must refresh, not duplicate", n)
 	}
 	patches := api.sent("PATCH", "/repos/telecraft-dev/estate-fixture/pulls/7")
 	if len(patches) != 1 || patches[0]["title"] != "Raise the gold tier (fixed)" {
@@ -399,14 +399,14 @@ func TestProposeReopensAProposalGitHubClosed(t *testing.T) {
 		t.Errorf("retry opened proposal %s, want the original %s reopened", again.ID, first.ID)
 	}
 	if n := len(api.sent("POST", "/repos/telecraft-dev/estate-fixture/pulls")); n != 1 {
-		t.Errorf("saw %d pull-request creations, want 1 — a closed proposal is reopened, never duplicated", n)
+		t.Errorf("saw %d pull-request creations, want 1: a closed proposal is reopened, never duplicated", n)
 	}
 	patches := api.sent("PATCH", "/repos/telecraft-dev/estate-fixture/pulls/7")
 	if len(patches) != 1 {
 		t.Fatalf("saw %d refreshes, want 1", len(patches))
 	}
 	if patches[0]["state"] != "open" {
-		t.Errorf("refresh = %v, want it to carry state=open — a closed proposal that stays closed is not a proposal", patches[0])
+		t.Errorf("refresh = %v, want it to carry state=open: a closed proposal that stays closed is not a proposal", patches[0])
 	}
 }
 
@@ -430,7 +430,7 @@ func TestProposeLeavesAMergedProposalAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n := len(api.sent("POST", "/repos/telecraft-dev/estate-fixture/pulls")); n != 2 {
-		t.Errorf("saw %d pull-request creations, want 2 — the merged one is finished", n)
+		t.Errorf("saw %d pull-request creations, want 2: the merged one is finished", n)
 	}
 	if n := len(api.sent("PATCH", "/repos/telecraft-dev/estate-fixture/pulls/7")); n != 0 {
 		t.Errorf("saw %d refreshes of the merged proposal, want 0", n)
@@ -472,7 +472,7 @@ func TestNewDispatchesOnHost(t *testing.T) {
 	}
 	caps := f.Capabilities()
 	if !caps.Proposals || !caps.ReviewRouting || !caps.Annotations || !caps.VerifiedAttribution {
-		t.Errorf("capabilities = %+v, want the full rung of the ADR-0028 ladder", caps)
+		t.Errorf("capabilities = %+v, want the full App rung of the forge ladder", caps)
 	}
 
 	_, err := New(Config{Repo: "https://git.example.net/org/estate", AppID: "x", InstallationID: "y", PrivateKeyPEM: keyPEM(t)})

@@ -8,11 +8,11 @@ import (
 )
 
 // GitSource is git-the-tool over a plain local repository (ADR-0032 §3):
-// clone once, then each poll fetches the remote HEAD — a pushed commit is
+// clone once, then each poll fetches the remote HEAD, so a pushed commit is
 // visible on the next snapshot, which is the whole freshness story.
 func TestGitSourceFetchesHeadAndPicksUpNewCommits(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("no git binary — GitSource is exercised where git-the-tool exists")
+		t.Skip("no git binary: GitSource is exercised where git-the-tool exists")
 	}
 	ctx := context.Background()
 	origin, _ := fixtureEstate(t)
@@ -40,7 +40,7 @@ func TestGitSourceFetchesHeadAndPicksUpNewCommits(t *testing.T) {
 		t.Fatal(err)
 	}
 	if snap.Commit != second {
-		t.Fatalf("snapshot head = %s, want the new head %s — bounded staleness is one fetch interval (ADR-0032)", snap.Commit, second)
+		t.Fatalf("snapshot head = %s, want the new head %s: bounded staleness is one fetch interval", snap.Commit, second) // ADR-0032
 	}
 	if m := snap.Match(gatewayAttrs()); string(m.Artefact) != "# changed at the new head\nreceivers: {}\n" {
 		t.Errorf("the new head's artefact is not being served:\n%s", m.Artefact)

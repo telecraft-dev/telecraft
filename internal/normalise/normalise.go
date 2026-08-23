@@ -2,8 +2,8 @@
 // by ADR-0046), productionised from the spike ruled on in issue #13
 // (docs/prototypes/normaliser-spike/VERDICT.md).
 //
-// Layer 1: digest of raw bytes — "has this collector changed since last
-// poll". Layer 2: digest of the normalised form — the verdict, and the only
+// Layer 1: digest of raw bytes: "has this collector changed since last
+// poll". Layer 2: digest of the normalised form: the verdict, and the only
 // layer that can be equal when the config is right. Layer 3: structural
 // diff, computed only when layer 2 disagrees, to say what drifted.
 //
@@ -11,8 +11,8 @@
 // meaningful relative to one delivery path's Mutation profile, and the
 // profile name is mixed into the hash domain so digests from different
 // profiles are never comparable, by construction (ADR-0046 §1). The core
-// ships the two vendor-neutral members of the family — exact and supervisor
-// — plus the mutation primitives; a lossy third-party reporting path
+// ships the two vendor-neutral members of the family (exact and supervisor)
+// plus the mutation primitives; a lossy third-party reporting path
 // composes its own profile in internal/provider/, where its mutation
 // parameters are versioned (ADR-0046 §3, ADR-0001).
 package normalise
@@ -34,12 +34,12 @@ import (
 // change the delivery path is known to make so it never reads as drift. A
 // Mutation may modify the tree in place; Normalised parses a fresh tree per
 // call, so nothing shared is at risk. Entries match by shape or pattern,
-// never by literal — the catalogued mutations carry ephemeral values
+// never by literal, because the catalogued mutations carry ephemeral values
 // (ADR-0046 §4).
 type Mutation func(doc any) any
 
 // Profile is one delivery path's mutation allow-list. The Name is part of
-// digest identity — it parameterises the hash domain — so it must be stable
+// digest identity (it parameterises the hash domain), so it must be stable
 // for as long as digests under it are compared.
 type Profile struct {
 	// Name identifies the delivery path, lower-case kebab (`exact`,
@@ -54,7 +54,7 @@ type Profile struct {
 // hash domain string, so a free-form name could collide two domains.
 var profileName = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
-// Exact applies no mutation allow-list — canonical form only (key order,
+// Exact applies no mutation allow-list: canonical form only (key order,
 // quoting, anchors/aliases and YAML-vs-JSON are neutralised; nothing else
 // is). The profile for comparing two authored configs: a git-delivered
 // collector's report against the artefact in git.
@@ -78,17 +78,17 @@ func Supervisor() Profile {
 const hashDomain = "telecraft-normalise/v1"
 
 // Layer1 is the raw-byte digest: one hash, no parse. It never compares
-// across sources — it compares a collector's report against that same
+// across sources: it compares a collector's report against that same
 // collector's previous report (ADR-0005).
 func Layer1(raw []byte) string {
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
 
-// Layer2 parses the document (YAML or JSON — JSON is a YAML subset),
+// Layer2 parses the document (YAML or JSON, since JSON is a YAML subset),
 // applies the profile's mutation allow-list, and digests the canonical
 // form. The parse fails closed on the constructs that could make two
-// different documents normalise equal — see parse.
+// different documents normalise equal; see parse.
 func Layer2(raw []byte, p Profile) (string, error) {
 	doc, err := Normalised(raw, p)
 	if err != nil {
@@ -97,7 +97,7 @@ func Layer2(raw []byte, p Profile) (string, error) {
 	return Digest(doc, p)
 }
 
-// Normalised returns the post-profile document tree — the form layer 2
+// Normalised returns the post-profile document tree, the form layer 2
 // digests and Layer3 diffs.
 func Normalised(raw []byte, p Profile) (any, error) {
 	doc, err := parse(raw)
@@ -117,7 +117,7 @@ func Normalised(raw []byte, p Profile) (any, error) {
 // collector).
 func Digest(doc any, p Profile) (string, error) {
 	if !profileName.MatchString(p.Name) {
-		return "", fmt.Errorf("profile name %q is not lower-case kebab — the name joins the hash domain and must be stable (ADR-0046)", p.Name)
+		return "", fmt.Errorf("profile name %q is not lower-case kebab: the name is part of every digest it produces, so it must be stable", p.Name)
 	}
 	h := sha256.New()
 	io.WriteString(h, hashDomain)
@@ -144,7 +144,7 @@ func Digest(doc any, p Profile) (string, error) {
 // The fold is scoped to these paths rather than applied to strings at
 // large: endpoints, attribute values and regular expressions are
 // case-sensitive, and a case-blind comparer would digest two genuinely
-// different configs equal — silent no-drift, the one failure ADR-0005
+// different configs equal: silent no-drift, the one failure ADR-0005
 // fears most.
 var telemetryLevelKeys = []string{"metrics", "logs", "traces"}
 
@@ -268,7 +268,7 @@ func isSupervisorOpamp(v any) bool {
 //
 // The Supervisor re-encodes the block on the way out, which under a
 // key-level comparison is worse than noisy: every attribute the artefact
-// stamps — `telecraft.tier`, `telecraft.commit` (ADR-0013) — reads as
+// stamps (`telecraft.tier`, `telecraft.commit`, ADR-0013) reads as
 // ABSENT, and a stamp going missing is the one thing on that line worth an
 // alarm (issue #110). Reading the map back also restores the Effective
 // commit stamp, without which a served collector's stale-versus-drifted
@@ -276,7 +276,7 @@ func isSupervisorOpamp(v any) bool {
 //
 // It is a shape match, never a literal one (ADR-0046 §4): a list whose
 // every entry is a map carrying a string `name`, and nothing else. Any
-// other shape — a duplicate name, an entry with extra keys — is left alone
+// other shape (a duplicate name, an entry with extra keys) is left alone
 // and reads as drift, because collapsing it would be a guess.
 func mapTelemetryResource(doc any) any {
 	root, ok := doc.(map[string]any)
@@ -355,13 +355,13 @@ func mapTelemetryResource(doc any) any {
 
 // redacted is the placeholder a redacting mutation writes; applying the
 // same mutation to both sides is what makes a redacting reporter's copy
-// comparable to the rendered original — both sides lose the same fields.
+// comparable to the rendered original: both sides lose the same fields.
 const redacted = "REDACTED"
 
 // RedactScalars returns a Mutation replacing every scalar whose key name
 // matches keyPattern with a fixed placeholder, recursively. Idempotent on
 // already-redacted input. The pattern belongs to whichever reporting path
-// redacts — it is that path's versioned behaviour, so it lives with the
+// redacts: it is that path's versioned behaviour, so it lives with the
 // provider composing the profile, never in core (ADR-0046 §3).
 func RedactScalars(keyPattern *regexp.Regexp) Mutation {
 	var redact func(doc any) any
@@ -391,7 +391,7 @@ func RedactScalars(keyPattern *regexp.Regexp) Mutation {
 // EmptyExtensionBodies returns a Mutation emptying the body of every
 // `extensions` entry named name or name/<qualifier>. For a reporting path
 // that mangles an extension's body beyond comparison, entry presence still
-// compares while the contents are excused on both sides — an honest
+// compares while the contents are excused on both sides, an honest
 // narrowing, named where the profile is composed (ADR-0046 §3).
 func EmptyExtensionBodies(name string) Mutation {
 	return func(doc any) any {
@@ -423,7 +423,7 @@ func isScalar(v any) bool {
 // --- canonical encoding -----------------------------------------------------
 
 // encodeCanonical writes a deterministic, type-tagged rendering of the
-// tree: map keys sorted, list order preserved (pipeline order is semantic —
+// tree: map keys sorted, list order preserved (pipeline order is semantic,
 // ADR-0004), scalars tagged so the string "1" never collides with the
 // integer 1.
 func encodeCanonical(w io.Writer, v any) {

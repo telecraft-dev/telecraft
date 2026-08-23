@@ -3,7 +3,7 @@
 // observe prints the Observed readings for one Service over a trailing
 // window, through the TelemetryProvider seam. Not knowing is a normal state
 // (ADR-0008): degraded readings print with their cause and observe still
-// exits 0 — scripting against presence belongs to check, not this printer.
+// exits 0. Scripting against presence belongs to check, not this printer.
 //
 // check is the CI mode (REQ-024): evaluate the estate once, write one
 // machine-readable report, exit non-zero exactly when counting failures
@@ -11,7 +11,7 @@
 //
 // palette prints one team's effective palette: the components of the active
 // Catalogue the team may use per the Allow-list policy (REQ-011, ADR-0021),
-// each with its provenance — the lists it survived, or the named Grant that
+// each with its provenance: the lists it survived, or the named Grant that
 // admitted it.
 //
 // render compiles every Tier's bound Blueprint to the rendered artefact
@@ -23,18 +23,18 @@
 // never an empty config map. See serve.go.
 //
 // snapshot writes the console API snapshot: the JSON documents the platform
-// API would serve, computed by the real evaluators over one estate checkout
-// — what a static console reads instead of calling a server. See
+// API would serve, computed by the real evaluators over one estate checkout.
+// A static console reads it instead of calling a server. See
 // snapshot.go.
 //
-// delivery prints one collector's delivery status — the Intended ×
+// delivery prints one collector's delivery status: the Intended ×
 // Effective cross via the normaliser (ADR-0004, ADR-0005), computed
 // identically for both delivery paths (REQ-041). See delivery.go.
 //
 // passwd hashes one basic-auth secret for the users.yaml seam (REQ-017,
 // ADR-0019): stdin in, the stored hash out. See passwd.go.
 //
-// Which backend answers is wiring inside internal/provider/ — this command
+// Which backend answers is wiring inside internal/provider/. This command
 // holds only neutral connection settings (ADR-0001).
 package main
 

@@ -28,12 +28,12 @@ import (
 // exist. Conformance that can only be seen in a browser is conformance that
 // regresses between people remembering to look.
 //
-// Exit codes: 0 — every counting finding passes; 1 — counting failures
-// exist; 2 — the check could not run (usage, load or wiring error). A load
+// Exit codes: 0, every counting finding passes; 1, counting failures
+// exist; 2, the check could not run (usage, load or wiring error). A load
 // error is exit 2, never a lenient 0: a library that fails to load has
 // judged nothing.
 //
-// Every row is judged by default — a gate that silently checked only one
+// Every row is judged by default: a gate that silently checked only one
 // environment would pass estates failing everywhere else. -environment
 // narrows the run to one lens; the report always orders production rows
 // first, the default lens (ADR-0033).
@@ -47,7 +47,7 @@ import (
 // With -source and -catalogue, the run also judges the authored estate for
 // library_drift (REQ-025, ADR-0026): config in git that passes the version
 // it claims or pins while failing the current bar. Those findings are
-// repo-owned, never a row's — they land in their own report section,
+// repo-owned, never a row's: they land in their own report section,
 // distinct from every cross outcome and from delivery divergence, and each
 // counts toward the exit code at library_drift's severity. Floors come from
 // the shipped ADR-0023 §3 defaults until the authored floor-policy file
@@ -56,12 +56,12 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	library := fs.String("library", "", "requirements library directory (required)")
-	estatePath := fs.String("estate", "", "estate file — services and their per-environment effective config (required unless -collectors derives them)")
-	collectors := fs.String("collectors", "", "recorded collector estate reading — derives each row's Effective reading from the collectors that report it, with -estate as the override (needs -source; ADR-0055)")
-	exemptionsDir := fs.String("exemptions", "", "exemptions directory — authored waivers (optional; ADR-0037)")
-	ownershipDir := fs.String("ownership", "", "estate ownership directory holding teams.yaml and the authored objects — needed only to resolve team-scoped exemptions")
-	source := fs.String("source", "", "authored estate root holding teams/ and rendered/ — enables library_drift detection (REQ-025; needs -catalogue)")
-	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact — enables library_drift detection (needs -source)")
+	estatePath := fs.String("estate", "", "estate file listing each Service's Effective config per Environment (required unless -collectors derives them)")
+	collectors := fs.String("collectors", "", "recorded collector estate reading: derives each row's Effective reading from the collectors that report it, with -estate as the override (needs -source)")
+	exemptionsDir := fs.String("exemptions", "", "exemptions directory holding authored waivers (optional)")
+	ownershipDir := fs.String("ownership", "", "estate ownership directory holding teams.yaml and the authored objects (needed only to resolve team-scoped exemptions)")
+	source := fs.String("source", "", "authored estate root holding teams/ and rendered/: enables library_drift detection (needs -catalogue)")
+	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact: enables library_drift detection (needs -source)")
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
 	apiKey := fs.String("api-key", os.Getenv("TELECRAFT_TELEMETRY_API_KEY"), "telemetry backend API key (optional)")
 	environment := fs.String("environment", "", "narrow the check to one Environment (default: every row in the estate)")
@@ -74,19 +74,19 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if *estatePath == "" && *collectors == "" {
-		fmt.Fprintln(stderr, "check: -estate is required, unless -collectors derives each row's Effective reading instead (ADR-0055)")
+		fmt.Fprintln(stderr, "check: -estate is required, unless -collectors derives each row's Effective reading instead")
 		return 2
 	}
 	if *collectors != "" && *source == "" {
-		fmt.Fprintln(stderr, "check: -collectors needs -source — the topology says which Tier answers for each row (ADR-0055 §1)")
+		fmt.Fprintln(stderr, "check: -collectors needs -source, because the topology decides which Tier answers for each row")
 		return 2
 	}
 	if *artefact != "" && *source == "" {
-		fmt.Fprintln(stderr, "check: -catalogue needs -source — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
+		fmt.Fprintln(stderr, "check: -catalogue needs -source, because floors judge each component and signal against the active Catalogue")
 		return 2
 	}
 	if *source != "" && *artefact == "" && *collectors == "" {
-		fmt.Fprintln(stderr, "check: -source and -catalogue go together — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
+		fmt.Fprintln(stderr, "check: -source and -catalogue go together, because floors judge each component and signal against the active Catalogue")
 		return 2
 	}
 
@@ -102,8 +102,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	// The drift detection is pure repo judgement, so it runs — and fails
-	// closed — before any backend is touched.
+	// The drift detection is pure repo judgement, so it runs, and fails
+	// closed, before any backend is touched.
 	var driftReport *drift.Report
 	if *source != "" && *artefact != "" {
 		rep, err := detectDrift(*source, *artefact, lib)
@@ -139,7 +139,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 			svc, authored := own.Objects[ownership.Ref{Kind: ownership.KindService, ID: service}]
 			if !authored {
 				// A Service the ownership model does not know sits provably
-				// in no subtree; the waiver stays unapplied — the strict
+				// in no subtree; the waiver stays unapplied, which is the strict
 				// direction, and the finding remains visible either way.
 				return false, nil
 			}
@@ -162,7 +162,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 			}
 		}
 		if len(rows) == 0 {
-			fmt.Fprintf(stderr, "check: the estate has no row in environment %q — a gate judging nothing would pass vacuously\n", *environment)
+			fmt.Fprintf(stderr, "check: the estate has no row in environment %q, so there is nothing to judge\n", *environment)
 			return 2
 		}
 	}
@@ -321,7 +321,7 @@ func resolveEstate(estatePath, collectors, source string, now time.Time) (confor
 		Now:      now,
 	})
 	if len(derived.Rows) == 0 {
-		return conformance.Estate{}, fmt.Errorf("the topology under %s has no Service with a Path, so the derivation produced no rows — a gate judging nothing would pass vacuously (ADR-0055 §1)", source)
+		return conformance.Estate{}, fmt.Errorf("the topology under %s has no Service with a Path, so the derivation produced no rows and there is nothing to judge", source)
 	}
 	return derived, nil
 }
@@ -369,7 +369,7 @@ func attributesIn(lib requirements.Library) []string {
 
 // detectDrift loads the authored estate and the current bar and runs the
 // library_drift detection (REQ-025, ADR-0026). Load findings from the
-// blueprint trees are not re-reported here — they are load-time findings
+// blueprint trees are not re-reported here: they are load-time findings
 // with their own routing, surfaced by the render path.
 func detectDrift(source, artefact string, lib requirements.Library) (drift.Report, error) {
 	est, _, err := blueprint.Load(source)
@@ -409,7 +409,7 @@ type checkReport struct {
 	// LibraryDrift is the repo's own section (REQ-025): library_drift
 	// findings are owned by authored config, never by a row, and share
 	// nothing with delivery divergence (ADR-0004, ADR-0026). Housekeeping
-	// carries the stale-but-passing claim nudges — visible, never counted.
+	// carries the stale-but-passing claim nudges: visible, never counted.
 	LibraryDrift []driftFindingReport `json:"library_drift,omitempty"`
 	Housekeeping []housekeepingReport `json:"housekeeping,omitempty"`
 

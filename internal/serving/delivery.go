@@ -15,7 +15,7 @@ import (
 // Intended side is the artefact this head serves for the collector's
 // match; the Effective side is the collector's own report; the remote
 // reading is its RemoteConfigStatus, verbatim. Everything here is derived
-// from the message and the snapshot at hand and stored nowhere —
+// from the message and the snapshot at hand and stored nowhere:
 // ADR-0032's closed list is untouched, and the status is recomputed from
 // any later report.
 func deliveryStatus(match Match, msg *protobufs.AgentToServer) (delivery.Status, error) {
@@ -28,7 +28,7 @@ func deliveryStatus(match Match, msg *protobufs.AgentToServer) (delivery.Status,
 
 // effectiveReading extracts the Effective reading from the reported config
 // map. The Supervisor reports one merged document; anything else cannot be
-// compared as a single config and reads Known: false with its cause —
+// compared as a single config and reads Known: false with its cause,
 // never a guess (ADR-0004).
 func effectiveReading(ec *protobufs.EffectiveConfig) delivery.Effective {
 	if ec == nil {
@@ -46,12 +46,12 @@ func effectiveReading(ec *protobufs.EffectiveConfig) delivery.Effective {
 	case 1:
 		return delivery.Effective{Known: true, Config: bodies[0]}
 	}
-	return delivery.Effective{Cause: fmt.Sprintf("the collector reported %d config files — the comparison reads the Supervisor's single merged document", len(bodies))}
+	return delivery.Effective{Cause: fmt.Sprintf("the collector reported %d config files, but the comparison needs the Supervisor's single merged document", len(bodies))}
 }
 
 // remoteReading adopts the reported RemoteConfigStatus verbatim into the
 // seam's reading shape (ADR-0004, ADR-0008). An absent report is
-// Known: false — a normal state, not a failure.
+// Known: false, a normal state, not a failure.
 func remoteReading(rcs *protobufs.RemoteConfigStatus) estate.DeliveryStatus {
 	if rcs == nil {
 		return estate.DeliveryStatus{Cause: "the collector did not report RemoteConfigStatus"}

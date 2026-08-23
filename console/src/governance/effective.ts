@@ -6,7 +6,7 @@ import type {
 } from '../api/types'
 
 // The effective palette, derived for presentation from the authored policy
-// the API serves (ADR-0021) — the same derived-presentation pattern as the
+// the API serves (ADR-0021), the same derived-presentation pattern as the
 // estate roll-up. The Go evaluator (internal/allowlist) is the judgement of
 // record at render; this mirror exists so "why is this allowed?" resolves
 // in the console with total provenance: everything a team may use traces to
@@ -14,11 +14,11 @@ import type {
 //
 // The composition rules are the ratified ADR-0021 semantics: narrowing-only
 // inheritance (each declared list on the chain intersects), with Grants as
-// the one widening mechanism — a Grant overrides its own target's declared
+// the one widening mechanism. A Grant overrides its own target's declared
 // list (union after intersection), applies to the target's subtree, and is
 // narrowed back out by a descendant's list like anything else.
 
-/** Why a component is in — or out of — an effective palette. */
+/** Why a component is in, or out of, an effective palette. */
 export type PaletteOrigin = 'default-allow' | 'allow-list' | 'grant'
 
 export interface PaletteRow {
@@ -38,7 +38,7 @@ export interface TeamPalette {
   team: string
   /** Every catalogue entry, allowed or not, in catalogue order. */
   rows: PaletteRow[]
-  /** The teams on the chain with declared lists, root-first — provenance for `allow-list` rows. */
+  /** The teams on the chain with declared lists, root-first: provenance for `allow-list` rows. */
   declaredLists: string[]
 }
 
@@ -58,7 +58,7 @@ function globToRegExp(pattern: string): RegExp {
 /**
  * Whether one authored `class/type-pattern` entry selects the catalogue
  * entry. The class side is exact; the pattern is tried against the
- * canonical type and the `deprecated_type` alias — aliases resolve on
+ * canonical type and the `deprecated_type` alias: aliases resolve on
  * every lookup (ADR-0020 §3).
  */
 export function entrySelects(pattern: string, entry: CatalogueEntry): boolean {
@@ -83,7 +83,7 @@ export function chainOf(tree: TeamNode, team: string): string[] | undefined {
 /**
  * Computes one team's effective palette per ADR-0021, walking the chain
  * from the root down: each declared list intersects, then each Grant
- * targeting that team unions back in — so a Grant widens from its target's
+ * targeting that team unions back in, so a Grant widens from its target's
  * subtree downward and a descendant's list narrows it back out.
  */
 export function effectivePalette(args: {
@@ -104,7 +104,7 @@ export function effectivePalette(args: {
     targeting.push(grant)
     byTarget.set(grant.team, targeting)
   }
-  // Grants apply in id order — the id is the audit chain's name for them.
+  // Grants apply in id order: the id is the audit chain's name for them.
   for (const targeting of byTarget.values()) {
     targeting.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   }
@@ -118,7 +118,7 @@ export function effectivePalette(args: {
     for (const u of chain) {
       const list = lists.get(u)
       if (list && !list.allow.some((pattern) => entrySelects(pattern, entry))) {
-        // The intersection removes it — including a component a Grant
+        // The intersection removes it, including a component a Grant
         // higher up admitted: narrowed back out below.
         allowed = false
         via = undefined

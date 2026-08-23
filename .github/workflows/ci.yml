@@ -187,7 +187,7 @@ jobs:
 
   # The live forge-adapter contract test (issue #18): the GitHub App PR
   # flow against the provisioned estate-fixture repository. The suite
-  # skips loudly — and this job stays green — when the FORGE_* secrets
+  # skips loudly, and this job stays green, when the FORGE_* secrets
   # are not exposed to this repo or the App installation cannot yet see
   # estate-fixture (ADR-0036 kit discipline: absent credentials never
   # fail the suite).
@@ -243,7 +243,7 @@ jobs:
       #
       # `--with-deps` is deliberately absent. It shells out to apt-get
       # against the Ubuntu mirrors, and measured over three consecutive
-      # runs it cost 138s, 362s, and then hung past 25 minutes — against
+      # runs it cost 138s, 362s, and then hung past 25 minutes, against
       # 14s for the suite it exists to enable and ~20s for every other step
       # in this job combined. The GitHub-hosted ubuntu-latest image already
       # ships the shared libraries Chromium needs; `--with-deps` is for
@@ -287,8 +287,8 @@ jobs:
       # The zero-CDN rule holds on the demo bundle exactly as on the
       # instance bundle (ADR-0045 §5). It runs over the built console
       # before the snapshot is placed beside it: the snapshot is estate
-      # data — endpoints and module paths the console prints and never
-      # fetches — not a bundled artefact.
+      # data (endpoints and module paths the console prints and never
+      # fetches), not a bundled artefact.
       - run: npm run check:zero-cdn
         working-directory: console
       - name: Generate a snapshot over the fixture estate and load it
@@ -305,7 +305,7 @@ jobs:
             -out console/dist/demo-snapshot.json
           node -e "const s=require('./console/dist/demo-snapshot.json'); if (!s.estate.cards.length) throw new Error('the snapshot carries no cards')"
       # Every Workspace URL has to resolve to a document, or a static host
-      # answers it from its not-found page — the right screen behind a 404
+      # answers it from its not-found page, the right screen behind a 404
       # (ADR-0042 §3.5).
       - name: Every Workspace URL has an entry document
         working-directory: console

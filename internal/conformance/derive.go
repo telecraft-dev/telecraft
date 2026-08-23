@@ -22,7 +22,7 @@ type Derivation struct {
 	// demotion itself, so no caller can forget to (§5).
 	Reading estate.Estate
 
-	// Authored is the authored estate — `rows.yaml` — which is an
+	// Authored is the authored estate (`rows.yaml`), which is an
 	// override rather than the only path (§6). Its rows win over the
 	// derived ones, it carries the Grace table, and it supplies each
 	// Service's onboarding date, which no topology holds. The zero value
@@ -39,7 +39,7 @@ type Derivation struct {
 // nothing downstream can tell the difference (ADR-0055).
 //
 // A row's Effective reading is the collector on the first Tier of the
-// Service's Path — the collector nearest the Service (§1). Where that
+// Service's Path: the collector nearest the Service (§1). Where that
 // population cannot answer with one voice, the row does not get a value:
 // no collector matched, one that cannot be read, and replicas that
 // disagree all come back Known false with a cause, because not knowing is
@@ -125,7 +125,7 @@ func effectiveFor(topo renderer.Topology, svc renderer.Service, env string, read
 	}
 	if len(selecting) == 0 {
 		return Effective{Known: false, Cause: fmt.Sprintf(
-			"%s declares no selector, so no collector can be attributed to it — a Tier delivered by git alone has no platform-known population boundary, and %s in %s has no Effective reading through it (ADR-0030, ADR-0055 §4)",
+			"%s declares no selector, so no collector can be attributed to it. A Tier delivered by git alone has no known population, so %s in %s has no Effective reading through it",
 			tierList(first), svc.ID(), env)}
 	}
 
@@ -140,7 +140,7 @@ func effectiveFor(topo renderer.Topology, svc renderer.Service, env string, read
 	}
 	if len(matched) == 0 {
 		return Effective{Known: false, Cause: fmt.Sprintf(
-			"no collector in the estate reading matches %s, the first Tier on %s's Path into %s — a Service with no reporting collector has no Effective reading, which is not knowing and never nothing configured (ADR-0008, ADR-0055 §4)",
+			"no collector in the estate reading matches %s, the first Tier on %s's Path into %s. With no reporting collector the row has no Effective reading, which Telecraft reports as unknown rather than as nothing configured",
 			tierList(selecting), svc.ID(), env)}
 	}
 
@@ -155,7 +155,7 @@ func effectiveFor(topo renderer.Topology, svc renderer.Service, env string, read
 	}
 	if len(unreadable) > 0 {
 		return Effective{Known: false, Cause: fmt.Sprintf(
-			"%d of the %d collectors matched to %s cannot be read, so whether the population agrees cannot be established: %s (ADR-0008, ADR-0055 §3)",
+			"%d of the %d collectors matched to %s cannot be read, so Telecraft cannot tell whether the population agrees: %s",
 			len(unreadable), len(matched), tierList(selecting), strings.Join(unreadable, "; "))}
 	}
 
@@ -169,7 +169,7 @@ func effectiveFor(topo renderer.Topology, svc renderer.Service, env string, read
 	}
 	if len(configs) > 1 {
 		return Effective{Known: false, Cause: fmt.Sprintf(
-			"the %d collectors matched to %s report %d different configs, so the row has no single reading — a rollout in flight or a replica that failed to apply, and picking a winner would invent one (ADR-0008, ADR-0055 §3): %s",
+			"the %d collectors matched to %s report %d different configs, so the row has no single reading. This usually means a rollout in flight or a replica that failed to apply, and Telecraft does not pick a winner: %s",
 			len(matched), tierList(selecting), len(configs), disagreement(configs))}
 	}
 
@@ -219,7 +219,7 @@ func environmentsOf(topo renderer.Topology, svc renderer.Service) []string {
 }
 
 // satisfiesSelector reports whether every authored selector pair equals the
-// reported identifying attribute — the Tier selector's equality semantics
+// reported identifying attribute: the Tier selector's equality semantics
 // (ADR-0007), the same rule the serving matcher applies per connect.
 func satisfiesSelector(selector, identity map[string]string) bool {
 	for k, v := range selector {

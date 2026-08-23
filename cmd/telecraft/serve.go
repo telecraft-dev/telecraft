@@ -16,12 +16,12 @@ import (
 // runServe runs the stateless OpAMP server (REQ-040, ADR-0013): it serves
 // the estate's rendered artefacts from git, matching each collector's
 // reported identifying attributes against the Tier selectors at head, and
-// stores nothing durable — stopping it loses delivery, never the record.
+// stores nothing durable: stopping it loses delivery, never the record.
 //
 // Exactly one flag names the source. -estate points at a local checkout:
 // the standalone and air-gap shape of ADR-0032 §3, a single binary plus a
 // directory. -repo names a git URL (file:///…/estate.git included) fetched
-// on the -fetch-interval poll — the bounded staleness of ADR-0032 §1 and
+// on the -fetch-interval poll, the bounded staleness of ADR-0032 §1 and
 // the one freshness knob there is.
 //
 // Exit codes: 0 after a clean signal-driven shutdown; 1 the server could
@@ -29,11 +29,11 @@ import (
 func runServe(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	estate := fs.String("estate", "", "local estate checkout to serve — the standalone instance (ADR-0032)")
+	estate := fs.String("estate", "", "local estate checkout to serve (the standalone instance)")
 	repo := fs.String("repo", "", "git URL of the estate repo to fetch and serve")
-	cache := fs.String("cache", "", "directory the fetched clone lives in (default: a fresh temp dir; a cache of git, loss costs one re-clone)")
+	cache := fs.String("cache", "", "directory to keep the fetched clone in (default: a fresh temp dir; losing it costs one re-clone)")
 	listen := fs.String("listen", "127.0.0.1:4320", "host:port the OpAMP endpoint listens on, at /v1/opamp")
-	interval := fs.Duration("fetch-interval", serving.DefaultFetchInterval, "repo snapshot poll — the bounded staleness (ADR-0032)")
+	interval := fs.Duration("fetch-interval", serving.DefaultFetchInterval, "how often to poll the repo for a new snapshot")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}

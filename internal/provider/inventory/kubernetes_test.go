@@ -17,7 +17,7 @@ import (
 var t0 = time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 
 // labelValue is the API server's label-value shape; the fake refuses
-// anything else with 400, as the real server does — which is what makes a
+// anything else with 400, as the real server does, which is what makes a
 // malformed selector value an honestly unanswerable ask.
 var labelValue = regexp.MustCompile(`^([A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?)?$`)
 
@@ -118,7 +118,7 @@ func provider(t *testing.T, srv *httptest.Server, cfg KubernetesConfig) *Kuberne
 }
 
 // The shipped conformance kit, run against the Kubernetes implementation
-// over a controlled substrate — the ADR-0036 §4 discipline ADR-0035
+// over a controlled substrate, the ADR-0036 §4 discipline ADR-0035
 // extends to this seam.
 func TestKubernetesPassesTheKit(t *testing.T) {
 	srv := httptest.NewServer(fixture().handler())
@@ -139,7 +139,7 @@ func TestKubernetesPassesTheKit(t *testing.T) {
 }
 
 // The derived count tracks the substrate: the same ask after a scale-up
-// answers the new population — the expectation floats with the autoscaler
+// answers the new population: the expectation floats with the autoscaler
 // by construction (ADR-0035 §1).
 func TestKubernetesTracksTheAutoscaler(t *testing.T) {
 	api := fixture()
@@ -153,7 +153,7 @@ func TestKubernetesTracksTheAutoscaler(t *testing.T) {
 	}
 	api.nodes = append(api.nodes, map[string]string{"kubernetes.io/os": "linux", "telecraft.tier": "edge"})
 	if c := p.Expected(context.Background(), sel); !c.Known || c.Instances != 3 {
-		t.Fatalf("after scale-up: %+v, want Known 3 — the count is live, never cached (ADR-0035 §1)", c)
+		t.Fatalf("after scale-up: %+v, want Known 3: the count is live, never cached", c)
 	}
 }
 
@@ -196,8 +196,8 @@ func TestKubernetesPodMode(t *testing.T) {
 	}
 }
 
-// A refused request is Known false with the server's answer in the cause
-// — never an error, never a zero pretending to be a reading (ADR-0008).
+// A refused request is Known false with the server's answer in the cause,
+// never an error, never a zero pretending to be a reading (ADR-0008).
 func TestKubernetesRefusedRequestIsUnknown(t *testing.T) {
 	api := fixture()
 	api.status = http.StatusForbidden

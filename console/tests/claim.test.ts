@@ -14,7 +14,7 @@ import {
 // enumerate. The console-side suggestion generalises over the herd's
 // shared identity attributes and drops instance-naming keys; the server
 // side enforces the same rule independently, ranks attach candidates by
-// selector proximity, reports the blast radius, and exits as a proposal —
+// selector proximity, reports the blast radius, and exits as a proposal:
 // or refuses with the problems named.
 
 const estate = JSON.parse(
@@ -39,7 +39,7 @@ describe('suggestSelector (ADR-0042 §6)', () => {
     expect(Object.keys(suggestSelector(one))).not.toContain('service.instance.id')
   })
 
-  it('drops attributes the herd disagrees on — a mixed herd keeps only common ground', () => {
+  it('drops attributes the herd disagrees on: a mixed herd keeps only common ground', () => {
     const foreign = estate.collectors.filter((row) => row.ungoverned === 'foreign')
     const mixed = suggestSelector([...herd, ...foreign])
     expect(mixed).toEqual({ 'deployment.environment': 'production' })
@@ -95,7 +95,7 @@ describe('previewClaim (ADR-0042 §6)', () => {
     expect(wide.overlaps.map((o) => o.tier)).toContain('product/storefront-edge')
   })
 
-  it('judges attach with the widened selector — what merge would actually serve', () => {
+  it('judges attach with the widened selector: what merge would actually serve', () => {
     const preview = previewClaim(estate, {
       selector: suggested,
       environment: 'production',
@@ -129,7 +129,7 @@ describe('previewClaim (ADR-0042 §6)', () => {
   })
 })
 
-describe('submitClaim — fail closed, problems named', () => {
+describe('submitClaim: fail closed, problems named', () => {
   it('refuses a selector that enumerates instance ids, whatever the UI did', () => {
     const outcome = submitClaim(estate, {
       selector: { 'service.instance.id': '7f3a2c91-pay-0' },
@@ -156,7 +156,7 @@ describe('submitClaim — fail closed, problems named', () => {
     expect(outcome.problems?.some((p) => p.includes('no title'))).toBe(true)
   })
 
-  it('refuses attach when no selector pair is shared — attach widens, it never enumerates', () => {
+  it('refuses attach when no selector pair is shared: attach widens, it never enumerates', () => {
     const outcome = submitClaim(estate, {
       selector: { region: 'eu-west' },
       environment: 'production',

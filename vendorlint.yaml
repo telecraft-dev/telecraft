@@ -2,7 +2,7 @@
 #
 #   go run ./tools/vendorlint
 #
-# These scope globs ARE the neutral-core / provider boundary — change them
+# These scope globs ARE the neutral-core / provider boundary. Change them
 # only with ADR-0001 in hand. Rules flag every pattern match unless the match
 # sits entirely inside a same-line `allow` match ("Elastic Fleet" permits the
 # "Fleet" within it; a bare "Fleet" stays an error).
@@ -16,7 +16,7 @@ exclude:
 
 scopes:
   # The neutral core: every platform code path except the provider tree.
-  # Vendor words do not appear here at all — identifiers, strings or comments.
+  # Vendor words do not appear here at all, in identifiers, strings or comments.
   # Substring matching is deliberate: it catches CamelCase compounds like the
   # historical `FleetProvider`.
   - name: core
@@ -24,16 +24,16 @@ scopes:
     exclude: [internal/provider/**]
     rules:
       - pattern: (?i)(elastic|kibana|fleet|grafana|loki|mimir|datadog|splunk|dynatrace|new ?relic|honeycomb|appdynamics|sumo ?logic|signalfx|chronosphere|coralogix|lightstep|wavefront)
-        message: vendor word in the neutral core (ADR-0001) — vendor-specific behaviour belongs under internal/provider/
+        message: vendor word in the neutral core (ADR-0001); vendor-specific behaviour belongs under internal/provider/
       # The forge seam stays neutral too (issue #18 AC; ADR-0028 §4): no
       # forge's name or types outside the adapter. Go module paths live on
-      # the forge's host — `github.com/` is the module namespace, not a
-      # forge type — and the generated code-ownership projection may name
+      # the forge's host (`github.com/` is the module namespace, not a
+      # forge type), and the generated code-ownership projection may name
       # the dialect it is written in (ADR-0028 §4: a cache in the
       # configured forge's dialect).
       - pattern: (?i)(github|gitlab|gitea|forgejo|bitbucket|codeberg|azure ?devops)
         allow: [github\.com/, GitHub dialect]
-        message: forge vendor word in the neutral core (ADR-0028 §4) — forge-specific behaviour belongs under internal/provider/forge/
+        message: forge vendor word in the neutral core (ADR-0028 §4); forge-specific behaviour belongs under internal/provider/forge/
 
   # The provider tree: implementations are fully qualified with the vendor's
   # product, never the company. A bare "Fleet" appears nowhere.
@@ -42,13 +42,13 @@ scopes:
     rules:
       - pattern: \bFleet
         allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement]
-        message: qualify the product — ElasticFleet, never Fleet (ADR-0001)
+        message: qualify the product, ElasticFleet and never Fleet (ADR-0001)
       - pattern: \bElastic\b
         allow: ["Elastic Fleet"]
-        message: name the product, never the company — Elasticsearch or ElasticFleet, never Elastic (ADR-0001)
+        message: name the product, never the company, so Elasticsearch or ElasticFleet and never Elastic (ADR-0001)
       - pattern: \bGrafana\b
         allow: ["Grafana Fleet Management"]
-        message: name the product, never the company — GrafanaFleetManagement, never Grafana (ADR-0001)
+        message: name the product, never the company, so GrafanaFleetManagement and never Grafana (ADR-0001)
 
   # The console is neutral core too (ADR-0001, ADR-0045): vendor words do
   # not appear in its sources, fixtures, or tooling. Build output is
@@ -58,7 +58,7 @@ scopes:
     exclude: [console/dist/**, console/playwright-report/**, console/test-results/**]
     rules:
       - pattern: (?i)(elastic|kibana|fleet|grafana|loki|mimir|datadog|splunk|dynatrace|new ?relic|honeycomb|appdynamics|sumo ?logic|signalfx|chronosphere|coralogix|lightstep|wavefront)
-        message: vendor word in the console (ADR-0001) — the console is neutral core (ADR-0045)
+        message: vendor word in the console (ADR-0001); the console is neutral core (ADR-0045)
 
   # Normative docs follow the same naming discipline. The research corpus,
   # prototype verdicts and branding notes are excluded: they record external
@@ -72,17 +72,17 @@ scopes:
       # "capital-F Fleet" construction is quoting it, not using it.
       - pattern: \bFleet\b
         allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement, "Datadog Fleet Automation", "Fleet Server", "`Fleet`", '\*\*Fleet\*\*', "“Fleet”", capital-F Fleet]
-        message: a bare "Fleet" appears nowhere — qualify with the vendor product (ADR-0001)
+        message: a bare "Fleet" appears nowhere; qualify with the vendor product (ADR-0001)
 
   # The local development environment (ADR-0052). It is vendor-bound by
   # construction: it has to start a concrete backend and point a rendered
   # exporter at it, so it carries the provider tree's discipline rather than
-  # the core's silence — a product may be named, and only fully qualified.
+  # the core's silence; a product may be named, and only fully qualified.
   #
   # Two trees are not scanned. The run directory is generated and
   # gitignored. The Catalogue artefacts are generated too, by the import
   # pipeline, and every vendor word in one is an upstream component's own
-  # display_name recorded verbatim — "Grafana Cloud Connector", "Amazon
+  # display_name recorded verbatim, such as "Grafana Cloud Connector" and "Amazon
   # Elastic Container Service Observer". Renaming those would falsify the
   # record rather than tidy it, which is the same reason the docs scope
   # excludes the research corpus.
@@ -92,10 +92,35 @@ scopes:
     rules:
       - pattern: \bFleet
         allow: ["Elastic Fleet", ElasticFleet, "Grafana Fleet Management", GrafanaFleetManagement]
-        message: qualify the product — ElasticFleet, never Fleet (ADR-0001)
+        message: qualify the product, ElasticFleet and never Fleet (ADR-0001)
       - pattern: \bElastic\b
         allow: ["Elastic Fleet"]
-        message: name the product, never the company — Elasticsearch or ElasticFleet, never Elastic (ADR-0001)
+        message: name the product, never the company, so Elasticsearch or ElasticFleet and never Elastic (ADR-0001)
       - pattern: \bGrafana\b
         allow: ["Grafana Fleet Management"]
-        message: name the product, never the company — GrafanaFleetManagement, never Grafana (ADR-0001)
+        message: name the product, never the company, so GrafanaFleetManagement and never Grafana (ADR-0001)
+
+  # The house style (docs/contributing/documentation.md) bans dashes used as
+  # punctuation, and the ban covers the whole repository: prose, code
+  # comments, test messages, fixtures and the decision corpus alike. The one
+  # tree not scanned is the generated Catalogue artefacts, which record
+  # upstream component descriptions verbatim. Build output is excluded as
+  # generated.
+  - name: prose
+    include: ["**"]
+    exclude: [devenv/estate/catalogues/**, devenv/run/**, console/dist/**, console/playwright-report/**, console/test-results/**]
+    rules:
+      - pattern: "[\\x{2014}\\x{2013}]"
+        message: a dash used as punctuation; use a comma, brackets, a colon, or a new sentence, and write ranges with "to" (docs/contributing/documentation.md)
+
+  # Published pages describe the product, never the argument behind it. A
+  # reader of the documentation, the README or the security policy never
+  # meets an ADR number, a requirement id, an open question or a section
+  # sign, and never a link into the decision corpus. The Contributing
+  # section is the only place that points into the corpus, through the
+  # decisions page, so it is not in this scope.
+  - name: published
+    include: [README.md, SECURITY.md, docs/index.md, docs/glossary.md, docs/terminology.html, docs/concepts/**, docs/guides/**, docs/reference/**]
+    rules:
+      - pattern: ADR-\d{4}|REQ-\d{3}|\bOQ-\d+|§|docs/(adr|requirements|research|prototypes)/
+        message: a decision-corpus reference on a published page; give the reason in plain words or leave it out (docs/contributing/documentation.md)

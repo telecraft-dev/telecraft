@@ -1,4 +1,4 @@
-# ADR-0036: The `EstateProvider` contract — capability declaration, `as_of`, staleness demotion, shipped test kit
+# ADR-0036: The `EstateProvider` contract: capability declaration, `as_of`, staleness demotion, shipped test kit
 
 - Status: accepted
 - Date: 2026-08-14 (session G5)
@@ -17,10 +17,10 @@ OQ-6 (ticket 12's surviving question) asked for the mechanics.
 1. **Static capability declaration.** An implementation declares once
    which readings it can ever populate (`ElasticFleet:
    delivery_status: never`). This splits `UNSET` into two honest states
-   mechanically: **incapable** — declared, renders as "not applicable",
-   never failure (ADR-0008's demand made structural) — versus **silent** —
-   declared capable but not delivering, which is a provider fault and is
-   loud.
+   mechanically: **incapable** (declared, renders as "not applicable",
+   never failure, ADR-0008's demand made structural) versus **silent**
+   (declared capable but not delivering, which is a provider fault and is
+   loud).
 2. **The minimum populated set**, for every collector returned:
    - the identity attributes selectors match on;
    - an `as_of` timestamp on every reading carried;
@@ -32,12 +32,12 @@ OQ-6 (ticket 12's surviving question) asked for the mechanics.
 3. **Freshness is the platform's arithmetic, never the provider's claim.**
    The provider declares its refresh cadence; the platform computes
    staleness uniformly (`now − as_of` against cadence × tolerance). Past
-   the horizon a reading is **demoted to `Known: false` for evaluation** —
-   a stale Effective config never feeds a fresh-looking verdict — while
+   the horizon a reading is **demoted to `Known: false` for evaluation**
+   (a stale Effective config never feeds a fresh-looking verdict), while
    surfaces may show last-known-plus-age ("as of 3h ago"). Stale data may
    inform a human, never a verdict.
 4. **The rule ships as a conformance test kit, not prose**: a fixture
-   suite every implementation must pass — unknown collector →
+   suite every implementation must pass. Unknown collector →
    `Known: false` not error; capability honesty (declare it, populate it);
    timestamp presence; order and tree preservation; staleness demotion.
    ADR-0008's "verify the seam against a third implementation" stays true
@@ -50,10 +50,10 @@ OQ-6 (ticket 12's surviving question) asked for the mechanics.
   APIs (ElasticFleet) is subsumed: the kit is the contract test.
 - Provider capability declarations become surface input: estate views
   render "not applicable" (incapable) distinctly from `unknown` (capable
-  but currently unknowable) — P2's neutral-state handling extends
+  but currently unknowable): P2's neutral-state handling extends
   naturally.
 - Staleness demotion means verdict counts can change with no estate
-  change when a provider goes quiet — the honest behaviour; the finding
+  change when a provider goes quiet: the honest behaviour; the finding
   is the provider's silence, not the Services'.
 
 ## Sources

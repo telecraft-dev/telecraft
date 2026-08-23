@@ -14,13 +14,13 @@ import (
 
 // elasticFleetRedaction is Elastic Fleet's observed redaction rule as a
 // pattern: a scalar is redacted when its key name contains one of the
-// pinned substrings. Observed live on the ticket 06 run — it destroys
+// pinned substrings. Observed live on the ticket 06 run: it destroys
 // non-secrets too (`auth_type` values, `k8sattributes` label keys). The
 // rule belongs to Elastic Fleet, not us, and it is version-coupled: if a
 // release changes it, layer 2 reports false drift estate-wide until the
 // pin follows, which is why the one substring list lives with the
-// provider (elasticfleetredaction.go) and is held by the contract tests —
-// this suite's fixtures and the live suite's API check — rather than
+// provider (elasticfleetredaction.go) and is held by the contract tests
+// (this suite's fixtures and the live suite's API check) rather than
 // hard-coded in core (spike F-4, ADR-0046 §3). The upstream routekey
 // exemption is deliberately not applied here: the profile redacts both
 // sides identically, so the exemption would only shrink the named
@@ -29,7 +29,7 @@ var elasticFleetRedaction = regexp.MustCompile(`(?i)` + strings.Join(ElasticFlee
 
 // ElasticFleetProfile is the elastic-fleet Mutation profile (ADR-0046):
 // layer-2 comparability with Elastic Fleet's lossy report is bought by
-// damaging the rendered side identically (spike H-3) —
+// damaging the rendered side identically (spike H-3):
 //
 //   - opamp extension bodies are emptied on both sides: the body arrives
 //     mangled beyond comparison (the server block absent, the one surviving
@@ -39,7 +39,7 @@ var elasticFleetRedaction = regexp.MustCompile(`(?i)` + strings.Join(ElasticFlee
 //     fields.
 //
 // The profile is therefore blind, by construction, to real changes inside
-// redacted values — a rotated credential digests equal. That is the named,
+// redacted values: a rotated credential digests equal. That is the named,
 // bounded price of comparing through a lossy reporter (spike F-3,
 // ADR-0046 §3); where the blindness matters, the platform's own delivery
 // path is the drift-checkable one.

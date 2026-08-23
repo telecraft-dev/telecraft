@@ -113,7 +113,7 @@ services:
   # The git-delivered collector (REQ-041, the Foreign path). No Supervisor:
   # the collector image runs directly, and its configuration is the rendered
   # artefact mounted straight out of the tree the renderer wrote. Nothing
-  # delivers it anything — that file changes when somebody merges a change
+  # delivers it anything: that file changes when somebody merges a change
   # and re-renders, which is what git delivery is.
   #
   # It still reports, through the opamp extension its Blueprint authors: the

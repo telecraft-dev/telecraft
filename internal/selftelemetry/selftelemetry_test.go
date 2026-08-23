@@ -9,8 +9,8 @@ import (
 
 // The fixtures pin the R-4-verified attribute spellings for both join-key
 // families (issue #33 criterion 2): the legacy datapoint attributes primary
-// for metrics, the otelcol.component.* scope attributes for logs — and
-// R-4's caveats §5.1–5.7 as expected shapes, never join failures.
+// for metrics, the otelcol.component.* scope attributes for logs, and
+// R-4's caveats §5.1 to §5.7 as expected shapes, never join failures.
 func TestNormalise(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -25,7 +25,7 @@ func TestNormalise(t *testing.T) {
 			want:  Reading{Class: ClassComponent, Kind: KindReceiver, ID: "otlp/otlp-in"},
 		},
 		{
-			// R-4 §5.5: scraper metrics join on receiver + scraper — the
+			// R-4 §5.5: scraper metrics join on receiver + scraper, the
 			// two-level identity under one receiver.
 			name:  "two-level scraper identity",
 			attrs: map[string]string{"receiver": "hostmetrics", "scraper": "cpu", "format": "prometheus"},
@@ -65,7 +65,7 @@ func TestNormalise(t *testing.T) {
 		},
 		{
 			// R-4 §5.2: the otlp receiver deliberately drops
-			// otelcol.signal — identity still joins on the id.
+			// otelcol.signal. Identity still joins on the id.
 			name: "otlp receiver drops its signal attribute",
 			attrs: map[string]string{
 				"otelcol.component.kind": "receiver",
@@ -75,7 +75,7 @@ func TestNormalise(t *testing.T) {
 		},
 		{
 			// R-4 §5.2: memory_limiter drops signal, pipeline AND component
-			// id — kind-only identity is an expected shape, not a failure.
+			// id. Kind-only identity is an expected shape, not a failure.
 			name:  "memory_limiter drops all identity but kind",
 			attrs: map[string]string{"otelcol.component.kind": "processor"},
 			want:  Reading{Class: ClassUnidentified, Kind: KindProcessor},
@@ -139,7 +139,7 @@ func TestNormalise(t *testing.T) {
 }
 
 // R-4 §3: the legacy instrument names are underscore-form on the OTLP
-// surface too — not a Prometheus artifact — and the gated new metrics are
+// surface too (not a Prometheus artifact), and the gated new metrics are
 // dotted. Process metrics are collector-level, not component telemetry.
 func TestMetricKind(t *testing.T) {
 	cases := []struct {
@@ -168,8 +168,8 @@ func TestMetricKind(t *testing.T) {
 	}
 }
 
-// R-4 §5.1: receivers and exporters carry no pipeline id on any surface —
-// membership is derived from the rendered topology, never from telemetry.
+// R-4 §5.1: receivers and exporters carry no pipeline id on any surface.
+// Membership is derived from the rendered topology, never from telemetry.
 func TestMembershipDerivesFromRenderedTopology(t *testing.T) {
 	pipelines := []renderer.IntendedPipeline{
 		{

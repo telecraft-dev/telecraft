@@ -15,7 +15,7 @@
 // The file records what the source could see per collector: the
 // identifying attributes selectors match on, and the Effective config with
 // pipeline component order preserved verbatim (ADR-0004). Component health
-// and delivery status are declared incapable — this format does not carry
+// and delivery status are declared incapable: this format does not carry
 // them, and incapable is a declaration rather than a silent gap (ADR-0036
 // §1). A collector the source could not read is recorded as unreadable
 // with its cause, never omitted: an omitted collector would read as one
@@ -92,7 +92,7 @@ type recordedEffective struct {
 // can trust the shape of is worse than no recording.
 func NewRecorded(cfg RecordedConfig) (*Recorded, error) {
 	if cfg.Path == "" {
-		return nil, fmt.Errorf("no recorded reading path — the provider reads one estate reading from a file")
+		return nil, fmt.Errorf("no recorded reading path: set the path of the file that holds the estate reading")
 	}
 	raw, err := os.ReadFile(cfg.Path)
 	if err != nil {
@@ -108,12 +108,12 @@ func NewRecorded(cfg RecordedConfig) (*Recorded, error) {
 
 	var problems []string
 	if file.AsOf.IsZero() {
-		problems = append(problems, "the reading declares no as_of — a reading whose age cannot be computed never feeds a verdict (ADR-0036 §2)")
+		problems = append(problems, "the reading declares no as_of: without a timestamp, the age of the reading cannot be checked")
 	}
 	cadence, err := time.ParseDuration(file.RefreshCadence)
 	switch {
 	case file.RefreshCadence == "":
-		problems = append(problems, "the reading declares no refresh_cadence — freshness is the platform's arithmetic and the cadence is its mandatory input (ADR-0036 §3)")
+		problems = append(problems, "the reading declares no refresh_cadence: Telecraft needs it to tell a fresh reading from a stale one")
 	case err != nil:
 		problems = append(problems, fmt.Sprintf("refresh_cadence %q is not a duration: %v", file.RefreshCadence, err))
 	case cadence <= 0:
@@ -124,12 +124,12 @@ func NewRecorded(cfg RecordedConfig) (*Recorded, error) {
 	seen := map[string]bool{}
 	for i, c := range file.Collectors {
 		if len(c.Identity) == 0 {
-			problems = append(problems, fmt.Sprintf("collector %d has no identity attributes — a reading nothing can match belongs to nobody (ADR-0036 §2)", i+1))
+			problems = append(problems, fmt.Sprintf("collector %d has no identity attributes, so no selector can match it", i+1))
 			continue
 		}
 		id := seam.Fingerprint(c.Identity)
 		if seen[id] {
-			problems = append(problems, fmt.Sprintf("collector %s is recorded twice — one reading per collector", id))
+			problems = append(problems, fmt.Sprintf("collector %s is recorded twice: record one reading per collector", id))
 			continue
 		}
 		seen[id] = true
@@ -137,11 +137,11 @@ func NewRecorded(cfg RecordedConfig) (*Recorded, error) {
 		known := c.Effective.Known == nil || *c.Effective.Known
 		switch {
 		case known && c.Effective.Cause != "":
-			problems = append(problems, fmt.Sprintf("collector %s records a known Effective reading and a cause — a cause says why nothing is known", id))
+			problems = append(problems, fmt.Sprintf("collector %s records a known Effective reading and a cause. A cause only belongs on a reading that is not known", id))
 		case !known && c.Effective.Cause == "":
-			problems = append(problems, fmt.Sprintf("collector %s records an unreadable Effective reading with no cause — capable-but-silent is a fault and must be loud (ADR-0036 §1)", id))
+			problems = append(problems, fmt.Sprintf("collector %s records an unreadable Effective reading with no cause. Say why the reading could not be read", id))
 		case !known && len(c.Effective.Pipelines) > 0:
-			problems = append(problems, fmt.Sprintf("collector %s records pipelines under an unreadable Effective reading — an unknown reading's payload means nothing (ADR-0008)", id))
+			problems = append(problems, fmt.Sprintf("collector %s records pipelines under an unreadable Effective reading. Remove them: an unknown reading carries no payload", id))
 		}
 		for _, pipe := range c.Effective.Pipelines {
 			if pipe.Name == "" {
@@ -179,8 +179,8 @@ func (p *Recorded) Name() string { return "recorded" }
 
 // Declaration is the static capability declaration (ADR-0036 §1). The
 // format carries the Effective reading and nothing else, so health and
-// delivery status are declared incapable and stay absent-with-declaration
-// — rendered "not applicable", never a failure.
+// delivery status are declared incapable and stay absent-with-declaration,
+// rendered "not applicable", never a failure.
 func (p *Recorded) Declaration() seam.Declaration {
 	return seam.Declaration{
 		Readings: map[seam.ReadingKind]bool{

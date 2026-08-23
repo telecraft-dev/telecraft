@@ -7,27 +7,27 @@ import (
 )
 
 // maxDepth bounds the node walk. Real collector configs are a handful of
-// levels deep; anything approaching this bound — including an alias cycle,
-// which presents as unbounded depth — is refused rather than recursed into.
+// levels deep; anything approaching this bound (including an alias cycle,
+// which presents as unbounded depth) is refused rather than recursed into.
 const maxDepth = 1000
 
 // parse decodes one YAML or JSON document into the canonical tree form
 // (map[string]any / []any / typed scalars), walking the yaml.Node tree
 // itself rather than decoding through the library's map path. The walk
 // fails closed on the constructs the spike left as known edges (VERDICT.md,
-// carried by ADR-0046) — anything the library's own decoding would silently
+// carried by ADR-0046): anything the library's own decoding would silently
 // smooth over, where "smoothing" could make two different documents
 // normalise equal:
 //
 //   - a duplicate map key: last-writer-wins would let two documents that
-//     differ in their shadowed entries digest equal — silent no-drift;
+//     differ in their shadowed entries digest equal, a silent no-drift;
 //   - a YAML merge key (`<<`): merge expansion applies precedence rules the
 //     delivery paths are not known to share, so an expanded form is not
 //     evidence of an equal config. A *quoted* "<<" is an ordinary key;
 //   - a non-string map key, and any custom tag: outside otelcol's config
 //     shape, refused rather than guessed at.
 //
-// Anchors and aliases are resolved — they are cosmetic (spike H-1).
+// Anchors and aliases are resolved: they are cosmetic (spike H-1).
 func parse(raw []byte) (any, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal(raw, &root); err != nil {
@@ -43,7 +43,7 @@ func parse(raw []byte) (any, error) {
 
 func decodeNode(n *yaml.Node, depth int) (any, error) {
 	if depth > maxDepth {
-		return nil, fmt.Errorf("parse: nesting exceeds %d levels at line %d — refusing (an alias cycle presents exactly like this)", maxDepth, n.Line)
+		return nil, fmt.Errorf("parse: nesting exceeds %d levels at line %d. Check for an alias cycle", maxDepth, n.Line)
 	}
 	switch n.Kind {
 	case yaml.DocumentNode:
@@ -68,17 +68,17 @@ func decodeNode(n *yaml.Node, depth int) (any, error) {
 		for i := 0; i+1 < len(n.Content); i += 2 {
 			k, v := n.Content[i], n.Content[i+1]
 			if k.Tag == "!!merge" {
-				return nil, fmt.Errorf("parse: YAML merge key at line %d — merge keys fail closed (ADR-0046): spell the mapping out", k.Line)
+				return nil, fmt.Errorf("parse: YAML merge key at line %d. Merge keys are not supported: spell the mapping out", k.Line)
 			}
 			key := k
 			if key.Kind == yaml.AliasNode {
 				key = key.Alias
 			}
 			if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {
-				return nil, fmt.Errorf("parse: non-string map key %q (%s) at line %d — quote it if it is meant as text", key.Value, key.Tag, k.Line)
+				return nil, fmt.Errorf("parse: non-string map key %q (%s) at line %d. Quote it if it is meant as text", key.Value, key.Tag, k.Line)
 			}
 			if _, dup := m[key.Value]; dup {
-				return nil, fmt.Errorf("parse: duplicate map key %q at line %d — duplicates fail closed (ADR-0046): last-writer-wins could hide a real difference", key.Value, k.Line)
+				return nil, fmt.Errorf("parse: duplicate map key %q at line %d. Remove the duplicate: keeping only the last value could hide a real difference", key.Value, k.Line)
 			}
 			val, err := decodeNode(v, depth+1)
 			if err != nil {
@@ -125,5 +125,5 @@ func decodeScalar(n *yaml.Node) (any, error) {
 	case "!!str", "!!timestamp", "!!binary":
 		return n.Value, nil
 	}
-	return nil, fmt.Errorf("parse: unsupported tag %s on %q at line %d — custom tags fail closed", n.Tag, n.Value, n.Line)
+	return nil, fmt.Errorf("parse: unsupported tag %s on %q at line %d. Custom tags are not supported", n.Tag, n.Value, n.Line)
 }

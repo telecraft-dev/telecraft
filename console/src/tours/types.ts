@@ -8,7 +8,7 @@ import type { WorkspacePath } from '../objectref'
  * The two rules that shape these types are worth knowing before you write
  * a Step. A Tour narrates the product and never drives it (§2): a Step may
  * carry a destination, because a destination is a URL and this console
- * already treats a URL as state, and it may point at an element — it may
+ * already treats a URL as state, and it may point at an element. It may
  * not click, author, or invent. And an anchor that resolves nowhere
  * degrades to a centred Step rather than failing (§4), which is why
  * everything below except the prose is optional.
@@ -44,7 +44,7 @@ export interface Step {
    */
   demoBody?: string
   /**
-   * The element this Step points at, matched on `data-tour` (§5) — never
+   * The element this Step points at, matched on `data-tour` (§5), never
    * on a `data-testid`, which is a test's grip and may be renamed with the
    * test. Absent renders the Step centred, which is what a welcome is (§7).
    */

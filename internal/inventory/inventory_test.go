@@ -15,12 +15,12 @@ func TestForEvaluationFreshCountSurvives(t *testing.T) {
 
 	got := c.ForEvaluation(decl, t0.Add(decl.RefreshCadence*StaleTolerance))
 	if !got.Known || got.Instances != 40 {
-		t.Fatalf("a count exactly at the horizon was demoted: %+v — demotion is for silence, not for freshness (ADR-0036 §3)", got)
+		t.Fatalf("a count exactly at the horizon was demoted: %+v: demotion is for silence, not for freshness", got)
 	}
 }
 
 // A count past the horizon demotes to Known false with its payload
-// cleared and AsOf surviving — a stale count never floats a floor.
+// cleared and AsOf surviving: a stale count never floats a floor.
 func TestForEvaluationStaleCountDemotes(t *testing.T) {
 	decl := Declaration{RefreshCadence: time.Minute}
 	c := Count{Known: true, AsOf: t0, Instances: 40}
@@ -28,13 +28,13 @@ func TestForEvaluationStaleCountDemotes(t *testing.T) {
 	got := c.ForEvaluation(decl, t0.Add(decl.RefreshCadence*StaleTolerance+time.Second))
 	switch {
 	case got.Known:
-		t.Fatal("a stale count survived evaluation — stale data may inform a human, never a floor (ADR-0036 §3)")
+		t.Fatal("a stale count survived evaluation: stale data may inform a human, never a floor")
 	case got.Instances != 0:
-		t.Fatalf("the demoted count still carries Instances = %d — nothing downstream may quietly use it", got.Instances)
+		t.Fatalf("the demoted count still carries Instances = %d: nothing downstream may quietly use it", got.Instances)
 	case got.Cause == "":
 		t.Fatal("the demoted count carries no cause")
 	case !got.AsOf.Equal(t0):
-		t.Fatalf("AsOf = %v, want %v — 'we stopped counting, as of when' stays a statement with a timestamp", got.AsOf, t0)
+		t.Fatalf("AsOf = %v, want %v: 'we stopped counting, as of when' stays a statement with a timestamp", got.AsOf, t0)
 	}
 }
 
@@ -44,7 +44,7 @@ func TestForEvaluationNoCadenceDemotesUnconditionally(t *testing.T) {
 	c := Count{Known: true, AsOf: t0, Instances: 40}
 	got := c.ForEvaluation(Declaration{}, t0)
 	if got.Known {
-		t.Fatal("a count under a cadence-less declaration survived evaluation — unverifiable age never feeds a floor (ADR-0036 §3)")
+		t.Fatal("a count under a cadence-less declaration survived evaluation: unverifiable age never feeds a floor")
 	}
 	if !strings.Contains(got.Cause, "cadence") {
 		t.Fatalf("cause %q does not name the declaration's fault", got.Cause)

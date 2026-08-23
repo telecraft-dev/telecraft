@@ -18,7 +18,7 @@ import (
 // (issue #110), which made the drift band red on every served collector
 // from the moment it connected.
 //
-// The projection is asymmetric on purpose — it is the cross's operation,
+// The projection is asymmetric on purpose: it is the cross's operation,
 // never a Mutation, because a Mutation sees one document and cannot know
 // what the other side asserted. Layer 2's per-document digests are
 // unchanged by it (ADR-0005, ADR-0046 §1): the caller digests the Intended
@@ -35,7 +35,7 @@ import (
 //     the collector expands them at load, so `${env:TELECRAFT_NODE_NAME}`
 //     against the node's own name is expansion, not drift (ADR-0054 §3).
 //  4. Everything else the artefact spells out is projected and judged,
-//     including list length — a pipeline that grew a processor the
+//     including list length: a pipeline that grew a processor the
 //     artefact does not list is a value the artefact asserts, changed.
 func Asserted(intended, reported any) any {
 	if assertsNothing(intended, reported) {
@@ -50,7 +50,7 @@ func Asserted(intended, reported any) any {
 	if iIsMap && rIsMap {
 		// Rule 1: only the artefact's own keys survive. A key it asserts
 		// that the report lacks is simply absent here, so the layer-3 diff
-		// reports it removed — an asserted key going missing stays drift.
+		// reports it removed, so an asserted key going missing stays drift.
 		out := make(map[string]any, len(im))
 		for k, iv := range im {
 			if rv, ok := rm[k]; ok {
@@ -82,7 +82,7 @@ func Asserted(intended, reported any) any {
 
 // assertsNothing reports whether the artefact's value states only that the
 // key is there. An otelcol component body left empty means "the component,
-// with its own defaults" — the author has asserted presence, so presence
+// with its own defaults": the author has asserted presence, so presence
 // is all the cross may judge (ADR-0054 §1).
 func assertsNothing(intended, reported any) bool {
 	switch v := intended.(type) {
@@ -113,7 +113,7 @@ var reference = regexp.MustCompile(`\$\{[^}]*\}`)
 // references must still match exactly, and each reference stands for
 // whatever the node supplied. So `${env:TELECRAFT_NODE_NAME}` accepts any
 // node name, while `http://${env:HOST}:4318` still holds the scheme and
-// the port — an artefact that pins part of a value keeps that part judged
+// the port: an artefact that pins part of a value keeps that part judged
 // (ADR-0054 §3).
 //
 // An escaped `$${` is otelcol's literal-dollar spelling and is not an

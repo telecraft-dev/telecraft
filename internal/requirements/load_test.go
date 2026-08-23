@@ -25,7 +25,7 @@ func loadErr(t *testing.T, dir string) error {
 	t.Helper()
 	lib, err := Load(dir)
 	if err != nil && len(lib.Requirements) != 0 {
-		t.Fatalf("Load failed but returned a non-empty library — a failed load must fail closed")
+		t.Fatalf("Load failed but returned a non-empty library: a failed load must fail closed")
 	}
 	return err
 }

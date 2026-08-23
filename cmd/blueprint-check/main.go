@@ -12,8 +12,8 @@
 // argument checks the current directory.
 //
 // Exit codes follow the enforcement-points ruling (ADR-0022): mechanical
-// invalidity — an unknown field, an unpinned shared reference, a malformed
-// document — refuses the load and exits 1, like invalid YAML. Findings are
+// invalidity (an unknown field, an unpinned shared reference, a malformed
+// document) refuses the load and exits 1, like invalid YAML. Findings are
 // printed and exit 0: they route to owners and advise; they never block.
 package main
 

@@ -22,7 +22,7 @@
 
 :root,
 :root[data-theme='dark'] {
-  /* Native controls — selects, checkboxes, scrollbars, the caret — are
+  /* Native controls (selects, checkboxes, scrollbars, the caret) are
      painted by the browser, not by us. Telling it which ground it is on is
      the only way they follow the theme rather than staying light under a
      dark surface. */
@@ -46,7 +46,7 @@
   --colour-on-fill: #0f1518;
 
   /* Interactive text is told apart by its underline and its full-strength
-     ink, never by a hue of its own — there is no accent hue to spend. */
+     ink, never by a hue of its own: there is no accent hue to spend. */
   --colour-link: #e9efee;
 
   /* Ungoverned reads as concern, never failure (ADR-0031): a warm neutral
@@ -168,12 +168,12 @@
      deliberate: the densest information on a surface is never the smallest
      text on it. --text-xs is the per-signal matrix floor and --text-s is
      the band row. */
-  --text-xs: 0.78125rem; /* 12.5px — per-signal matrix, chips, micro-meta */
-  --text-s: 0.84375rem; /* 13.5px — band rows, secondary text, dense controls */
-  --text-m: 0.9375rem; /* 15px — compact interface text */
-  --text-base: 1rem; /* 16px — body, section headings */
-  --text-l: 1.125rem; /* 18px — panel titles */
-  --text-xl: 1.375rem; /* 22px — surface titles */
+  --text-xs: 0.78125rem; /* 12.5px: per-signal matrix, chips, micro-meta */
+  --text-s: 0.84375rem; /* 13.5px: band rows, secondary text, dense controls */
+  --text-m: 0.9375rem; /* 15px: compact interface text */
+  --text-base: 1rem; /* 16px: body, section headings */
+  --text-l: 1.125rem; /* 18px: panel titles */
+  --text-xl: 1.375rem; /* 22px: surface titles */
 
   --leading-tight: 1.25;
   --leading-snug: 1.4;

@@ -2,8 +2,8 @@
 // (ADR-0035).
 //
 // The first is Kubernetes: the substrate answering live from its own API
-// (ADR-0012) — how many nodes match this Tier's workload selector right
-// now — so the expectation floats with the autoscaler by construction. A
+// (ADR-0012), asking how many nodes match this Tier's workload selector right
+// now, so the expectation floats with the autoscaler by construction. A
 // scale-up is a bigger floor on the next ask, never a stale declaration
 // to chase. The provider needs API access scoped to node and workload
 // reads; that is deployment documentation, never model surface (ADR-0035).
@@ -25,7 +25,7 @@ import (
 
 // DefaultRefreshCadence is the declared cadence when none is configured.
 // Every Expected call reads the API live, so the cadence describes how
-// often the platform is expected to re-ask — the input the staleness
+// often the platform is expected to re-ask, the input the staleness
 // arithmetic needs (ADR-0036 §3), not a cache lifetime.
 const DefaultRefreshCadence = time.Minute
 
@@ -33,19 +33,19 @@ const DefaultRefreshCadence = time.Minute
 type Mode string
 
 const (
-	// ModeNodes counts nodes matching the selector — the DaemonSet-shaped
+	// ModeNodes counts nodes matching the selector, the DaemonSet-shaped
 	// default: one collector per matching node, so the node count is the
 	// expected population (ADR-0035 §1).
 	ModeNodes Mode = "nodes"
 
-	// ModePods counts pods matching the selector — for Deployment-shaped
+	// ModePods counts pods matching the selector, for Deployment-shaped
 	// Tiers where the workload's own pod labels carry the identity.
 	ModePods Mode = "pods"
 )
 
 // KubernetesConfig configures one Kubernetes provider.
 type KubernetesConfig struct {
-	// Endpoint is the API server base URL — in-cluster
+	// Endpoint is the API server base URL: in-cluster
 	// "https://kubernetes.default.svc", or a local "kubectl proxy" at
 	// "http://127.0.0.1:8001". Mandatory.
 	Endpoint string
@@ -62,7 +62,7 @@ type KubernetesConfig struct {
 	Mode Mode
 
 	// Namespace narrows ModePods to one namespace; empty means all. Never
-	// set with ModeNodes — nodes are not namespaced.
+	// set with ModeNodes, because nodes are not namespaced.
 	Namespace string
 
 	// Labels maps identity attribute names to node or pod label keys, for
@@ -95,8 +95,8 @@ type Kubernetes struct {
 var _ seam.Provider = (*Kubernetes)(nil)
 
 // NewKubernetes builds the provider. Configuration that could only ever
-// produce unknown counts — no endpoint, an unknown mode, a namespace on a
-// node count — is refused here, at wiring time, rather than surfacing as
+// produce unknown counts (no endpoint, an unknown mode, a namespace on a
+// node count) is refused here, at wiring time, rather than surfacing as
 // a puzzling Known false on every ask.
 func NewKubernetes(cfg KubernetesConfig) (*Kubernetes, error) {
 	if strings.TrimSpace(cfg.Endpoint) == "" {
@@ -113,7 +113,7 @@ func NewKubernetes(cfg KubernetesConfig) (*Kubernetes, error) {
 		return nil, fmt.Errorf("mode %q is not one of nodes, pods", cfg.Mode)
 	}
 	if mode == ModeNodes && cfg.Namespace != "" {
-		return nil, fmt.Errorf("a namespace narrows a pod count — nodes are not namespaced")
+		return nil, fmt.Errorf("a namespace only applies to a pod count: nodes are not namespaced")
 	}
 	client := cfg.Client
 	if client == nil {
@@ -148,8 +148,8 @@ func (p *Kubernetes) Declaration() seam.Declaration {
 }
 
 // Expected asks the API server how many nodes (or pods) match the
-// selector right now. Every failure to answer — no selector, an
-// unreachable server, a refused request, an unreadable response — is
+// selector right now. Every failure to answer (no selector, an
+// unreachable server, a refused request, an unreadable response) is
 // Known false with a cause, never an error and never a guess (ADR-0008).
 // A selector matching nothing is a count of zero: the substrate honestly
 // expecting nothing.
@@ -160,7 +160,7 @@ func (p *Kubernetes) Expected(ctx context.Context, selector map[string]string) s
 	}
 
 	if len(selector) == 0 {
-		return unknown("the Tier has no selector — a selector-less Tier matches nothing (ADR-0030), and counting everything would answer a question nobody asked")
+		return unknown("the Tier has no selector, so there is no population to count")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.listURL(selector), nil)
@@ -183,14 +183,14 @@ func (p *Kubernetes) Expected(ctx context.Context, selector map[string]string) s
 		return unknown(fmt.Sprintf("the API server's response could not be read: %v", err))
 	}
 	if resp.StatusCode != http.StatusOK {
-		return unknown(fmt.Sprintf("the API server answered %s: %s — a refused or failed list never becomes a count", resp.Status, snippet(body)))
+		return unknown(fmt.Sprintf("the API server answered %s: %s", resp.Status, snippet(body)))
 	}
 
 	var list struct {
 		Items []json.RawMessage `json:"items"`
 	}
 	if err := json.Unmarshal(body, &list); err != nil {
-		return unknown(fmt.Sprintf("the API server's response was not a list: %v — a response we cannot read must become Known false, never a guess", err))
+		return unknown(fmt.Sprintf("the API server's response was not a list: %v", err))
 	}
 	return seam.Count{Known: true, AsOf: asOf, Instances: len(list.Items)}
 }

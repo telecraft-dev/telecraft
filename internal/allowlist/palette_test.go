@@ -72,7 +72,7 @@ func TestEffectivePaletteNarrowsDownTheTree(t *testing.T) {
 	wantKeys(t, palette(t, p, "checkout"),
 		"processor/batch", "receiver/kafka", "receiver/otlp")
 
-	// data sits on the org branch only — payments' narrowing never reaches it.
+	// data sits on the org branch only, so payments' narrowing never reaches it.
 	wantKeys(t, palette(t, p, "data"),
 		"exporter/otlphttp", "processor/batch",
 		"receiver/kafka", "receiver/otlp", "receiver/prometheus")
@@ -80,7 +80,7 @@ func TestEffectivePaletteNarrowsDownTheTree(t *testing.T) {
 
 // AC: a Grant widens a specific team's palette and appears with provenance
 // in effective-palette output. It applies to the target's subtree and to
-// nobody else — not the granting team, not the target's ancestors.
+// nobody else: not the granting team, not the target's ancestors.
 func TestGrantWidensTheTargetSubtreeWithProvenance(t *testing.T) {
 	p := mustLoad(t, fixtureLists, fixtureGrants)
 
@@ -127,7 +127,7 @@ func TestGrantIsNarrowedBackOutBelow(t *testing.T) {
 }
 
 // The union applies after the intersection at each step: a Grant widens its
-// target's effective list even past the target's own declared list — the
+// target's effective list even past the target's own declared list. The
 // escape hatch would be useless if the list it escapes could veto it.
 func TestGrantOverridesTheTargetsOwnList(t *testing.T) {
 	lists := `

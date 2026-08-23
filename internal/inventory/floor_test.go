@@ -21,7 +21,7 @@ func TestResolveFloorRanking(t *testing.T) {
 			want:     Floor{Source: FloorDerived, Min: 12, AsOf: asOf},
 		},
 		{
-			name:     "a derived zero is still derived — the substrate honestly expecting nothing",
+			name:     "a derived zero is still derived: the substrate honestly expecting nothing",
 			derived:  Count{Known: true, AsOf: asOf, Instances: 0},
 			declared: 40,
 			want:     Floor{Source: FloorDerived, Min: 0, AsOf: asOf},
@@ -33,7 +33,7 @@ func TestResolveFloorRanking(t *testing.T) {
 			want:     Floor{Source: FloorDeclared, Min: 12},
 		},
 		{
-			name: "no provider and no declaration is no floor — no teeth, and nobody guesses",
+			name: "no provider and no declaration is no floor: no teeth, and nobody guesses",
 			want: Floor{},
 		},
 		{

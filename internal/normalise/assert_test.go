@@ -177,7 +177,7 @@ func TestTheProjectionDoesNotChangeAdocumentsOwnDigest(t *testing.T) {
 	base := load(t, "testdata/corpus/edge-k8s/base.yaml")
 	def := load(t, "testdata/corpus/edge-k8s/ambiguous-explicit-default.yaml")
 	if layer2(t, base, Exact()) == layer2(t, def, Exact()) {
-		t.Fatal("two authored configs digest equal — the projection has leaked into layer 2 (ADR-0046 §2)")
+		t.Fatal("two authored configs digest equal: the projection has leaked into layer 2")
 	}
 }
 

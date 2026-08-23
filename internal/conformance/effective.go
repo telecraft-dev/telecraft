@@ -7,7 +7,7 @@ import (
 )
 
 // Effective is one row's Effective reading: the collector's own reported
-// running config — OpAMP's EffectiveConfig, adopted verbatim (ADR-0004,
+// running config: OpAMP's EffectiveConfig, adopted verbatim (ADR-0004,
 // names per ADR-0015). Never what an applier holds, never what a ConfigMap
 // contains; one definition for served and foreign collectors alike.
 //
@@ -15,7 +15,7 @@ import (
 // component list (ADR-0004): `has_receiver: [filelog]` wired only into a
 // traces pipeline is exactly the broken_pipeline case the product exists to
 // catch, and a flat list could not represent it. Config assertions carry no
-// pipeline scope yet, so a bare assertion matches any pipeline — the
+// pipeline scope yet, so a bare assertion matches any pipeline, the
 // documented migration path.
 type Effective struct {
 	// Known keeps "we cannot see this collector's config" distinct from "it
@@ -30,7 +30,7 @@ type Effective struct {
 // Pipeline is one otelcol pipeline as the collector reports it, components
 // in configured order.
 type Pipeline struct {
-	// Name is the otelcol pipeline id: the signal, optionally qualified —
+	// Name is the otelcol pipeline id: the signal, optionally qualified:
 	// "logs", "traces/backend".
 	Name string `yaml:"name"`
 
@@ -39,7 +39,7 @@ type Pipeline struct {
 	Exporters  []string `yaml:"exporters"`
 }
 
-// SatisfiesConfig judges this reading against one config assertion — the
+// SatisfiesConfig judges this reading against one config assertion: the
 // same checker the cross uses on the Effective reading, exposed so the
 // drift detection can run it against the Intended one (ADR-0004: "same
 // checker as the declared config assertion, run against the intended
@@ -50,7 +50,7 @@ func (e Effective) SatisfiesConfig(a *requirements.ConfigAssertion) (bool, []str
 	return ok, detail
 }
 
-// componentsOf unions one component slot across every pipeline — the
+// componentsOf unions one component slot across every pipeline: the
 // any-pipeline default for bare config assertions (ADR-0004).
 func (e Effective) componentsOf(slot func(Pipeline) []string) []string {
 	var out []string

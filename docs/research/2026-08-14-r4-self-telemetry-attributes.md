@@ -10,9 +10,9 @@
 
 ## TL;DR verdict
 
-**The drafted spellings are correct — `otelcol.component.id`,
+**The drafted spellings are correct: `otelcol.component.id`,
 `otelcol.component.kind`, `otelcol.pipeline.id` are exactly what the current
-release emits — but they are *instrumentation scope attributes*, they are
+release emits. But they are *instrumentation scope attributes*, they are
 default-on only for internal **logs and traces**, and on **metrics** they sit
 behind an alpha feature gate that is still off at v0.158.0.** The full set is
 five keys, defined in `internal/telemetry/attribute.go:12-16`:
@@ -32,7 +32,7 @@ What G6 can rely on **today, with a default config**:
   **exactly as written in the rendered YAML** (`type` or `type/name`, via
   `component.ID.String()`).
 - **Metrics → component join**: the *legacy* datapoint attributes on the
-  helper metrics — `receiver`, `scraper`, `processor`, `exporter` (each
+  helper metrics, `receiver`, `scraper`, `processor`, `exporter` (each
   holding the full `type/name` id), plus `transport`, `format`, `otel.signal`
   (processors), `data_type` (exporters). These are default-on and what every
   dashboard in the wild joins on.
@@ -41,7 +41,7 @@ What G6 can rely on **today, with a default config**:
   break the default Prometheus surface), and the new dotted metrics
   (`otelcol.receiver.produced.items` etc., **stability: development**, only
   emitted when that gate is on).
-- **`otelcol.pipeline.id` is NOT on receivers or exporters** — only
+- **`otelcol.pipeline.id` is NOT on receivers or exporters**: only
   processors carry it (receivers/exporters are shared across same-signal
   pipelines). Pipeline membership for receivers/exporters must be derived
   from the rendered config topology, not from telemetry. The G6 draft must
@@ -60,7 +60,7 @@ dotted metrics.** The code is the authority for all spellings below.
 
 ## 1. Current release
 
-**v1.64.0 / v0.158.0, published 2026-08-04** (GitHub releases API; dual tag —
+**v1.64.0 / v0.158.0, published 2026-08-04** (GitHub releases API; dual tag:
 stable modules at 1.64.0, the rest at 0.158.0). `opentelemetry-collector-contrib`
 released the matching **v0.158.0** the same day. All source citations below are
 against tag `v0.158.0`, commit `0378e9a`.
@@ -79,8 +79,8 @@ Internal-telemetry stability is per-signal (docs, `internal-telemetry.md`):
 ### 2a. Component-identity scope attributes (the new scheme)
 
 Constants in `internal/telemetry/attribute.go:12-16` (quoted in the TL;DR).
-Attached per component kind in `service/internal/attribute/attribute.go:50-103`
-— this table is the ground truth for which keys exist on which kind:
+Attached per component kind in `service/internal/attribute/attribute.go:50-103`.
+This table is the ground truth for which keys exist on which kind:
 
 | Kind | Scope attributes attached |
 |---|---|
@@ -89,7 +89,7 @@ Attached per component kind in `service/internal/attribute/attribute.go:50-103`
 | exporter | `otelcol.component.kind`=`exporter`, `otelcol.signal`, `otelcol.component.id` |
 | connector | `otelcol.component.kind`=`connector`, `otelcol.signal` (input side), `otelcol.signal.output` (output side), `otelcol.component.id` |
 | extension | `otelcol.component.kind`=`extension`, `otelcol.component.id` |
-| (internal) | `otelcol.component.kind`=`capabilities` or `fanout`, with `otelcol.pipeline.id` — synthetic graph nodes, not components in the YAML |
+| (internal) | `otelcol.component.kind`=`capabilities` or `fanout`, with `otelcol.pipeline.id`: synthetic graph nodes, not components in the YAML |
 
 Kind values are **lowercase** since v0.125.0 (CHANGELOG: "Lowercase values for
 'otelcol.component.kind' attributes. (#12865)").
@@ -108,15 +108,15 @@ They are **instrumentation scope attributes**, not datapoint/log-record
 attributes. On OTLP-exported logs they land on the scope (v0.125.0 CHANGELOG:
 "internal logs exported through OTLP will now use instrumentation scope
 attributes to identify the source component instead of log attributes. This
-does not affect the Collector's stderr output" — on stderr they appear as
+does not affect the Collector's stderr output"; on stderr they appear as
 ordinary zap fields).
 
 Timeline of the rename/mechanism (CHANGELOG):
-- v0.120.0 — logs first carried component ids as log-record attributes.
-- v0.123.0 — `telemetry.newPipelineTelemetry` gate added; switched to scope attributes (#12217).
-- v0.125.0 — gate restricted to metrics; scope attributes for logs+traces turned **on by default**; kind values lowercased.
-- v0.131.0 — new metrics gained `otelcol.component.outcome` (`success`/`failure`/`refused`) datapoint attribute (#13234).
-- Still StageAlpha at v0.158.0 — no further promotion.
+- v0.120.0: logs first carried component ids as log-record attributes.
+- v0.123.0: `telemetry.newPipelineTelemetry` gate added; switched to scope attributes (#12217).
+- v0.125.0: gate restricted to metrics; scope attributes for logs+traces turned **on by default**; kind values lowercased.
+- v0.131.0: new metrics gained `otelcol.component.outcome` (`success`/`failure`/`refused`) datapoint attribute (#13234).
+- Still StageAlpha at v0.158.0; no further promotion.
 
 ### 2b. Legacy datapoint attributes (what default-on metrics actually carry)
 
@@ -133,7 +133,7 @@ Timeline of the rename/mechanism (CHANGELOG):
 
 ### 2c. Instance-level resource attributes
 
-`service/telemetry/otelconftelemetry/resource.go:25-35` — defaults:
+`service/telemetry/otelconftelemetry/resource.go:25-35` defaults:
 
 ```go
 string(semconv.ServiceNameKey):       buildInfo.Command,   // e.g. "otelcol-contrib"
@@ -141,27 +141,27 @@ string(semconv.ServiceVersionKey):    buildInfo.Version,
 string(semconv.ServiceInstanceIDKey): instanceUUID.String(), // random UUIDv4 per process start
 ```
 
-So `service.name`, `service.version`, `service.instance.id` — semconv
+So `service.name`, `service.version`, `service.instance.id`, with semconv
 schema URL v1.40.0 (import at `resource.go:15`; bumped from v1.37.0 at
 v0.141.0 per CHANGELOG #14232). All overridable and suppressible under
 `service::telemetry::resource` ("the attribute must be specified with a null
-value" to suppress — `config.go:19-26`). Since v0.157.0, experimental
+value" to suppress, `config.go:19-26`). Since v0.157.0, experimental
 `service::telemetry::resource::detection/development` adds SDK resource
 detection. **Caveat for G6: `service.instance.id` is regenerated on every
-process restart** — it identifies a process incarnation, not a node; joining
+process restart**: it identifies a process incarnation, not a node; joining
 across restarts needs an adopter-set attribute or host identity.
 
 ## 3. Metric names for per-component throughput
 
 Two coexisting generations, distinguishable by separator. mdatagen prefixes
 un-prefixed names with `otelcol_`; `prefix: otelcol.` yields dotted names.
-**The instrument (OTLP) name for the legacy metrics is underscore-form** —
+**The instrument (OTLP) name for the legacy metrics is underscore-form**,
 verified in `receiver/receiverhelper/internal/metadata/generated_telemetry.go:74`
 (`"otelcol_receiver_accepted_log_records"`). The docs confirm: "Use the
 `instrument_name` value `otelcol_process_uptime` (the OTLP name) in views."
-So **underscores are not a Prometheus artifact — `otelcol_receiver_accepted_spans`
+So **underscores are not a Prometheus artifact: `otelcol_receiver_accepted_spans`
 is the name on the OTLP surface too.** The only Prometheus-vs-OTLP differences
-are Prometheus type/unit suffixes (`_total`, `_seconds` — suppressed by the
+are Prometheus type/unit suffixes (`_total`, `_seconds`, suppressed by the
 default reader's `without_type_suffix`/`without_units: true`) and dot→underscore
 translation for the new dotted metrics.
 
@@ -170,24 +170,24 @@ translation for the new dotted metrics.
 - Receivers (`receiver/receiverhelper/metadata.yaml`):
   `otelcol_receiver_accepted_{spans,metric_points,log_records,profile_samples}`,
   `otelcol_receiver_refused_*`, `otelcol_receiver_failed_*`; plus
-  `otelcol_receiver_requests` (attr `outcome`: `success|refused|failure`) —
+  `otelcol_receiver_requests` (attr `outcome`: `success|refused|failure`),
   gated behind `receiverhelper.newReceiverMetrics` (alpha, v0.138.0), which
   also **changes the semantics of `refused` vs `failure`** on the existing
   metrics ("This is a breaking change for the semantics of the
-  otelcol_receiver_refused_* " — metadata.yaml:127).
+  otelcol_receiver_refused_* ", metadata.yaml:127).
 - Scrapers (`scraper/scraperhelper/metadata.yaml`):
   `otelcol_scraper_scraped_{metric_points,log_records}`,
   `otelcol_scraper_errored_*`.
 - Processors (`processor/processorhelper/metadata.yaml`):
   `otelcol_processor_incoming_items`, `otelcol_processor_outgoing_items`,
   `otelcol_processor_internal_duration`. (Item-count, signal in the
-  `otel.signal` attr — no per-signal name variants.)
+  `otel.signal` attr; no per-signal name variants.)
 - Exporters (`exporter/exporterhelper/metadata.yaml`):
   `otelcol_exporter_sent_{spans,metric_points,log_records,profile_samples}`,
   `otelcol_exporter_send_failed_*`, `otelcol_exporter_enqueue_failed_*`.
 - Queue: `otelcol_exporter_queue_size`, `otelcol_exporter_queue_capacity`
   (gauges, unit `{batch}`; code description says "retry queue", docs say
-  "sending queue" — cosmetic divergence), `otelcol_exporter_queue_batch_send_size{,_bytes}`.
+  "sending queue", a cosmetic divergence), `otelcol_exporter_queue_batch_send_size{,_bytes}`.
 
 Components not built on these helpers may emit none of them (docs: "some
 components not using those packages might not emit them").
@@ -234,21 +234,21 @@ Implemented by `service/telemetry/otelconftelemetry` wrapping
   likewise (docs, "Configure internal {metrics,logs,traces}"). Since
   v0.150.0 headers on the internal OTLP exporter are redacted when config is
   marshaled (#14756).
-- **Migration status**: the SDK-config path is finished business —
+- **Migration status**: the SDK-config path is finished business:
   `useOtelWithSDKConfigurationForInternalTelemetry` went stable v0.110.0 and
   was **removed** v0.128.0; the old `metrics::address` shorthand is gone from
   the config struct (readers only). `telemetry.disableHighCardinalityMetrics`
   was deprecated v0.132.0 and **removed** v0.144.0 (use views).
-  **The pull-based Prometheus default has NOT flipped to OTLP-push** — no
+  **The pull-based Prometheus default has NOT flipped to OTLP-push**: no
   gate for that exists; OTLP-out remains opt-in per collector.
 - **Scope-label wrinkle**: v0.130.0 enabled `otel_scope_*` labels on the
   default Prometheus reader; v0.131.0 **reverted** it (Prometheus-exporter
   downgrade, #13429/#13344), and at v0.158.0 the default still has
   `WithoutScopeInfo: true`. Consequence: on the default Prometheus surface,
-  scope attributes are dropped — which is exactly why the metrics half of
+  scope attributes are dropped, which is exactly why the metrics half of
   `newPipelineTelemetry` stays gated ("enabling the ... feature gate may break
   the export of Collector metrics ... Having a `batch` processor in multiple
-  pipelines is a known trigger" — v0.125.0 CHANGELOG). **The
+  pipelines is a known trigger", v0.125.0 CHANGELOG). **The
   `otelcol.component.*` metric attributes are effectively OTLP-path-only.**
 
 ## 5. Join keys back to the rendered YAML
@@ -264,7 +264,7 @@ Implemented by `service/telemetry/otelconftelemetry` wrapping
   returns `type` or `type/name` (`component/identifiable.go:164-170`), and
   `pipeline.ID.String()` likewise gives `metrics` or `metrics/name`.
 - Metrics → component: legacy datapoint attrs `receiver` / `scraper` /
-  `processor` / `exporter` — same full `type/name` values. Signal comes from
+  `processor` / `exporter`, same full `type/name` values. Signal comes from
   the metric name (receivers/exporters) or `otel.signal` / `data_type` attrs.
 
 **Caveats (all verified in source):**
@@ -276,26 +276,26 @@ Implemented by `service/telemetry/otelconftelemetry` wrapping
 2. **Singleton components deliberately drop identity attributes.** The `otlp`
    receiver drops `otelcol.signal` (`receiver/otlpreceiver/otlp.go:56`);
    `memory_limiter` drops `otelcol.signal`, `otelcol.pipeline.id` **and
-   `otelcol.component.id`** (`processor/memorylimiterprocessor/factory.go:138-143`)
-   — its logs/metrics under the new scheme identify only as
+   `otelcol.component.id`** (`processor/memorylimiterprocessor/factory.go:138-143`),
+   so its logs/metrics under the new scheme identify only as
    `otelcol.component.kind=processor`. The RFC blesses this pattern, so other
    components may do the same.
 3. **Connectors** appear once per (input signal, output signal) with
    `otelcol.signal` + `otelcol.signal.output` scope attrs; on the new consumed/
    produced metrics the *destination* pipeline is a **datapoint** attribute
    `otelcol.pipeline.id` (`service/internal/graph/connector.go:27,106`), so a
-   connector feeding two pipelines is disambiguated there — but only under
+   connector feeding two pipelines is disambiguated there, but only under
    the gate.
 4. **Synthetic nodes**: `otelcol.component.kind` values `capabilities` and
    `fanout` (`service/internal/attribute/attribute.go:17-19,91-103`) do not
    correspond to anything in the YAML; a joiner must tolerate/ignore them.
-5. **Scraper metrics** join on `receiver` + `scraper` (two-level identity —
+5. **Scraper metrics** join on `receiver` + `scraper` (two-level identity,
    e.g. `hostmetrics` receiver, `cpu` scraper).
 6. **`otel.signal` vs `otelcol.signal`**: the legacy processor datapoint attr
    and the new scope attr differ by prefix. Do not normalise them into one
    key blindly.
 7. Everything under §2a on metrics is downstream of an **alpha gate whose
-   CHANGELOG history includes one revert and one semantic restriction** —
+   CHANGELOG history includes one revert and one semantic restriction**:
    treat as unstable for schema purposes; model the legacy attrs as the
    primary key and the scope attrs as an alternate.
 
@@ -308,7 +308,7 @@ Implemented by `service/telemetry/otelconftelemetry` wrapping
 There is no `model/otelcol/` namespace; the registry's `otel` namespace covers
 `otel.scope.*`/`otel.status_code`, not the collector. The collector's own docs
 say only that its metric stability levels "follow Semantic Conventions
-[guidance]" — the *process*, not the names. **Stability of every `otelcol.*`
+[guidance]", meaning the *process*, not the names. **Stability of every `otelcol.*`
 name is governed solely by the collector repo** (alpha/development as in §3).
 
 ## 7. Docs vs code disagreements
@@ -324,7 +324,7 @@ name is governed solely by the collector repo** (alpha/development as in §3).
    code metadata says "retry queue" (`exporter/exporterhelper/metadata.yaml:126,135`).
    Cosmetic; trusted the code.
 3. The docs' claim that resource attributes are "randomly generated" applies
-   to `service.instance.id` only; name/version come from build info — code
+   to `service.instance.id` only; name/version come from build info; the code
    (`resource.go:25-35`) is precise.
 
 ## Recommendations for G6
@@ -336,7 +336,7 @@ name is governed solely by the collector repo** (alpha/development as in §3).
 2. Derive pipeline membership of receivers/exporters from the rendered YAML,
    never from telemetry (§5.1).
 3. Have Telecraft-rendered configs stamp a stable instance identity into
-   `service::telemetry::resource` — the default `service.instance.id` rotates
+   `service::telemetry::resource`, because the default `service.instance.id` rotates
    every restart.
 4. If Telecraft wants the new `otelcol.*.{consumed,produced}.items` metrics,
    it must render both the `telemetry.newPipelineTelemetry` gate **and** an
@@ -349,7 +349,7 @@ name is governed solely by the collector repo** (alpha/development as in §3).
 ## Sources
 
 - Releases: https://api.github.com/repos/open-telemetry/opentelemetry-collector/releases (v1.64.0/v0.158.0, 2026-08-04); https://api.github.com/repos/open-telemetry/opentelemetry-collector-contrib/releases (v0.158.0, 2026-08-04)
-- Source at tag v0.158.0 (commit 0378e9a), https://github.com/open-telemetry/opentelemetry-collector/tree/v0.158.0 — files cited inline: `internal/telemetry/attribute.go`, `internal/telemetry/telemetry.go`, `service/internal/attribute/attribute.go`, `service/internal/componentattribute/{telemetry.go,logger_zap.go}`, `service/internal/obsconsumer/{option.go,metrics.go}`, `service/internal/graph/connector.go`, `service/internal/metadata/generated_feature_gates.go`, `service/metadata.yaml`, `service/telemetry/otelconftelemetry/{config.go,factory.go,resource.go}`, `config/configtelemetry/configtelemetry.go`, `component/identifiable.go`, `receiver/receiverhelper/{metadata.yaml,obsreport.go,internal/obsmetrics.go}`, `processor/processorhelper/{metadata.yaml,obsreport.go}`, `processor/internal/obsmetrics.go`, `processor/memorylimiterprocessor/factory.go`, `receiver/otlpreceiver/otlp.go`, `exporter/exporterhelper/{metadata.yaml,internal/obs_report_sender.go,internal/queue/obs_queue.go}`, `scraper/scraperhelper/obs_metrics.go`, `CHANGELOG.md`, `docs/rfcs/component-universal-telemetry.md`
+- Source at tag v0.158.0 (commit 0378e9a), https://github.com/open-telemetry/opentelemetry-collector/tree/v0.158.0. Files cited inline: `internal/telemetry/attribute.go`, `internal/telemetry/telemetry.go`, `service/internal/attribute/attribute.go`, `service/internal/componentattribute/{telemetry.go,logger_zap.go}`, `service/internal/obsconsumer/{option.go,metrics.go}`, `service/internal/graph/connector.go`, `service/internal/metadata/generated_feature_gates.go`, `service/metadata.yaml`, `service/telemetry/otelconftelemetry/{config.go,factory.go,resource.go}`, `config/configtelemetry/configtelemetry.go`, `component/identifiable.go`, `receiver/receiverhelper/{metadata.yaml,obsreport.go,internal/obsmetrics.go}`, `processor/processorhelper/{metadata.yaml,obsreport.go}`, `processor/internal/obsmetrics.go`, `processor/memorylimiterprocessor/factory.go`, `receiver/otlpreceiver/otlp.go`, `exporter/exporterhelper/{metadata.yaml,internal/obs_report_sender.go,internal/queue/obs_queue.go}`, `scraper/scraperhelper/obs_metrics.go`, `CHANGELOG.md`, `docs/rfcs/component-universal-telemetry.md`
 - RFC: https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/rfcs/component-universal-telemetry.md
 - Docs: https://opentelemetry.io/docs/collector/internal-telemetry/ (source: https://raw.githubusercontent.com/open-telemetry/opentelemetry.io/main/content/en/docs/collector/internal-telemetry.md, fetched 2026-08-14)
 - Semconv search: https://github.com/search?q=repo%3Aopen-telemetry%2Fsemantic-conventions+otelcol&type=code (5 hits, all `process.*` examples); https://github.com/open-telemetry/semantic-conventions/tree/main/model (no `otelcol` namespace)

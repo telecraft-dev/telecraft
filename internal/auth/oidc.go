@@ -20,11 +20,11 @@ import (
 // OIDC is the first-party redirect provider (ADR-0019 §1): the
 // authorization-code flow against any OpenID Connect issuer, self-hosted
 // identity providers in air gaps included. The implementation is standard
-// library only — discovery, code exchange and RS256 ID-token verification
-// — so the air-gap binary needs nothing beyond reach of its own issuer
+// library only (discovery, code exchange and RS256 ID-token verification),
+// so the air-gap binary needs nothing beyond reach of its own issuer
 // (REQ-006).
 type OIDC struct {
-	// Issuer is the issuer URL, exactly as the provider names itself —
+	// Issuer is the issuer URL, exactly as the provider names itself:
 	// discovery is served beneath it, and every ID token must carry it.
 	Issuer string
 
@@ -138,7 +138,7 @@ func (o *OIDC) Complete(ctx context.Context, state, verifier, callbackURL string
 		id.Name = claims.PreferredUsername
 	}
 	if err := id.valid(); err != nil {
-		return Identity{}, fmt.Errorf("the ID token carries no usable subject and email claims — attribution needs both (ADR-0019 §3)")
+		return Identity{}, fmt.Errorf("the ID token has no usable subject and email claims. Telecraft needs both to attribute changes")
 	}
 	return id, nil
 }
@@ -208,7 +208,7 @@ func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, want
 		return idClaims{}, fmt.Errorf("id_token header: %w", err)
 	}
 	if header.Alg != "RS256" {
-		return idClaims{}, fmt.Errorf("id_token is signed with %q — RS256 is what this provider verifies; configure the issuer's client to use it", header.Alg)
+		return idClaims{}, fmt.Errorf("id_token is signed with %q, but this provider only verifies RS256. Configure the issuer's client to use RS256", header.Alg)
 	}
 
 	key, err := o.signingKey(ctx, disc.JWKSURI, header.Kid)

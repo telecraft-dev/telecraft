@@ -3,7 +3,7 @@ package telemetry
 // The first end-to-end conformance tracer (issue #11, criterion 4): fixture
 // Effective + real Observed → verdict. A fixture estate and a requirements
 // library load from files, the Observed readings come from a live
-// Elasticsearch through the seam — narrowed per Environment — and the
+// Elasticsearch through the seam (narrowed per Environment), and the
 // verdict cross judges each row independently.
 //
 // Gated on TELECRAFT_TELEMETRY_LIVE_ENDPOINT like the rest of the live
@@ -42,7 +42,7 @@ const liveLibrary = `
   remediation: wire a filelog or otlp receiver into a logs pipeline
 `
 
-// The same Service, the same Effective config, two environments — so any
+// The same Service, the same Effective config, two environments, so any
 // difference between the two verdicts can only come from the per-environment
 // Observed reading.
 const liveEstate = `
@@ -64,7 +64,7 @@ services:
 `
 
 // seedLiveEnvironments recreates the logs index with production-tagged
-// records for the fixture Service — and none for staging. Without the
+// records for the fixture Service, and none for staging. Without the
 // environment narrowing, a staging reading would see the production records
 // and pass: exactly the blending ADR-0033 forbids.
 func seedLiveEnvironments(t *testing.T, endpoint string) {
@@ -162,13 +162,13 @@ func TestLiveVerdictForFixtureEstate(t *testing.T) {
 	}
 
 	// Same Service, same Effective config, no staging records: the verdict
-	// is independent — and it is broken_pipeline, the finding no config-only
+	// is independent, and it is broken_pipeline, the finding no config-only
 	// or unscoped reading could produce.
 	staging := verdicts["staging"]
 	if got := staging.Worst(); got != conformance.BrokenPipeline {
 		t.Errorf("staging verdict = %s, want broken_pipeline (findings: %+v)", got, staging.Findings)
 	}
 	if s := staging.Score(); s.Failing != 1 {
-		t.Errorf("staging score = %+v, want exactly one counting failure — the CI gate's non-zero exit", s)
+		t.Errorf("staging score = %+v, want exactly one counting failure: the CI gate's non-zero exit", s)
 	}
 }

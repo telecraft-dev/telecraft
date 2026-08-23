@@ -4,8 +4,8 @@
 // platform's own OpAMP server. It taps the serving wire (serving.Tap),
 // keeps the last report per live connection, and answers the seam from
 // that cache alone. The cache is what ADR-0032 permits an off-path
-// reader: derivable from live connections — a reconnecting collector
-// rebuilds it with one full-state report — and dying with them, so a
+// reader: derivable from live connections (a reconnecting collector
+// rebuilds it with one full-state report) and dying with them, so a
 // collector that disconnects leaves the estate reading rather than going
 // quietly stale inside it.
 //
@@ -37,7 +37,7 @@ const DefaultRefreshCadence = 30 * time.Second
 // OpAMPDirectConfig configures one OpAMPDirect.
 type OpAMPDirectConfig struct {
 	// RefreshCadence is the cadence the provider declares (ADR-0036 §3):
-	// how often a live collector re-affirms its readings — the OpAMP
+	// how often a live collector re-affirms its readings, the OpAMP
 	// heartbeat the server is run with. Zero means DefaultRefreshCadence.
 	RefreshCadence time.Duration
 
@@ -62,7 +62,7 @@ type OpAMPDirect struct {
 // later message re-affirms the held reading rather than erasing it.
 type record struct {
 	// asOf is the instant of the last message on the connection. Every
-	// reading held here is current as of that instant — a message that
+	// reading held here is current as of that instant: a message that
 	// carries nothing new still says "unchanged, as of now".
 	asOf     time.Time
 	identity map[string]string
@@ -117,7 +117,7 @@ var (
 func (p *OpAMPDirect) Name() string { return "opamp-direct" }
 
 // Declaration is the static capability declaration (ADR-0036 §1): the
-// wire carries all three readings, so all three are declared capable —
+// wire carries all three readings, so all three are declared capable;
 // a connected collector that reports none of them is capable-but-unknown
 // per reading, with the cause naming what was never reported.
 func (p *OpAMPDirect) Declaration() seam.Declaration {
@@ -133,7 +133,7 @@ func (p *OpAMPDirect) Declaration() seam.Declaration {
 
 // Report is the serving.Tap inbound: merge what the message carried into
 // the connection's record. OpAMP compression means absence is "unchanged",
-// so the whole record's asOf advances with every message — the collector
+// so the whole record's asOf advances with every message: the collector
 // just re-affirmed everything it is not re-sending.
 func (p *OpAMPDirect) Report(conn any, identity map[string]string, msg *protobufs.AgentToServer) {
 	p.mu.Lock()
@@ -170,7 +170,7 @@ func (p *OpAMPDirect) Report(conn any, identity map[string]string, msg *protobuf
 
 // Closed drops the connection's record: the cache dies with the
 // connection (ADR-0032). A collector gone from the wire is gone from the
-// reading — asking for it afterwards yields Known false, never a stale
+// reading: asking for it afterwards yields Known false, never a stale
 // impression of presence.
 func (p *OpAMPDirect) Closed(conn any) {
 	p.mu.Lock()
@@ -180,7 +180,7 @@ func (p *OpAMPDirect) Closed(conn any) {
 
 // Estate reads the whole estate in one call (ADR-0008): every identified
 // collector on a live connection. A connection that has not yet reported
-// identity attributes is not a collector reading — nothing could match
+// identity attributes is not a collector reading: nothing could match
 // it, and the server has already asked it for full state.
 func (p *OpAMPDirect) Estate(context.Context) seam.Estate {
 	est := seam.Estate{Declaration: p.Declaration(), AsOf: p.now()}
@@ -216,7 +216,7 @@ func (p *OpAMPDirect) Estate(context.Context) seam.Estate {
 
 // collectorOf builds one collector's reading from its record. A reading
 // the collector never sent is Known false with the cause naming exactly
-// that — capable-but-unknown, loud, never a silent gap (ADR-0036 §1).
+// that: capable-but-unknown, loud, never a silent gap (ADR-0036 §1).
 func collectorOf(r *record) seam.Collector {
 	c := seam.Collector{Identity: r.identity}
 
@@ -228,7 +228,7 @@ func collectorOf(r *record) seam.Collector {
 		c.Effective = seam.Effective{Known: false, AsOf: r.asOf, Cause: r.effective.cause}
 	default:
 		// An empty pipeline list is a collector reporting an empty
-		// config — a reading, not a blind spot (ADR-0008).
+		// config: a reading, not a blind spot (ADR-0008).
 		c.Effective = seam.Effective{Known: true, AsOf: r.asOf, Pipelines: r.effective.pipelines}
 	}
 
@@ -249,7 +249,7 @@ func collectorOf(r *record) seam.Collector {
 	return c
 }
 
-// deliveryStateOf carries the wire vocabulary across verbatim — no
+// deliveryStateOf carries the wire vocabulary across verbatim, with no
 // invented delivery states (ADR-0004).
 func deliveryStateOf(s protobufs.RemoteConfigStatuses) seam.DeliveryState {
 	switch s {
@@ -264,7 +264,7 @@ func deliveryStateOf(s protobufs.RemoteConfigStatuses) seam.DeliveryState {
 	}
 }
 
-// healthOf converts the reported tree recursively — the full shape, never
+// healthOf converts the reported tree recursively: the full shape, never
 // the flattened roll-up (ADR-0008).
 func healthOf(h *protobufs.ComponentHealth) seam.ComponentHealth {
 	out := seam.ComponentHealth{
@@ -318,8 +318,8 @@ func pipelinesOf(ec *protobufs.EffectiveConfig) ([]seam.Pipeline, error) {
 
 // servicePipelines walks one otelcol document to service.pipelines,
 // preserving the document's pipeline order and each pipeline's component
-// order. A document without the section is a config running no pipelines
-// — valid, empty. A section that is not the expected shape is an error:
+// order. A document without the section is a config running no pipelines:
+// valid, empty. A section that is not the expected shape is an error:
 // a config we cannot read must become Known false, never a guess.
 func servicePipelines(body []byte) ([]seam.Pipeline, error) {
 	var doc yaml.Node

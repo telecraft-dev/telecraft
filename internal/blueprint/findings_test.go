@@ -48,8 +48,8 @@ func loadFindings(t *testing.T, dir string) []Finding {
 	return findings
 }
 
-// A reference to a Component nobody provides — missing, or retracted from
-// the estate — is a load-time finding: the broken content lives in another
+// A reference to a Component nobody provides (missing, or retracted from
+// the estate) is a load-time finding: the broken content lives in another
 // team's file, and one team's retraction must not stop everyone's load.
 func TestMissingComponentIsAFindingNotAnError(t *testing.T) {
 	dir := t.TempDir()
@@ -71,7 +71,7 @@ func TestMissingComponentIsAFindingNotAnError(t *testing.T) {
 }
 
 // A pin ahead of the owning team's current version points at a version that
-// does not exist at head — the legible trace of a retraction or a typo.
+// does not exist at head, the legible trace of a retraction or a typo.
 func TestPinToAMissingVersionIsAFinding(t *testing.T) {
 	dir := t.TempDir()
 	sharedProcessor(t, dir)
@@ -88,8 +88,8 @@ func TestPinToAMissingVersionIsAFinding(t *testing.T) {
 	}
 }
 
-// A pin merely behind head is a different diagnosis — library_drift, with
-// its own detection (ADR-0026 §6) — so it raises nothing at load.
+// A pin merely behind head is a different diagnosis (library_drift, with
+// its own detection, ADR-0026 §6), so it raises nothing at load.
 func TestPinBehindHeadIsNotALoadFinding(t *testing.T) {
 	dir := t.TempDir()
 	sharedProcessor(t, dir)
@@ -117,7 +117,7 @@ func TestTrackingReferenceToMissingComponentIsAFinding(t *testing.T) {
 
 // Class placement: extensions are collector-wide (ADR-0024 §2). An
 // extension in a signal lane, or a pipeline class in the extensions block,
-// is an authoring contradiction that routes to the Blueprint's owner — the
+// is an authoring contradiction that routes to the Blueprint's owner; the
 // renderer must never be the first thing to trip over it.
 func TestMisplacedClassIsAFinding(t *testing.T) {
 	dir := t.TempDir()

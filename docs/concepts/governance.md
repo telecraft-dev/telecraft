@@ -13,13 +13,13 @@ somebody who can act on it.
 
 ## Requirements
 
-A **Requirement** is a named, versioned assertion with mandatory remediation
-text. The remediation is not optional politeness: a finding with no suggested
-fix is a complaint.
+A **Requirement** is a named, versioned rule a Service must meet, and it
+carries its own remediation text. The remediation is mandatory, so every
+finding tells you what to do.
 
-A Requirement may assert on the Effective reading, the Observed reading, or
-both, and the kind is derived from the assertions present rather than authored,
-so it can never disagree with them:
+A Requirement can assert on the Effective reading, the Observed reading, or
+both. Telecraft derives the kind from the assertions present rather than
+asking you to write it, so the two can never disagree:
 
 | Kind | Asserts on |
 |---|---|
@@ -32,9 +32,9 @@ Asserting on both readings is what makes the
 configuration-only Requirement can be satisfied by a collector that delivers
 nothing, and a signal-only one can fail without naming a cause.
 
-Configuration assertions name receiver, processor, or exporter types, and each
-list is satisfied if *any* of its entries is present, because "collect logs
-somehow" is the real requirement and the choice between two receivers is an
+Configuration assertions name receiver, processor, or exporter types, and
+each list is satisfied if *any* of its entries is present. "Collect logs
+somehow" is the real requirement; the choice between two receivers is an
 implementation detail.
 
 Signal assertions are expressed in terms of presence, volume over a window,
@@ -45,99 +45,99 @@ relaxes it, because a partially instrumented estate is worth distinguishing
 from an entirely uninstrumented one.
 
 **Requirements never embed a backend query language.** No such field exists in
-the model. The moment a requirement can carry a query string, the
-`TelemetryProvider` seam stops being an abstraction and only one backend is
-ever really supported. The sanctioned extension is `AttributeNames`, the set
-of attribute names in use for a Service, signal, and window, which unlocks
-attribute-shape checking as pure string logic without widening the seam
-towards any vendor's API.
+the model. If a requirement could carry a query string, the
+`TelemetryProvider` seam would stop being an abstraction and only one backend
+would ever really be supported. The sanctioned extension is `AttributeNames`,
+the set of attribute names in use for a Service, signal, and window. It
+enables attribute-shape checking as pure string logic without widening the
+seam towards any vendor's API.
 
 ### The library
 
-The requirements library is a directory of YAML files, one concern per file, so
-a change to one Requirement is a one-file diff in review. That is the whole
-point of keeping it in git.
+The requirements library is a directory of YAML files, one concern per file,
+so a change to one Requirement is a one-file diff in review.
 
 Loading is strict and fails closed. An unknown field, a malformed document, or
-a missing mandatory field is a load error naming the file and the field, never
-a quietly lenient verdict. A library that fails to load has judged nothing, and
-the CI check reports that as a failure to run rather than as a pass.
+a missing mandatory field is a load error that names the file and the field,
+never a quietly lenient verdict. A library that fails to load has judged
+nothing, and the CI check reports that as a failure to run rather than as a
+pass.
 
 Version is part of the model: raising the bar is a dated, visible event rather
 than a silent overnight change in everyone's score. The evaluator always
 judges against a Requirement's current version, so a
-[`satisfies` claim](authoring.md#pins-and-tracking) is never a way to freeze
-the goalposts. Passing the version you claim while failing the current one is
+[`satisfies` claim](authoring.md#pins-and-tracking) never freezes the
+goalposts. Passing the version you claim while failing the current one is
 [`library_drift`](readings-and-verdicts.md#the-outcome-cross).
 
 ## Conformance levels
 
-Telecraft adopts the semantic-conventions vocabulary rather than inventing
-one. Every Requirement carries a `requirement_level`, one of four:
+Telecraft uses the OpenTelemetry semantic-conventions vocabulary rather than
+inventing one. Every Requirement carries a `requirement_level`, one of four:
 
 - `required`
 - `conditionally_required`
 - `recommended`
 - `opt_in`
 
-Absent defaults to `recommended`, matching the upstream default. The four-level
-scale is strictly richer than a binary required list: `recommended` is the
-principled home for attribute coverage that is not yet universal, and
-tightening a level is an authored, dated event you can point at.
+Absent defaults to `recommended`, matching the upstream default. The
+four-level scale is richer than a binary required list: `recommended` is the
+home for attribute coverage that is not yet universal, and tightening a level
+is an authored, dated event you can point at.
 
-The level is validated at load and carried through with every finding it
-produces, so a report can distinguish what your organisation demands from what
-it suggests.
+The level is validated at load and carried with every finding it produces, so
+a report can distinguish what your organisation demands from what it
+suggests.
 
 ## Exemptions and grace
 
-Two things waive a finding's count, and they stay distinct because one is
+Two things waive a finding's count. They stay distinct because one is
 authored and one is computed.
 
-An **Exemption** is an ordinary authored, git-resident object. It waives
+An **Exemption** is an ordinary authored object that lives in git. It waives
 exactly one Requirement, and it carries:
 
 - a mandatory owner, because a waiver nobody answers for is not a waiver;
 - a mandatory expiry, because an open-ended waiver is a deleted requirement;
 - exactly one subject, either one Service or one Team subtree.
 
-Subtree scope exists for the onboarding case: "everything under this team is
-waived from the completeness requirement until March" is one reviewable file
-rather than 40 copies. There are no narrowing semantics, because an Exemption
-waives a count and never forbids complying.
+Subtree scope exists for onboarding: "everything under this team is waived
+from the completeness requirement until March" is one reviewable file rather
+than 40 copies. There are no narrowing semantics, because an Exemption waives
+a count and never forbids complying.
 
 **Authority is a review rule, not a workflow.** An Exemption is valid only
 when the change introducing it is approved by the owner of the Requirement
-being waived, or by that owner's ancestor team. The point is that
-self-forgiveness should be impossible: an Exemption is a loosening, and every
-loosening mechanism in the model runs in one direction, the way only an
-ancestor may widen an [allow-list](authoring.md#allow-lists-and-grants).
+being waived, or by that owner's ancestor team. This makes self-forgiveness
+impossible: an Exemption is a loosening, and every loosening mechanism in the
+model runs in one direction, the same way only an ancestor can widen an
+[allow-list](authoring.md#allow-lists-and-grants).
 
-Telecraft builds no approval workflow for that. Review routing is the forge's,
-driven by the
+Telecraft builds no approval workflow for that. Review routing belongs to the
+forge (your git host), driven by the
 [generated code-ownership projection](ownership.md#authorisation-follows-ownership).
-What the platform enforces itself is structural: the loader refuses an
-Exemption that names no Requirement, no owner, or no expiry, or that carries
-both a Service and a Team.
+What Telecraft enforces itself is structural: the loader refuses an Exemption
+that names no Requirement, no owner, or no expiry, or that carries both a
+Service and a Team.
 
-Renewal is a fresh change proposal. Expiry means the file stops counting on the
-next run with no manual step, and an expired Exemption left in the tree is an
-authoring finding: dead configuration, in the same spirit as an aged
-`never_seen`.
+Renewal is a fresh change proposal. When an Exemption expires, it stops
+counting on the next run with no manual step, and an expired Exemption left in
+the tree is an authoring finding: dead configuration, in the same spirit as an
+aged `never_seen`.
 
-A **Grace Period** is the other mechanism: a Service-Class-scoped onboarding
-window the platform computes from the Service's class and onboarding date,
-during which findings are waived. Windows shrink as class rises, and the loader
-enforces that shape, so a table that quietly gave the most critical class the
+A **Grace Period** is the other mechanism: an onboarding window, scoped by
+Service Class, that Telecraft computes from the Service's class and onboarding
+date. Findings are waived during it. Windows shrink as class rises, and the
+loader enforces that shape, so a table that gave the most critical class the
 longest forgiveness cannot load.
 
 Where both cover the same finding, the Exemption wins, because it names the
 party answering for the waiver.
 
 **Neither replaces the diagnosis.** A waived finding keeps its outcome and its
-detail, gives up only its count, and its waived total rides every
-[roll-up](ownership.md#roll-up) level. Visibility is the real safeguard:
-authority controls who may loosen, visibility ensures loosening never hides.
+detail, gives up only its count, and its waived total appears at every
+[roll-up](ownership.md#roll-up) level. Authority controls who can loosen;
+visibility makes sure loosening never hides.
 
 ## Findings and their kinds
 
@@ -153,7 +153,7 @@ Several families feed those kinds:
 
 - **Conformance findings**, one per Requirement per row, carrying one of the
   [outcomes](readings-and-verdicts.md#the-outcome-cross).
-- **Population findings** on Tiers, `never_seen`, `under_populated`, and a
+- **Population findings** on Tiers: `never_seen`, `under_populated`, and a
   floor conflict where a declared floor sits above the live derived count.
   These add a `neutral` weight of their own, which is not a pass: a neutral
   finding is excluded from every denominator. See
@@ -165,70 +165,69 @@ Several families feed those kinds:
 - **Authoring findings**, which are about the authored files rather than the
   estate: a Component reference that cannot deliver what it promises, a lane
   whose explicit order contradicts the ordering rules, a Requirement naming an
-  environment the estate has never seen, an expired Exemption still present.
-  These route to an owner and never block anyone else's render.
+  environment the estate has never seen, or an expired Exemption still
+  present. These route to an owner and never block anyone else's render.
 
 ## Enforcement points
 
 There is **one evaluator**, and every caller goes through it: the composer as
 you edit, the render step, the CI check, and the continuous evaluation over
-Effective configurations. Vendoring a copy of the rules into CI is refused,
-because the policy state they need (the active Catalogue, the allow-lists, the
-Grants, the floors) lives with the instance, and a vendored copy would judge
-with stale policy by construction. The composer's live findings, the save
-gate, CI annotations, and the estate view can never disagree, because the
-judgement behind all four is the same code over the same policy.
+Effective configurations. CI never vendors a copy of the rules, because the
+policy state they need (the active Catalogue, the allow-lists, the Grants, the
+floors) lives with the instance, and a vendored copy would judge with stale
+policy. The composer's live findings, the save gate, CI annotations, and the
+estate view can never disagree, because the same code judges all four over
+the same policy.
 
 Judging is stateless, draft in and findings out, so validation is continuous
-rather than save-triggered: the composer shows findings and palette states as
-you edit, and saving asks the same question with enforcement on.
+rather than triggered by saving: the composer shows findings and palette
+states as you edit, and saving asks the same question with enforcement on.
 
 **Exactly one policy rule hard-blocks: an allow-list violation, at render.** A
-Blueprint referencing a component outside its team's effective list does not
-render into the estate repository. That rule earns its status by having a
-total authority chain and a fast, auditable escape hatch: request a
+Blueprint that references a component outside its team's effective list does
+not render into the estate repository. The rule has a complete authority chain
+and a fast, auditable escape hatch: request a
 [Grant](authoring.md#allow-lists-and-grants). Because that escape hatch
-exists, no override mechanism is needed and none exists.
+exists, there is no override mechanism.
 
 Everything else that is policy produces findings. Stability floors and
 lifecycle never block: breaches have legitimate temporary states, such as a
 newly imported catalogue downgrading a long-running component, and blocking
 would let a routine catalogue import freeze everyone's configuration work.
-Escalating findings to blocks is deliberately deferred, because tightening can
-be added later without breaking the model, while loosening cannot.
+Tightening can be added later without breaking the model, while loosening
+cannot, so findings stay findings.
 
 Separately from policy, **mechanical invalidity always refuses a render**: a
 dangling reference, a collision between rendered component ids, content edited
 without a version bump, or a lane that would compile to a pipeline no
-collector accepts. That is the same category as invalid YAML, not the category
-of policy. An artefact nobody reviewed must not exist, and a partial artefact
-is one nobody reviewed.
+collector accepts. That is the same category as invalid YAML, not policy. An
+artefact nobody reviewed must not exist, and a partial artefact is one nobody
+reviewed.
 
-The distinction matters enough to state twice. *Mechanical validity* may always
-refuse. *Policy* hard-blocks on allow-list violations and nothing else.
+To state the distinction once more: *mechanical validity* can always refuse.
+*Policy* hard-blocks on allow-list violations and nothing else.
 
 ### The CI check
 
 A check mode evaluates the estate once, writes one machine-readable report,
-and exits non-zero exactly when counting failures exist. Conformance that can
-only be seen in a browser is conformance that regresses between people
-remembering to look.
+and exits non-zero exactly when counting failures exist. Conformance you can
+only see in a browser regresses between people remembering to look.
 
-Every row is judged by default, because a gate that quietly checked one
-environment would pass estates failing everywhere else. A load error exits with
-a distinct code rather than a lenient zero. Waived findings stay in the report
-with their diagnosis and count towards the waived totals, so a green built on
-exemptions cannot look like a clean green. See the
+Every row is judged by default, because a gate that checked only one
+environment would pass estates failing everywhere else. A load error exits
+with a distinct code rather than a lenient zero. Waived findings stay in the
+report with their diagnosis and count towards the waived totals, so a green
+built on exemptions cannot look like a clean green. See the
 [reference](../reference/index.md) for exit codes and flags.
 
 ## Ungoverned
 
-"Ungoverned" names two different facts, and conflating them would misroute the
-remedy. Both drain the same way, by somebody authoring or widening a selector
-or registering a Service, which is exactly what the onboarding prompt proposes.
+"Ungoverned" names two different facts, and the remedy depends on which one
+you have. Both drain the same way: somebody authors or widens a selector, or
+registers a Service, which is exactly what the onboarding prompt proposes.
 
-**An ungoverned collector** is population-level: a discovered collector
-matching no Tier selector. It might be served, in which case it runs the
+**An ungoverned collector** is population-level: a discovered collector that
+matches no Tier selector. It might be served, in which case it runs the
 [Unmatched artefact](delivery.md#the-unmatched-artefact) and is stamped and
 health-visible, or foreign, read through the `EstateProvider` seam.
 
@@ -244,23 +243,17 @@ passes the requirement and is surfaced anyway.
 
 ### Quarantine
 
-Ungoverned data is handled by the **quarantine pattern**. A gateway Blueprint
-can carry an authored routing rule that sends telemetry from unrecognised
-`service.name` values to a short-retention quarantine destination, and the
-platform reads what lands there through the same seam it reads everything
-else: unknown sources are arriving, so onboard them.
+The **quarantine pattern** handles ungoverned data. A gateway Blueprint can
+carry an authored routing rule that sends telemetry from unrecognised
+`service.name` values to a short-retention quarantine destination. Telecraft
+reads what lands there through the same seam it reads everything else, and
+tells you: unknown sources are arriving, so onboard them.
 
 That is a governance pattern you author out of ordinary Components, never a
-platform runtime capability, because the platform is
+Telecraft runtime capability, because Telecraft is
 [not in the data path](index.md#principles). It drains by onboarding, never by
 retention growth.
 
 The quarantine destination is not the Unmatched artefact. One is data-level
 routing you author; the other is a configuration the server hands to a
 collector nobody has claimed.
-
-Reference: [ADR-0009](../adr/0009-weaver-semconv-conformance-vocabulary.md),
-[ADR-0022](../adr/0022-enforcement-points.md),
-[ADR-0031](../adr/0031-ungoverned-in-view.md),
-[ADR-0034](../adr/0034-schema-conformance-requirement-kind.md),
-[ADR-0037](../adr/0037-exemption-authority-inheritance.md).

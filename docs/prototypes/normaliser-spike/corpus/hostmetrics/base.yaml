@@ -1,5 +1,5 @@
 # Plain host-metrics node collector, GitOps-delivered (no opamp extension at
-# all — the normaliser must not require one).
+# all: the normaliser must not require one).
 receivers:
   hostmetrics:
     collection_interval: 60s

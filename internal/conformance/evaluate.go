@@ -12,7 +12,7 @@ import (
 
 // Evidence is everything known about one row at one moment: its Effective
 // reading and its Observed readings, both scoped to the row's Environment by
-// whoever gathered them — evidence for two environments never meets in one
+// whoever gathered them: evidence for two environments never meets in one
 // Evidence value (ADR-0033).
 //
 // Observed is keyed by window because requirements legitimately disagree
@@ -32,7 +32,7 @@ func (e Evidence) ObservedIn(w time.Duration) (telemetry.Observed, bool) {
 }
 
 // Evaluate judges one row: every requirement that applies in the row's
-// Environment (ADR-0033 — an env-scoped requirement simply produces no
+// Environment (ADR-0033: an env-scoped requirement produces no
 // finding elsewhere), crossed against the row's evidence. Verdicts for the
 // same Service in two environments come from two calls over two Evidence
 // values; nothing here can blend them.
@@ -97,7 +97,7 @@ func judge(req requirements.Requirement, ev Evidence) Finding {
 }
 
 // checkConfig returns (satisfied, evaluable, detail). A nil assertion and an
-// unavailable Effective reading are both "not evaluable" — the cross decides
+// unavailable Effective reading are both "not evaluable". The cross decides
 // what that means, this function never does.
 func checkConfig(a *requirements.ConfigAssertion, eff Effective) (bool, bool, []string) {
 	if a == nil {

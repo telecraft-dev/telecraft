@@ -24,7 +24,7 @@ import { useTour } from './useTour'
  *
  * Two placements, one card. A Step with an anchor points at it and takes
  * no pointer events, so the product underneath stays live and a reader may
- * ignore the Tour entirely — that is §2's "narrates, never drives" in the
+ * ignore the Tour entirely: that is §2's "narrates, never drives" in the
  * markup. A Step without one is centred over a scrim in a real modal
  * dialog, which is the welcome (§7), and is also where an anchored Step
  * lands when its element is not on screen (§4).

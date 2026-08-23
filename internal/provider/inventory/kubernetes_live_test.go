@@ -39,20 +39,20 @@ func liveProvider(t *testing.T) *Kubernetes {
 }
 
 // Every live node carries kubernetes.io/os, so the selector must derive a
-// positive count — the real cluster answering the seam's one question.
+// positive count: the real cluster answering the seam's one question.
 func TestLiveNodesDeriveACount(t *testing.T) {
 	c := liveProvider(t).Expected(context.Background(), map[string]string{"kubernetes.io/os": "linux"})
 	switch {
 	case !c.Known:
 		t.Fatalf("the live cluster could not be counted: %s", c.Cause)
 	case c.Instances < 1:
-		t.Fatalf("Instances = %d — a live cluster has at least one linux node", c.Instances)
+		t.Fatalf("Instances = %d: a live cluster has at least one linux node", c.Instances)
 	case c.AsOf.IsZero():
 		t.Fatal("the live count carries no as_of")
 	}
 }
 
-// A selector matching no node is a count of zero — a real reading from
+// A selector matching no node is a count of zero, a real reading from
 // the substrate, never a blind spot and never an invention (ADR-0035 §2).
 func TestLiveAbsentSelectorIsZero(t *testing.T) {
 	c := liveProvider(t).Expected(context.Background(), map[string]string{"telecraft.live-test/absent": "matches-nothing"})

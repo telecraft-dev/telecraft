@@ -18,12 +18,12 @@ ADR-0047 §1 distributes the token and base sheets "as a versioned artefact
 both repositories consume", and its consequences say the release of those
 sheets is "a real task, not a copy". The documentation site is built in a
 second repository and cannot import a React component, but it can consume a
-stylesheet — provided the stylesheet has a version.
+stylesheet, provided the stylesheet has a version.
 
 Three facts constrain the answer. The product is mid-build: `docs/plan.md`
 runs to P5 and the platform API documents, the authored file formats and the
 CLI flags are all still moving. Both consumers build this repository from a
-git ref rather than consuming a binary — `estate-demo` checks out the
+git ref rather than consuming a binary: `estate-demo` checks out the
 platform and runs `go run ./cmd/telecraft`, and the quickstart builds the CLI
 with `go build`. And `estate-demo` builds on three events (a push to its own
 estate, a manual run, and a repository dispatch from here), only one of which
@@ -33,8 +33,8 @@ can carry a ref, which turns out to decide the shape of the pin.
 
 1. **Tags are `vMAJOR.MINOR.PATCH`, and the major version is zero until it
    has earned not being.** While it is zero, minor covers anything a
-   consumer can notice — a flag, a platform API document, a token name, a
-   file format, a removal — and patch covers a fix behind no documented
+   consumer can notice (a flag, a platform API document, a token name, a
+   file format, a removal), and patch covers a fix behind no documented
    surface. `v1.0.0` is the release where the platform API documents and the
    authored file formats are ones we intend to keep, which is a state and
    not a date. Claiming a stable major now would be a promise about
@@ -103,8 +103,8 @@ can carry a ref, which turns out to decide the shape of the pin.
   rather than a preview of it, and it makes the release cadence a public
   thing rather than an internal one.
 - `demo-dispatch.yml` no longer fires on pushes to `main`. The gap it was
-  written to close — a console change lands, the demo goes on serving the
-  build before it, and nothing anywhere says so — is closed differently now:
+  written to close (a console change lands, the demo goes on serving the
+  build before it, and nothing anywhere says so) is closed differently now:
   the demo is not meant to match `main`, so it cannot silently fail to.
 - Nothing on the demo says which release it is built from. Its chrome carries
   the estate's provenance, not the platform's version, and `estate-demo` is

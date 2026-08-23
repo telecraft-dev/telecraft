@@ -1,6 +1,6 @@
 # The production gateway: served over OpAMP (supervisor.yaml renders
-# beside the collector artefact, REQ-032), with one untrusted arrival —
-# trust is a property of the Hop, never the Tier (ADR-0007), and the
+# beside the collector artefact, REQ-032), with one untrusted arrival.
+# Trust is a property of the Hop, never the Tier (ADR-0007), and the
 # undeclared trust level on the internet Hop fails safe to untrusted.
 owner: gateway-owners
 environment: production

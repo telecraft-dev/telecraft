@@ -1,8 +1,8 @@
 // Package normaliser spikes the three-layer drift hashing of ADR-0005.
 //
-// Layer 1: digest of raw bytes — "has this collector changed since last poll".
-// Layer 2: digest of the normalised form — the drift verdict.
-// Layer 3: structural diff — computed only when layer 2 disagrees.
+// Layer 1: digest of raw bytes, "has this collector changed since last poll".
+// Layer 2: digest of the normalised form, the drift verdict.
+// Layer 3: structural diff, computed only when layer 2 disagrees.
 //
 // The normaliser is the single place known delivery-path mutations are
 // allow-listed. The mutations come from the shaping evidence (tickets 01, 02,
@@ -33,7 +33,7 @@ import (
 type Profile string
 
 const (
-	// ProfileExact applies no mutation allow-list — canonical form only
+	// ProfileExact applies no mutation allow-list: canonical form only
 	// (key order, quoting, anchors, YAML-vs-JSON are neutralised; nothing
 	// else is). Used to compare two authored configs.
 	ProfileExact Profile = "exact"
@@ -46,7 +46,7 @@ const (
 	// ProfileElasticFleet simulates Elastic Fleet's lossy reporting on
 	// BOTH sides of a comparison: key-substring redaction and opamp
 	// extension body stripping. This profile is blind, by construction,
-	// to real changes inside redacted values — see VERDICT.md.
+	// to real changes inside redacted values; see VERDICT.md.
 	ProfileElasticFleet Profile = "elastic-fleet"
 )
 
@@ -59,7 +59,7 @@ func Layer1(raw []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// Layer2 parses the document (YAML or JSON — JSON is a YAML subset), applies
+// Layer2 parses the document (YAML or JSON; JSON is a YAML subset), applies
 // the profile's mutation allow-list, and digests the canonical form.
 func Layer2(raw []byte, p Profile) (string, error) {
 	doc, err := parse(raw)
@@ -166,7 +166,7 @@ func isSupervisorOpamp(v any) bool {
 
 // redactionKey is Elastic Fleet's observed rule: a scalar is redacted when
 // its key name contains one of these substrings (ticket 06 saw it destroy
-// `k8sattributes` label keys and `auth_type` values — non-secrets). The rule
+// `k8sattributes` label keys and `auth_type` values, both non-secrets). The rule
 // is Fleet's, not ours; if Fleet changes it, this list must follow. That
 // coupling is a finding in VERDICT.md.
 var redactionKey = regexp.MustCompile(`(?i)auth|certificate|passphrase|password|token|key|secret`)
@@ -209,7 +209,7 @@ func isScalar(v any) bool {
 // stripOpampExtensionBodies empties every `extensions` entry named `opamp`
 // or `opamp/<name>` on both sides of a Fleet comparison. Ticket 06: the
 // extension's server block arrives absent (not redacted) and only
-// `polling_interval` survives — at a position that differs from where it is
+// `polling_interval` survives, at a position that differs from where it is
 // authored. The whole body is therefore unverifiable via the Fleet path, and
 // pretending to compare any of it would be silent no-drift dressed as a
 // check. Entry *presence* still compares.

@@ -1,6 +1,6 @@
 // Package catalogue builds, serialises and queries the Catalogue: the
-// versioned inventory of otelcol component types — identity, per-signal
-// stability, lifecycle — machine-generated from the metadata.yaml files of
+// versioned inventory of otelcol component types (identity, per-signal
+// stability, lifecycle) machine-generated from the metadata.yaml files of
 // opentelemetry-collector-contrib at a pinned release tag (REQ-010,
 // ADR-0020).
 //
@@ -9,7 +9,7 @@
 // Catalogue is the import pipeline walking an upstream source tree; nothing
 // in this package (or anywhere else) holds an authored list of components.
 //
-// The primary key is (class, type) — `type` alone collapses real components,
+// The primary key is (class, type): `type` alone collapses real components,
 // because the same type string is reused across classes (`kafka` is both a
 // receiver and an exporter). `deprecated_type` aliases resolve on every
 // lookup (ADR-0020 §3). Stability is per-signal: one component can be beta
@@ -18,7 +18,7 @@
 //
 // A Catalogue is versioned atomically against one collector release tag.
 // Importing the same tag twice yields byte-identical artefacts; a new tag
-// yields a new artefact beside the old one — installed catalogues are
+// yields a new artefact beside the old one; installed catalogues are
 // retained, never replaced (ADR-0020 §9).
 package catalogue
 
@@ -57,7 +57,7 @@ func (c Class) Pipeline() bool {
 // Level is an upstream stability level, adopted verbatim from
 // docs/component-stability.md. The maturity ladder is development < alpha <
 // beta < stable; `deprecated` and `unmaintained` are lifecycle end-states,
-// not rungs — a floor policy compares the ladder, lifecycle is judged apart.
+// not rungs: a floor policy compares the ladder, lifecycle is judged apart.
 type Level string
 
 const (
@@ -78,14 +78,14 @@ func (l Level) Valid() bool {
 }
 
 // Deprecation is the upstream machine-readable deprecation notice for one
-// signal — ready-made remediation text for the console.
+// signal: ready-made remediation text for the console.
 type Deprecation struct {
 	Date      string `json:"date"`
 	Migration string `json:"migration"`
 }
 
 // Component is one Catalogue entry: the identity, per-signal stability and
-// lifecycle of a component type. It describes what exists upstream — never
+// lifecycle of a component type. It describes what exists upstream, never
 // what may be used (that is the Allow-list) and never a configured instance
 // (that is a Component in a Blueprint, a different word sense per the
 // glossary).
@@ -98,7 +98,7 @@ type Component struct {
 	// config never hits a false "not in Catalogue".
 	DeprecatedType string `json:"deprecated_type,omitempty"`
 
-	// Module is the Go module path from the component's sibling go.mod — the
+	// Module is the Go module path from the component's sibling go.mod: the
 	// discovery anchor, and the join key against OCB release manifests.
 	Module string `json:"module"`
 
@@ -106,7 +106,7 @@ type Component struct {
 	Description string `json:"description,omitempty"`
 
 	// Stability maps each supported signal to its level. The signal
-	// vocabulary is open — it grew twice in two years upstream, so unknown
+	// vocabulary is open (it grew twice in two years upstream), so unknown
 	// tokens pass through rather than failing a closed enum (R-1 §7).
 	Stability map[string]Level `json:"stability"`
 
@@ -167,7 +167,7 @@ func (c *Catalogue) Version() string { return c.Source.Ref }
 func (c *Catalogue) Len() int { return len(c.Components) }
 
 // Lookup finds a component by its (class, type) primary key, resolving
-// deprecated_type aliases — a config saying `spanmetrics` still finds
+// deprecated_type aliases: a config saying `spanmetrics` still finds
 // `span_metrics` (ADR-0020 §3).
 func (c *Catalogue) Lookup(class Class, typ string) (Component, bool) {
 	k := compKey{class, typ}
@@ -242,7 +242,7 @@ func (c *Catalogue) index() {
 // validate collects everything wrong with a Catalogue, whether just built by
 // the import or loaded from an artefact. Both paths fail closed on any
 // problem: a silently wrong Catalogue would corrupt every judgement made
-// against it — Allow-lists, floors, impact reports.
+// against it: Allow-lists, floors, impact reports.
 func (c *Catalogue) validate() error {
 	var p []string
 
@@ -250,13 +250,13 @@ func (c *Catalogue) validate() error {
 		p = append(p, fmt.Sprintf("format_version %d is not the supported version %d", c.FormatVersion, FormatVersion))
 	}
 	if c.Source.Repository == "" {
-		p = append(p, "source.repository is empty — a Catalogue records where it came from")
+		p = append(p, "source.repository is empty. A Catalogue records the repository it came from")
 	}
 	if c.Source.Ref == "" {
-		p = append(p, "source.ref is empty — a Catalogue is versioned by its collector release tag (ADR-0020)")
+		p = append(p, "source.ref is empty. A Catalogue is versioned by its collector release tag")
 	}
 	if len(c.Components) == 0 {
-		p = append(p, "no components — an empty Catalogue would make every lookup a false negative")
+		p = append(p, "no components. An empty Catalogue would make every lookup a false negative")
 	}
 
 	seen := map[compKey]string{}
@@ -264,14 +264,14 @@ func (c *Catalogue) validate() error {
 		p = append(p, comp.problems()...)
 		k := compKey{comp.Class, comp.Type}
 		if prev, dup := seen[k]; dup {
-			p = append(p, fmt.Sprintf("components %s and %s share the primary key %s — (class, type) must be unique", prev, comp.Module, comp.key()))
+			p = append(p, fmt.Sprintf("components %s and %s share the primary key %s. Each (class, type) pair must be unique", prev, comp.Module, comp.key()))
 			continue
 		}
 		seen[k] = comp.Module
 	}
 
 	// Aliases resolve on every lookup, so an alias colliding with a real key
-	// would let one component shadow another's identity — rejected outright,
+	// would let one component shadow another's identity: rejected outright,
 	// mirroring the upstream-key reservation rule (ADR-0020 §10).
 	aliasedBy := map[compKey]string{}
 	for _, comp := range c.Components {
@@ -301,31 +301,31 @@ func (c Component) problems() []string {
 	var p []string
 
 	if !c.Class.Pipeline() {
-		p = append(p, fmt.Sprintf("%s: class %q is not a pipeline class — only receiver, processor, exporter, connector and extension enter the Catalogue", ctx, c.Class))
+		p = append(p, fmt.Sprintf("%s: class %q is not a pipeline class. Only receiver, processor, exporter, connector, and extension enter the Catalogue", ctx, c.Class))
 	}
 	if c.Type == "" {
 		p = append(p, ctx+": empty type")
 	}
 	if c.Module == "" {
-		p = append(p, ctx+": empty module path — discovery is anchored on the sibling go.mod")
+		p = append(p, ctx+": empty module path. Every component needs the module path from its sibling go.mod")
 	}
 	if c.DeprecatedType == c.Type && c.Type != "" {
 		p = append(p, ctx+": deprecated_type equals type")
 	}
 
 	if len(c.Stability) == 0 {
-		p = append(p, ctx+": no stability — upstream requires per-signal stability on every pipeline component")
+		p = append(p, ctx+": no stability. Upstream requires per-signal stability on every pipeline component")
 	}
 	for signal, level := range c.Stability {
 		if signal == "" {
 			p = append(p, ctx+": empty signal name in stability")
 		}
 		if !level.Valid() {
-			p = append(p, fmt.Sprintf("%s: unknown stability level %q for signal %q — the six-level vocabulary is closed; a new upstream level must be a loud event, not a silent pass-through", ctx, level, signal))
+			p = append(p, fmt.Sprintf("%s: unknown stability level %q for signal %q. The known levels are development, alpha, beta, stable, deprecated, and unmaintained", ctx, level, signal))
 		}
 		if level == Deprecated {
 			if _, ok := c.Deprecation[signal]; !ok {
-				p = append(p, fmt.Sprintf("%s: signal %q is deprecated but carries no deprecation notice — upstream requires one, and it is the remediation text", ctx, signal))
+				p = append(p, fmt.Sprintf("%s: signal %q is deprecated but carries no deprecation notice. Upstream requires one, and it tells users where to move", ctx, signal))
 			}
 		}
 	}
@@ -334,7 +334,7 @@ func (c Component) problems() []string {
 			p = append(p, fmt.Sprintf("%s: deprecation notice for signal %q, which is not deprecated", ctx, signal))
 		}
 		if d.Migration == "" {
-			p = append(p, fmt.Sprintf("%s: deprecation notice for signal %q has no migration text — a notice with no suggested move is a complaint", ctx, signal))
+			p = append(p, fmt.Sprintf("%s: deprecation notice for signal %q has no migration text, so it cannot tell users where to move", ctx, signal))
 		}
 	}
 

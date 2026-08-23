@@ -1,9 +1,9 @@
 import type { BlueprintDoc, PaletteEntry, RequirementVerdict } from '../../api/types'
 import { SIGNAL_ORDER } from '../../api/types'
 
-// Pure edits over the one open Blueprint document. Every gesture — click-add
-// (every supported signal), per-lane targeted add, drag-authoring onto a
-// lane or the canvas, remove, the requirement suggestion add — lands here
+// Pure edits over the one open Blueprint document. Every gesture (click-add
+// to every supported signal, per-lane targeted add, drag-authoring onto a
+// lane or the canvas, remove, the requirement suggestion add) lands here
 // with one semantics (ADR-0043 §4), so the three surfaces stay projections
 // of the same model and the engine re-judges every result identically.
 
@@ -18,7 +18,7 @@ function nameTaken(draft: BlueprintDoc, name: string): boolean {
 
 /**
  * A fresh local name for a palette type add: adding from the palette
- * creates a local Component by default — "share this" is a deliberate act
+ * creates a local Component by default; "share this" is a deliberate act
  * (ADR-0024 §3).
  */
 export function localNameFor(draft: BlueprintDoc, type: string): string {
@@ -31,7 +31,7 @@ export function localNameFor(draft: BlueprintDoc, type: string): string {
 }
 
 /**
- * Adds a palette entry to the draft's lanes for the given signals — the one
+ * Adds a palette entry to the draft's lanes for the given signals: the one
  * add semantics behind all three gestures. A shared entry appends its
  * pinned reference; a type entry declares one fresh local Component and
  * references it from every target lane. Targets are the supported signals

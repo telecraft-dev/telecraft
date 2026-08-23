@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 // (ADR-0031); the claim flow herd-first over a flat-list multi-select,
 // its suggested selector generalised over shared identity attributes and
 // never an enumeration of instance ids (ADR-0042 §6); completion a
-// user-attributed PR authoring the Tier binding (ADR-0014, ADR-0028) —
+// user-attributed PR authoring the Tier binding (ADR-0014, ADR-0028):
 // the console proposes, the PR decides, and after merge and serve the
 // collectors read as governed. Collectors served the Unmatched artefact
 // (ADR-0030) enter the same flow as foreign ones.
@@ -22,7 +22,7 @@ test('ungoverned collectors surface with the onboard CTA, outside every denomina
   await expect(band).toContainText('3 served the Unmatched artefact')
   await expect(band).toContainText('2 foreign')
   // Excluded from compliance denominators: the roll-up's ratios are the
-  // governed Tiers' alone — the same numbers as before ungoverned rows
+  // governed Tiers' alone: the same numbers as before ungoverned rows
   // existed (P2's denominator discipline, ADR-0017/0031).
   await page.goto('/estate?view=rollup&lens=production')
   const dataFlow = page.getByTestId('rollup-data-flow')
@@ -100,7 +100,7 @@ test('draft opens Compose with the selector pre-filled and proposes the Tier bin
   )
   await page.getByTestId('claim-draft').click()
   // Compose opens on a fresh draft bound to the new Tier, selector
-  // pre-filled — generalised, never a list of instance ids.
+  // pre-filled: generalised, never a list of instance ids.
   await expect(page).toHaveURL(/\/compose\?/)
   await expect(page).toHaveURL(/tier=data-flow%2Fpayments-edge/)
   const banner = page.getByTestId('claim-banner')
@@ -116,7 +116,7 @@ test('draft opens Compose with the selector pre-filled and proposes the Tier bin
 
 test('served-Unmatched and foreign collectors enter the same flow', async ({ page }) => {
   await page.goto('/estate?view=list&ungoverned=true')
-  // Both referents carry the same selection affordance (ADR-0031 §1) — a
+  // Both referents carry the same selection affordance (ADR-0031 §1): a
   // collector running the Unmatched artefact and a foreign one join one herd.
   await expect(page.getByTestId('ungoverned-pay-edge-7f3a')).toContainText(
     'served the Unmatched artefact',
@@ -125,7 +125,7 @@ test('served-Unmatched and foreign collectors enter the same flow', async ({ pag
   await page.getByTestId('herd-pay-edge-7f3a').check()
   await page.getByTestId('herd-host-watch-a').check()
   await expect(page.getByTestId('claim-title')).toHaveText('Claim 2 collectors')
-  // A mixed herd generalises to what it truly shares — nothing more.
+  // A mixed herd generalises to what it truly shares, nothing more.
   await expect(page.getByTestId('claim-selector')).toHaveText('deployment.environment=production')
   // Governed rows offer no herd checkbox: the claim flow is for the ungoverned.
   await page.goto('/estate?view=list')

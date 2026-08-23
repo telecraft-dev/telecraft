@@ -13,7 +13,7 @@ import (
 
 // Sessions issues and verifies the browser session as a signed, stateless
 // token: the identity claims plus an expiry, HMAC-signed with the instance
-// key. Nothing durable is stored — the ADR-0013 posture: restarting the
+// key. Nothing durable is stored (the ADR-0013 posture): restarting the
 // server signs everyone out, it never loses a record. Authority is not in
 // the token: every request re-resolves the identity against users.yaml and
 // the team tree, so removing a user revokes them at their next request.
@@ -30,7 +30,7 @@ type Sessions struct {
 const DefaultSessionTTL = 12 * time.Hour
 
 // NewSessions builds a Sessions over a signing key. An empty key draws a
-// random one — the standalone shape: sessions live as long as the process.
+// random one, the standalone shape: sessions live as long as the process.
 // A zero ttl means DefaultSessionTTL.
 func NewSessions(key []byte, ttl time.Duration) (Sessions, error) {
 	if len(key) == 0 {
@@ -39,7 +39,7 @@ func NewSessions(key []byte, ttl time.Duration) (Sessions, error) {
 			return Sessions{}, err
 		}
 	} else if len(key) < 32 {
-		return Sessions{}, fmt.Errorf("session key holds %d bytes — 32 is the floor", len(key))
+		return Sessions{}, fmt.Errorf("session key holds %d bytes. It needs at least 32", len(key))
 	}
 	if ttl <= 0 {
 		ttl = DefaultSessionTTL

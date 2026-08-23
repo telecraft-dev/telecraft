@@ -34,7 +34,7 @@ import { chipClass } from '../../ui/Chip'
 // The topology flow canvas: xyflow is the interaction substrate (pan,
 // zoom, node lifecycle, constrainable drag); the engine owns every
 // coordinate (ADR-0045 §2). Edges derive from the model's Hops, exactly
-// as the Paths traverse them — never hand-drawn (ADR-0044 §3): the shell
+// as the Paths traverse them, never hand-drawn (ADR-0044 §3): the shell
 // only draws the engine's routed polylines, and no gesture creates one.
 // Tier nodes carry selector-matched counts, never collectors (ADR-0007);
 // the count is a door to the flat list (ADR-0042 §3.4).
@@ -81,7 +81,7 @@ function EngineNodeView({ data }: NodeProps<CanvasNode>) {
       data-tour={data.tier ? 'tier-node' : undefined}
     >
       {/* Handles exist so xyflow can anchor derived edges; they are never
-          connectable — no gesture draws an edge (ADR-0044 §3). */}
+          connectable, so no gesture draws an edge (ADR-0044 §3). */}
       <Handle
         type="target"
         position={Position.Left}
@@ -97,7 +97,7 @@ function EngineNodeView({ data }: NodeProps<CanvasNode>) {
       {data.tier && (
         <div className="canvas-node-counts">
           {/* The matched count is a door to the flat list, pre-filtered
-              (ADR-0042 §3.4) — never a reason to draw a collector. */}
+              (ADR-0042 §3.4), never a reason to draw a collector. */}
           <Link
             to="/estate"
             search={(prev) => ({ ...prev, view: 'list' as const, tier: data.tier!.id })}
@@ -150,7 +150,7 @@ function EngineEdgeView({ data }: EdgeProps<CanvasEdge>) {
 /**
  * Cosmetic simulate (ADR-0044 §5): per-journey dots born at a receiver
  * traversing the full chain, signal groups staggered. Pure animation over
- * the engine's geometry — it reads no config and persists nothing.
+ * the engine's geometry: it reads no config and persists nothing.
  */
 function JourneyEdgeView({ data }: EdgeProps<JourneyEdge>) {
   if (!data) return null
@@ -187,12 +187,12 @@ export function FlowCanvas() {
   const navigate = useNavigate({ from: '/topology' })
   const { store } = usePresentation()
   // Simulate is a cosmetic toggle: component state only, nothing in the
-  // URL and nothing in the presentation store — it changes nothing
+  // URL and nothing in the presentation store. It changes nothing
   // persistent (ADR-0044 §5).
   //
   // It starts on in the demo and off everywhere else. The demo exists to
   // show what the model holds, and a canvas of still boxes does not show
-  // that Paths run through Tiers — a visitor has to know to look for a
+  // that Paths run through Tiers: a visitor has to know to look for a
   // control before the surface says anything. An instance is the opposite
   // case: it is read as a picture of a real estate, and motion that is not
   // real throughput would be a claim the console cannot support. The demo
@@ -239,7 +239,7 @@ export function FlowCanvas() {
     height: node.height,
     // Drag rearranges within the row or band only (ADR-0044 §3): the
     // extent pins the engine's y, so no gesture can move a node out of
-    // its Environment row — the picture must not lie about the estate.
+    // its Environment row: the picture must not lie about the estate.
     // Nothing is connectable: edges are never hand-drawn.
     draggable: true,
     connectable: false,
@@ -401,7 +401,7 @@ export function FlowCanvas() {
             onInit={(instance) => {
               // The fit centres the graph; the bands read top-down, so a
               // graph shorter than the canvas hangs from the top instead
-              // (ADR-0044 §2). The engine's geometry is untouched — this
+              // (ADR-0044 §2). The engine's geometry is untouched; this
               // is where the viewport points at it (ADR-0045 §2).
               const viewport = instance.getViewport()
               const canvas = instance.viewportInitialized

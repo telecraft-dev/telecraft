@@ -30,7 +30,7 @@ const (
 
 // PaletteEntry is one allowed component with its provenance. For a granted
 // component the Grant is named, with the granting team (the grant owner's
-// team — the authority) and the target team it was attached to.
+// team, the authority) and the target team it was attached to.
 type PaletteEntry struct {
 	Component catalogue.Component
 	Origin    Origin
@@ -44,7 +44,7 @@ type PaletteEntry struct {
 // Palette is one team's effective palette: every component of the active
 // Catalogue the team may use, in the Catalogue's (class, type) order, each
 // with provenance. It is the membership the composer's Palette presents and
-// the render gate enforces (ADR-0022) — evaluator verdicts like floor
+// the render gate enforces (ADR-0022). Evaluator verdicts like floor
 // greying layer on top; nothing here judges stability.
 type Palette struct {
 	Team      ownership.TeamID
@@ -54,7 +54,7 @@ type Palette struct {
 
 // EffectivePalette computes one team's effective palette per ADR-0021.
 // Walking the chain from the root down to the team, each declared list
-// intersects, then each Grant targeting that team unions back in — so a
+// intersects, then each Grant targeting that team unions back in, so a
 // Grant widens from its target's subtree downward and is narrowed back out
 // by a descendant's list like anything else.
 func (p *Policy) EffectivePalette(team ownership.TeamID) (Palette, error) {
@@ -77,7 +77,7 @@ func (p *Policy) EffectivePalette(team ownership.TeamID) (Palette, error) {
 		var via *Grant
 		for _, u := range chain {
 			if l, ok := p.Lists[u]; ok && !l.matches(comp) {
-				// The intersection removes it — including a component a
+				// The intersection removes it, including a component a
 				// Grant higher up admitted: narrowed back out below.
 				allowed, via = false, nil
 			}
@@ -113,7 +113,7 @@ func (p *Policy) EffectivePalette(team ownership.TeamID) (Palette, error) {
 
 // Allows answers the ADR-0021 question: may this team use the component
 // (class, typ)? The lookup resolves deprecated_type aliases like every
-// Catalogue lookup. A component the Catalogue does not know is not allowed —
+// Catalogue lookup. A component the Catalogue does not know is not allowed;
 // whether an unknown component is additionally its own finding is the
 // caller's judgement, not the Allow-list's.
 func (p *Policy) Allows(team ownership.TeamID, class catalogue.Class, typ string) (bool, error) {

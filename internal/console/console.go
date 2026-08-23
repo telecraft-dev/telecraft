@@ -8,7 +8,7 @@
 // them is deployment's business and stays out of the core (ADR-0001).
 // Nothing here fabricates a verdict: every band state, finding, population
 // and palette in the output is the return value of the package that owns
-// that judgement — internal/renderer for artefacts and floors,
+// that judgement: internal/renderer for artefacts and floors,
 // internal/drift for library_drift, internal/conformance for the verdict
 // cross, internal/expectation for claims, internal/inventory for
 // populations, internal/serving for selector matching, internal/allowlist
@@ -19,7 +19,7 @@
 // TelemetryProvider and EstateProvider seams from a live backend and a
 // live collector estate; a repository has neither, so the estate declares them in a
 // readings file (Readings) that this package plays back through the same
-// seams. The readings are inputs, exactly like the authored YAML — the
+// seams. The readings are inputs, exactly like the authored YAML. The
 // judgements over them are the product's own.
 package console
 
@@ -51,7 +51,7 @@ type Meta struct {
 	Repository string `json:"repository,omitempty"`
 
 	// EvaluatedAt is the instant every judgement in the snapshot was made
-	// at — the readings' as-of, so ages render from the contract.
+	// at, the readings' as-of, so ages render from the contract.
 	EvaluatedAt time.Time `json:"evaluatedAt"`
 }
 
@@ -156,7 +156,7 @@ const (
 )
 
 // Reading is what every per-signal reading carries: whether it is known,
-// why not when it is not, and the instant it was taken — so
+// why not when it is not, and the instant it was taken, so
 // last-known-plus-age renders from the contract rather than from client
 // guessing (ADR-0040, ADR-0041 §2).
 type Reading struct {
@@ -198,7 +198,7 @@ type ShapeReading struct {
 }
 
 // LaneState says whether the Tier's rendered artefact instantiates a
-// pipeline for a signal — what the config in git wires, not what the
+// pipeline for a signal: what the config in git wires, not what the
 // meter saw. It is the fact the readings beside it hang off: with no
 // pipeline there is nothing to have metered, and a lane nobody could look
 // for is not a lane that is not there (ADR-0041 §2, ADR-0008).
@@ -215,7 +215,7 @@ const (
 	LaneUnknown LaneState = "unknown"
 )
 
-// SignalRow is one lane of the per-signal matrix — the skeleton under the
+// SignalRow is one lane of the per-signal matrix, the skeleton under the
 // reading bands.
 //
 // The readings are absent when Lane is not_applicable. Their counters
@@ -253,7 +253,7 @@ type CardFace struct {
 	Population      Population      `json:"population"`
 
 	// Signals are the per-signal matrix rows, in stable signal order, and
-	// Churn the Tier's restart rate — the readings the metering seam
+	// Churn the Tier's restart rate: the readings the metering seam
 	// derives on read (ADR-0040). A demo estate that declares none carries
 	// them Known false with the cause said out loud: not knowing is a
 	// normal state, reported as itself (ADR-0008).
@@ -261,7 +261,7 @@ type CardFace struct {
 	Churn   ChurnReading `json:"churn"`
 }
 
-// ObjectRef deep-links one authored object — the who-acts routing target.
+// ObjectRef deep-links one authored object, the who-acts routing target.
 type ObjectRef struct {
 	Kind string `json:"kind"`
 	ID   string `json:"id"`
@@ -294,7 +294,7 @@ type ProvenanceLine struct {
 }
 
 // Provenance is one "why?" derivation: claim, the lines that implied it,
-// and the SHA judged against — fed, never reconstructed (ADR-0041 §3).
+// and the SHA judged against. All fed, never reconstructed (ADR-0041 §3).
 type Provenance struct {
 	Key   string           `json:"key"`
 	Claim string           `json:"claim"`
@@ -317,7 +317,7 @@ type CardDrawer struct {
 	Provenance      []Provenance `json:"provenance"`
 }
 
-// CollectorRow is per-collector detail — flat-list material only
+// CollectorRow is per-collector detail: flat-list material only
 // (ADR-0042 §3.4).
 type CollectorRow struct {
 	ID          string            `json:"id"`

@@ -2,25 +2,25 @@
 // requirement, producing the seven outcomes with their severity ordering
 // (ADR-0004, REQ-020).
 //
-// The unit of evaluation is the row — one Service in one Environment
+// The unit of evaluation is the row: one Service in one Environment
 // (ADR-0033). Nothing in this package blends across environments: every
 // Evaluate call judges one row against exactly the requirements that apply
 // in its Environment, over evidence read for that Environment alone, so
 // staging telemetry can never mask a production outage and one verdict never
 // judges two configs. A Service simply has no row in an environment where it
-// runs nothing — absence of an environment is not a finding.
+// runs nothing. Absence of an environment is not a finding.
 //
 // The outcome set is deliberately larger than pass/fail, because "no logs
 // arrived" is not one situation. A configured pipeline delivering nothing is
 // a defect for the platform team; an unconfigured Service delivering nothing
 // is a governance gap for the workload owner. The same score, two different
-// people, two different fixes — collapsing them would make the tool honest
-// but useless. Waivers (exemption, grace — ADR-0037) are applied after the
+// people, two different fixes. Collapsing them would make the tool honest
+// but useless. Waivers (exemption, grace; ADR-0037) are applied after the
 // diagnosis, never instead of it: a waived finding keeps its outcome and its
 // detail and gives up only its count.
 //
 // One outcome in the vocabulary never comes from the cross: library_drift is
-// judged from the Intended reading — the config in git — by internal/drift
+// judged from the Intended reading (the config in git) by internal/drift
 // (ADR-0004, ADR-0026). It lives here so every finding, whichever reading
 // produced it, ranks on one severity ordering.
 package conformance
@@ -67,12 +67,12 @@ const (
 	Unknown Outcome = "unknown"
 
 	// LibraryDrift: the config in git passes the requirement version it
-	// claims or pins but fails the current one — the goalposts moved and
+	// claims or pins but fails the current one: the goalposts moved and
 	// the subject has not caught up (ADR-0026 §6). The one per-requirement
 	// outcome the Effective × Observed cross never produces: it is judged
 	// from the Intended reading by the drift detection (internal/drift,
 	// ADR-0004), owned by the repo, and its remediation is the version
-	// diff — review what moved and open a PR, never re-instrument.
+	// diff: review what moved and open a PR, never re-instrument.
 	LibraryDrift Outcome = "library_drift"
 )
 
@@ -106,7 +106,7 @@ func (o Outcome) Passing() bool {
 	return o == Compliant || o == Ungoverned
 }
 
-// Severity ranks outcomes by how much a human should care, highest first —
+// Severity ranks outcomes by how much a human should care, highest first:
 // the ordering behind every worst-first badge and shelf sort (ADR-0004,
 // ADR-0017).
 //
@@ -115,8 +115,8 @@ func (o Outcome) Passing() bool {
 // not working, and nobody would otherwise know. Unknown outranks ungoverned
 // because not being able to see is worse than seeing something unexpected.
 // Library drift sits just below misconfigured: both fail the current
-// assertion, but a drifted subject did comply once — the bar moved under it
-// (ADR-0026 §6) — which is a gentler diagnosis than never having complied.
+// assertion, but a drifted subject did comply once (the bar moved under it,
+// ADR-0026 §6), which is a gentler diagnosis than never having complied.
 func (o Outcome) Severity() int {
 	switch o {
 	case BrokenPipeline:
@@ -151,8 +151,8 @@ const (
 )
 
 // Finding is one requirement's verdict on one row. Nothing in this slice
-// sets Waived yet — the Exemption and Grace machinery arrives with the
-// ADR-0037 work — but the counting seam exists now so the CI gate is honest
+// sets Waived yet (the Exemption and Grace machinery arrives with the
+// ADR-0037 work), but the counting seam exists now so the CI gate is honest
 // about what it will and will not fail on.
 type Finding struct {
 	Requirement requirements.Requirement
@@ -169,7 +169,7 @@ type Finding struct {
 // waived finding is still reported, still visible, and still diagnosed.
 func (f Finding) Counts() bool { return f.Waived == WaiverNone }
 
-// Failing reports a finding that both fails and counts — the unit the CI
+// Failing reports a finding that both fails and counts: the unit the CI
 // check mode gates on (REQ-024).
 func (f Finding) Failing() bool { return !f.Outcome.Passing() && f.Counts() }
 
@@ -231,7 +231,7 @@ func (v Verdict) Score() Score {
 
 // Worst names the outcome a human should look at first: the highest-severity
 // counting finding. Counting findings always outrank waived ones, however
-// severe the waived diagnosis — a waived problem has an owner and an expiry
+// severe the waived diagnosis: a waived problem has an owner and an expiry
 // date, so it is already someone's business and should not outrank a live
 // one. A verdict with no counting failure is compliant at worst.
 func (v Verdict) Worst() Outcome {

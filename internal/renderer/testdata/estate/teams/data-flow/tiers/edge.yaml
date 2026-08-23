@@ -1,5 +1,5 @@
 # The edge DaemonSet Tier: git-delivered (no serving block), every
-# arrival trusted — no strip processor renders here.
+# arrival trusted, so no strip processor renders here.
 owner: gateway-owners
 environment: production
 blueprint: data-flow/edge-standard@1

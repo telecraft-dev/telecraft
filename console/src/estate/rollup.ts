@@ -8,7 +8,7 @@ import {
 } from '../api/types'
 
 // Team roll-up (ADR-0017): aggregation is ratio-plus-worst per finding
-// kind, never blended — a passing-over-counted ratio, a worst-outcome
+// kind, never blended: a passing-over-counted ratio, a worst-outcome
 // badge, and the waived count always alongside, so an exemption-heavy 100%
 // cannot hide. Every node of the tree aggregates its whole subtree; no
 // single blended number exists at any level.
@@ -26,7 +26,7 @@ export interface KindRollup {
 export interface TeamRollup {
   team: TeamNode
   depth: number
-  /** Evaluated under one Environment — the lens as evaluation context (ADR-0042 §4). */
+  /** Evaluated under one Environment: the lens as evaluation context (ADR-0042 §4). */
   kinds: Record<BandName, KindRollup>
   /** Cards in the evaluated Environment with no verdict-bearing band at all. */
   neutral: number
@@ -104,7 +104,7 @@ function rollupOne(team: TeamNode, depth: number, cards: CardFace[], env: Enviro
 }
 
 /**
- * One row per tree node, depth-first, each aggregating its whole subtree —
+ * One row per tree node, depth-first, each aggregating its whole subtree:
  * a parent team's view is bigger than the sum of its services (ADR-0017).
  * Teams owning nothing stay visible: hiding reads as healthy (ADR-0042 §2).
  */

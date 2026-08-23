@@ -35,7 +35,7 @@ function shape(name: DomainName) {
       // A funnel: many streams poured in, one process, one stream out.
       // Inverted and open where `advisory`'s triangle is upright and
       // solid, and the stem is what makes it a funnel rather than a
-      // filter — a Collector is where telemetry converges, not where it
+      // filter: a Collector is where telemetry converges, not where it
       // is dropped.
       return <path d="M2.75 4H13.25L8 9.5 2.75 4M8 9.5V13" />
     case 'tier':
@@ -58,7 +58,7 @@ function shape(name: DomainName) {
     case 'component':
       // One configured instance wired into a lane: it has an in and an
       // out, and it is a solid thing rather than a container. Filled for
-      // the reason `advisory` is — a 5.5-unit square survives being drawn
+      // the reason `advisory` is: a 5.5-unit square survives being drawn
       // at 16px, where an outline of one closes up.
       return (
         <>

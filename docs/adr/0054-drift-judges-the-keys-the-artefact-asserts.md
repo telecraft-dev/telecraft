@@ -11,7 +11,7 @@ the platform served it, and it reported `drifted` with 77 changes (issue
 
 The 77 classify cleanly. Seventy-one are the collector expanding its own
 defaults: `timeout: added 30s`, `max_idle_conns: added 100`, and sixty-nine
-more like them. Two are re-spellings of a value that did not change —
+more like them. Two are re-spellings of a value that did not change:
 `max_elapsed_time: 60s -> 1m0s` is the same duration, `metrics.level: normal
 -> Normal` the same level. Four are shape rewrites, of which the worst reads
 `service.telemetry.resource.telecraft.tier: removed platform/gateway`: the
@@ -27,7 +27,7 @@ ADR-0046 §2 anticipated part of this and drew the wrong conclusion from the
 right premise. It struck "explicit defaults" from the cosmetic list on the
 grounds that equating `batch: {}` with its defaults-expanded form needs every
 component's default table, which lives in component Go code and the Catalogue
-cannot supply — that part holds. It then reasoned that the equation was
+cannot supply. That part holds. It then reasoned that the equation was
 unnecessary, because "both delivery paths report the merged *input* config,
 never a defaults-expanded form". That is the sentence issue #110 falsifies.
 The collectors the environment runs report a resolved, fully defaulted
@@ -36,7 +36,7 @@ alone, estate-wide, permanently.
 
 Drift is one of the three bands. Red on every served collector from the
 moment it connects, it carries no information, and the first thing anyone
-does with a band like that is stop looking at it — including at the case it
+does with a band like that is stop looking at it, including at the case it
 exists for.
 
 ## Decision
@@ -59,7 +59,7 @@ being a licence:
 
 1. A key the artefact does not mention is not projected, and so cannot read
    as drift.
-2. A key the artefact spells with no body — `batch:` or `batch: {}` — asserts
+2. A key the artefact spells with no body (`batch:` or `batch: {}`) asserts
    that the component is there and nothing about its settings. That is what
    an empty component body means in the configuration language, so it is what
    the cross reads it as.
@@ -77,7 +77,7 @@ key whose value differs; an asserted key absent from the report; a component
 or pipeline the artefact describes that the collector is not running.
 
 This is a property of the **cross**, not of the normalised form. It is not a
-Mutation and could not be one — a Mutation sees one document and cannot know
+Mutation and could not be one: a Mutation sees one document and cannot know
 what the other side asserted. Layer-2's per-document digests are unchanged,
 ADR-0046 §1's digest identity is untouched, and ADR-0046 §2's ruling that two
 *authored* configurations differing in spelled-out defaults are different
@@ -92,7 +92,7 @@ worth catching was never a defaulted setting. It is a whole exporter shipping
 somewhere nobody rendered, or a pipeline nobody asked for.
 
 So the cross also reports, separately, every **component and pipeline present
-in the Effective reading that the Intended artefact does not describe** —
+in the Effective reading that the Intended artefact does not describe**:
 each entry of `receivers`, `processors`, `exporters`, `connectors` and
 `extensions`, and each entry of `service.pipelines`. This check is not
 optional; it is the reason §1's trade is acceptable.
@@ -104,7 +104,7 @@ collapsing them into one list is what made the original 77 unreadable. Either
 finding alone puts the comparison out of sync.
 
 It runs on post-Mutation trees, so a delivery path's own catalogued
-injections — the Supervisor's `extensions.opamp` (ADR-0046 §4) — are already
+injections (the Supervisor's `extensions.opamp`, ADR-0046 §4) are already
 gone and never read as undescribed.
 
 The check is one-directional by design. The other direction, a component or
@@ -130,7 +130,7 @@ digest and the diff cannot disagree about equality.
 re-emits its own spelling, so `normal` comes back `Normal`. The fold is
 scoped to `service.telemetry.{metrics,logs,traces}.level` and applies under
 every profile, because the Effective reading is the collector's own report on
-**both** delivery paths (ADR-0004) — a git-delivered collector title-cases
+**both** delivery paths (ADR-0004): a git-delivered collector title-cases
 its levels exactly as a served one does. A case-blind comparer at large would
 digest two genuinely different configurations equal, which is the silent
 no-drift ADR-0005 fears most; scoping it to the enums is the price of not
@@ -151,7 +151,7 @@ stale-versus-drifted split has nothing to split on.
 
 **Render the Intended artefact through the collector's own defaulting before
 comparing.** Correct, and the honest source for the defaults is the collector
-build itself — they are per-component and per-version, and they live in
+build itself: they are per-component and per-version, and they live in
 component Go code (`createDefaultConfig`), not in anything the Catalogue can
 read. Implementing it means either carrying a collector's configuration
 machinery inside the platform, which makes the platform's verdict depend on
@@ -188,15 +188,15 @@ readings the product crosses are the ones it already has.
 - The blindness this buys is named and bounded: a setting the estate never
   described, changed on a component the estate did describe, is invisible to
   the cross. It is bounded by the structural check at the grain above it, and
-  by the estate's own leverage — a setting that matters enough to detect is a
+  by the estate's own leverage: a setting that matters enough to detect is a
   setting the Blueprint should assert, and asserting it makes it judged.
   "Render it if you want it watched" is a workable rule; "watch everything
   and read red forever" was not.
 - Delivery status gains a second finding list beside the layer-3 changes.
   Every surface that renders drift renders both, and a surface that shows
   only the change count under-reports.
-- ADR-0046 §2's justifying sentence — that both delivery paths report the
-  merged input configuration — is false for the collectors this platform
+- ADR-0046 §2's justifying sentence (that both delivery paths report the
+  merged input configuration) is false for the collectors this platform
   serves, and should be read as withdrawn. Its ruling survives: the default
   table is still not built, and two authored configurations that differ in
   spelled-out defaults still differ.

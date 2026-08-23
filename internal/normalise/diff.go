@@ -27,7 +27,7 @@ func (c Change) String() string {
 
 // Layer3 structurally diffs two post-profile trees (from Normalised, same
 // profile both sides). Called only when the layer-2 digests disagree; it
-// answers "drifted where". List diffing is positional — a single mid-list
+// answers "drifted where". List diffing is positional: a single mid-list
 // insertion reports the tail as changed: fine for "drifted where", coarse
 // for "fix what" (a spike-verdict known edge, accepted).
 func Layer3(a, b any) []Change {

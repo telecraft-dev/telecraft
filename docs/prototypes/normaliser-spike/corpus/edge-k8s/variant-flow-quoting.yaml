@@ -1,5 +1,5 @@
 # Same config as base.yaml in flow style with aggressive quoting.
-# Semantically identical — must hash equal at layer 2 under every profile.
+# Semantically identical: must hash equal at layer 2 under every profile.
 "receivers":
   "filelog/containers": {"include": ["/var/log/pods/*/*/*.log"], "start_at": "end", "operators": [{"type": "container"}]}
   "otlp": {"protocols": {"grpc": {"endpoint": "0.0.0.0:4317"}, "http": {"endpoint": "0.0.0.0:4318"}}}

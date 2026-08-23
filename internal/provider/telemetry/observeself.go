@@ -2,11 +2,11 @@ package telemetry
 
 // The self-telemetry half of the seam (REQ-053, ADR-0039): the platform
 // reads collector health from the adopter's Elasticsearch exactly the way
-// it reads any other telemetry — same indices, same round-trip discipline,
+// it reads any other telemetry: same indices, same round-trip discipline,
 // no privileged side channel. The provider reports the component-identity
 // attribute combinations verbatim; interpreting them is the one
 // platform-owned normaliser's job (internal/selftelemetry), never this
-// package's — a second backend must not become a second opinion on join
+// package's, because a second backend must not become a second opinion on join
 // keys.
 
 import (
@@ -27,7 +27,7 @@ import (
 // component-identity attributes. In OTel-native mapping mode the legacy
 // join keys are datapoint attributes (attributes.*) and the
 // otelcol.component.* keys are instrumentation scope attributes
-// (scope.attributes.*) — the spellings themselves are platform knowledge,
+// (scope.attributes.*); the spellings themselves are platform knowledge,
 // owned by the normaliser package (ADR-0039 §3).
 func (e *Elasticsearch) identityFields(kind requirements.SignalKind) map[string]string {
 	fields := map[string]string{}
@@ -38,7 +38,7 @@ func (e *Elasticsearch) identityFields(kind requirements.SignalKind) map[string]
 	}
 	// Scope attributes ride every signal: primary on logs, and present on
 	// metrics too once the mirrored newPipelineTelemetry flag flips
-	// (ADR-0039 §4) — reading them costs nothing while the gate is off.
+	// (ADR-0039 §4); reading them costs nothing while the gate is off.
 	for _, name := range selftelemetry.ScopeIdentityAttributes {
 		fields[name] = "scope.attributes." + name
 	}
@@ -48,7 +48,7 @@ func (e *Elasticsearch) identityFields(kind requirements.SignalKind) map[string]
 // observeSelfBody builds one signal's count-commits-and-identities query:
 // zero hits fetched, exact totals, the window and Tier-stamp filter, a
 // terms aggregation over the commit stamps and a composite aggregation
-// over the identity attributes — missing buckets included, because
+// over the identity attributes, missing buckets included, because
 // identity-dropping components and collector-level telemetry are readings
 // too (R-4 §5.2).
 func (e *Elasticsearch) observeSelfBody(tier string, window time.Duration, kind requirements.SignalKind) map[string]any {
@@ -93,11 +93,11 @@ func sortedFieldNames(fields map[string]string) []string {
 }
 
 // ObserveSelf issues one _msearch covering the internal signals (logs and
-// metrics — traces stay off in v1, ADR-0039 §1) for one Tier, matched on
+// metrics; traces stay off in v1, ADR-0039 §1) for one Tier, matched on
 // the telecraft.tier resource stamp.
 //
 // Index resolution is strict, like Observe: a pattern matching nothing is
-// Known false with a cause, never an observed silence — the provider
+// Known false with a cause, never an observed silence, because the provider
 // cannot tell "no self-telemetry has ever landed" from "pointed at the
 // wrong index", and transport loss must read as unknown, never as failure
 // (ADR-0039 §2). Identity combinations and commit stamps beyond the

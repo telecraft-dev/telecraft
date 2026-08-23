@@ -6,15 +6,15 @@
 ## Context
 
 ADR-0013 said the server stores nothing; OQ-15 was the checkable
-remainder: what the serving path may hold, where, for how long — cache,
-not record — with ADR-0005's layer-1 digest confirmed loseable. Session
+remainder: what the serving path may hold, where, for how long (cache,
+not record), with ADR-0005's layer-1 digest confirmed loseable. Session
 G4 also pressure-tested HA (do scaled-out replicas contend on git?) and
 standalone/local operation (can a single instance run without a git
 service?).
 
 ## Decision
 
-1. **The serving path may hold exactly three things — all rebuildable,
+1. **The serving path may hold exactly three things, all rebuildable,
    none durable:**
    1. **Repo snapshot**: the fetched estate repo(s) at last-known head,
       plus the compiled selector index derived from it. Refreshed by poll
@@ -25,7 +25,7 @@ service?).
       of each connected collector's last-reported effective config, in
       process memory only, dying with the connection or process.
       **Confirmed loseable**: cost of loss is one extra parse per
-      collector on reconnect — the ordinary cold-start cost, so restart
+      collector on reconnect, the ordinary cold-start cost, so restart
       is a non-event by construction.
    3. **Nothing else.** No database, no external cache service, no
       durable per-collector record. Cohort membership is computed per
@@ -36,7 +36,7 @@ service?).
    be derivable from git plus live connections, or it is a design
    regression requiring an amendment to this ADR.
 2. **HA needs no coordination.** Read path: N replicas are N independent
-   read-only clones; worst case is two replicas one fetch-interval apart —
+   read-only clones; worst case is two replicas one fetch-interval apart:
    the same bounded staleness a single instance has. Write path (the
    forge-adapter side, not serving): platform-authored branches carry
    deterministic names, and a git ref update is compare-and-swap, so
@@ -46,8 +46,8 @@ service?).
    bare repository (`file:///…/estate.git`) fully satisfies ADR-0028's
    git transport floor: the server fetches from it, the render bot pushes
    branches to it, merges are plain `git merge`. That is the "bare git"
-   rung of the capability ladder — no change-proposal UI, manual merges,
-   attribution unverified — but validation, the render gate, drift and
+   rung of the capability ladder (no change-proposal UI, manual merges,
+   attribution unverified), but validation, the render gate, drift and
    serving all hold. A single binary plus a directory is a complete
    standalone instance: the local-development mode and the air-gap
    posture (ADR-0019) are the same shape.

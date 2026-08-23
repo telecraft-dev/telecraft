@@ -198,7 +198,7 @@ func TestCatalogueArtefactsListsOnlyTheArtefacts(t *testing.T) {
 	}
 	for i := range want {
 		if got[i] != want[i] {
-			t.Errorf("listed %v, want %v — versions sit side by side in sorted order", got, want)
+			t.Errorf("listed %v, want %v: versions sit side by side in sorted order", got, want)
 		}
 	}
 }

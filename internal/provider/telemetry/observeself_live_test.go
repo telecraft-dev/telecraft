@@ -4,9 +4,9 @@ package telemetry
 // a served collector emitting self-telemetry yields readings joined to its
 // Tier and serving SHA. The seeded documents are shaped exactly as the
 // collector's OTLP-pushed internal telemetry lands in OTel-native mapping
-// mode — the telecraft.tier / telecraft.commit resource stamps the
+// mode (the telecraft.tier / telecraft.commit resource stamps the
 // renderer bakes into every artefact, legacy datapoint attributes on
-// metrics, otelcol.component.* scope attributes on logs — and the reading
+// metrics, otelcol.component.* scope attributes on logs) and the reading
 // is joined back to the rendered config through the one normaliser
 // (ADR-0039 §3, §5).
 //
@@ -32,7 +32,7 @@ const (
 )
 
 // liveResource renders the self-telemetry resource block of one served
-// collector: the renderer's stamps plus the rotating incarnation id —
+// collector: the renderer's stamps plus the rotating incarnation id;
 // service.instance.id is kept as-is, per-restart rotation is signal
 // (ADR-0039 §6).
 func liveResource(tier string) string {
@@ -100,7 +100,7 @@ func TestElasticsearchLiveObserveSelf(t *testing.T) {
 	// arrives in the commit stamps (ADR-0039 §5).
 	metrics := obs.Signals[requirements.Metrics]
 	if !metrics.Present || metrics.Volume != 4 {
-		t.Errorf("metrics = %+v, want the fixture Tier's 4 records — the sibling Tier's record is excluded", metrics)
+		t.Errorf("metrics = %+v, want the fixture Tier's 4 records: the sibling Tier's record is excluded", metrics)
 	}
 	if metrics.Commits[liveCommit] != 4 {
 		t.Errorf("metrics commits = %v, want the serving SHA %s over 4 records", metrics.Commits, liveCommit)
@@ -146,18 +146,18 @@ func TestElasticsearchLiveObserveSelf(t *testing.T) {
 			continue
 		}
 		if len(got) != len(member) || got[0] != member[0] {
-			t.Errorf("membership of %s = %v, want %v — derived from the rendered topology", id, got, member)
+			t.Errorf("membership of %s = %v, want %v: derived from the rendered topology", id, got, member)
 		}
 	}
 	if collectorLevel == 0 {
 		t.Error("the process metric did not read as a collector-level identity")
 	}
 	if unidentified == 0 {
-		t.Error("memory_limiter's kind-only log did not read as an unidentified processor — an expected shape, never a join failure (R-4 §5.2)")
+		t.Error("memory_limiter's kind-only log did not read as an unidentified processor: an expected shape, never a join failure (R-4, section 5.2)")
 	}
 
 	// A Tier with no self-telemetry in existing indices is a known observed
-	// absence — while a missing index stays Known false (criterion 3),
+	// absence, while a missing index stays Known false (criterion 3),
 	// covered live below.
 	silent := es.ObserveSelf(context.Background(), "data-flow/silent", 15*time.Minute)
 	for kind, sig := range silent.Signals {
@@ -167,8 +167,8 @@ func TestElasticsearchLiveObserveSelf(t *testing.T) {
 	}
 }
 
-// Criterion 3, live: self-telemetry the provider cannot see — the metrics
-// index does not exist — reads Known false with a cause, never a failure.
+// Criterion 3, live: self-telemetry the provider cannot see (the metrics
+// index does not exist) reads Known false with a cause, never a failure.
 func TestElasticsearchLiveObserveSelfMissingIndex(t *testing.T) {
 	endpoint := envEndpoint(t)
 	seedSelfLive(t, endpoint)
@@ -189,6 +189,6 @@ func TestElasticsearchLiveObserveSelfMissingIndex(t *testing.T) {
 		t.Errorf("metrics against a missing index = %+v, want Known=false with a cause", metrics)
 	}
 	if logs := obs.Signals[requirements.Logs]; !logs.Known || logs.Volume != 2 {
-		t.Errorf("logs = %+v — one signal's missing index must not degrade another", logs)
+		t.Errorf("logs = %+v: one signal's missing index must not degrade another", logs)
 	}
 }
