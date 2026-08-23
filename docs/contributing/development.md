@@ -127,14 +127,16 @@ The fixture backend prints its sign-in credentials at start-up. The platform
 binary verifies PBKDF2 hashes from the estate's `users.yaml` instead, and
 `telecraft passwd` authors them.
 
-The five checks the **Console** job runs:
+The checks the **Console** job runs, in the order it runs them:
 
 ```sh
-npm run typecheck        # tsc --noEmit
-npm test                 # Vitest: the engine, the presentation store, shelf ordering, the card contract
-npm run build            # tsc --noEmit, then vite build into dist/
-npm run check:zero-cdn   # no external host in any built artefact
-npm run e2e              # Playwright against dist/ and the fixture backend
+npm run typecheck           # tsc --noEmit
+npm test                    # Vitest: the engine, the presentation store, shelf ordering, the card contract
+npm run check:palette       # the design tokens against their contrast and colour-vision floors
+npm run build               # tsc --noEmit, then vite build into dist/
+npm run check:zero-cdn      # no external host in any built artefact
+npm run check:bundle-budget # the entry chunk within its gzipped ceiling
+npm run e2e                 # Playwright against dist/ and the fixture backend
 ```
 
 `npm run e2e` needs a browser first:
@@ -152,6 +154,12 @@ none, and JavaScript tolerates only the allowlisted never-fetched string
 literals the script documents. The Playwright suite enforces the same rule at
 runtime by intercepting every network request and failing on any host beyond
 the console's own origin.
+
+`npm run check:bundle-budget` needs a build first for the same reason. It
+measures the gzipped size of the entry chunk, the module `dist/index.html`
+loads, and fails when that exceeds the ceiling the script states and argues
+for. The [console page](console.md#the-bundle-budget) explains what the
+ceiling is holding.
 
 To build the demo bundle and its snapshot, as the **Demo snapshot and bundle**
 job does:

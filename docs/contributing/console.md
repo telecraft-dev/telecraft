@@ -1,6 +1,6 @@
 ---
 title: Console architecture
-description: The four Workspaces, the card data contract, the pure canvas engine, the presentation store, guided Tours, demo mode, and the zero-CDN rule.
+description: The four Workspaces, the card data contract, the pure canvas engine, the presentation store, guided Tours, demo mode, the bundle budget, and the zero-CDN rule.
 order: 7
 ---
 
@@ -49,7 +49,10 @@ The code follows the same shape:
 - `src/chrome/` holds the shell: Workspace navigation, the environment lens,
   and jump-to-object search. `src/chrome/workspaces.ts` is the list of
   Workspaces, and `console/tools/assemble-site.mjs` mirrors it.
-- `src/router.tsx` declares the routes and validates every search param.
+- `src/router.tsx` declares the routes, validates every search param, and
+  loads each Workspace's component through a dynamic import, which is what
+  gives every Workspace a chunk of its own (see
+  [the bundle budget](#the-bundle-budget)).
 - `src/api/` holds the client, the demo adapter, and the TypeScript shapes of
   the platform API.
 
@@ -262,6 +265,59 @@ right page behind a 404 works for a human and is broken for link previews,
 sharing and uptime checks. `console/tests/site.test.ts` holds that list
 together with `src/chrome/workspaces.ts`, so a Workspace added to the chrome
 and not to the assembler is a failing test.
+
+## The bundle budget
+
+The four Workspaces meet at the router, so the router is where the bundle
+divides. `src/router.tsx` reaches each Workspace's component through a
+dynamic import, and Rollup gives each one a chunk that arrives on the
+navigation that first needs it. Estate, Topology, Compose, and Catalogue
+each land in their own chunk; the card panel and the claim panel, which
+more than one Workspace draws, land in chunks those Workspaces share.
+
+The dependency that makes this worth doing is the canvas substrate.
+`@xyflow/react` is the console's one substantial dependency, and only
+Topology's flow canvas and Compose's node canvas draw with it. Before the
+split it sat in the entry chunk, which meant a reader who only ever opened
+Estate still downloaded the whole interaction library. It now sits in the
+chunk Topology and Compose share, and nobody else pays for it.
+
+Two things are worth knowing before you change this.
+
+**They are `React.lazy`, not the router's `lazyRouteComponent`.** The
+router's own helper hands the router a `preload()` it calls on every
+navigation, which keeps each match in its asynchronous loading path long
+after the module is in memory. In a console where every surface state is a
+search param, that path is walked on each filter change and each checkbox
+tick, and the match renders its pending state in between: the Workspace
+blanks and remounts, and a controlled input reverts under the reader's
+hand. `React.lazy` resolves once and renders synchronously afterwards, so
+only the first navigation to a Workspace waits for anything.
+
+**The split is held by a number.** `tools/check-bundle-budget.mjs` measures
+the gzipped size of the entry chunk, which is the module `dist/index.html`
+loads and therefore the one every reader downloads before anything renders,
+whichever Workspace their URL names. It fails the build above a ceiling of
+140.0 kB gzipped, against a measured 121.6 kB, which leaves 18.4 kB of
+headroom. The demo bundle is the
+larger of the two, because `src/api/demo.ts` answers the whole contract
+from a snapshot and rides in the entry chunk: it measures 126.3 kB. One
+ceiling covers both, and it is the demo bundle that will reach it first.
+
+The headroom is chosen against what the check exists to catch. What
+remains in the entry chunk is the framework and the shell, and the part of
+it that grows routinely is `src/tours/`, which gains a file of prose every
+time a Tour is written: hundreds of bytes at a time, so 18.4 kB buys years
+of them. What the headroom deliberately does not cover is a Workspace
+falling back out of its dynamic import, because the canvas substrate alone
+is 58.8 kB gzipped and would overshoot the ceiling more than three times
+over. Raising the number is a reviewable event: raise it in the commit that
+needs it, with the reason, or move the weight behind a route.
+
+Splitting changes nothing about where assets come from. Every chunk is a
+same-origin file under `dist/assets`, so the rule below is untouched, and
+`npm run check:zero-cdn` runs over the split bundle exactly as it ran over
+the single one.
 
 ## The zero-CDN rule
 

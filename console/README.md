@@ -23,10 +23,12 @@ Checks, as CI runs them:
 
 ```sh
 npm run typecheck
-npm test               # Vitest: engine, presentation store, shelf ordering
-npm run build          # tsc --noEmit + vite build into dist/
-npm run check:zero-cdn # no external host in any built artefact
-npm run e2e            # Playwright against dist/ and the fixture backend
+npm test                    # Vitest: engine, presentation store, shelf ordering
+npm run check:palette       # the design tokens against their accessibility floors
+npm run build               # tsc --noEmit + vite build into dist/
+npm run check:zero-cdn      # no external host in any built artefact
+npm run check:bundle-budget # the entry chunk within its gzipped ceiling
+npm run e2e                 # Playwright against dist/ and the fixture backend
 ```
 
 ## Layout
