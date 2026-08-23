@@ -1,0 +1,24 @@
+# The one collector in the git-delivered Tier, and the operator's half of
+# what it runs.
+#
+# Everything else this collector runs is the rendered artefact, mounted out
+# of devenv/estate/rendered/ exactly as the renderer wrote it. This file is
+# the second --config beside it: the part no artefact carries, which on the
+# served path is the identity overlay in devenv/identity/ and here is the
+# same gap in a different shape (issue #111).
+#
+# It is only the instance id. The Tier and the Environment travel in the
+# Blueprint's opamp extension, because a git-delivered collector reports
+# through the collector's own OpAMP support and that support fixes its
+# identifying attributes to service.name, service.version and
+# service.instance.id. Everything a selector reads has to ride along as a
+# non-identifying attribute, and the server flattens both sets before
+# matching (ADR-0007, ADR-0013).
+#
+# Without this the collector mints a fresh UUID on every start, and the
+# reported configuration on disk would be filed under a different name each
+# time the environment restarted.
+service:
+  telemetry:
+    resource:
+      service.instance.id: appliance-1

@@ -1,0 +1,22 @@
+# The git-delivered Tier: collectors the platform describes and does not
+# deliver to (REQ-041, the Foreign path).
+#
+# There is deliberately no `serving:` block, so the renderer emits no
+# Supervisor artefact beside the collector artefact. The appliances these
+# collectors run on take no agent of ours; the team's own configuration
+# management copies the rendered artefact out of the same repository and
+# restarts the process. The platform still sees what is running, because the
+# collector reports through its own opamp extension — see the Blueprint.
+#
+# Nothing routes through this Tier, so no Service Path traverses it and no
+# row is written against it. It is here for the delivery reading, which
+# until now had only ever been drawn from one of its two inputs.
+owner: platform-observability
+environment: production
+blueprint: platform/appliance-standard@1
+selector:
+  telecraft.tier: appliance
+  deployment.environment: production
+min_expected: 1
+hops:
+  - from: internet

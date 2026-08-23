@@ -38,18 +38,20 @@ type overlay struct {
 	Overlay map[string]any `yaml:"overlay"`
 }
 
-// runPrepare composes every collector's Supervisor configuration and writes
-// it under -out, one directory per identity file. It reads the rendered
-// tree and never writes to it: the renderer is the only writer there
-// (ADR-0027).
+// runPrepare writes what each collector needs beside the rendered tree, one
+// directory per collector under -out: a composed Supervisor configuration
+// for every served collector, and the operator's local file for every
+// git-delivered one. It reads the rendered tree and never writes to it: the
+// renderer is the only writer there (ADR-0027).
 //
-// Exit codes: 0 written; 1 an identity file or artefact could not be read;
+// Exit codes: 0 written; 1 an authored file or artefact could not be read;
 // 2 usage.
 func runPrepare(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("prepare", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	estate := fs.String("estate", "devenv/estate", "estate root holding the rendered/ tree")
-	identity := fs.String("identity", "devenv/identity", "directory of per-collector identity files")
+	identity := fs.String("identity", "devenv/identity", "directory of per-collector identity files, one per served collector")
+	foreign := fs.String("foreign", "devenv/foreign", "directory of local files, one per git-delivered collector")
 	out := fs.String("out", "devenv/run", "directory the composed configurations are written under")
 	drift := fs.String("drift", "", "collector to compose with the drift overlay merged in (see -drift-overlay)")
 	driftOverlay := fs.String("drift-overlay", "devenv/drift/overlay.yaml", "the overlay -drift merges")
@@ -57,13 +59,19 @@ func runPrepare(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	names, err := identityFiles(*identity)
+	names, err := collectorFiles(*identity)
 	if err != nil {
 		fmt.Fprintf(stderr, "prepare: %v\n", err)
 		return 1
 	}
 	if len(names) == 0 {
 		fmt.Fprintf(stderr, "prepare: no identity files in %s — the devenv has no collectors to compose\n", *identity)
+		return 1
+	}
+
+	locals, err := collectorFiles(*foreign)
+	if err != nil {
+		fmt.Fprintf(stderr, "prepare: %v\n", err)
 		return 1
 	}
 
@@ -108,6 +116,15 @@ func runPrepare(args []string, stdout, stderr io.Writer) int {
 		}
 		path := filepath.Join(dir, "supervisor.yaml")
 		if err := os.WriteFile(path, composed, 0o644); err != nil {
+			fmt.Fprintf(stderr, "prepare: %v\n", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "wrote %s\n", path)
+	}
+
+	for _, name := range locals {
+		path, err := writeLocalFile(filepath.Join(*foreign, name+".yaml"), filepath.Join(*out, name))
+		if err != nil {
 			fmt.Fprintf(stderr, "prepare: %v\n", err)
 			return 1
 		}
@@ -162,9 +179,10 @@ func splitHeader(composed []byte) (header, body []byte, ok bool) {
 	return nil, nil, false
 }
 
-// identityFiles lists the identity files in a directory by base name, in
-// stable order.
-func identityFiles(dir string) ([]string, error) {
+// collectorFiles lists the per-collector files in a directory by base name,
+// in stable order. Both authored directories are one file per collector,
+// named after it, so both list the same way.
+func collectorFiles(dir string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err

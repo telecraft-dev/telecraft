@@ -18,6 +18,14 @@ type estateReader interface {
 	Estate(context.Context) seam.Estate
 }
 
+// deliveryReader answers how one collector came by its configuration
+// (REQ-041). It is a second reader rather than part of the estate one
+// because the EstateProvider seam carries what a collector reports about
+// its running state, never where that state came from — see delivery.go.
+type deliveryReader interface {
+	Path(identity map[string]string) string
+}
+
 // row is one (Service, Environment) the arrivals are read for. The pairs
 // come from the authored conformance estate, which is the devenv's one
 // declared reading (ADR-0052 §2).
@@ -34,6 +42,12 @@ type row struct {
 type composer struct {
 	Collectors estateReader
 	Telemetry  telemetry.Provider
+
+	// Delivery is how each collector came by its configuration. It is
+	// required: REQ-041's reading has two values and no third one for not
+	// having looked, so a composer without it would be back to asserting
+	// one path for every collector.
+	Delivery deliveryReader
 
 	// Rows and Tiers are what to read for, taken from the estate.
 	Rows  []row
@@ -79,7 +93,7 @@ func (c *composer) compose(ctx context.Context) console.Readings {
 
 	est := c.Collectors.Estate(ctx)
 	for _, col := range est.Collectors {
-		out.Collectors = append(out.Collectors, collectorReading(col, est.AsOf))
+		out.Collectors = append(out.Collectors, collectorReading(col, est.AsOf, c.Delivery.Path(col.Identity)))
 	}
 
 	for _, r := range c.Rows {
@@ -130,11 +144,12 @@ func (c *composer) observePopulations(cards []console.CardFace, now time.Time) {
 // collectorReading projects one collector's seam reading.
 //
 // Every collector in this reading is on a live connection to the platform's
-// own server, so its state is reporting and its delivery path is served.
-// The devenv has no git-delivered collectors: the Foreign path needs a
-// collector reporting through its own opamp extension, which is a second
-// shape and not this one.
-func collectorReading(col seam.Collector, asOf time.Time) console.CollectorReading {
+// own server, so its state is reporting. Its delivery path is not decided
+// here: it is read off the same wire, from whether the collector declares
+// it accepts remote config (delivery.go), because a collector reporting
+// through its own opamp extension reports exactly like a served one and
+// takes nothing the server sends.
+func collectorReading(col seam.Collector, asOf time.Time, delivery string) console.CollectorReading {
 	lastSeen := col.Effective.AsOf
 	if lastSeen.IsZero() {
 		lastSeen = asOf
@@ -145,7 +160,7 @@ func collectorReading(col seam.Collector, asOf time.Time) console.CollectorReadi
 		State:      "reporting",
 		Version:    col.Identity["service.version"],
 		LastSeen:   lastSeen,
-		Delivery:   "served",
+		Delivery:   delivery,
 	}
 }
 

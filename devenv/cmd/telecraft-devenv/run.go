@@ -82,12 +82,13 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 
 	direct := estateprovider.NewOpAMPDirect(estateprovider.OpAMPDirectConfig{})
 	configs := &reportedConfigs{dir: filepath.Join(*out, "effective")}
+	delivery := &deliveryPaths{}
 	srv, err := serving.New(serving.Config{
 		Source:         serving.DirSource{Root: *estateRoot},
 		ListenEndpoint: *listen,
 		FetchInterval:  *interval,
 		Logf:           logf,
-		Tap:            taps{direct, configs},
+		Tap:            taps{direct, configs, delivery},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "run: %v\n", err)
@@ -105,6 +106,7 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 
 	comp := &composer{
 		Collectors: direct,
+		Delivery:   delivery,
 		Telemetry:  tel,
 		Rows:       inputs.rows,
 		Tiers:      inputs.tiers,
