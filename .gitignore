@@ -16,3 +16,13 @@
 # configs, the live snapshot, and container state. Everything in it is
 # rebuilt by `devenv/devenv up`.
 devenv/run/
+
+# Compiled tool outputs. `go build ./tools/<name>` drops a binary in the
+# current directory or the tool's own directory; neither belongs in the
+# repository. The binlint job (issue #122) catches anything that slips through.
+/vendorlint
+/docslint
+/binlint
+/tools/vendorlint/vendorlint
+/tools/docslint/docslint
+/tools/binlint/binlint

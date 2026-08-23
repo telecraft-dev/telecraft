@@ -82,6 +82,20 @@ jobs:
           go-version: stable
       - run: go run ./tools/docslint
 
+  # The compiled-executable guard (issue #122): no Mach-O, ELF, or PE binary
+  # may be committed to the repository. Ungated for the same reason as the
+  # two lints above: a binary committed anywhere in the tree is a finding, and
+  # "anywhere" includes docs.
+  binary-guard:
+    name: Compiled executable guard (issue #122)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go run ./tools/binlint
+
   test:
     name: Build and test
     needs: changes
