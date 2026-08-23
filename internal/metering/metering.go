@@ -36,6 +36,7 @@
 package metering
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/requirements"
@@ -207,6 +208,70 @@ func (p Pipeline) Hop(kind requirements.SignalKind, exporter string) (int64, boo
 	}
 	items, ok := sig.Hops[exporter]
 	return items, ok
+}
+
+// HopThroughput is one signal's throughput along one Hop out of a Tier:
+// the out-rate of the exporter feeding it (ADR-0040 §1).
+//
+// Whether an exporter feeds the Hop at all is a fact about the sending
+// Tier's wiring, not about the meter, so the two failures are told apart:
+// a lane the Tier does not wire, or one that fans out with nothing in the
+// model saying which branch this Hop is, is unknown before any reading is
+// consulted. Both read Known false with the cause said out loud, and
+// neither ever reads zero (ADR-0008, ADR-0040 §6).
+type HopThroughput struct {
+	Known bool   `json:"known"`
+	Cause string `json:"cause,omitempty"`
+
+	// Exporter is the rendered id of the exporter feeding the Hop, when
+	// the wiring names exactly one. It is carried even where the reading
+	// is unknown, so a surface can say which exporter it could not read.
+	Exporter string `json:"exporter,omitempty"`
+
+	// Items is that exporter's sent-item count over the window. It means
+	// nothing unless Known.
+	Items int64 `json:"items"`
+}
+
+// HopFlow resolves one Hop's throughput for one signal from the exporter
+// side the render recorded for the sending Tier's lane
+// (renderer.LaneExporters).
+//
+// The lane's exporters are the whole join. A Hop names no component
+// (ADR-0007), so the alternative would be matching exporter endpoint
+// strings against downstream Tiers, and a Tier exporting through two
+// exporters would then be attributed by a coin toss. Here a Tier whose
+// traces lane leaves through one exporter and whose logs lane leaves
+// through another gives each signal's edge its own exporter's rate, and a
+// lane that genuinely fans out says it cannot tell rather than summing
+// two Hops' traffic into one or dividing a total by an edge count.
+func (p Pipeline) HopFlow(kind requirements.SignalKind, laneExporters []string) HopThroughput {
+	switch len(laneExporters) {
+	case 0:
+		return HopThroughput{Cause: fmt.Sprintf("the sending Tier wires no %s lane, so no exporter feeds this Hop", kind)}
+	case 1:
+	default:
+		return HopThroughput{Cause: fmt.Sprintf(
+			"the sending Tier's %s lane leaves through %d exporters and a Hop names none of them (ADR-0007), so which one feeds this Hop is not in the model",
+			kind, len(laneExporters))}
+	}
+
+	exporter := laneExporters[0]
+	sig, covered := p.Signal(kind)
+	if !covered {
+		return HopThroughput{Cause: "the reading does not cover this signal", Exporter: exporter}
+	}
+	if !sig.Volume.Known {
+		return HopThroughput{Cause: sig.Volume.Cause, Exporter: exporter}
+	}
+	items, read := sig.Hops[exporter]
+	if !read {
+		return HopThroughput{
+			Cause:    fmt.Sprintf("the reading holds no sent-item count for exporter %q", exporter),
+			Exporter: exporter,
+		}
+	}
+	return HopThroughput{Known: true, Exporter: exporter, Items: items}
 }
 
 // ForTier derives a Tier's pipeline-grain readings from one Metered

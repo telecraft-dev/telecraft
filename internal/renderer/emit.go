@@ -18,7 +18,11 @@ import (
 // identifying attribute. The emission order is fixed and every map is
 // walked sorted: identical inputs produce byte-identical artefacts, the
 // property CI recomputes and diffs (ADR-0028 §2).
-func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[string]instance) ([]byte, []string) {
+// Beside the artefact it returns the exporter side of every lane it wired,
+// which is the Hop-to-exporter join of ADR-0040 §1: this function is the
+// one place that knows, without guessing, which exporters a signal leaves
+// this Tier through.
+func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[string]instance) ([]byte, LaneExporters, []string) {
 	ctx := fmt.Sprintf("tier %q", tier.ID())
 	var problems []string
 
@@ -33,6 +37,22 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 		p, laneProblems := compileLane(in.Estate, bp, string(s), entries, ctx)
 		problems = append(problems, laneProblems...)
 		pipelines[s] = p
+	}
+
+	// Record the exporter side while it is being decided (ADR-0040 §1).
+	// The record is taken before the untrusted-Hop strip is prepended,
+	// because the strip is a generated processor and changes nothing about
+	// where the lane's data leaves.
+	var exporters LaneExporters
+	for _, s := range blueprint.Signals {
+		p, wired := pipelines[s]
+		if !wired {
+			continue
+		}
+		if exporters == nil {
+			exporters = LaneExporters{}
+		}
+		exporters[string(s)] = append([]string(nil), p.exporters...)
 	}
 
 	// The untrusted-Hop strip (REQ-034, ADR-0007): any untrusted arrival
@@ -69,7 +89,7 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 	}
 
 	if len(problems) > 0 {
-		return nil, problems
+		return nil, nil, problems
 	}
 
 	root := mapping()
@@ -88,7 +108,7 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 		}
 		def, err := configNode(c.Config)
 		if err != nil {
-			return nil, []string{fmt.Sprintf("%s: Component %s: %v", ctx, c.ID(), err)}
+			return nil, nil, []string{fmt.Sprintf("%s: Component %s: %v", ctx, c.ID(), err)}
 		}
 		appendPair(section, scalar(id), def)
 	}
@@ -102,7 +122,7 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 			"actions": []any{map[string]any{"action": "delete", "pattern": `^telecraft\.`}},
 		})
 		if err != nil {
-			return nil, []string{fmt.Sprintf("%s: %v", ctx, err)}
+			return nil, nil, []string{fmt.Sprintf("%s: %v", ctx, err)}
 		}
 		key := scalar(StripProcessorID)
 		key.HeadComment = "Generated: this Tier receives data over an untrusted Hop, so this\nprocessor drops every telecraft.* attribute on arrival. Identity\ncomes from this Tier's own stamps, never from inbound data."
@@ -161,13 +181,17 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 	appendPair(resource, tierKey, scalar(tier.ID()))
 	telemetry, telProblems := emitSelfTelemetry(in, resource, tier.Environment, ctx)
 	if len(telProblems) > 0 {
-		return nil, telProblems
+		return nil, nil, telProblems
 	}
 	appendPair(service, scalar("telemetry"), telemetry)
 
 	appendPair(root, scalar("service"), service)
 
-	return marshalDocument(root)
+	artefact, marshalProblems := marshalDocument(root)
+	if len(marshalProblems) > 0 {
+		return nil, nil, marshalProblems
+	}
+	return artefact, exporters, nil
 }
 
 // emitSelfTelemetry builds the `service::telemetry` block: the identity

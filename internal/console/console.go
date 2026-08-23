@@ -33,8 +33,10 @@ import (
 // reviewable event rather than silent field drift (ADR-0041 §4). v2 added
 // the per-signal matrix rows, the population state and the churn reading.
 // v3 gave each of those rows a lane state, and dropped its readings when
-// that state is not_applicable.
-const ContractVersion = 3
+// that state is not_applicable. v4 gives every topology Hop its per-signal
+// throughput: the out-rate of the exporter feeding it (ADR-0040 §1), which
+// the canvas had no field to read.
+const ContractVersion = 4
 
 // Meta stamps a snapshot with what it was built from, so a stale demo is
 // visibly stale rather than quietly wrong (ADR-0013's discipline applied
@@ -344,6 +346,29 @@ type TopologySource struct {
 	Name string `json:"name"`
 }
 
+// TopologyHopFlow is one signal's throughput along a Hop: the out-rate of
+// the exporter feeding it (ADR-0040 §1).
+//
+// The exporter is named because a Hop does not name one itself (ADR-0007);
+// the join comes from the exporter side the render recorded when it wired
+// the sending Tier's lane, so an edge is labelled with what actually flows
+// along it rather than with a Tier total split by a guess.
+type TopologyHopFlow struct {
+	Reading
+
+	// Exporter is the rendered id of the feeding exporter, when the
+	// sending Tier's lane names exactly one. It travels even where the
+	// reading is unknown, so a surface can say which exporter it could
+	// not read.
+	Exporter string `json:"exporter,omitempty"`
+
+	// Items is the exporter's sent-item count over the window. It is
+	// absent rather than zero when the reading is unknown: a Hop nobody
+	// could meter carries no number at all, because a rendered 0 is the
+	// same shape as a Hop that carried nothing (ADR-0008, ADR-0040 §6).
+	Items *int64 `json:"items,omitempty"`
+}
+
 // TopologyHop is one directed arrival. Trust is the Hop's, never the
 // Tier's (ADR-0007).
 type TopologyHop struct {
@@ -351,6 +376,13 @@ type TopologyHop struct {
 	To      string   `json:"to"`
 	Trusted bool     `json:"trusted"`
 	Signals []string `json:"signals"`
+
+	// Throughput is the Hop's per-signal throughput, keyed by signal name
+	// over the same signals Signals lists — one entry per edge the canvas
+	// draws for this Hop (ADR-0044 §1). Every entry is present, including
+	// the unknown ones: a Hop the meter could not read is drawn as
+	// unlabelled, never as idle.
+	Throughput map[string]TopologyHopFlow `json:"throughput,omitempty"`
 }
 
 // TopologyPath is one Service's route through Tiers.

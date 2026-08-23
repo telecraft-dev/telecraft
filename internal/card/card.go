@@ -44,7 +44,13 @@ import (
 // same rendering a broken pipeline gets: two opposite meanings sharing
 // one shape. The lane state is the fact the readings hang off, and a row
 // with no lane behind it now carries no numbers to misread.
-const Version = 3
+// v4 gives the snapshot's topology Hops their per-signal throughput: the
+// out-rate of the exporter feeding each one (ADR-0040 §1). No field on the
+// face or the drawer moved, and the version still bumps, because the
+// integer is one contract's and not one struct's — the payloads that
+// travel together version together, or the two sides of the seam stop
+// agreeing without anybody noticing (§4).
+const Version = 4
 
 // BandName is one of the three reading bands. The order is fixed and the
 // same on every card, so band position is load-bearing where hue is not.

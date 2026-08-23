@@ -71,7 +71,29 @@ type Inputs struct {
 type Result struct {
 	Artefacts map[string][]byte
 	Findings  []Finding
+
+	// Exporters is the exporter side of every Tier's wiring, keyed by Tier
+	// id, recorded at the moment the render wired it (ADR-0040 §1).
+	Exporters map[string]LaneExporters
 }
+
+// LaneExporters is one Tier's exporter-side wiring: per signal lane name,
+// the rendered exporter ids that lane's data leaves the Tier through, in
+// authored order.
+//
+// It exists because a Hop names no component. A Hop is authored on the
+// receiving Tier and says only where the data arrives from (ADR-0007), so
+// nothing in the authored model joins a Hop to the exporter that feeds it,
+// and matching exporter endpoint strings against downstream Tiers would be
+// a guess that any Tier with more than one exporter breaks. The renderer
+// needs no guess: compiling a lane *is* deciding which exporters a signal
+// leaves a Tier through, so the render records what it wired and the
+// topology projection reads it back.
+//
+// A lane the Blueprint does not wire is absent, never an empty list: the
+// difference between "this Tier exports no logs" and "this lane fans out
+// to nothing" is the difference ADR-0008 asks every reading to keep.
+type LaneExporters map[string][]string
 
 // Render compiles every Tier's bound Blueprint to its rendered artefacts
 // and generates the code-ownership projection. It either returns the
@@ -105,17 +127,24 @@ func Render(in Inputs) (Result, error) {
 		return Result{}, err
 	}
 
-	res := Result{Artefacts: map[string][]byte{}}
+	res := Result{Artefacts: map[string][]byte{}, Exporters: map[string]LaneExporters{}}
 	var problems []string
 
 	for _, tier := range in.Topology.SortedTiers() {
-		artefact, supervisor, findings, tierProblems := renderTier(in, tier)
+		artefact, supervisor, exporters, findings, tierProblems := renderTier(in, tier)
 		problems = append(problems, tierProblems...)
 		res.Findings = append(res.Findings, findings...)
 		if len(tierProblems) > 0 {
 			continue
 		}
 		res.Artefacts[ArtefactPath(tier)] = artefact
+
+		// The base binding is what the Tier's collectors run, so the base
+		// render is what the recorded mapping describes. A dual-bound
+		// Tier's `@next` artefact is not running anywhere yet (ADR-0029
+		// §3), and letting it overwrite the mapping would attribute a Hop
+		// to an exporter no collector has ever exported through.
+		res.Exporters[tier.ID()] = exporters
 		if supervisor != nil {
 			res.Artefacts["rendered/"+tier.Team+"/"+tier.Name+".supervisor.yaml"] = supervisor
 		}
@@ -182,15 +211,15 @@ func NextArtefactPath(t Tier) string {
 // supervisor artefact (nil where the Tier is not served), the policy
 // findings, and the mechanical or hard-block problems that refuse the
 // render.
-func renderTier(in Inputs, tier Tier) (artefact, supervisor []byte, findings []Finding, problems []string) {
-	artefact, findings, problems = renderBound(in, tier, fmt.Sprintf("tier %q", tier.ID()))
+func renderTier(in Inputs, tier Tier) (artefact, supervisor []byte, exporters LaneExporters, findings []Finding, problems []string) {
+	artefact, exporters, findings, problems = renderBound(in, tier, fmt.Sprintf("tier %q", tier.ID()))
 	if len(problems) > 0 {
-		return nil, nil, findings, problems
+		return nil, nil, nil, findings, problems
 	}
 	if tier.Serving != nil {
 		supervisor = emitSupervisor(in, tier)
 	}
-	return artefact, supervisor, findings, problems
+	return artefact, supervisor, exporters, findings, problems
 }
 
 // renderNext compiles the `@next` artefact of a Tier with an active Rollout:
@@ -202,15 +231,16 @@ func renderNext(in Inputs, tier Tier, r Rollout) ([]byte, []Finding, []string) {
 	next := tier
 	next.Blueprint = r.To
 	next.binding = r.ToBinding()
-	return renderBound(in, next, fmt.Sprintf("tier %q (rollout %q, to artefact)", tier.ID(), r.ID()))
+	artefact, _, findings, problems := renderBound(in, next, fmt.Sprintf("tier %q (rollout %q, to artefact)", tier.ID(), r.ID()))
+	return artefact, findings, problems
 }
 
 // renderBound compiles one Tier under its current binding, the shared leg
 // of the base and `@next` renders.
-func renderBound(in Inputs, tier Tier, ctx string) (artefact []byte, findings []Finding, problems []string) {
+func renderBound(in Inputs, tier Tier, ctx string) (artefact []byte, exporters LaneExporters, findings []Finding, problems []string) {
 	bp, ok := in.Estate.Blueprint(tier.Binding().ID())
 	if !ok {
-		return nil, nil, []string{fmt.Sprintf("%s binds %s, but no Blueprint has that id", ctx, tier.Binding())}
+		return nil, nil, nil, []string{fmt.Sprintf("%s binds %s, but no Blueprint has that id", ctx, tier.Binding())}
 	}
 	if bp.Version != tier.Binding().Version {
 		// The estate tree holds head content, so head is what renders; the
@@ -225,15 +255,15 @@ func renderBound(in Inputs, tier Tier, ctx string) (artefact []byte, findings []
 	problems = append(problems, allowListProblems(in.Policy, bp, instances, ctx)...)
 	findings = append(findings, floorFindings(in, tier, bp)...)
 	if len(problems) > 0 {
-		return nil, findings, problems
+		return nil, nil, findings, problems
 	}
 
-	artefact, emitProblems := emitCollector(in, tier, bp, instances)
+	artefact, exporters, emitProblems := emitCollector(in, tier, bp, instances)
 	problems = append(problems, emitProblems...)
 	if len(problems) > 0 {
-		return nil, findings, problems
+		return nil, nil, findings, problems
 	}
-	return artefact, findings, problems
+	return artefact, exporters, findings, problems
 }
 
 // resolveInstances resolves every lane entry of the Blueprint to a component
