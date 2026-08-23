@@ -52,21 +52,24 @@ type oidcDiscovery struct {
 }
 
 // Begin implements RedirectProvider: the authorization request URL. The
-// nonce is derived from the caller's state, so replay protection needs no
-// server-side storage — Complete recomputes it and requires the ID token
-// to carry it.
+// nonce and the PKCE verifier are both derived from the caller's state, so
+// replay protection and code binding need no server-side storage — Complete
+// recomputes both, requires the ID token to carry the nonce, and presents
+// the verifier the challenge here commits to.
 func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, error) {
 	disc, err := o.discover(ctx)
 	if err != nil {
 		return "", err
 	}
 	q := url.Values{
-		"response_type": {"code"},
-		"client_id":     {o.ClientID},
-		"redirect_uri":  {callbackURL},
-		"scope":         {"openid profile email"},
-		"state":         {state},
-		"nonce":         {nonceFrom(state)},
+		"response_type":         {"code"},
+		"client_id":             {o.ClientID},
+		"redirect_uri":          {callbackURL},
+		"scope":                 {"openid profile email"},
+		"state":                 {state},
+		"nonce":                 {nonceFrom(state)},
+		"code_challenge":        {challengeFor(verifierFrom(state))},
+		"code_challenge_method": {"S256"},
 	}
 	sep := "?"
 	if strings.Contains(disc.AuthorizationEndpoint, "?") {
@@ -96,6 +99,7 @@ func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params u
 		"redirect_uri":  {callbackURL},
 		"client_id":     {o.ClientID},
 		"client_secret": {o.ClientSecret},
+		"code_verifier": {verifierFrom(state)},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, disc.TokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -326,5 +330,31 @@ func (o *OIDC) client() *http.Client {
 // protection is stateless end to end.
 func nonceFrom(state string) string {
 	sum := sha256.Sum256([]byte("telecraft-oidc-nonce." + state))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// verifierFrom binds the PKCE code verifier to the caller's CSRF state the
+// same way nonceFrom binds the nonce, so the authorization code is bound to
+// this sign-in attempt without a server-side store. The state is already a
+// high-entropy secret held only in the caller's signed cookie, and the
+// label keeps this derivation separate from the nonce's, so neither value
+// discloses the other. The result is 43 unreserved characters, which is
+// what RFC 7636 asks a verifier to be.
+//
+// The instance holds a client secret, so PKCE here is defence in depth
+// rather than the only thing binding the code. It is what OAuth 2.1
+// requires, and it costs no coordination, which is what keeps ADR-0019's
+// air-gapped deployment free of shared state.
+func verifierFrom(state string) string {
+	sum := sha256.Sum256([]byte("telecraft-oidc-verifier." + state))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// challengeFor is the S256 transformation RFC 7636 defines: the base64url
+// of the SHA-256 of the verifier's ASCII bytes. Only S256 is offered,
+// because "plain" leaves the code bound to a value the authorization
+// request already put in front of the browser.
+func challengeFor(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }

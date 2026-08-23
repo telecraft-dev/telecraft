@@ -30,6 +30,12 @@ type fakeIdP struct {
 
 	// tokenStatus lets a test fail the exchange.
 	tokenStatus int
+
+	// codeChallenge, when set, makes the token endpoint enforce PKCE the
+	// way RFC 7636 §4.6 asks: the exchange must present a code_verifier
+	// whose S256 transformation is this challenge. Empty means the issuer
+	// does not ask for PKCE, which is the case every other test runs in.
+	codeChallenge string
 }
 
 func newFakeIdP(t *testing.T) *fakeIdP {
@@ -56,6 +62,10 @@ func newFakeIdP(t *testing.T) *fakeIdP {
 		}
 		if err := r.ParseForm(); err != nil || r.PostForm.Get("code") == "" || r.PostForm.Get("client_secret") != "s3cret" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
+			return
+		}
+		if idp.codeChallenge != "" && challengeFor(r.PostForm.Get("code_verifier")) != idp.codeChallenge {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_grant"})
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"id_token": idp.signJWT(t, idp.claims)})
@@ -142,6 +152,67 @@ func TestOIDCBeginBuildsTheAuthorizationRequest(t *testing.T) {
 	}
 	if !strings.Contains(q.Get("scope"), "openid") {
 		t.Fatalf("scope %q does not request openid", q.Get("scope"))
+	}
+}
+
+// Acceptance (issue #124): the authorization request commits to an S256
+// challenge over the verifier the state derives, so the code the issuer
+// hands back is bound to this sign-in attempt and to nothing else.
+func TestOIDCBeginCarriesAnS256CodeChallenge(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+
+	to, err := o.Begin(context.Background(), "state-1", testCallback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := u.Query()
+	if got := q.Get("code_challenge_method"); got != "S256" {
+		t.Fatalf("code_challenge_method = %q, want S256", got)
+	}
+	if got, want := q.Get("code_challenge"), challengeFor(verifierFrom("state-1")); got != want {
+		t.Fatalf("code_challenge = %q, want %q", got, want)
+	}
+	// The challenge is the hash, never the verifier: sending the verifier
+	// through the browser would bind the code to a value an interceptor
+	// already holds.
+	if q.Get("code_challenge") == verifierFrom("state-1") {
+		t.Fatal("the authorization request carries the verifier itself, not its S256 challenge")
+	}
+	// Nothing is stored to make that work: the same state derives the same
+	// verifier on any instance, at any time (ADR-0019).
+	if verifierFrom("state-1") == verifierFrom("state-2") {
+		t.Fatal("two sign-in attempts derive the same verifier")
+	}
+	if verifierFrom("state-1") == nonceFrom("state-1") {
+		t.Fatal("the verifier and the nonce derive to the same value")
+	}
+}
+
+// Acceptance (issue #124): an exchange whose verifier does not match the
+// challenge is refused. The issuer here enforces PKCE over the challenge
+// state-1 committed to, and the exchange runs under a different state, so
+// the verifier Complete presents is the wrong one.
+func TestOIDCCompleteFailsOnAMismatchedVerifier(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+	idp.codeChallenge = challengeFor(verifierFrom("state-1"))
+	idp.claims = idp.goodClaims(o.ClientID, "state-2")
+
+	_, err := o.Complete(context.Background(), "state-2", testCallback, url.Values{"code": {"c0de"}})
+	if err == nil || !strings.Contains(err.Error(), "token exchange") {
+		t.Fatalf("Complete = %v, want the token endpoint to refuse the mismatched verifier", err)
+	}
+
+	// The matching state passes the same issuer, which is what shows the
+	// refusal above was the verifier and not the enforcement itself.
+	idp.claims = idp.goodClaims(o.ClientID, "state-1")
+	if _, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}}); err != nil {
+		t.Fatalf("Complete with the matching verifier = %v", err)
 	}
 }
 
