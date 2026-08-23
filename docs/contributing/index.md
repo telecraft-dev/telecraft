@@ -134,3 +134,9 @@ stay findable.
 If the answer turns out to be a decision, it becomes an ADR. If it turns out
 to be missing documentation, it becomes a page in this section or in the
 user-facing sections.
+
+One kind of report goes somewhere else. A suspected vulnerability belongs in
+GitHub's private advisory channel rather than the tracker, and
+[`SECURITY.md`](https://github.com/telecraft-dev/telecraft/blob/main/SECURITY.md)
+covers how to send it, which versions are supported, and what response to
+expect.

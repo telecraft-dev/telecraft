@@ -115,6 +115,13 @@ Four rules carry most of it:
 - **British English**, in prose and in identifiers: `colour`, `licence`,
   `normalise`, `--colour-bg`.
 
+## Security
+
+Report a vulnerability privately, through GitHub rather than the issue
+tracker. [`SECURITY.md`](SECURITY.md) has the channel, which versions are
+supported, what response to expect, and what a compromise does and does not
+reach.
+
 ## Licence
 
 [Elastic License 2.0](LICENSE). The source is public, and you may read it,
