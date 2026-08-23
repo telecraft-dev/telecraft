@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "description": "The Telecraft console: four Workspaces over the documented platform API (ADR-0042, ADR-0045).",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "dev:demo": "vite --mode demo",

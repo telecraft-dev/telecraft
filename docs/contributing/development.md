@@ -72,6 +72,25 @@ is the mechanical form of the neutral core boundary, so read
 [Architecture](architecture.md#the-neutral-core-boundary) before you change
 `vendorlint.yaml`.
 
+## Run the tracked-executable check
+
+```sh
+go run ./tools/binlint
+```
+
+The check asks git for the tracked files, reads the opening bytes of each,
+and fails when one declares itself a Mach-O, ELF or PE executable, naming
+the file. A clean run prints how many files it scanned and exits 0. One
+flag exists: `-root` names the repository to scan, defaulting to `.`.
+
+It reads magic bytes rather than the executable bit, because the bit is set
+on every checked-in shell script and says nothing about what a file is. If
+it fails, the fix is `git rm --cached` on the path it names, plus a line in
+`.gitignore` so the same local build cannot be staged again. Build output
+from the tools themselves is already ignored: `go build ./tools/vendorlint`
+writes into the working directory, which is how a 3.4 MB binary came to
+live at the repository root (issue #122).
+
 ## Golden files
 
 Two suites compare output against checked-in golden files. Regenerate them

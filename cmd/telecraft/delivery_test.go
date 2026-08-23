@@ -137,13 +137,122 @@ func TestDeliveryCommandPrintsUndescribedStructureSeparately(t *testing.T) {
 	}
 }
 
-func TestDeliveryCommandRequiresItsFlags(t *testing.T) {
-	var stdout, stderr bytes.Buffer
-	if code := run([]string{"delivery"}, &stdout, &stderr); code != 2 {
-		t.Fatalf("exit %d, want 2", code)
-	}
+// The served path runs the same computation under the profile that
+// catalogues the Supervisor's injections, so naming it is not cosmetic
+// (ADR-0046).
+func TestDeliveryCommandRunsTheServedPathUnderItsOwnProfile(t *testing.T) {
 	intended, effective := deliveryFixture(t)
-	if code := run([]string{"delivery", "-intended", intended, "-effective", effective, "-path", "sideloaded"}, &stdout, &stderr); code != 2 {
-		t.Fatalf("exit %d for an invented delivery path, want 2", code)
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"delivery", "-intended", intended, "-effective", effective, "-path", "served"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr:\n%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "path              served") {
+		t.Errorf("output does not name the served path:\n%s", out)
+	}
+	if strings.Contains(out, "profile           exact") {
+		t.Errorf("the served path ran under the git path's profile:\n%s", out)
 	}
 }
+
+// Neither side is required to carry a commit stamp, and an unstamped
+// config prints as unstamped rather than as an empty column.
+func TestDeliveryCommandPrintsUnstampedConfigsAsUnstamped(t *testing.T) {
+	dir := t.TempDir()
+	bare := "receivers:\n  otlp:\n    protocols:\n      grpc: {}\nservice:\n  pipelines:\n    traces:\n      receivers: [otlp]\n"
+	writeFile(t, dir, "intended.yaml", bare)
+	writeFile(t, dir, "effective.yaml", bare)
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"delivery", "-intended", dir + "/intended.yaml", "-effective", dir + "/effective.yaml", "-path", "git"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, stderr:\n%s", code, stderr.String())
+	}
+	for _, want := range []string{"intended_commit   (unstamped)", "effective_commit  (unstamped)"} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("output lacks %q:\n%s", want, stdout.String())
+		}
+	}
+}
+
+// A config the normaliser refuses leaves the comparison unknown with the
+// cause beside it. Not knowing is a normal state, so this is still exit 0
+// (ADR-0004, ADR-0008): only a status that could not be computed at all is
+// exit 2.
+func TestDeliveryCommandPrintsAnUnreadableConfigAsUnknown(t *testing.T) {
+	intended, effective := deliveryFixture(t)
+	if err := os.WriteFile(effective, []byte("receivers: [otlp\nservice: {\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+
+	code := run([]string{"delivery", "-intended", intended, "-effective", effective, "-path", "git"}, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("exit %d, want 0 — an unreadable side is a reading, not a failure\nstderr:\n%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "comparison        unknown cause=") {
+		t.Errorf("output does not carry the unknown comparison and its cause:\n%s", out)
+	}
+}
+
+func TestDeliveryCommandRequiresItsFlags(t *testing.T) {
+	intended, effective := deliveryFixture(t)
+	missing := t.TempDir() + "/nowhere.yaml"
+	for name, tc := range map[string]struct {
+		args []string
+		want string
+	}{
+		"nothing at all": {
+			args: []string{"delivery"},
+			want: "delivery: -intended, -effective and -path are required",
+		},
+		"no path": {
+			args: []string{"delivery", "-intended", intended, "-effective", effective},
+			want: "delivery: -intended, -effective and -path are required",
+		},
+		"a flag that does not exist": {
+			args: []string{"delivery", "-intent", intended},
+			want: "flag provided but not defined: -intent",
+		},
+		// There are two delivery paths and no third (REQ-041), so an
+		// invented one is named back rather than treated as either.
+		"a delivery path nobody delivers on": {
+			args: []string{"delivery", "-intended", intended, "-effective", effective, "-path", "sideloaded"},
+			want: `delivery: unknown delivery path "sideloaded" — served or git (REQ-041)`,
+		},
+		"an intended artefact that is not there": {
+			args: []string{"delivery", "-intended", missing, "-effective", effective, "-path", "git"},
+			want: "delivery: open " + missing,
+		},
+		"an effective config that is not there": {
+			args: []string{"delivery", "-intended", intended, "-effective", missing, "-path", "git"},
+			want: "delivery: open " + missing,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := run(tc.args, &stdout, &stderr); code != 2 {
+				t.Fatalf("exit %d, want 2\nstderr:\n%s", code, stderr.String())
+			}
+			if !strings.Contains(stderr.String(), tc.want) {
+				t.Errorf("stderr lacks %q:\n%s", tc.want, stderr.String())
+			}
+			if stdout.Len() != 0 {
+				t.Errorf("a refused invocation printed a status:\n%s", stdout.String())
+			}
+		})
+	}
+}
+
+// Deliberately uncovered: the branch that prints a known remote state, and
+// the one that reports a computation error. Both are unreachable from this
+// subcommand — a file comparison never carries a RemoteConfigStatus
+// reading, and the only errors the computation returns are an invalid path
+// or an invalid remote state, which the flag validation above has already
+// refused.

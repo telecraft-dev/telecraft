@@ -19,3 +19,14 @@ devenv/run/
 
 # Python bytecode from the pack generator (docs/branding/pack/tools/).
 __pycache__/
+
+# Build output from the repository's own tools. `go build ./tools/docslint`
+# drops a `docslint` executable in whatever directory it is run from, which
+# for these is the repository root, and one of those (`vendorlint`) was
+# committed and lived in the tree for the whole of the build (issue #122).
+# The tools are invoked with `go run`, so nothing needs the file. Anything
+# these lines miss is caught by `go run ./tools/binlint`, which fails on any
+# tracked file that is a compiled executable.
+/binlint
+/docslint
+/vendorlint

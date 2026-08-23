@@ -39,17 +39,20 @@ running them because someone fixed a typo in a guide spends a service
 container and leaves external side effects behind for no reading. When the
 runners are slow, that wait is the whole review latency.
 
-**Two lints are the deliberate exception.** Both run on everything,
-always, because both scan `docs/**`, which makes a documentation-only
-change exactly the change that can break them. The vendor-word lint reads
-code and prose alike, and a vendor word arrives as easily through a guide
-as through a Go file (ADR-0001). The front-matter check reads the
-published pages, and it exists because **the site is built in a different
-repository** (issue #74): the front matter and `docs/nav.yaml` are the
-whole contract between here and there, so a block that does not parse
-fails over there, after merge, in a build nobody here is watching. That is
-not hypothetical — `docs/reference/estate-layout.md` carried an unquoted
-colon in its description and took the whole documentation build down.
+**Three checks are the deliberate exception.** All three run on
+everything, always, because none of them reads only code, which makes a
+documentation-only change exactly the change that can break them. The
+vendor-word lint reads code and prose alike, and a vendor word arrives as
+easily through a guide as through a Go file (ADR-0001). The front-matter
+check reads the published pages, and it exists because **the site is built
+in a different repository** (issue #74): the front matter and
+`docs/nav.yaml` are the whole contract between here and there, so a block
+that does not parse fails over there, after merge, in a build nobody here
+is watching. That is not hypothetical — `docs/reference/estate-layout.md`
+carried an unquoted colon in its description and took the whole
+documentation build down. The tracked-executable check reads the index, so
+its subject is not a language at all: a build artefact committed beside a
+guide is as much a hit as one committed beside a Go file.
 
 Two details worth knowing before you rely on this:
 
@@ -70,6 +73,7 @@ Two details worth knowing before you rely on this:
 | What changed | a diff against the base | Nothing. It decides what the rest of the table does |
 | Vendor-word lint (ADR-0001) | `go run ./tools/vendorlint` | The neutral core holds: no vendor word in `cmd/`, `internal/`, `console/` or the normative docs, and provider implementations stay product-qualified |
 | Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the site can read — the contract between this repository and the site built from it |
+| No tracked binaries (issue #122) | `go run ./tools/binlint` | No tracked file is a compiled executable. Build artefacts are built, never committed, and never shipped in a clone or a source tarball |
 | Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests — with no Docker and no network |
 | TelemetryProvider live | the `Live` suite against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only a test double |
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
@@ -84,6 +88,14 @@ property of the whole tree, and no reviewer reads the whole tree.
 **The front-matter check** exists because its failure lands in someone
 else's repository. A reviewer here sees a sentence changed in a guide and
 has no reason to think about YAML.
+
+**The tracked-executable check** exists because a reviewer reading a diff
+sees a path rather than a file type. A 3.4 MB Mach-O `vendorlint` binary
+sat at the repository root from the first scaffolding commit until issue
+#122, reaching every clone and every generated source tarball, and nothing
+in review was ever going to notice it. The check reads magic bytes rather
+than the executable bit, which is set on every checked-in shell script and
+says nothing about what a file is.
 
 **`check:zero-cdn`** runs over the *built bundle*, not the source, because
 the air-gap rule is about what the browser fetches and a bundler can
@@ -139,6 +151,7 @@ that the repository cannot.
 go build ./... && go vet ./... && go test ./...
 go run ./tools/vendorlint
 go run ./tools/docslint
+go run ./tools/binlint
 
 cd console
 npm ci
@@ -199,6 +212,30 @@ immutable; `release` is the only ref that moves, and `git rev-parse
 release` answers what the demo is built from.
 
 Cutting a release is [its own page](releases.md).
+
+## Dependency updates
+
+`.github/dependabot.yml` covers three ecosystems: the root Go module, the
+console's npm tree, and the actions the workflows use. It is not a workflow,
+and it fires on a schedule rather than on anything that happens here, which
+is why it is absent from the table at the top of this page.
+
+Each ecosystem is grouped and weekly, so a week of upstream releases arrives
+as one pull request per ecosystem rather than one per dependency. Those are
+ordinary pull requests: `ci.yml` gates them exactly as it gates yours, so a
+grouped bump either goes green or names the dependency that broke it, and
+the reviewer's question is the one CI already answers. The file carries the
+full reasoning in its comments (issue #127).
+
+Two things to know before you rely on it:
+
+- **Security updates ignore the schedule.** Dependabot raises a fix when it
+  learns of the advisory, not on the next Monday.
+- **Only the listed directories are watched.** The root `go.mod` and
+  `console/package.json` are the tree's shipping manifests. The `go.mod`
+  files under `docs/prototypes/` and `internal/catalogue/testdata/` are a
+  spike record and a vendored fixture set, and nothing builds them, so
+  nothing updates them either.
 
 ## Changing a workflow
 

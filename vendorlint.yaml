@@ -64,7 +64,7 @@ scopes:
   # prototype verdicts and branding notes are excluded: they record external
   # reality (survey quotes, product names, collision sweeps) verbatim.
   - name: docs
-    include: [README.md, docs/**]
+    include: [README.md, SECURITY.md, docs/**]
     exclude: [docs/research/**, docs/prototypes/**, docs/branding/**]
     rules:
       # The allow list also covers mention-not-use: naming the banned word in

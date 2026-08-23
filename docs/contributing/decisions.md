@@ -1,6 +1,6 @@
 ---
 title: Decisions and the design corpus
-description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the 52 ADRs.
+description: The ADR process, why an accepted ADR is amended rather than edited, the traceability matrix, and a themed map of the ADRs.
 order: 8
 ---
 
@@ -66,7 +66,7 @@ existing requirement, update the row to cite it.
 
 | Path | What it is |
 |---|---|
-| `docs/adr/` | The decision corpus: 54 records, ADR-0000 to ADR-0053. Normative. This is what code is measured against. |
+| `docs/adr/` | The decision corpus: one numbered record per decision, from ADR-0000 upward. Normative. This is what code is measured against. |
 | `docs/requirements/` | `product-requirements.md`, the numbered requirements the product exists to satisfy, and `traceability.md`, mapping each to the ADRs and build phase that deliver it. Normative. |
 | `docs/research/` | Dated findings dossiers and the archived shaping tickets: the evidence ADRs cite. Not normative, and never edited to match a later decision. It records what was found, when. |
 | `docs/prototypes/` | Verdict one-pagers from throwaway prototypes, plus the normaliser spike's verdict. Prototype code is never merged; the verdict is what survives, and several ADRs rest on one. |
@@ -80,7 +80,7 @@ The vendor-word lint runs over `docs/**` but excludes the research, prototype
 and branding trees, because those record external reality verbatim: survey
 quotes, product names, collision sweeps.
 
-## A map of the 53 ADRs
+## A map of the ADRs
 
 Read ADR-0000 first, then ADR-0001, ADR-0002, ADR-0003 and ADR-0004. Those
 five carry the principles everything else assumes. After that, read the group
@@ -112,6 +112,7 @@ How the product decides whether something is right.
 - **ADR-0034** Schema conformance: registry substrate, two placements, Service-owned findings
 - **ADR-0037** Exemption authority via requirement-owner review; subtree scope
 - **ADR-0038** The Expectation engine: machinery behind existing verdicts, never new vocabulary
+- **ADR-0054** The delivery cross judges the keys the artefact asserts; undescribed components are reported apart
 
 ### The estate model
 
@@ -164,6 +165,7 @@ The contracts a vendor implementation answers. See
 - **ADR-0008** `EstateProvider`, keyed on the collector, with two implementations from day one
 - **ADR-0035** `InventoryProvider` floors; `never_seen` teeth and `under_populated`
 - **ADR-0036** The `EstateProvider` contract: capability declaration, `as_of`, staleness demotion, shipped test kit
+- **ADR-0055** A row's Effective reading is derived from the collectors that report it; `rows.yaml` becomes an override
 - **ADR-0039** Self-telemetry ingestion: a rendered pattern over the `TelemetryProvider` seam
 - **ADR-0053** The renderer completes the self-telemetry endpoint per signal
 - **ADR-0040** Metering: derived flow readings, computed on read, stored nowhere

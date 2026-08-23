@@ -27,7 +27,7 @@ Read the page that matches what you are doing:
   conformance kit.
 - [Console](console.md) covers the four Workspaces, the card data contract,
   the canvas engine, and the zero-CDN rule.
-- [Decisions](decisions.md) explains the ADR process and maps the 52 ADRs by
+- [Decisions](decisions.md) explains the ADR process and maps the ADRs by
   theme.
 - [Documentation](documentation.md) explains how this documentation system
   works and how to add a page.
@@ -115,6 +115,7 @@ Each remaining job guards something specific:
 | Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, passes vet, and passes its unit tests, with no Docker and no network. |
 | Vendor-word lint (ADR-0001) | `go run ./tools/vendorlint` | The neutral core holds. No vendor word appears in `cmd/`, `internal/`, `console/` or the normative docs, and provider implementations stay product-qualified. |
 | Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the documentation site can read. The site is built in another repository, so a malformed block fails there rather than here. |
+| No tracked binaries (issue #122) | `go run ./tools/binlint` | No tracked file is a compiled executable. A build artefact is built, never committed, so nothing ships a platform-specific binary in a clone or a source tarball. |
 | Console (ADR-0045) | `npm ci`, `npm run typecheck`, `npm test`, `npm run check:palette`, `npm run build`, `npm run check:zero-cdn`, `npm run check:bundle-budget`, `npm run e2e` | The console typechecks, its unit tests and Playwright suite pass, the design tokens clear their contrast and colour-vision floors (ADR-0047), the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling (issue #125). |
 | TelemetryProvider live (Elasticsearch) | `go test ./internal/provider/telemetry/ -run Live -v -count=1` against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only against a test double. |
 | Forge adapter live (GitHub App) | `go test ./internal/provider/forge/ -run Live -v -count=1` | The pull-request flow works against the real forge API. The suite skips loudly when the credentials are absent, so the job stays green without them. |
@@ -134,3 +135,9 @@ stay findable.
 If the answer turns out to be a decision, it becomes an ADR. If it turns out
 to be missing documentation, it becomes a page in this section or in the
 user-facing sections.
+
+One kind of report goes somewhere else. A suspected vulnerability belongs in
+GitHub's private advisory channel rather than the tracker, and
+[`SECURITY.md`](https://github.com/telecraft-dev/telecraft/blob/main/SECURITY.md)
+covers how to send it, which versions are supported, and what response to
+expect.

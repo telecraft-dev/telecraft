@@ -52,21 +52,24 @@ type oidcDiscovery struct {
 }
 
 // Begin implements RedirectProvider: the authorization request URL. The
-// nonce is derived from the caller's state, so replay protection needs no
-// server-side storage — Complete recomputes it and requires the ID token
-// to carry it.
+// nonce and the PKCE verifier are both derived from the caller's state, so
+// replay protection and code binding need no server-side storage. Complete
+// recomputes both, requires the ID token to carry the nonce, and presents
+// the verifier the challenge here commits to.
 func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, error) {
 	disc, err := o.discover(ctx)
 	if err != nil {
 		return "", err
 	}
 	q := url.Values{
-		"response_type": {"code"},
-		"client_id":     {o.ClientID},
-		"redirect_uri":  {callbackURL},
-		"scope":         {"openid profile email"},
-		"state":         {state},
-		"nonce":         {nonceFrom(state)},
+		"response_type":         {"code"},
+		"client_id":             {o.ClientID},
+		"redirect_uri":          {callbackURL},
+		"scope":                 {"openid profile email"},
+		"state":                 {state},
+		"nonce":                 {nonceFrom(state)},
+		"code_challenge":        {challengeFor(verifierFrom(state))},
+		"code_challenge_method": {"S256"},
 	}
 	sep := "?"
 	if strings.Contains(disc.AuthorizationEndpoint, "?") {
@@ -96,6 +99,7 @@ func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params u
 		"redirect_uri":  {callbackURL},
 		"client_id":     {o.ClientID},
 		"client_secret": {o.ClientSecret},
+		"code_verifier": {verifierFrom(state)},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, disc.TokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -144,11 +148,27 @@ type idClaims struct {
 	Subject           string   `json:"sub"`
 	Audience          audience `json:"aud"`
 	Expires           int64    `json:"exp"`
+	IssuedAt          int64    `json:"iat"`
+	NotBefore         int64    `json:"nbf"`
 	Nonce             string   `json:"nonce"`
 	Name              string   `json:"name"`
 	PreferredUsername string   `json:"preferred_username"`
 	Email             string   `json:"email"`
 }
+
+// clockSkew is how far this instance's clock may disagree with the
+// issuer's before a sound ID token is refused. Thirty seconds is the size
+// the two ends of that comparison argue for. It is wider than the drift a
+// host keeps under normal time discipline, and wide enough for an
+// air-gapped deployment whose issuer is disciplined by a local time source
+// rather than a public pool (ADR-0019), where a sign-in must not start
+// failing because the two clocks last agreed some hours ago. It is also
+// well under a minute, so a token whose expiry passed a minute ago is
+// still refused and the allowance never meaningfully lengthens the window
+// a stolen token is replayable in. Both directions matter: the allowance
+// applies to exp, and to iat and nbf on the other side, where a clock that
+// runs fast at the issuer is what makes a valid token look premature.
+const clockSkew = 30 * time.Second
 
 // audience decodes the aud claim, which is one string or a list of them.
 type audience []string
@@ -168,7 +188,8 @@ func (a *audience) UnmarshalJSON(raw []byte) error {
 }
 
 // verifyIDToken checks signature (RS256 against the issuer's JWKS), issuer,
-// audience, expiry and nonce. Anything else the token carries is ignored.
+// audience, the time claims and nonce. Anything else the token carries is
+// ignored.
 func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, wantNonce string) (idClaims, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {
@@ -210,13 +231,23 @@ func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, want
 	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
 		return idClaims{}, fmt.Errorf("id_token claims: %w", err)
 	}
+	// The time claims are read against one instant, so a verification that
+	// straddles a second cannot judge two of them by different clocks. iat
+	// and nbf are optional in an ID token, so each is checked only when the
+	// token asserts it; exp is mandatory, and a token that omits it reads
+	// as expired at the epoch.
+	now := time.Now()
 	switch {
 	case claims.Issuer != o.Issuer:
 		return idClaims{}, fmt.Errorf("id_token issuer %q is not the configured issuer %q", claims.Issuer, o.Issuer)
 	case !claims.Audience.contains(o.ClientID):
 		return idClaims{}, fmt.Errorf("id_token audience does not include this client")
-	case time.Now().Unix() >= claims.Expires:
+	case now.Add(-clockSkew).Unix() >= claims.Expires:
 		return idClaims{}, fmt.Errorf("id_token has expired")
+	case claims.NotBefore != 0 && now.Add(clockSkew).Unix() < claims.NotBefore:
+		return idClaims{}, fmt.Errorf("id_token is not valid yet: its nbf claim is further ahead than the clock-skew allowance covers")
+	case claims.IssuedAt != 0 && now.Add(clockSkew).Unix() < claims.IssuedAt:
+		return idClaims{}, fmt.Errorf("id_token is issued in the future: its iat claim is further ahead than the clock-skew allowance covers")
 	case claims.Nonce != wantNonce:
 		return idClaims{}, fmt.Errorf("id_token nonce does not match this sign-in attempt")
 	}
@@ -326,5 +357,41 @@ func (o *OIDC) client() *http.Client {
 // protection is stateless end to end.
 func nonceFrom(state string) string {
 	sum := sha256.Sum256([]byte("telecraft-oidc-nonce." + state))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// verifierFrom binds the PKCE code verifier to the caller's CSRF state the
+// same way nonceFrom binds the nonce, so the authorization code is bound to
+// this sign-in attempt without a server-side store. The label keeps this
+// derivation separate from the nonce's, so neither value discloses the
+// other. The result is 43 unreserved characters, which is what RFC 7636
+// asks a verifier to be.
+//
+// Be precise about what this buys. The state is high-entropy, but it is
+// not a secret: it travels in the authorisation URL and comes back in the
+// callback query, where the handler reads it. Anyone holding the callback
+// can therefore recompute the verifier from this source. Against an
+// intercepted authorisation code, which is the attack PKCE was written
+// for, the derivation adds nothing, and the client secret is still what
+// binds the code to this instance.
+//
+// What it does buy is conformance with OAuth 2.1, which makes PKCE
+// mandatory, and refusal of a code substituted from a different sign-in
+// attempt, whose state derives a different verifier. It costs no
+// coordination, which is what keeps ADR-0019's air-gapped deployment free
+// of shared state. Deriving the verifier from separate random material
+// carried in the signed cookie would close the interception gap too, at
+// the price of a change to the RedirectProvider seam.
+func verifierFrom(state string) string {
+	sum := sha256.Sum256([]byte("telecraft-oidc-verifier." + state))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// challengeFor is the S256 transformation RFC 7636 defines: the base64url
+// of the SHA-256 of the verifier's ASCII bytes. Only S256 is offered,
+// because "plain" leaves the code bound to a value the authorization
+// request already put in front of the browser.
+func challengeFor(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
