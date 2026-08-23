@@ -17,7 +17,7 @@ the exit gate passes.
 | G5 | Conformance extensions | Schema-conformance requirement-kind ADR incl. live-check-tap ruling (OQ-4); expected-but-never-seen ADR; exemption-inheritance ADR; EstateProvider contract ADR (OQ-6) | Needs G1 (authority) and G4 (delivery status as input). Defines Expectation before G6 builds on it. |
 | G6 | Pipeline observability & the Expectation engine | Expectation model ADR; self-telemetry ingestion ADR; metering ADR; card data-contract ADR | Most novel ground; inherits settled models and P3/P4 verdicts. |
 | G7 | UI information architecture | Surface inventory + navigation ADR; winning composer variant ADR; canvas interaction ADR; tech stack ADR (OQ-14) | Last: consumes every prototype verdict. |
-| — | Closing consistency grill | Amendments only | Danger pairs: tenancy↔repo-layout↔attribution; cohort↔GitOps path; expectation-findings↔"can't-report ≠ failing". |
+| n/a | Closing consistency grill | Amendments only | Danger pairs: tenancy↔repo-layout↔attribution; cohort↔GitOps path; expectation-findings↔"can't-report ≠ failing". |
 
 ## Prototype track (`/prototype`, throwaway; verdict one-pagers in `docs/prototypes/`)
 
@@ -46,28 +46,28 @@ re-verify only what a session forks on.
 
 ## Build phases (what `/to-issues` consumes)
 
-- **P0 Scaffolding** — repo layout, CI, the vendor-word lint (before the code
+- **P0 Scaffolding**: repo layout, CI, the vendor-word lint (before the code
   it lints), docs published under the final name.
-- **P1 Neutral core + Conformance** — port the prior evaluator under neutral
+- **P1 Neutral core + Conformance**: port the prior evaluator under neutral
   terminology; real seams; `Elasticsearch` as first `TelemetryProvider`; CI
   check mode; early **normaliser spike** (riskiest component, ADR-0005).
-- **P2 Catalogue + Authoring backend (headless)** — catalogue ingestion;
+- **P2 Catalogue + Authoring backend (headless)**: catalogue ingestion;
   blueprint schema + allow-list validation; renderer with hard rules; forge
   adapter PR flow (GitHub App first, ADR-0028). Testable entirely via git
   diffs. The estate source-set abstraction (primary + satellite repos,
   ADR-0027) is modelled here from the start; satellite support itself lands
   no earlier than P4 (its content gating needs the console).
-- **P3 Serving** — stateless OpAMP server, commit stamping, delivery status
+- **P3 Serving**: stateless OpAMP server, commit stamping, delivery status
   via the normaliser, both `EstateProvider` implementations, empty-config-map
   guard, bootstrap behaviour per G4.
-- **P4 Console v1** — estate/team views, winning composer variant,
+- **P4 Console v1**: estate/team views, winning composer variant,
   conformance + delivery reporting.
-- **P5 Rollout + Observability** — staged rollout per G4; Expectation engine
+- **P5 Rollout + Observability**: staged rollout per G4; Expectation engine
   and cards per G6. Last because the differentiator composes all three
   readings live.
 
 ## Exit gate for `/to-issues`
 
 Traceability matrix has zero unmapped rows; name decided; all sessions closed
-(ADRs merged, glossary updated, open-questions rows flipped); P1–P4 verdict
+(ADRs merged, glossary updated, open-questions rows flipped); P1 to P4 verdict
 one-pagers exist and G7 cites them.

@@ -15,8 +15,8 @@ import { Button } from '../../ui/Button'
 import { Chip } from '../../ui/Chip'
 import { Icon } from '../../ui/Icon'
 
-// A · Composer, the primary editing surface (ADR-0043 §1): palette left —
-// Catalogue ∩ effective Allow-list, judged live (ADR-0022 §5) — per-signal
+// A · Composer, the primary editing surface (ADR-0043 §1): palette left
+// (Catalogue ∩ effective Allow-list, judged live, ADR-0022 §5), per-signal
 // lanes right carrying floor chips and per-(component, signal) stability,
 // findings as a full-width strip below. Three add gestures, one semantics
 // (§4): click-add to every supported signal, per-lane targeted add, and
@@ -84,7 +84,7 @@ export function Palette({
                         trap: the palette enforces nothing (ADR-0022 §5), and
                         a floor-breaching add produces a finding, not a wall.
                         A read-only remit renders the same facts with no add
-                        gesture — never a dead control (ADR-0019 §2). */}
+                        gesture, never a dead control (ADR-0019 §2). */}
                     {editable ? (
                       <button
                         type="button"
@@ -114,7 +114,7 @@ export function Palette({
           </ul>
         </div>
       ))}
-      {/* The admission line: hiding without counting would read as healthy (P1 verdict). */}
+      {/* The admission line: hiding without counting would read as healthy. */}
       <p className="palette-hidden" data-testid="palette-hidden">
         {hidden} component{hidden === 1 ? '' : 's'} hidden by your allow-list
       </p>

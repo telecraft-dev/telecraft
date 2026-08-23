@@ -9,7 +9,7 @@ import (
 // ADR-0017 §3 as a structural guarantee: no single blended score is
 // representable anywhere in this package's API. The ratio is an integer
 // pair per finding kind, so a float field or a float-returning method is
-// exactly the shape a blend would take — and neither may exist, whatever
+// exactly the shape a blend would take, and neither may exist, whatever
 // it gets called.
 func TestNoBlendedScoreIsRepresentable(t *testing.T) {
 	roots := []reflect.Type{
@@ -29,7 +29,7 @@ func TestNoBlendedScoreIsRepresentable(t *testing.T) {
 		}
 		switch typ.Kind() {
 		case reflect.Float32, reflect.Float64:
-			t.Errorf("%s is a float — a blended score in the making (ADR-0017)", path)
+			t.Errorf("%s is a float: a blended score in the making", path)
 			return
 		case reflect.Struct:
 		default:
@@ -42,12 +42,12 @@ func TestNoBlendedScoreIsRepresentable(t *testing.T) {
 		for i := 0; i < typ.NumField(); i++ {
 			f := typ.Field(i)
 			if f.Type.Kind() == reflect.Float32 || f.Type.Kind() == reflect.Float64 {
-				t.Errorf("%s.%s is a float — a blended score in the making (ADR-0017)", path, f.Name)
+				t.Errorf("%s.%s is a float: a blended score in the making", path, f.Name)
 			}
 			lower := strings.ToLower(f.Name)
 			for _, bad := range forbidden {
 				if strings.Contains(lower, bad) {
-					t.Errorf("%s.%s: no field may carry a %s score (ADR-0017)", path, f.Name, bad)
+					t.Errorf("%s.%s: no field may carry a %s score", path, f.Name, bad)
 				}
 			}
 			walkType(f.Type, path+"."+f.Name, seen)
@@ -65,13 +65,13 @@ func TestNoBlendedScoreIsRepresentable(t *testing.T) {
 			lower := strings.ToLower(m.Name)
 			for _, bad := range forbidden {
 				if strings.Contains(lower, bad) {
-					t.Errorf("%s.%s: no method may offer a %s score (ADR-0017)", typ.Name(), m.Name, bad)
+					t.Errorf("%s.%s: no method may offer a %s score", typ.Name(), m.Name, bad)
 				}
 			}
 			for o := 0; o < m.Type.NumOut(); o++ {
 				out := m.Type.Out(o)
 				if out.Kind() == reflect.Float32 || out.Kind() == reflect.Float64 {
-					t.Errorf("%s.%s returns a float — a blended score in the making (ADR-0017)", typ.Name(), m.Name)
+					t.Errorf("%s.%s returns a float: a blended score in the making", typ.Name(), m.Name)
 				}
 			}
 		}
@@ -87,11 +87,11 @@ func TestAuthoredSetMatchesADR0016(t *testing.T) {
 	}
 	for _, k := range authored {
 		if !k.Authored() {
-			t.Errorf("%s must be in the authored set (ADR-0016)", k)
+			t.Errorf("%s must be in the authored set", k)
 		}
 	}
 	if KindCollector.Authored() {
-		t.Error("a collector must never be authored or ownable (ADR-0016)")
+		t.Error("a collector must never be authored or ownable")
 	}
 	if ObjectKind("dashboard").Authored() {
 		t.Error("an unknown kind must not read as authored")

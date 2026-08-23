@@ -7,7 +7,7 @@ import (
 )
 
 // Fetch materialises the source tree for one pinned release tag into dir: a
-// sparse, depth-1 git checkout of only the metadata.yaml and go.mod files —
+// sparse, depth-1 git checkout of only the metadata.yaml and go.mod files:
 // a few megabytes, not the whole repository. It returns the commit the tag
 // resolved to, which the artefact records so every Catalogue is reproducible
 // and auditable (ADR-0020).

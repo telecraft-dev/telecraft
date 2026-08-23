@@ -18,7 +18,7 @@ content**.
 ### 1. Primary repo layout
 
 ```
-teams.yaml                      # the Team-tree seam (ADR-0017) — always here
+teams.yaml                      # the Team-tree seam (ADR-0017), always here
 teams/
   <team-id>/
     allowlist.yaml              # the team's narrowing list (ADR-0021)
@@ -35,12 +35,12 @@ rendered/
 - **Team directories are flat** (`teams/<team-id>/`); the hierarchy lives
   only in `teams.yaml`. Nested paths were rejected: reparenting a team would
   rewrite every path and break every id. Generated CODEOWNERS still includes
-  ancestors — it derives from the tree, not the directory shape.
+  ancestors: it derives from the tree, not the directory shape.
 - **`rendered/` is a separate top-level tree**: the one root the stateless
   OpAMP server reads (ADR-0013), a future Cohort target (OQ-1), protected
   wholesale ("humans never commit here"), and a legible authored-vs-generated
   boundary for drift's Intended reading (ADR-0005).
-- **Catalogues are never estate-repo content** — they are instance-side
+- **Catalogues are never estate-repo content**: they are instance-side
   artefacts with their own import pipeline (ADR-0020).
 
 ### 2. Satellite repos (the exception, not the path)
@@ -60,18 +60,18 @@ rendered/
   become dependencies of the open estate, so privacy never blocks anyone
   else's render.
 - **The server reads all repos' `rendered/` trees** (1 + k credentials, k
-  small — ADR-0028's onboarding model). ADR-0018's rejection reasons were
+  small: ADR-0028's onboarding model). ADR-0018's rejection reasons were
   load-bearing against repo-per-team as *the model* (N repos, N-PR fan-out);
   they are bounded here, and the fan-out inverts: a shared-Component change
-  re-renders satellite Tiers as a platform PR *in the satellite repo* —
+  re-renders satellite Tiers as a platform PR *in the satellite repo*,
   exactly the review the sensitive team wants.
 
 ### 3. The visibility principle
 
 **Verdicts are estate-public; content may be subtree-private.** Compliance
-numbers, finding kinds and object *ids* always roll up (ADR-0017 untouched —
+numbers, finding kinds and object *ids* always roll up (ADR-0017 untouched:
 nobody is privately non-compliant; central InfoSec sees the whole estate).
-What gates is content: source bodies, rendered YAML, flyouts, diffs —
+What gates is content: source bodies, rendered YAML, flyouts, diffs, all
 visible to subtree members only. **UI gating mirrors git reality, never
 substitutes for it**: the satellite's forge permissions are the boundary and
 the platform enforces the same subtree rule in UI/API. Stated honestly: on a
@@ -86,7 +86,7 @@ verdict federation for that case is registered as OQ-17.
   single-repo the degenerate case) must be in schema and architecture from
   day one; satellite support itself is implemented in a later build phase
   (noted in `docs/plan.md`).
-- Content gating adds object-level read authz to the console — scoped
+- Content gating adds object-level read authz to the console, scoped
   strictly to the subtree rule, not a general ACL system.
 
 ## Sources

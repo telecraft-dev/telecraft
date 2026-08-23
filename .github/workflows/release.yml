@@ -4,7 +4,7 @@ name: Release
 # Both public surfaces build this repository from a git ref rather than from
 # something we hand them: estate-demo checks out the platform and runs its
 # evaluators, and the documentation site consumes the token sheets. So the
-# thing that has to exist for issue #86 is not a binary — it is a ref that
+# thing that has to exist for issue #86 is not a binary. It is a ref that
 # stopped moving, with the sheets that travel to the second repository
 # attached to it.
 #
@@ -13,8 +13,8 @@ name: Release
 # `go build ./cmd/telecraft` (docs/guides/quickstart.md), and publishing a
 # binary buys a platform matrix, checksums per platform and an upgrade path
 # that nothing yet asks for. The console bundle is absent because it is
-# built per deployment — demo mode reads a snapshot beside it, instance mode
-# calls a server (ADR-0045) — so a single prebuilt bundle would be the wrong
+# built per deployment (demo mode reads a snapshot beside it, instance mode
+# calls a server, ADR-0045), so a single prebuilt bundle would be the wrong
 # one for at least one consumer.
 #
 # Cutting a release is one push of one annotated tag. Everything below is

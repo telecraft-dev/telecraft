@@ -1,17 +1,17 @@
 // Package estate defines the EstateProvider seam: the reading of the
 // collector estate (REQ-044, ADR-0008, ADR-0036). The seam is keyed on the
-// collector and returns the estate in one call — for every collector the
+// collector and returns the estate in one call: for every collector the
 // implementation can see: the identity attributes selectors match on, the
 // Effective config the collector itself reports (pipelines with component
-// order preserved, never a flat component list — ADR-0004), the recursive
+// order preserved, never a flat component list, ADR-0004), the recursive
 // component-health tree (never the flattened roll-up), and delivery status
 // in OpAMP's RemoteConfigStatus vocabulary verbatim (ADR-0004).
 //
 // An implementation declares once, statically, which readings it can ever
 // populate (ADR-0036 §1). The declaration splits "no reading" into two
-// honest states: incapable — declared, rendered "not applicable", never a
-// failure — versus silent — declared capable but not delivering, which is
-// a provider fault and is loud. Not knowing stays a normal state
+// honest states: incapable (declared, rendered "not applicable", never a
+// failure) versus silent (declared capable but not delivering, which is
+// a provider fault and is loud). Not knowing stays a normal state
 // (ADR-0008): a collector the reading cannot find comes back with every
 // capable reading Known false and a cause, never an error.
 //
@@ -24,7 +24,7 @@
 // Freshness is the platform's arithmetic, never the provider's claim
 // (ADR-0036 §3): the implementation declares its refresh cadence, and
 // ForEvaluation demotes any reading past the staleness horizon to Known
-// false before it can feed a verdict — while surfaces keep the original
+// false before it can feed a verdict, while surfaces keep the original
 // reading for last-known-plus-age display. Stale data may inform a human,
 // never a verdict.
 //
@@ -43,7 +43,7 @@ import (
 	"time"
 )
 
-// ReadingKind names one of the readings the seam defines — the unit of
+// ReadingKind names one of the readings the seam defines: the unit of
 // capability declaration (ADR-0036 §1).
 type ReadingKind string
 
@@ -72,7 +72,7 @@ func Kinds() []ReadingKind {
 type Declaration struct {
 	// Readings maps every reading kind the seam defines to whether this
 	// implementation can ever populate it. Every kind must be present:
-	// incapable is a declaration, never an omission — an absent entry is
+	// incapable is a declaration, never an omission. An absent entry is
 	// non-conforming, because a silent gap and an honest "never" would be
 	// indistinguishable.
 	Readings map[ReadingKind]bool
@@ -93,7 +93,7 @@ func (d Declaration) Capable(k ReadingKind) bool { return d.Readings[k] }
 // Provider is the EstateProvider seam. Implementations live under
 // internal/provider/ (ADR-0001).
 type Provider interface {
-	// Name identifies the implementation for logs and stamps — a
+	// Name identifies the implementation for logs and stamps: a
 	// qualified name as runtime data, never a type.
 	Name() string
 
@@ -114,7 +114,7 @@ type Estate struct {
 	// "not applicable" from "unknown" without the Provider in hand.
 	Declaration Declaration
 
-	// AsOf is the instant the estate reading was taken. Always set — an
+	// AsOf is the instant the estate reading was taken. Always set: an
 	// empty estate is still a statement with a timestamp.
 	AsOf time.Time
 
@@ -125,7 +125,7 @@ type Estate struct {
 
 // Lookup finds one collector by identity: every asked pair must equal the
 // reported attribute. A collector the reading cannot find comes back with
-// every capable reading Known false and a cause — not knowing is a normal
+// every capable reading Known false and a cause. Not knowing is a normal
 // state, never an error (ADR-0008). An ambiguous ask resolves to the
 // first match in the estate's stable order; callers wanting one specific
 // collector ask with its full identifying set.
@@ -137,7 +137,7 @@ func (e Estate) Lookup(identity map[string]string) Collector {
 			}
 		}
 	}
-	c := Unknown(e.Declaration, e.AsOf, "no collector in the estate reading matches the asked identity — not knowing is a normal state (ADR-0008)")
+	c := Unknown(e.Declaration, e.AsOf, "no collector in the estate reading matches the asked identity")
 	c.Identity = maps.Clone(identity)
 	return c
 }
@@ -155,7 +155,7 @@ func contains(reported, asked map[string]string) bool {
 // Collector is one collector's reading: the unit the seam is keyed on.
 type Collector struct {
 	// Identity is the identifying attributes selectors match on
-	// (ADR-0007, ADR-0013 — never a connection id). Empty identity is
+	// (ADR-0007, ADR-0013; never a connection id). Empty identity is
 	// non-conforming: a reading nothing can match belongs to nobody.
 	Identity map[string]string
 
@@ -164,7 +164,7 @@ type Collector struct {
 	DeliveryStatus DeliveryStatus
 }
 
-// Effective is the collector's own reported running config — never what an
+// Effective is the collector's own reported running config, never what an
 // applier holds, never what a manifest contains; one definition for served
 // and foreign collectors alike (ADR-0004).
 type Effective struct {
@@ -188,7 +188,7 @@ type Effective struct {
 // Pipeline is one otelcol pipeline as the collector reports it, components
 // in configured order.
 type Pipeline struct {
-	// Name is the otelcol pipeline id: the signal, optionally qualified —
+	// Name is the otelcol pipeline id: the signal, optionally qualified:
 	// "logs", "traces/backend".
 	Name string
 
@@ -209,7 +209,7 @@ type Health struct {
 }
 
 // ComponentHealth is one node of the health tree, children keyed by
-// component name — the recursive shape preserved as reported.
+// component name, the recursive shape preserved as reported.
 type ComponentHealth struct {
 	Healthy   bool
 	Status    string
@@ -219,7 +219,7 @@ type ComponentHealth struct {
 }
 
 // DeliveryState is OpAMP's RemoteConfigStatus vocabulary, adopted verbatim
-// — no invented delivery states (ADR-0004).
+// with no invented delivery states (ADR-0004).
 type DeliveryState string
 
 const (
@@ -232,7 +232,7 @@ const (
 // DeliveryStatus is the Intended × Effective reading per collector
 // (ADR-0004): did the config we serve land. An implementation that can
 // never report it declares DeliveryStatusKind incapable and leaves this
-// zero — absent-with-declaration, rendered "not applicable", never a
+// zero: absent-with-declaration, rendered "not applicable", never a
 // failure (ADR-0036 §1).
 type DeliveryStatus struct {
 	Known bool
@@ -252,7 +252,7 @@ type DeliveryStatus struct {
 
 // Unknown builds the fully degraded collector reading: every capable
 // reading Known false with the same cause and timestamp, every incapable
-// reading left zero — absent-with-declaration, never a silent gap
+// reading left zero, absent-with-declaration, never a silent gap
 // (ADR-0036 §1). It is what a reading holds for a collector the provider
 // cannot see.
 func Unknown(decl Declaration, asOf time.Time, cause string) Collector {
@@ -269,8 +269,8 @@ func Unknown(decl Declaration, asOf time.Time, cause string) Collector {
 	return c
 }
 
-// Fingerprint renders an identity as one stable string — sorted k=v pairs
-// — for ordering, de-duplication and log lines.
+// Fingerprint renders an identity as one stable string (sorted k=v pairs)
+// for ordering, de-duplication and log lines.
 func Fingerprint(identity map[string]string) string {
 	pairs := make([]string, 0, len(identity))
 	for k, v := range identity {

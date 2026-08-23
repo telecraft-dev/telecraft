@@ -156,11 +156,11 @@ allow_lists:
 	if code != 1 {
 		t.Fatalf("exit %d, want 1; stderr:\n%s", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "effective palette") {
+	if !strings.Contains(stderr.String(), "Allow-list does not include") {
 		t.Errorf("stderr does not name the palette violation:\n%s", stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(out, "rendered", "pipelines", "gateway.yaml")); !os.IsNotExist(err) {
-		t.Error("a refused render still wrote the artefact — block-at-render must equal block-at-merge (ADR-0028 §3)")
+		t.Error("a refused render still wrote the artefact: block-at-render must equal block-at-merge")
 	}
 }
 

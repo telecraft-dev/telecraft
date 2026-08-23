@@ -11,7 +11,7 @@ import (
 // so a "why?" popover shows the config that implied a derived value rather
 // than a restatement of the value (ADR-0041 §3). The lines are read from
 // the checkout the snapshot is taken from, so file, number and text are the
-// repository's own — never reconstructed.
+// repository's own, never reconstructed.
 //
 // A file or key that is not there yields nothing: a derivation with no
 // visible cause says so by showing no lines, which is honest, where an

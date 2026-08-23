@@ -9,7 +9,7 @@ import (
 // pipeline the collector is running that the Intended artefact never
 // describes.
 type Structural struct {
-	// Kind is "component" or "pipeline" — the grain the check works at.
+	// Kind is "component" or "pipeline", the grain the check works at.
 	Kind string
 
 	// Path locates it: `exporters.otlp/rogue`, `service.pipelines.metrics`.
@@ -30,7 +30,7 @@ var componentSections = []string{"receivers", "processors", "exporters", "connec
 //
 // This check is what makes Asserted's trade payable (ADR-0054 §2). Judging
 // only asserted keys means an addition can no longer read as drift, and
-// the addition that matters is not a defaulted setting — it is a whole
+// the addition that matters is not a defaulted setting. It is a whole
 // exporter shipping to somewhere nobody rendered, or a pipeline nobody
 // asked for. Those are caught here, at component and pipeline grain, and
 // reported apart from key-level drift so a reader can tell "something
@@ -38,7 +38,7 @@ var componentSections = []string{"receivers", "processors", "exporters", "connec
 // wrong".
 //
 // The check runs on post-Mutation trees, so a delivery path's own
-// injections — the Supervisor's `extensions.opamp` (ADR-0046 §4) — are
+// injections (the Supervisor's `extensions.opamp`, ADR-0046 §4) are
 // already gone and never read as undescribed.
 //
 // The other direction needs no structural check: a component or pipeline
@@ -67,7 +67,7 @@ func Undescribed(intended, reported any) []Structural {
 
 // undescribedKeys returns the sorted keys of the reported map that the
 // described map does not carry. A reported section that is not a map is no
-// evidence of an undescribed anything — a malformed section is drift the
+// evidence of an undescribed anything: a malformed section is drift the
 // key-level diff reports, not a structural finding invented here.
 func undescribedKeys(described map[string]any, reported any) []string {
 	rep, ok := reported.(map[string]any)

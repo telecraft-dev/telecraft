@@ -15,7 +15,7 @@ import (
 
 // Basic is the first-party password provider (ADR-0019 §1): bootstrap and
 // break-glass, verified against the PBKDF2 hashes users.yaml carries.
-// Everything it needs is in the estate repo — the air-gap floor: an
+// Everything it needs is in the estate repo, which is the air-gap floor: an
 // instance with a users file authenticates with no external dependency at
 // all (REQ-006).
 type Basic struct {
@@ -26,7 +26,7 @@ type Basic struct {
 func (Basic) Name() string { return "basic" }
 
 // Authenticate implements PasswordProvider: the username is the user's
-// email. Every failure — unknown email, no password set, wrong secret — is
+// email. Every failure (unknown email, no password set, wrong secret) is
 // the uniform ErrBadCredentials.
 func (b Basic) Authenticate(_ context.Context, username, secret string) (Identity, error) {
 	user, ok := b.Users.ByEmail(username)
@@ -79,7 +79,7 @@ func HashSecret(secret string) (string, error) {
 }
 
 // verifySecret checks a presented secret against a stored hash in constant
-// time. A malformed stored hash verifies nothing — LoadUsers refused it at
+// time. A malformed stored hash verifies nothing, because LoadUsers refused it at
 // start-up.
 func verifySecret(stored, secret string) bool {
 	alg, iterations, salt, key, err := splitHash(stored)
@@ -101,7 +101,7 @@ func checkHashFormat(stored string) error {
 		return err
 	}
 	if alg != hashAlg {
-		return fmt.Errorf("password hash algorithm %q is not %q — generate one with `telecraft passwd`", alg, hashAlg)
+		return fmt.Errorf("password hash algorithm %q is not %q. Generate a hash with `telecraft passwd`", alg, hashAlg)
 	}
 	return nil
 }
@@ -109,7 +109,7 @@ func checkHashFormat(stored string) error {
 func splitHash(stored string) (alg string, iterations int, salt, key []byte, err error) {
 	parts := strings.Split(stored, "$")
 	if len(parts) != 4 {
-		return "", 0, nil, nil, fmt.Errorf("password hash is not in the %s$iterations$salt$key format — generate one with `telecraft passwd`", hashAlg)
+		return "", 0, nil, nil, fmt.Errorf("password hash is not in the %s$iterations$salt$key format. Generate a hash with `telecraft passwd`", hashAlg)
 	}
 	iterations, err = strconv.Atoi(parts[1])
 	if err != nil || iterations < 1 {

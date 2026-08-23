@@ -7,17 +7,17 @@ import { formatObjectRef } from '../../objectref'
 import { Chip } from '../../ui/Chip'
 
 // The flat filter-first estate list (ADR-0042 §1): the InfoSec workflow
-// and the only home of per-collector detail (rule 3.4) — collector counts
+// and the only home of per-collector detail (rule 3.4): collector counts
 // elsewhere are doors that land here pre-filtered. Filters are explicit
 // and URL-addressable; the lens only emphasises its Environment's rows,
 // it never filters (§4). Clicking a governed row summons the Tier's card
 // panel in place (rule 3.2).
 //
 // Ungoverned collectors appear here too (ADR-0031 §2): concern, never
-// failure — no Tier, no team, an explicit onboard affordance instead. The
+// failure: no Tier, no team, an explicit onboard affordance instead. The
 // claim flow is herd-first (ADR-0042 §6): ungoverned rows multi-select
 // into a herd, and the flow operates on the selection. Served and foreign
-// rows select alike — collectors running the Unmatched artefact
+// rows select alike: collectors running the Unmatched artefact
 // (ADR-0030) enter the same flow.
 
 function flattenTeams(root: TeamNode): TeamNode[] {
@@ -216,7 +216,7 @@ export function FlatList({
                   </Chip>
                 )}
               </td>
-              <td>{row.team ?? '—'}</td>
+              <td>{row.team ?? 'none'}</td>
               <td>{row.environment}</td>
               <td>{row.state.replace('_', ' ')}</td>
               <td>{row.version}</td>

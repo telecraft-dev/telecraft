@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// fakeForge records what was proposed — the seam verified without any
+// fakeForge records what was proposed: the seam verified without any
 // forge, the ADR-0036 pattern applied to this seam's unit layer.
 type fakeForge struct {
 	proposed  []Change
@@ -91,29 +91,29 @@ func TestSubmitAttributesTheActingHuman(t *testing.T) {
 	if sent.Author != author() {
 		t.Errorf("author = %+v, want %+v", sent.Author, author())
 	}
-	for _, want := range []string{"Jo Author <jo@example.com>", "@jo-author", "ADR-0014", "The composer draft."} {
+	for _, want := range []string{"Jo Author <jo@example.com>", "@jo-author", "The commits attribute this change to them", "The composer draft."} {
 		if !strings.Contains(sent.Body, want) {
 			t.Errorf("proposal body %q misses %q", sent.Body, want)
 		}
 	}
 }
 
-// TestSubmitRefusesAnonymousChanges: no acting human, no proposal — the
+// TestSubmitRefusesAnonymousChanges: no acting human, no proposal: the
 // shared-account failure ADR-0014 exists to prevent.
 func TestSubmitRefusesAnonymousChanges(t *testing.T) {
 	f := &fakeForge{}
 	anon := change()
 	anon.Author = Identity{}
 	_, err := Submit(context.Background(), f, anon, renderOK, Retry{})
-	if err == nil || !strings.Contains(err.Error(), "ADR-0014") {
-		t.Fatalf("err = %v, want a refusal naming ADR-0014", err)
+	if err == nil || !strings.Contains(err.Error(), "author name and email") {
+		t.Fatalf("err = %v, want a refusal asking for the author name and email", err)
 	}
 	if len(f.proposed) != 0 {
 		t.Error("an unattributable change reached the forge")
 	}
 }
 
-// TestSubmitFailsClosedOnRefusal: a refused render returns immediately —
+// TestSubmitFailsClosedOnRefusal: a refused render returns immediately:
 // no retry, no proposal (ADR-0028 §3).
 func TestSubmitFailsClosedOnRefusal(t *testing.T) {
 	f := &fakeForge{}
@@ -132,7 +132,7 @@ func TestSubmitFailsClosedOnRefusal(t *testing.T) {
 		t.Errorf("err = %v, want the *Refusal preserved for callers", err)
 	}
 	if calls != 1 {
-		t.Errorf("render ran %d times, want 1 — a refusal is red however often it is re-run", calls)
+		t.Errorf("render ran %d times, want 1: a refusal is red however often it is re-run", calls)
 	}
 	if len(f.proposed) != 0 {
 		t.Error("a refused render still opened a proposal")
@@ -169,7 +169,7 @@ func TestSubmitRetriesTransientRenderErrors(t *testing.T) {
 }
 
 // TestSubmitFailsClosedWhenRenderStaysUnavailable: attempts exhausted means
-// error and no proposal — never a proposal without a rendered tree.
+// error and no proposal, never a proposal without a rendered tree.
 func TestSubmitFailsClosedWhenRenderStaysUnavailable(t *testing.T) {
 	f := &fakeForge{}
 	calls := 0
@@ -190,7 +190,7 @@ func TestSubmitFailsClosedWhenRenderStaysUnavailable(t *testing.T) {
 	}
 }
 
-// TestSubmitRefusesAuthoredWritesUnderRendered: rendered/ is protected —
+// TestSubmitRefusesAuthoredWritesUnderRendered: rendered/ is protected:
 // humans never commit there (ADR-0028 §2).
 func TestSubmitRefusesAuthoredWritesUnderRendered(t *testing.T) {
 	f := &fakeForge{}

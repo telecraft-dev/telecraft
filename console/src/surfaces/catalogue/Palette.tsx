@@ -19,7 +19,7 @@ function flattenTeams(node: TeamNode, out: { id: string; name: string }[] = []) 
  * A team's effective palette with total provenance (ADR-0021): every
  * catalogue entry, allowed or narrowed out, and "why is this allowed?"
  * resolving to the named Grant, the ancestor Allow-lists survived, or the
- * default posture. A non-allowed row's door is the Grant request — the
+ * default posture. A non-allowed row's door is the Grant request, the
  * browse-and-request flow (ADR-0042 §1); the exit is a PR.
  */
 export function PaletteView() {
@@ -60,11 +60,11 @@ export function PaletteView() {
       return (
         <>
           <p className="why-claim">
-            Narrowed out by the {row.narrowedBy} Allow-list (ADR-0021 §2)
+            Narrowed out by the {row.narrowedBy} Allow-list
           </p>
           <p>
-            Descendants can only subtract; additions are the ancestor&rsquo;s call. A Grant
-            targeting {team} or below admits it back — request one below.
+            A team&rsquo;s Allow-list can only remove entries from its parent&rsquo;s list. To
+            add this one back, request a Grant for {team} or a team below it.
           </p>
         </>
       )
@@ -75,8 +75,8 @@ export function PaletteView() {
           <>
             <p className="why-claim">Admitted by Grant {row.grant?.id}</p>
             <p>
-              Granted by {row.grantedBy} to {row.grant?.team}; the Allow-lists alone would
-              exclude it (ADR-0021 §3).
+              Granted by {row.grantedBy} to {row.grant?.team}. Without the Grant, the
+              Allow-lists would exclude it.
             </p>
             <p className="mono">{row.grant?.adds.join(', ')}</p>
           </>
@@ -98,7 +98,7 @@ export function PaletteView() {
         return (
           <>
             <p className="why-claim">No Allow-list is declared on the chain</p>
-            <p>The effective list is the whole active Catalogue (ADR-0021 §4).</p>
+            <p>The effective list is the whole active Catalogue.</p>
           </>
         )
       default:

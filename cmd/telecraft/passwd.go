@@ -11,8 +11,8 @@ import (
 )
 
 // runPasswd hashes one basic-auth secret for users.yaml (REQ-017,
-// ADR-0019 §1: bootstrap and break-glass). The secret arrives on stdin —
-// never an argument, which would land it in shell history — and the
+// ADR-0019 §1: bootstrap and break-glass). The secret arrives on stdin,
+// never an argument, which would land it in shell history, and the
 // printed hash is what a user's `password` field carries.
 func runPasswd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("passwd", flag.ContinueOnError)

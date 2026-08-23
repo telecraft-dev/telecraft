@@ -8,7 +8,7 @@
 // Auth mirrors the internal/auth handler (REQ-017, ADR-0019): every
 // /api/v1/* endpoint outside /api/v1/auth/* wants a session cookie, basic
 // auth signs the fixture user in, and /api/v1/me derives editableTeams as
-// the user's team subtree. Sessions are in-memory, gone on restart — the
+// the user's team subtree. Sessions are in-memory, gone on restart: the
 // same stateless posture as the real server (ADR-0013).
 //
 // Usage: node tools/fixture-backend.mjs [--port 4700] [--dist dist]
@@ -113,7 +113,7 @@ function objects() {
     })
   }
   // Catalogue entries of the active version: browsable and deep-linkable,
-  // machine-generated, owned by nobody — the index carries no team.
+  // machine-generated, owned by nobody, so the index carries no team.
   for (const entry of activeCatalogue().components) {
     out.push({
       kind: 'entry',
@@ -132,7 +132,7 @@ const api = {
     teams: estate.teams,
     cards: estate.cards,
     // Ungoverned collectors in view (ADR-0031 §2): the dedicated band's
-    // counts — concern, never failure, in no compliance denominator.
+    // counts: concern, never failure, in no compliance denominator.
     ungoverned: ungovernedSummary(estate),
   }),
   // The on-demand drawer (ADR-0041 §3): findings with who-acts routing and
@@ -168,7 +168,7 @@ const api = {
     paths: estate.topology.paths,
   }),
   // Active Rollouts' cohort progress (ADR-0029): membership from the pure
-  // function, running status from the stamps, evaluated per request —
+  // function, running status from the stamps, evaluated per request and
   // never stored, exactly the server's posture.
   '/api/v1/rollouts': () => rolloutProgress(estate),
   '/api/v1/blueprints': () => estate.blueprints,
@@ -203,7 +203,7 @@ const api = {
 // Submit); the fixture stands in for that seam: it validates the edited
 // policy fail-closed exactly as internal/allowlist loading does, refuses
 // with the problems named (422), and otherwise answers with the opened
-// proposal — opaque id, URL, branch — as the forge seam would.
+// proposal (opaque id, URL, branch) as the forge seam would.
 
 const PIPELINE_CLASSES = new Set(['receiver', 'processor', 'exporter', 'connector', 'extension'])
 
@@ -237,11 +237,11 @@ function entryProblems(ctx, raw, cat) {
     const cls = cut > 0 ? s.slice(0, cut) : ''
     const pattern = cut > 0 ? s.slice(cut + 1) : ''
     if (cls === '' || pattern === '') {
-      problems.push(`${ctx}: entry "${s}" is not class/type-pattern — like receiver/otlp, exporter/kafka* or processor/*`)
+      problems.push(`${ctx}: entry "${s}" is not class/type-pattern, like receiver/otlp, exporter/kafka* or processor/*`)
       continue
     }
     if (!PIPELINE_CLASSES.has(cls)) {
-      problems.push(`${ctx}: entry "${s}": "${cls}" is not a pipeline class — one of receiver, processor, exporter, connector, extension`)
+      problems.push(`${ctx}: entry "${s}": "${cls}" is not a pipeline class. Use one of receiver, processor, exporter, connector, or extension`)
       continue
     }
     if (/[[\]\\/]/.test(pattern)) {
@@ -252,7 +252,7 @@ function entryProblems(ctx, raw, cat) {
       (c) => c.class === cls && entrySelects({ pattern }, c),
     )
     if (!selects) {
-      problems.push(`${ctx}: entry "${s}" selects nothing in catalogue ${cat.version} — unknown component types fail load (REQ-011)`)
+      problems.push(`${ctx}: entry "${s}" selects nothing in catalogue ${cat.version}. An entry must name at least one known component type`)
     }
   }
   return problems
@@ -275,7 +275,7 @@ function partyProblems(ctx, team, owner, teams, owners) {
   const problems = []
   if (!team) problems.push(`${ctx} names no team`)
   else if (!teams.has(team)) problems.push(`${ctx} names team "${team}", which is not in the team tree`)
-  if (!owner) problems.push(`${ctx} has no owner — every authored object carries one (ADR-0016)`)
+  if (!owner) problems.push(`${ctx} has no owner. Every authored object needs one`)
   else if (!owners.has(owner)) problems.push(`${ctx} names owner "${owner}", which is not in the team tree`)
   return problems
 }
@@ -295,12 +295,12 @@ function governanceProblems(request) {
     const ctx = `allow-list for team "${list.team}"`
     problems.push(...partyProblems(ctx, list.team, list.owner, teams, owners))
     if (!list.allow || list.allow.length === 0) {
-      problems.push(`${ctx} declares no entries — to inherit the parent's effective list unchanged, declare no list at all; an empty list would ban everything (ADR-0021 §4)`)
+      problems.push(`${ctx} declares no entries. An empty list would ban everything; to inherit the parent's effective list unchanged, declare no list at all`)
     } else {
       problems.push(...entryProblems(ctx, list.allow, cat))
     }
     if (seenTeams.has(list.team)) {
-      problems.push(`team "${list.team}" declares two allow-lists — a Team's declared list is one intersection term (ADR-0021 §2)`)
+      problems.push(`team "${list.team}" declares two allow-lists. A Team declares at most one`)
     }
     seenTeams.add(list.team)
   }
@@ -308,21 +308,21 @@ function governanceProblems(request) {
   for (const grant of request.grants ?? []) {
     const ctx = `grant "${grant.id}"`
     if (!grant.id) {
-      problems.push('a grant has no id — everything a team may use traces to the root list or a named Grant (ADR-0021 §3)')
+      problems.push('a grant has no id. Every Grant needs one, so that every allowed entry traces to the root list or a named Grant')
     }
     problems.push(...partyProblems(ctx, grant.team, grant.owner, teams, owners))
     const author = owners.get(grant.owner)
     if (author && teams.has(grant.team) && !properAncestor(teams, author.team, grant.team)) {
-      problems.push(`${ctx} is authored by owner "${grant.owner}" of team "${author.team}", which is not an ancestor of target team "${grant.team}" — a Grant is a parent-authored exception (ADR-0021 §3)`)
+      problems.push(`${ctx} is authored by owner "${grant.owner}" of team "${author.team}", which is not an ancestor of target team "${grant.team}". Only a parent team can author a Grant`)
     }
     if (!grant.adds || grant.adds.length === 0) {
-      problems.push(`${ctx} adds no entries — a Grant exists to widen a palette (ADR-0021 §3)`)
+      problems.push(`${ctx} adds no entries. A Grant exists to widen a palette`)
     } else {
       problems.push(...entryProblems(ctx, grant.adds, cat))
     }
     if (grant.id) {
       if (seenGrants.has(grant.id)) {
-        problems.push(`grant "${grant.id}" defined twice — the id is the audit chain's name for it`)
+        problems.push(`grant "${grant.id}" defined twice. Each Grant needs its own id`)
       }
       seenGrants.add(grant.id)
     }
@@ -407,7 +407,7 @@ const server = createServer(async (req, res) => {
   }
 
   // The one write outside the auth slice: a governance edit exiting as a
-  // PR (ADR-0042 §6) — session-gated like every governed endpoint.
+  // PR (ADR-0042 §6), session-gated like every governed endpoint.
   if (url.pathname === '/api/v1/governance/proposals' && req.method === 'POST') {
     if (!sessionOf(req)) {
       sendJSON(res, 401, { error: 'sign in to use this API' })
@@ -418,7 +418,7 @@ const server = createServer(async (req, res) => {
   }
 
   // The claim flow (ADR-0042 §6): preview is the continuous impact call;
-  // the exit opens a PR authoring the Tier binding via the forge seam —
+  // the exit opens a PR authoring the Tier binding via the forge seam:
   // fail closed with the problems named (422), generalise-never-enumerate
   // enforced server-side.
   if (
@@ -443,7 +443,7 @@ const server = createServer(async (req, res) => {
     return
   }
 
-  // The composing endpoints (ADR-0022 §1): one evaluator behind both — the
+  // The composing endpoints (ADR-0022 §1): one evaluator behind both: the
   // composer's continuous advisory call, and the proposal exit with
   // enforcement on. A blocked proposal answers 409, fail closed
   // (ADR-0028 §3). The evaluator judges with the same authored governance

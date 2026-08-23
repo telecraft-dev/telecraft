@@ -19,7 +19,7 @@ type Observation struct {
 
 	// Remote is the member's RemoteConfigStatus reading, verbatim
 	// (ADR-0004). Where delivery status is permanently unavailable
-	// (Foreign paths, ADR-0008) it is Known false — the FAILED signal is
+	// (Foreign paths, ADR-0008) it is Known false. The FAILED signal is
 	// honestly unavailable there (ADR-0029 §7), and its absence never
 	// reads as failure.
 	Remote estate.DeliveryStatus
@@ -30,8 +30,8 @@ type Observation struct {
 }
 
 // Condition is one halt signal over a cohort member (ADR-0029 §6). The set
-// is explicitly extensible: later signals — expectation regressions
-// ("applied fine, traces stopped") — plug in as further Conditions without
+// is explicitly extensible: later signals, such as expectation regressions
+// ("applied fine, traces stopped"), plug in as further Conditions without
 // amendment.
 type Condition struct {
 	Name string
@@ -42,7 +42,7 @@ type Condition struct {
 }
 
 // FailedForTo is v1 halt signal (a): a cohort member reporting FAILED for
-// the *to* artefact's hash — it took the offer, the apply failed, the
+// the *to* artefact's hash. It took the offer, the apply failed, the
 // Supervisor has already self-reverted it (ADR-0010) and the report is the
 // evidence. A FAILED for any other hash is some other delivery's problem,
 // never this rollout's.
@@ -60,7 +60,7 @@ func FailedForTo(toHash []byte) Condition {
 }
 
 // WentDarkAfterApply is v1 halt signal (b): the member was reporting, took
-// the new config, and went silent within the soak window — the crash-loop
+// the new config, and went silent within the soak window, the crash-loop
 // signature that never reports FAILED (ADR-0029 §6).
 func WentDarkAfterApply() Condition {
 	return Condition{
@@ -102,21 +102,21 @@ func (t Thresholds) abortFraction() float64 {
 type Decision string
 
 const (
-	// DecisionHold: criteria not yet met — soak still running, or no
+	// DecisionHold: criteria not yet met: soak still running, or no
 	// evidence yet. Nothing is proposed and nothing needs to be: waiting
 	// is the resting state.
 	DecisionHold Decision = "hold"
 
 	// DecisionBlocked: a halt signal is present below the abort threshold.
-	// The advance is simply never proposed — halting is passive, there is
+	// The advance is simply never proposed, because halting is passive, there is
 	// no active step and nothing to race (ADR-0029 §6).
 	DecisionBlocked Decision = "blocked"
 
-	// DecisionAdvance: the stage's exit criteria are met — propose the
+	// DecisionAdvance: the stage's exit criteria are met, so propose the
 	// advance for a human to merge (ADR-0029 §5).
 	DecisionAdvance Decision = "advance"
 
-	// DecisionAbort: halted past the threshold — propose the abort,
+	// DecisionAbort: halted past the threshold, so propose the abort,
 	// reverting the Tier to single-bound *from* (ADR-0029 §6).
 	DecisionAbort Decision = "abort"
 )
@@ -128,10 +128,10 @@ type Halt struct {
 	Reason    string
 }
 
-// Evidence is what the verdict rests on — the numbers the advance or abort
+// Evidence is what the verdict rests on: the numbers the advance or abort
 // proposal carries in its body ("soaked 24h, 213/213 APPLIED, 0 FAILED",
 // ADR-0029 §5), computed over collectors actually running the *to*
-// artefact on either path. Members still on *from* are lag — displayed,
+// artefact on either path. Members still on *from* are lag: displayed,
 // never blocking (§7).
 type Evidence struct {
 	Stage  int // active stage, 0-based
@@ -156,7 +156,7 @@ func (e Evidence) Summary() string {
 	fmt.Fprintf(&b, "stage %d of %d soaked %s (minimum %s): %d cohort members seen, %d running the to artefact, %d halted",
 		e.Stage+1, e.Stages, e.Soaked.Round(time.Minute), e.MinSoak, e.MembersSeen, e.RunningTo, len(e.Halted))
 	if e.RunningFrom > 0 {
-		fmt.Fprintf(&b, "; %d still on from — lag, never failure (ADR-0029 §7)", e.RunningFrom)
+		fmt.Fprintf(&b, "; %d still on from (lag, never failure)", e.RunningFrom)
 	}
 	if e.RunningOther > 0 {
 		fmt.Fprintf(&b, "; %d on another config", e.RunningOther)
@@ -177,9 +177,9 @@ type Verdict struct {
 	Evidence Evidence
 }
 
-// Inputs is everything one evaluation reads. Time arrives as data —
+// Inputs is everything one evaluation reads. Time arrives as data.
 // StageStarted is the commit instant of the change that activated the
-// stage (git history answers it), Now is the caller's clock — so the
+// stage (git history answers it), Now is the caller's clock, so the
 // evaluation itself stays a pure function, recomputable anywhere.
 type Inputs struct {
 	Rollout renderer.Rollout
@@ -203,13 +203,13 @@ type Inputs struct {
 
 // Evaluate judges the active stage (ADR-0029 §5, §6): a pure function of
 // its inputs, so racing replicas evaluating the same head and reading
-// reach the same verdict. It never proposes anything itself — Propose acts
+// reach the same verdict. It never proposes anything itself. Propose acts
 // on the verdict, and a verdict that is not an advance or abort proposes
 // nothing at all, which is what makes halting passive.
 func Evaluate(in Inputs) (Verdict, error) {
 	r := in.Rollout
 	if len(r.Stages) == 0 || r.Stage < 0 || r.Stage >= len(r.Stages) {
-		return Verdict{}, fmt.Errorf("rollout %s has no valid active stage (%d of %d) — loading validates this, so an invalid one here is a caller bug", r.ID(), r.Stage, len(r.Stages))
+		return Verdict{}, fmt.Errorf("rollout %s has no valid active stage (%d of %d)", r.ID(), r.Stage, len(r.Stages))
 	}
 	conditions := in.Conditions
 	if conditions == nil {
@@ -262,13 +262,13 @@ func Evaluate(in Inputs) (Verdict, error) {
 	case ev.MembersSeen > 0 && float64(len(halted))/float64(ev.MembersSeen) >= in.Thresholds.abortFraction():
 		return Verdict{
 			Decision: DecisionAbort,
-			Reason:   fmt.Sprintf("%d of %d cohort members halted, at or past the abort threshold — propose reverting the Tier to single-bound from (ADR-0029 §6)", len(halted), ev.MembersSeen),
+			Reason:   fmt.Sprintf("%d of %d cohort members halted, at or past the abort threshold. Telecraft proposes returning the Tier to its from binding.", len(halted), ev.MembersSeen),
 			Evidence: ev,
 		}, nil
 	case len(halted) > 0:
 		return Verdict{
 			Decision: DecisionBlocked,
-			Reason:   fmt.Sprintf("%d cohort member(s) halted below the abort threshold — the advance is simply never proposed (ADR-0029 §6)", len(halted)),
+			Reason:   fmt.Sprintf("%d cohort member(s) halted, below the abort threshold. Telecraft does not propose the advance while any member is halted.", len(halted)),
 			Evidence: ev,
 		}, nil
 	case ev.Soaked < ev.MinSoak:
@@ -280,7 +280,7 @@ func Evaluate(in Inputs) (Verdict, error) {
 	case ev.RunningTo == 0:
 		return Verdict{
 			Decision: DecisionHold,
-			Reason:   "no cohort member observed running the to artefact yet — advance evidence is computed over collectors actually running it (ADR-0029 §7)",
+			Reason:   "no cohort member is running the to artefact yet: the advance needs evidence from collectors actually running it",
 			Evidence: ev,
 		}, nil
 	}
@@ -294,7 +294,7 @@ func Evaluate(in Inputs) (Verdict, error) {
 // silent reports whether a collector that was reporting has aged past the
 // staleness horizon on every reading it carried: last seen, and no longer
 // fresh (ADR-0036 §3). A collector with no known reading at all is simply
-// unknown — never silent, never dark.
+// unknown, never silent, never dark.
 func silent(c estate.Collector, decl estate.Declaration, now time.Time) bool {
 	hadKnown := c.Effective.Known || c.Health.Known || c.DeliveryStatus.Known
 	if !hadKnown {

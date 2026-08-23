@@ -9,8 +9,8 @@ import (
 
 // deliveryFixture writes an intended artefact and an effective config into
 // a temp dir and returns their paths. The effective config is the same
-// document with cosmetic differences only — reordered keys, flow style,
-// quoting — which must never read as divergence.
+// document with cosmetic differences only (reordered keys, flow style,
+// quoting), which must never read as divergence.
 func deliveryFixture(t *testing.T) (intended, effective string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -47,7 +47,7 @@ receivers:
 }
 
 // AC: a hand-committed (GitOps) collector gets identical treatment and its
-// delivery path is visible — the printed status names the path, reads the
+// delivery path is visible: the printed status names the path, reads the
 // stamps from both sides, and cosmetic YAML differences never read as
 // divergence. The absent RemoteConfigStatus reading prints known=false,
 // never failure.
@@ -78,7 +78,7 @@ func TestDeliveryCommandPrintsAGitCollectorsStatus(t *testing.T) {
 }
 
 // A real edit under the same commit stamp prints drifted with the layer-3
-// localisation — the printer stays exit 0: it is a reading, not a gate.
+// localisation, and the printer stays exit 0: it is a reading, not a gate.
 func TestDeliveryCommandLocalisesDrift(t *testing.T) {
 	intended, effective := deliveryFixture(t)
 	raw, err := os.ReadFile(effective)
@@ -193,7 +193,7 @@ func TestDeliveryCommandPrintsAnUnreadableConfigAsUnknown(t *testing.T) {
 	code := run([]string{"delivery", "-intended", intended, "-effective", effective, "-path", "git"}, &stdout, &stderr)
 
 	if code != 0 {
-		t.Fatalf("exit %d, want 0 — an unreadable side is a reading, not a failure\nstderr:\n%s", code, stderr.String())
+		t.Fatalf("exit %d, want 0: an unreadable side is a reading, not a failure\nstderr:\n%s", code, stderr.String())
 	}
 	out := stdout.String()
 	if !strings.Contains(out, "comparison        unknown cause=") {
@@ -224,7 +224,7 @@ func TestDeliveryCommandRequiresItsFlags(t *testing.T) {
 		// invented one is named back rather than treated as either.
 		"a delivery path nobody delivers on": {
 			args: []string{"delivery", "-intended", intended, "-effective", effective, "-path", "sideloaded"},
-			want: `delivery: unknown delivery path "sideloaded" — served or git (REQ-041)`,
+			want: `delivery: unknown delivery path "sideloaded": choose served or git`,
 		},
 		"an intended artefact that is not there": {
 			args: []string{"delivery", "-intended", missing, "-effective", effective, "-path", "git"},
@@ -252,7 +252,7 @@ func TestDeliveryCommandRequiresItsFlags(t *testing.T) {
 
 // Deliberately uncovered: the branch that prints a known remote state, and
 // the one that reports a computation error. Both are unreachable from this
-// subcommand — a file comparison never carries a RemoteConfigStatus
+// subcommand: a file comparison never carries a RemoteConfigStatus
 // reading, and the only errors the computation returns are an invalid path
 // or an invalid remote state, which the flag validation above has already
 // refused.

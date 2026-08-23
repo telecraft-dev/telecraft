@@ -3,12 +3,12 @@ package telemetry
 // The metering half of the seam (REQ-050, ADR-0040): one Tier's
 // pipeline-grain flow counters, read out of the same self-telemetry the
 // rest of ADR-0039 reads, on demand and stored nowhere. No metering
-// pipeline exists here — the reading is built, returned, and forgotten.
+// pipeline exists here: the reading is built, returned, and forgotten.
 //
 // The counters are cumulative monotonic sums, so a window's throughput is
 // a delta, never a sum of datapoints. Each collector incarnation is its
-// own series — `service.instance.id` is regenerated on every process
-// start (R-4 §2c) — which makes last-minus-first per incarnation exact
+// own series (`service.instance.id` is regenerated on every process
+// start, R-4 §2c), which makes last-minus-first per incarnation exact
 // across restarts, with no reset heuristic anywhere. The deltas are then
 // summed backend-side by a `sum_bucket` pipeline aggregation, which is
 // what ADR-0040 §5 means by collectors collapsing into server-side sums:

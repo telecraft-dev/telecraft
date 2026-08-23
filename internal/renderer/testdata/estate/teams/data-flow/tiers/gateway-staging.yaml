@@ -1,5 +1,5 @@
 # The sibling Tier realising per-Environment binding (ADR-0025 §3): same
-# team, same Blueprint at the same pin, different declared Environment —
+# team, same Blueprint at the same pin, different declared Environment:
 # a distinct artefact at a distinct stable path, judged with no floor
 # (non-production, ADR-0023 §3).
 owner: gateway-owners

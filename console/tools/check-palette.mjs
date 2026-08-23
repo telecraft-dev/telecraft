@@ -4,7 +4,7 @@
 // This is the check the ADR's consequences said belonged beside the
 // vendor-word lint and the zero-CDN check rather than in a document.
 //
-// It reads `src/tokens.css` — the single implementation — resolves both
+// It reads `src/tokens.css` (the single implementation), resolves both
 // themes, and measures three things:
 //
 //   Contrast    relative luminance per WCAG 2.x. 4.5:1 for anything used as
@@ -171,7 +171,7 @@ const TEXT_ON = {
   '--severity-advisory-ink': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
   '--severity-violation': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
   // The brand amber is set on `telecraft.dev` and nowhere else (ADR-0047 §4),
-  // as the wordmark's first syllable and as the pulse line's stroke — text and
+  // as the wordmark's first syllable and as the pulse line's stroke: text and
   // graphic, both on the page ground. Listed here rather than in GRAPHIC_ON
   // because the text floor is the stricter of the two and it clears it. It sat
   // in neither table until the marketing site used it, which is exactly the

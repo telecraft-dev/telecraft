@@ -49,7 +49,7 @@ func TestCodeOwnersIsDeterministic(t *testing.T) {
 
 // The Unmatched artefact under rendered/_estate/ is root-team-owned by
 // convention (ADR-0030). The fixture tree's root (engineering) is
-// ownerless, so no line renders there — the scratch tree's root carries
+// ownerless, so no line renders there. The scratch tree's root carries
 // owners and gets the line.
 func TestCodeOwnersAssignsEstateArtefactsToTheRootTeam(t *testing.T) {
 	fixtureTree, err := ownership.LoadTeams(filepath.Join("testdata", "estate", ownership.TeamsFile))
@@ -68,6 +68,6 @@ func TestCodeOwnersAssignsEstateArtefactsToTheRootTeam(t *testing.T) {
 	}
 	got := string(CodeOwners(tree))
 	if want := "/rendered/_estate/ @org-lead"; !strings.Contains(got, want) {
-		t.Errorf("CODEOWNERS lacks %q — the root team owns the estate-level governance artefacts (ADR-0030):\n%s", want, got)
+		t.Errorf("CODEOWNERS lacks %q: the root team owns the estate-level governance artefacts:\n%s", want, got) // ADR-0030
 	}
 }

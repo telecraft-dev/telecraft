@@ -1,6 +1,6 @@
 // Typings for the fixture claim module (claims.mjs), so the Vitest suite
 // exercises it against the same shapes the console consumes. The response
-// contracts live in src/api/types.ts — this file only types the module
+// contracts live in src/api/types.ts: this file only types the module
 // boundary.
 
 import type {

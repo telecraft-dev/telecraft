@@ -26,9 +26,9 @@ func gatewayAttrs() map[string]string {
 	}
 }
 
-// fixtureEstate writes a minimal estate — three Tiers: a served gateway
+// fixtureEstate writes a minimal estate (three Tiers: a served gateway
 // with a two-pair selector, an edge with a one-pair selector, and a
-// git-delivered batch Tier with no selector — renders it, and writes the
+// git-delivered batch Tier with no selector), renders it, and writes the
 // rendered tree beside the authored one, exactly the shape the server
 // fetches from git.
 func fixtureEstate(t *testing.T) (root string, res renderer.Result) {

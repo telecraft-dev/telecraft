@@ -44,7 +44,7 @@ pipelines:
 `
 
 // A lane ordering batch before memory_limiter contradicts both default
-// rules; each surfaces as an ordering finding on the lane — the schema
+// rules; each surfaces as an ordering finding on the lane. The schema
 // itself loads fine, and the renderer never re-sorts or crashes over it
 // (REQ-030, ADR-0024 §6).
 func TestMisorderedLaneRaisesOrderingFindings(t *testing.T) {

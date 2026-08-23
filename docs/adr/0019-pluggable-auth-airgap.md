@@ -7,21 +7,21 @@
 
 ## Context
 
-The platform must be deployable in air-gapped environments where GitHub — or
-any SaaS — does not exist. Git remains the right backend for maintenance and
+The platform must be deployable in air-gapped environments where GitHub, or
+any SaaS, does not exist. Git remains the right backend for maintenance and
 lifecycle (ADR-0003 stands), but identity cannot be delegated to a forge
 that may not be there.
 
 ## Decision
 
 1. **Authentication is pluggable.** First-party providers: **OIDC** (covers
-   Keycloak, Entra, Okta — including self-hosted IdPs in air gaps), **SAML**
+   Keycloak, Entra, Okta, including self-hosted IdPs in air gaps), **SAML**
    (legacy enterprise), and **basic auth** (bootstrap and break-glass;
    production guidance points at OIDC/SAML). Forge OAuth (GitHub sign-in) is
    a convenience available when that forge integration is active, never a
    requirement.
 2. **Authorization is derived from ownership** (ADR-0016) with one source of
-   truth — the ownership metadata in the estate repo — and two enforcement
+   truth (the ownership metadata in the estate repo) and two enforcement
    modes:
    - Where the forge supports review routing, the platform **generates** the
      forge's code-ownership file (CODEOWNERS; GitHub, GitLab and Gitea all
@@ -42,7 +42,7 @@ that may not be there.
 - The Team hierarchy source stays a seam (`teams.yaml` first-party,
   ADR-0017); OIDC/SAML group-claim mapping is a later provider.
 - **G2 inherits an air-gap constraint**: the component Catalogue must be
-  vendorable — an air-gapped instance cannot fetch collector-contrib
+  vendorable. An air-gapped instance cannot fetch collector-contrib
   metadata at runtime.
 - The console read-scope remains instance-wide (ADR-0018); hard read
   isolation = one instance per isolation domain.

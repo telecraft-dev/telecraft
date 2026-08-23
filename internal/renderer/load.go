@@ -14,7 +14,7 @@ import (
 )
 
 // The estate layout this loader walks (ADR-0027 §1): flat team directories,
-// one authored object per file, the file's place deriving its id —
+// one authored object per file, the file's place deriving its id:
 // `teams/<team>/tiers/<name>.yaml` is the Tier `<team>/<name>`.
 const (
 	teamsDir    = "teams"
@@ -24,7 +24,7 @@ const (
 )
 
 // LoadTopology reads every Tier and Service under the given source roots.
-// Passing several roots is the source-set of ADR-0027 — a primary repo plus
+// Passing several roots is the source-set of ADR-0027: a primary repo plus
 // satellite checkouts, each holding the same `teams/<team>/...` layout; one
 // root is the ordinary monorepo case.
 //
@@ -33,11 +33,11 @@ const (
 // a Tier nobody authored. The cross-object strictness is deliberate and
 // differs from internal/blueprint: a silently dropped Path would relax the
 // traversed Tier's floor judgement, and under-governed is the failure mode
-// (ADR-0025 §4) — so a dangling Path reference is a load error, never a
+// (ADR-0025 §4), so a dangling Path reference is a load error, never a
 // finding.
 func LoadTopology(roots ...string) (Topology, error) {
 	if len(roots) == 0 {
-		return Topology{}, fmt.Errorf("no source roots — an estate is a set of repos mapped to team subtrees, single-repo the degenerate case (ADR-0027)")
+		return Topology{}, fmt.Errorf("no source roots: pass at least one estate checkout")
 	}
 
 	topo := Topology{Tiers: map[string]Tier{}, Services: map[string]Service{}, Rollouts: map[string]Rollout{}}
@@ -49,7 +49,7 @@ func LoadTopology(roots ...string) (Topology, error) {
 		teams, err := os.ReadDir(teamsRoot)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return Topology{}, fmt.Errorf("%s has no %s/ tree — the estate layout is %s/<team>/{%s,%s}/<name>.yaml (ADR-0027)", root, teamsDir, teamsDir, tiersDir, servicesDir)
+				return Topology{}, fmt.Errorf("%s has no %s/ tree: the estate layout is %s/<team>/{%s,%s}/<name>.yaml", root, teamsDir, teamsDir, tiersDir, servicesDir)
 			}
 			return Topology{}, err
 		}
@@ -120,8 +120,8 @@ func LoadTopology(roots ...string) (Topology, error) {
 
 	if len(topo.Tiers) == 0 {
 		// The Tier is the rendering unit (ADR-0025): a topology with no
-		// Tiers has nothing to render — almost always a mistaken directory.
-		return Topology{}, fmt.Errorf("no Tiers under %s — the Tier is the rendering unit, so there is nothing to render (ADR-0025)", strings.Join(roots, ", "))
+		// Tiers has nothing to render, almost always a mistaken directory.
+		return Topology{}, fmt.Errorf("no Tiers under %s, so there is nothing to render", strings.Join(roots, ", "))
 	}
 
 	// Cross-object: every Path step must name an authored Tier. Strictness
@@ -133,7 +133,7 @@ func LoadTopology(roots ...string) (Topology, error) {
 		for _, p := range svc.Paths {
 			for _, through := range p.Through {
 				if _, ok := topo.Tiers[through]; !ok {
-					problems = append(problems, fmt.Sprintf("service %q routes a Path through tier %q, which is not an authored Tier — the traversal would impose no judgement, and under-governed is the failure mode (ADR-0025 §4)", id, through))
+					problems = append(problems, fmt.Sprintf("service %q routes a Path through tier %q, which is not an authored Tier", id, through))
 				}
 			}
 		}
@@ -141,7 +141,7 @@ func LoadTopology(roots ...string) (Topology, error) {
 
 	// Cross-object: a Rollout is the Tier owner's instrument over their own
 	// Tier, one active per Tier, and while it is active it is the only door
-	// for the rebinding (ADR-0029 §2). All of this fails the load — a
+	// for the rebinding (ADR-0029 §2). All of this fails the load: a
 	// rollout the render half-honoured would serve a population nobody
 	// reviewed.
 	activeOn := map[string]string{} // tier id → rollout id
@@ -149,23 +149,23 @@ func LoadTopology(roots ...string) (Topology, error) {
 		r := topo.Rollouts[id]
 		tier, ok := topo.Tiers[r.Tier]
 		if !ok {
-			problems = append(problems, fmt.Sprintf("rollout %q targets tier %q, which is not an authored Tier (ADR-0029 §2)", id, r.Tier))
+			problems = append(problems, fmt.Sprintf("rollout %q targets tier %q, which is not an authored Tier", id, r.Tier))
 			continue
 		}
 		if tier.Team != r.Team {
-			problems = append(problems, fmt.Sprintf("rollout %q targets tier %q of another team — a Rollout lives beside the Tier it stages, under the owning team's directory (ADR-0027, ADR-0029 §2)", id, r.Tier))
+			problems = append(problems, fmt.Sprintf("rollout %q targets tier %q, which belongs to another team. A Rollout lives in the same team directory as the Tier it stages.", id, r.Tier))
 			continue
 		}
 		if r.Owner != "" && r.Owner != tier.Owner {
-			problems = append(problems, fmt.Sprintf("rollout %q is owned by %q but tier %q is owned by %q — a Rollout's owner is the Tier's owner (ADR-0029 §2)", id, r.Owner, r.Tier, tier.Owner))
+			problems = append(problems, fmt.Sprintf("rollout %q is owned by %q but tier %q is owned by %q: a Rollout's owner is the Tier's owner", id, r.Owner, r.Tier, tier.Owner))
 		}
 		if prev, dup := activeOn[r.Tier]; dup {
-			problems = append(problems, fmt.Sprintf("rollouts %q and %q both target tier %q — one active Rollout per Tier (ADR-0029 §2)", prev, id, r.Tier))
+			problems = append(problems, fmt.Sprintf("rollouts %q and %q both target tier %q: one active Rollout per Tier", prev, id, r.Tier))
 			continue
 		}
 		activeOn[r.Tier] = id
 		if r.from != tier.Binding() {
-			problems = append(problems, fmt.Sprintf("rollout %q binds from %s but tier %q binds %s — while a Rollout is active the Rollout file is the only door, so a direct rebind fails render validation (ADR-0029 §2)", id, r.from, r.Tier, tier.Binding()))
+			problems = append(problems, fmt.Sprintf("rollout %q binds from %s but tier %q binds %s. While a Rollout is active, the Rollout file is the only way to rebind the Tier.", id, r.from, r.Tier, tier.Binding()))
 		}
 	}
 
@@ -182,16 +182,16 @@ func validateTier(path string, t *Tier) []string {
 	var p []string
 
 	if t.Name != "" && t.Name != baseName(path) {
-		p = append(p, fmt.Sprintf("%s declares name %q but the file derives the id %s/%s — the layout, not the body, is the id convention (ADR-0027)", ctx, t.Name, t.Team, baseName(path)))
+		p = append(p, fmt.Sprintf("%s declares name %q but its file name gives it the id %s/%s. The file name decides the id; remove or correct the name field.", ctx, t.Name, t.Team, baseName(path)))
 	}
 	if t.Owner == "" {
-		p = append(p, ctx+" has no owner — every authored object carries one (REQ-015, ADR-0016)")
+		p = append(p, ctx+" has no owner: every authored object needs one")
 	}
 	if t.Environment == "" {
-		p = append(p, ctx+" declares no environment — every Tier declares exactly one Environment, an attribute of the infrastructure (ADR-0025 §2)")
+		p = append(p, ctx+" declares no environment: every Tier declares exactly one Environment")
 	}
 	if t.Blueprint == "" {
-		p = append(p, ctx+" binds no blueprint — the Tier is the sole binding site, one Blueprint version per Tier (ADR-0025 §1)")
+		p = append(p, ctx+" binds no blueprint: every Tier binds exactly one Blueprint version")
 	} else {
 		b, err := parseBinding(t.Blueprint)
 		if err != nil {
@@ -200,26 +200,26 @@ func validateTier(path string, t *Tier) []string {
 		t.binding = b
 	}
 	if t.Serving != nil && t.Serving.Endpoint == "" {
-		p = append(p, ctx+" declares serving with no endpoint — the Supervisor needs the OpAMP server endpoint (ADR-0010)")
+		p = append(p, ctx+" declares serving with no endpoint: the Supervisor needs the OpAMP server endpoint")
 	}
 	if t.Serving != nil && len(t.Selector) == 0 {
-		p = append(p, ctx+" declares serving but no selector — a served collector is matched into its Tier by selector, so without one every collector of this Tier lands on the Unmatched artefact (ADR-0007, ADR-0030)")
+		p = append(p, ctx+" declares serving but no selector. The server matches collectors to a Tier by selector, so without one every collector of this Tier receives the Unmatched artefact.")
 	}
 	for k, v := range t.Selector {
 		if k == "" || v == "" {
-			p = append(p, ctx+" has a selector pair with an empty key or value — a selector is equality over reported identifying attributes, and an empty side can never match (ADR-0007)")
+			p = append(p, ctx+" has a selector pair with an empty key or value, which can never match")
 			break
 		}
 	}
 	if t.MinExpected < 0 {
-		p = append(p, ctx+" declares a negative min_expected — a population floor is at least zero, and zero means no declared floor (ADR-0035)")
+		p = append(p, ctx+" declares a negative min_expected: use zero or more, where zero means no declared floor")
 	}
 	if t.MinExpected > 0 && len(t.Selector) == 0 {
-		p = append(p, ctx+" declares min_expected but no selector — the floor counts collectors matched by selector, so without one nothing can ever meet it (ADR-0035, ADR-0007)")
+		p = append(p, ctx+" declares min_expected but no selector. The floor counts collectors matched by the selector, so without one nothing can meet it.")
 	}
 	for _, h := range t.Hops {
 		if h.From == "" {
-			p = append(p, ctx+" has a hop with no from — a Hop is a directed edge, and its source is what trust is judged about (ADR-0007)")
+			p = append(p, ctx+" has a hop with no from: every Hop names the Tier it arrives from")
 		}
 	}
 	return p
@@ -231,17 +231,17 @@ func validateService(path string, s Service) []string {
 	var p []string
 
 	if s.Name != "" && s.Name != baseName(path) {
-		p = append(p, fmt.Sprintf("%s declares name %q but the file derives the id %s/%s — the layout, not the body, is the id convention (ADR-0027)", ctx, s.Name, s.Team, baseName(path)))
+		p = append(p, fmt.Sprintf("%s declares name %q but its file name gives it the id %s/%s. The file name decides the id; remove or correct the name field.", ctx, s.Name, s.Team, baseName(path)))
 	}
 	if s.Owner == "" {
-		p = append(p, ctx+" has no owner — every authored object carries one (REQ-015, ADR-0016)")
+		p = append(p, ctx+" has no owner: every authored object needs one")
 	}
 	if s.Class == "" {
-		p = append(p, ctx+" has no class — the Service Class drives the required floor (ADR-0015, ADR-0023)")
+		p = append(p, ctx+" has no class: the Service Class decides the stability floor")
 	}
 	for _, route := range s.Paths {
 		if len(route.Through) == 0 {
-			p = append(p, ctx+" has a path through no tiers — a Path is a route through the Tier graph (ADR-0007)")
+			p = append(p, ctx+" has a path through no tiers: a Path lists the Tiers it passes through")
 		}
 	}
 	return p
@@ -268,7 +268,7 @@ func yamlFiles(dir string) []string {
 	return out
 }
 
-// baseName is the file's name without extension — the object's name segment
+// baseName is the file's name without extension, the object's name segment
 // under the layout convention (ADR-0027).
 func baseName(path string) string {
 	b := filepath.Base(path)
@@ -290,10 +290,10 @@ func loadObjectFile(path string, out any, kind string) error {
 		return fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return fmt.Errorf("%s: empty file — the file holds one %s", path, kind)
+		return fmt.Errorf("%s: the file is empty; it should hold one %s", path, kind)
 	}
 	if doc.Content[0].Kind != yaml.MappingNode {
-		return fmt.Errorf("%s: the file holds one %s (a mapping) — the id derives from the file, so a list would leave all but one nameless (ADR-0027)", path, kind)
+		return fmt.Errorf("%s: the file should hold one %s as a mapping, not a list, because the file name gives the object its id", path, kind)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
@@ -302,7 +302,7 @@ func loadObjectFile(path string, out any, kind string) error {
 		return fmt.Errorf("%s: %w", path, err)
 	}
 	if err := dec.Decode(new(yaml.Node)); !errors.Is(err, io.EOF) {
-		return fmt.Errorf("%s: more than one YAML document in the file — one concern per file", path)
+		return fmt.Errorf("%s: the file holds more than one YAML document; keep one per file", path)
 	}
 	return nil
 }

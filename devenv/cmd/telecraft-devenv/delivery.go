@@ -9,7 +9,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/serving"
 )
 
-// deliveryPaths reads how each collector came by its configuration — the
+// deliveryPaths reads how each collector came by its configuration: the
 // served path or the git-delivered one (REQ-041).
 //
 // The signal is a declaration and not an absence. Every OpAMP message

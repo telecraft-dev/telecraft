@@ -27,7 +27,7 @@ func TestMemoisedEqualsRecomputedAndIsLoseable(t *testing.T) {
 	// was persisted, so nothing could have been lost but time.
 	lost := NewMemo()
 	if !reflect.DeepEqual(lost.Derive(src), scratch) {
-		t.Error("a fresh Memo derives a different Set — the memo must be loseable with no change in content")
+		t.Error("a fresh Memo derives a different Set: the memo must be loseable with no change in content")
 	}
 }
 
@@ -42,7 +42,7 @@ func TestMemoKeysBySHA(t *testing.T) {
 	other.SHA = "0000000000000000000000000000000000000000"
 	set := memo.Derive(other)
 	if set.SHA != other.SHA {
-		t.Errorf("memo replayed SHA %s for a Source at %s — the key is the commit", set.SHA, other.SHA)
+		t.Errorf("memo replayed SHA %s for a Source at %s: the key is the commit", set.SHA, other.SHA)
 	}
 	for _, c := range set.Claims {
 		if c.SHA != other.SHA {

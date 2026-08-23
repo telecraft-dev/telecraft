@@ -6,7 +6,7 @@
 # collectors run on take no agent of ours; the team's own configuration
 # management copies the rendered artefact out of the same repository and
 # restarts the process. The platform still sees what is running, because the
-# collector reports through its own opamp extension — see the Blueprint.
+# collector reports through its own opamp extension. See the Blueprint.
 #
 # Nothing routes through this Tier, so no Service Path traverses it and no
 # row is written against it. It is here for the delivery reading, which

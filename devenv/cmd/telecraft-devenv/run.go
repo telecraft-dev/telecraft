@@ -59,7 +59,7 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 	consoleDir := fs.String("console", "console/dist", "built console bundle to serve; skipped when absent")
 	interval := fs.Duration("interval", 10*time.Second, "how often the readings are taken and the snapshot rebuilt")
 	window := fs.Duration("window", 5*time.Minute, "trailing window the arrival readings cover")
-	team := fs.String("team", "engineering", "the team the console lands scoped to (ADR-0042 §2)")
+	team := fs.String("team", "engineering", "the team the console opens scoped to")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -220,7 +220,7 @@ func refresh(ctx context.Context, comp *composer, in inputs, out string, snapsho
 		return err
 	}
 	header := []byte("" +
-		"# Taken by telecraft-devenv from the live seams (ADR-0052 §2).\n" +
+		"# Taken by telecraft-devenv from the live seams.\n" +
 		"# Generated on every refresh: this is a reading, not an authored file.\n")
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		return err
@@ -277,7 +277,7 @@ func webHandler(snapshot *snapshotFile, consoleDir string) http.Handler {
 	mux.HandleFunc("/demo-snapshot.json", func(w http.ResponseWriter, r *http.Request) {
 		body := snapshot.get()
 		if body == nil {
-			http.Error(w, "no snapshot yet — the first refresh has not finished", http.StatusServiceUnavailable)
+			http.Error(w, "no snapshot yet: the first refresh has not finished", http.StatusServiceUnavailable)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

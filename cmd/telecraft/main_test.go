@@ -75,7 +75,7 @@ func writeFile(t *testing.T, dir, name, body string) {
 	}
 }
 
-// AC: a CLI prints any team's effective palette — components, provenance,
+// AC: a CLI prints any team's effective palette: components, provenance,
 // the Grant named with who granted it to whom.
 func TestPaletteCommandPrintsAnEffectivePalette(t *testing.T) {
 	estate, artefact := paletteFixture(t)

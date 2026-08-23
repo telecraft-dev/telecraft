@@ -10,8 +10,8 @@ import { useTour } from './useTour'
  * skipped it the first time.
  *
  * One control for one Tour, deliberately. A Tour written later is offered
- * where it is relevant — beside the claim panel, beside the composer's
- * save gate — not from a menu of every Tour the console owns, which is a
+ * where it is relevant (beside the claim panel, beside the composer's
+ * save gate), not from a menu of every Tour the console owns, which is a
  * museum rather than an affordance.
  */
 export function TourControl() {

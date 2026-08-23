@@ -16,8 +16,8 @@ import (
 
 // AdvanceBranch is the deterministic branch an advance proposal lives on
 // (ADR-0029 §8): deterministic names plus the forge's ref compare-and-swap
-// mean racing HA replicas converge — the loser sees the branch exists and
-// no-ops — so duplicate proposals are structurally impossible and no
+// mean racing HA replicas converge (the loser sees the branch exists and
+// no-ops), so duplicate proposals are structurally impossible and no
 // leader is needed. The stage number is the one being advanced to,
 // 1-based; the final advance carries the number one past the last stage.
 func AdvanceBranch(r renderer.Rollout) string {
@@ -43,15 +43,15 @@ func tierFilePath(t renderer.Tier) string {
 
 // AdvanceChange builds the advance proposal for a stage whose exit
 // criteria are met (ADR-0029 §5): a reviewed edit of the Rollout file
-// bumping the active stage — or, on the final stage, the completion:
+// bumping the active stage, or, on the final stage, the completion:
 // the Tier flipped to single-bound *to* and the Rollout file deleted,
 // which retires the `@next` artefact in the same render. root is the
 // estate checkout the authored files are read from.
 func AdvanceChange(root string, r renderer.Rollout, tier renderer.Tier, v Verdict, author forge.Identity) (forge.Change, error) {
 	if v.Decision != DecisionAdvance {
-		return forge.Change{}, fmt.Errorf("verdict is %s, not an advance — the proposal only ever carries a met criterion (ADR-0029 §5)", v.Decision)
+		return forge.Change{}, fmt.Errorf("verdict is %s, not an advance: only an advance verdict can open an advance proposal", v.Decision)
 	}
-	body := fmt.Sprintf("Evidence: %s.\n\nA human merges; the platform only proposes (ADR-0029 §5).", v.Evidence.Summary())
+	body := fmt.Sprintf("Evidence: %s.\n\nTelecraft only proposes this change. A human reviews and merges it.", v.Evidence.Summary())
 	change := forge.Change{
 		Branch: AdvanceBranch(r),
 		Author: author,
@@ -89,13 +89,13 @@ func AdvanceChange(root string, r renderer.Rollout, tier renderer.Tier, v Verdic
 }
 
 // AbortChange builds the abort proposal (ADR-0029 §6): deleting the
-// Rollout file reverts the Tier to single-bound *from* — the Tier's own
-// binding never moved — and retires the `@next` artefact. Collectors that
+// Rollout file reverts the Tier to single-bound *from* (the Tier's own
+// binding never moved) and retires the `@next` artefact. Collectors that
 // individually broke have already self-reverted (ADR-0010); this closes
 // the book.
 func AbortChange(root string, r renderer.Rollout, v Verdict, author forge.Identity) (forge.Change, error) {
 	if v.Decision != DecisionAbort {
-		return forge.Change{}, fmt.Errorf("verdict is %s, not an abort — the proposal only ever carries a crossed threshold (ADR-0029 §6)", v.Decision)
+		return forge.Change{}, fmt.Errorf("verdict is %s, not an abort: only an abort verdict can open an abort proposal", v.Decision)
 	}
 	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(RolloutFilePath(r)))); err != nil {
 		return forge.Change{}, err
@@ -103,7 +103,7 @@ func AbortChange(root string, r renderer.Rollout, v Verdict, author forge.Identi
 	return forge.Change{
 		Branch: AbortBranch(r),
 		Title:  fmt.Sprintf("Abort rollout %s: revert tier %s to single-bound %s", r.ID(), r.Tier, r.From),
-		Body: fmt.Sprintf("%s\n\nEvidence: %s.\n\nDeleting the Rollout file reverts the Tier to single-bound from and retires the @next artefact (ADR-0029 §6).",
+		Body: fmt.Sprintf("%s\n\nEvidence: %s.\n\nDeleting the Rollout file returns the Tier to its from binding and retires the @next artefact.",
 			v.Reason, v.Evidence.Summary()),
 		Author: author,
 		Files:  map[string][]byte{RolloutFilePath(r): nil},
@@ -114,7 +114,7 @@ func AbortChange(root string, r renderer.Rollout, v Verdict, author forge.Identi
 // proposal goes through the render-in-PR submission flow (forge.Submit,
 // ADR-0028 §1), so the proposal that opens carries the refreshed rendered
 // tree beside the authored edit. Any other verdict proposes nothing and
-// returns proposed false — the passive halt has no active step (ADR-0029
+// returns proposed false, because the passive halt has no active step (ADR-0029
 // §6). The author attributes the proposal (ADR-0014): the advance
 // executes the Rollout owner's authored staging intent, and the commits
 // name whoever the platform is configured to act as.
@@ -140,8 +140,8 @@ func Propose(ctx context.Context, f forge.Forge, render forge.RenderFunc, retry 
 }
 
 // setTopLevel replaces (or appends) one top-level key's value in an
-// authored YAML document, preserving the rest of the document — comments
-// included — through a node round-trip: the platform edits one field of a
+// authored YAML document, preserving the rest of the document, comments
+// included, through a node round-trip: the platform edits one field of a
 // human-owned file, never rewrites it.
 func setTopLevel(raw []byte, key string, value any) ([]byte, error) {
 	var doc yaml.Node

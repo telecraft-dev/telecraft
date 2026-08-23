@@ -3,7 +3,7 @@ import { Command, Compass, Monitor, Moon, Search, Sun, X, type LucideIcon } from
 /**
  * Utility icons (ADR-0047 §6, tier three): Lucide (ISC), self-hosted with
  * the rest of the bundle and tree-shaken to the named few below. They carry
- * no product meaning — that is the whole reason they can come from a pack,
+ * no product meaning: that is the whole reason they can come from a pack,
  * where state marks in `Mark.tsx` cannot.
  *
  * Lucide's default is a 2px stroke on a 24px grid, which reads thin beside
@@ -31,7 +31,7 @@ export type IconName = keyof typeof ICONS
 
 /**
  * An icon is decoration unless it is the control's only content, in which
- * case the control carries the accessible name — not the icon.
+ * case the control carries the accessible name, not the icon.
  */
 export function Icon({
   name,

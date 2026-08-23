@@ -11,14 +11,14 @@ subtree. It never waives the diagnosis: the finding stays visible in the
 report, in the drawer, and in every roll-up, marked waived. The count comes
 back on its own the day the Exemption expires.
 
-Use one when a gap is agreed, owned and time-boxed. Do not use one to make a
+Use one when a gap is agreed, owned, and time-boxed. Don't use one to make a
 red build green: everything an Exemption touches stays in the `waived` totals
 that every summary carries.
 
 ## Write the file
 
 Exemptions live in the estate's `exemptions/` directory, one object per file.
-Here is the demo estate's `exemptions/search-metrics.yaml`:
+This is the demo estate's `exemptions/search-metrics.yaml`:
 
 ```yaml
 id: search-metrics-onboarding
@@ -31,20 +31,20 @@ reason: >
   the cutover and has agreed the gap until the end of January.
 ```
 
-Every field except `reason` is load-bearing:
+Every field except `reason` has a job:
 
 - `requirement` names exactly one Requirement. One Exemption waives one
   Requirement, always.
-- `owner` is the party answering for the waiver. A waiver nobody answers for
+- `owner` is the party who answers for the waiver. A waiver nobody answers for
   is not a waiver.
-- `expires` is a calendar day, authored as `2027-01-31`. The waiver stops
-  counting at the UTC midnight starting that day.
-- `service` or `team`, exactly one. `service` waives for one Service; `team`
-  waives for a whole subtree, which is the onboarding case: one reviewable
-  file rather than a copy per Service.
+- `expires` is a calendar day, written as `2027-01-31`. The waiver stops
+  counting at the UTC midnight that starts that day.
+- `service` or `team`, exactly one. `service` waives for one Service. `team`
+  waives for a whole subtree, which suits onboarding: one reviewable file
+  instead of a copy per Service.
 
-Both `owner` and `expires` are mandatory, and loading fails closed. Run from
-the estate root, with a file that omits the expiry:
+`owner` and `expires` are both mandatory, and loading fails closed. Run this
+from the estate root, with a file that omits the expiry:
 
 ```sh
 ./telecraft check -library requirements -estate demo/rows.yaml \
@@ -53,27 +53,27 @@ the estate root, with a file that omits the expiry:
 
 ```
 check: invalid exemptions:
-  - broken-exemptions/bad.yaml: exemption "search-trace-identity" has no expiry — mandatory (REQ-014): an open-ended waiver is a deleted requirement
+  - broken-exemptions/bad.yaml: exemption "search-trace-identity" has no expiry. Every Exemption needs an expiry date, because an open-ended waiver would delete the Requirement
 ```
 
-The command exits 2. An exemptions directory that will not load is never a run
-that silently counted findings somebody believes are waived.
+The command exits 2. An exemptions directory that won't load never becomes a
+run that silently counted findings somebody believes are waived.
 
 ## Who can approve it
 
 Nothing in the Exemption file grants itself authority. Validity comes from the
-generated code-ownership projection: the waived Requirement's owner, or that
-owner's ancestor team, is a required reviewer on the pull request that adds
-the file. Self-forgiveness is impossible by construction rather than by
-policy.
+generated `CODEOWNERS` file: the waived Requirement's owner, or that owner's
+ancestor team, is a required reviewer on the pull request that adds the file.
+Nobody can approve their own Exemption, because the generated review rules
+never let them, and no policy has to be remembered.
 
-Renewal is a fresh pull request. There is no extend field, and no way to bump
+Renewal is a fresh pull request. There is no extend field, and no way to move
 an expiry without the same review that created it.
 
 ## What a waived finding looks like
 
-Run the check with `-exemptions` pointed at the directory. A backend has to be
-reachable for the cross to produce anything but `unknown`, so this is the
+Run the check with `-exemptions` pointing at the directory. The cross produces
+nothing but `unknown` unless a backend is reachable, so this run uses the
 quickstart's seeded Elasticsearch:
 
 ```sh
@@ -84,7 +84,7 @@ quickstart's seeded Elasticsearch:
   > report.json
 ```
 
-The finding keeps its outcome, its severity and its detail. Only `waived` and
+The finding keeps its outcome, its severity, and its detail. Only `waived` and
 `waiver_reason` are added:
 
 ```json
@@ -96,7 +96,7 @@ The finding keeps its outcome, its severity and its detail. Only `waived` and
   "outcome": "broken_pipeline",
   "severity": 7,
   "waived": "exempt",
-  "waiver_reason": "exemption search-metrics-onboarding: waived by platform-observability until 2027-01-31 — Search is mid-migration to the shared metrics SDK; the platform team owns the cutover and has agreed the gap until the end of January.\n",
+  "waiver_reason": "exemption search-metrics-onboarding: waived by platform-observability until 2027-01-31: Search is mid-migration to the shared metrics SDK; the platform team owns the cutover and has agreed the gap until the end of January.\n",
   "detail": [
     "no metrics received in the last 24h0m0s"
   ],
@@ -104,9 +104,9 @@ The finding keeps its outcome, its severity and its detail. Only `waived` and
 }
 ```
 
-That is still a broken pipeline, and the platform keeps saying so. What
-changed is the row's arithmetic: the finding leaves `failing` and joins
-`waived`, so the row scores clean while carrying its waiver in the open.
+That is still a broken pipeline, and Telecraft keeps saying so. What changed
+is the row's arithmetic: the finding leaves `failing` and joins `waived`, so
+the row scores clean while carrying its waiver in the open.
 
 ```json
 {
@@ -132,7 +132,7 @@ visibly green on Exemptions:
 ```
 
 Passing findings are never marked waived. There is nothing to forgive, and
-waiving them would inflate the number roll-ups keep visible.
+waiving them would inflate the number every roll-up keeps visible.
 
 ## Waive a whole subtree
 
@@ -181,16 +181,16 @@ traces-delivered   broken_pipeline waived=exempt
 ```
 
 `-ownership` names a directory holding `teams.yaml` and the authored-object
-files beside it. Every `.yaml` file in that directory other than
-`teams.yaml`, `allow-lists.yaml`, `grants.yaml` and `users.yaml` is read as an
+files beside it. The loader reads every `.yaml` file in that directory other
+than `teams.yaml`, `allow-lists.yaml`, `grants.yaml`, and `users.yaml` as an
 authored object, so point it at a directory that holds only those. Without
-`-ownership`, a team-scoped Exemption is an error rather than a waiver that
-silently never applies.
+`-ownership`, a team-scoped Exemption is an error, not a waiver that silently
+never applies.
 
 ## Grace by Service Class
 
-Grace is the other way a finding stops counting, and it is not authored per
-Service. The estate declares one table, and the platform applies it during a
+Grace is the other way a finding stops counting, and you don't author it per
+Service. The estate declares one table, and Telecraft applies it during a
 Service's onboarding window:
 
 ```yaml
@@ -204,35 +204,35 @@ grace:
 ```
 
 The window shrinks as the class rises: the most critical Services get the
-least forgiveness. The loader enforces that shape, so a table quietly giving
-C1 the longest window cannot load.
+least forgiveness. The loader enforces that shape, so a table that quietly
+gives C1 the longest window can't load.
 
 A Grace Period runs from the Service's onboarding date for its class's
 duration. A Service with no class or no onboarding date never enters a window,
-and nothing is waived. Grace findings are marked `"waived": "grace"` with the
+and nothing is waived. Grace findings are marked `"waived": "grace"`, with the
 end of the window as the reason.
 
 Where both cover the same finding, the Exemption wins, because it names the
-party answering for the waiver.
+party who answers for the waiver.
 
 ## Expiry is a property of the clock
 
 An expired Exemption stops matching with no manual step, and the raw finding
-is back on the next run. Its continued presence in the tree becomes an
+is back on the next run. The file still sitting in the tree becomes an
 authoring finding:
 
 ```json
 {
   "requirement": "trace-identity",
   "exemption": "search-trace-identity",
-  "message": "expired 2026-06-30 and is still in the tree — dead config (ADR-0037): renewal is a fresh PR, otherwise delete the file"
+  "message": "expired 2026-06-30 and is still in the tree. To renew it, open a new PR. Otherwise delete the file"
 }
 ```
 
-Authoring findings are reported in every run and never enter the exit code:
-they tell you the tree needs tidying, not that the estate is failing. An
-Exemption naming a Requirement that is not in the library raises the same kind
-of finding, because it waives nothing.
+Every run reports authoring findings, and they never enter the exit code: they
+tell you the tree needs tidying, not that the estate is failing. An Exemption
+naming a Requirement that is not in the library raises the same kind of
+finding, because it waives nothing.
 
 ## What next
 

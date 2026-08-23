@@ -18,7 +18,7 @@ func mustImport(t *testing.T, src Source) *Catalogue {
 }
 
 // Two imports of the same tree at the same tag must encode to identical
-// bytes — determinism is what makes idempotency testable at all.
+// bytes: determinism is what makes idempotency testable at all.
 func TestImportIsByteDeterministic(t *testing.T) {
 	a, err := mustImport(t, snapshotSource).Encode()
 	if err != nil {
@@ -34,7 +34,7 @@ func TestImportIsByteDeterministic(t *testing.T) {
 }
 
 // Acceptance criterion 3, first half: re-importing the same tag writes
-// nothing — the artefact on disk already IS this import, byte for byte.
+// nothing: the artefact on disk already IS this import, byte for byte.
 func TestReimportingTheSameTagIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
 
@@ -93,7 +93,7 @@ func TestANewTagIsANewVersionBesideTheOld(t *testing.T) {
 		t.Fatalf("the new version did not land: %v", err)
 	}
 	if old.Version() != "v0.158.0" || fresh.Version() != "v0.159.0" {
-		t.Errorf("versions = %q and %q — each artefact must carry its own tag", old.Version(), fresh.Version())
+		t.Errorf("versions = %q and %q: each artefact must carry its own tag", old.Version(), fresh.Version())
 	}
 }
 
@@ -106,7 +106,7 @@ func TestRefWithAPathSeparatorCannotNameAnArtefact(t *testing.T) {
 	}
 }
 
-// What Write stores, Load returns — the artefact is the transport (bundled,
+// What Write stores, Load returns: the artefact is the transport (bundled,
 // downloaded, or carried across an air gap; ADR-0020 §5), so the round trip
 // must be lossless.
 func TestWriteThenLoadRoundTrips(t *testing.T) {

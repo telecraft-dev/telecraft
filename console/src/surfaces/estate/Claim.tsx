@@ -11,7 +11,7 @@ import { Panel } from '../../ui/Panel'
 
 /**
  * The claim flow (ADR-0042 §6, ADR-0031): ungoverned to governed, in one
- * panel every ungoverned representation converges on. Herd-first — the
+ * panel every ungoverned representation converges on. Herd-first: the
  * flat list multi-selects and this flow operates on the selection. The
  * suggested selector generalises over the herd's shared identity
  * attributes (evidence supplied by the Unmatched artefact's
@@ -21,7 +21,7 @@ import { Panel } from '../../ui/Panel'
  * apart: attach to an existing Tier (candidates ranked by selector
  * proximity) or draft a new Tier (opens Compose, selector pre-filled).
  * Exit is always a PR via the forge adapter, user-attributed (ADR-0014),
- * carrying the rendered impact preview — the console proposes, the PR
+ * carrying the rendered impact preview. The console proposes, the PR
  * decides. Quarantine routing stays a Compose concern (ADR-0031).
  */
 export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: string[] }) {
@@ -51,7 +51,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
   const terms = Object.keys(selector).length
 
   // Defaults: the acting human's team, and the herd's Environment when it
-  // agrees — the lens otherwise (ADR-0042 §4: the lens as context).
+  // agrees, and the lens otherwise (ADR-0042 §4: the lens as context).
   const herdEnvironments = [...new Set(rows.map((row) => row.environment))]
   const chosenTeam = team ?? me?.team ?? ''
   const chosenEnvironment =
@@ -79,7 +79,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
       search: (prev) => ({ ...prev, herd: undefined }),
     })
 
-  if (collectors.isPending) return <aside className="panel">Loading the herd…</aside>
+  if (collectors.isPending) return <aside className="panel">Loading the collectors…</aside>
   if (rows.length === 0) return null
 
   const attach = () => {
@@ -122,7 +122,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
       onClose={close}
     >
       {/* The herd: live identity from the Unmatched artefact's
-          self-telemetry — alive, version X, since when (ADR-0030). */}
+          self-telemetry (alive, version X, since when; ADR-0030). */}
       <ul className="claim-herd" data-testid="claim-herd">
         {rows.map((row) => (
           <li key={row.id}>
@@ -137,13 +137,13 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
       <section className="claim-section">
         <h3>Suggested selector</h3>
         <p className="section-summary">
-          Generalised over the herd&rsquo;s shared identity attributes — instance ids are
-          never part of a selector (ADR-0042 §6). Constrain it by removing pairs.
+          Built from the identity attributes every collector in this selection shares.
+          Instance ids are never part of a selector. Narrow it by removing pairs.
         </p>
         {Object.keys(suggested).length === 0 ? (
           <p className="surface-status" data-testid="claim-no-shared">
-            This herd shares no identity attributes — narrow the selection until a
-            generalising selector exists.
+            These collectors share no identity attributes. Narrow the selection until
+            they share at least one.
           </p>
         ) : (
           <ul className="claim-terms" data-testid="claim-terms">
@@ -220,8 +220,8 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
               {preview.data.overlaps.map((overlap) => (
                 <li key={overlap.tier}>
                   May also reach {overlap.matched} collectors matched today by{' '}
-                  <span className="mono">{overlap.tier}</span> — the PR review judges the
-                  blast radius (ADR-0028).
+                  <span className="mono">{overlap.tier}</span>. The pull request review
+                  judges that reach.
                 </li>
               ))}
             </ul>
@@ -235,7 +235,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
       )}
 
       <section className="claim-section">
-        <h3>One question</h3>
+        <h3>Choose a Tier</h3>
         <label className="claim-path">
           <input
             type="radio"
@@ -258,15 +258,15 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
                     checked={target === candidate.tier}
                     onChange={() => setTarget(candidate.tier)}
                   />
-                  <span className="mono">{candidate.tier}</span> — satisfies{' '}
-                  {candidate.satisfied} of {candidate.of} selector pairs; widens to{' '}
+                  <span className="mono">{candidate.tier}</span>: satisfies{' '}
+                  {candidate.satisfied} of {candidate.of} selector pairs, widens to{' '}
                   <code>{formatSelector(candidate.widened)}</code>
                 </label>
               </li>
             ))}
             {preview.data !== undefined && preview.data.candidates.length === 0 && (
               <li className="section-summary">
-                No Tier&rsquo;s selector shares a pair with this one — draft a new Tier
+                No Tier&rsquo;s selector shares a pair with this one. Draft a new Tier
                 instead.
               </li>
             )}
@@ -304,7 +304,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
             disabled={terms === 0 || target === undefined || claim.isPending}
             onClick={attach}
           >
-            {claim.isPending ? 'Proposing…' : 'Propose the claim as a PR'}
+            {claim.isPending ? 'Proposing…' : 'Propose the claim as a pull request'}
           </Button>
         )}
         {mode === 'draft' && (
@@ -315,7 +315,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
             disabled={terms === 0 || draftTier === undefined}
             onClick={draft}
           >
-            Draft in Compose — selector pre-filled
+            Draft in Compose with this selector
           </Button>
         )}
         {claim.isError && (
@@ -336,10 +336,11 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
               <a href={claim.data.proposal.url} data-testid="claim-proposal-url">
                 {claim.data.proposal.url}
               </a>
-              . After merge and serve, these collectors read as governed.
+              . Once it merges and the configuration is served, these collectors show as
+              governed.
             </p>
             <p className="item-meta" data-testid="claim-attribution">
-              Attributed to {claim.data.proposal.attributedTo} (ADR-0014).
+              Attributed to {claim.data.proposal.attributedTo}.
             </p>
           </div>
         )}

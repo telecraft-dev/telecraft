@@ -49,7 +49,7 @@ func logsPipeline() Effective {
 }
 
 // tracesOnlyPipeline wires a receiver of the wanted type into a traces
-// pipeline and nothing into logs — the ordered-pipelines case ADR-0004
+// pipeline and nothing into logs: the ordered-pipelines case ADR-0004
 // singles out.
 func tracesOnlyPipeline() Effective {
 	return Effective{Known: true, Pipelines: []Pipeline{{
@@ -170,11 +170,11 @@ func TestCrossProducesAllSevenOutcomes(t *testing.T) {
 	}
 }
 
-// Criterion: the severity ordering. Broken pipelines lead — configured with
-// intent and silently not working — and unknown outranks ungoverned because
+// Criterion: the severity ordering. Broken pipelines lead (configured with
+// intent and silently not working), and unknown outranks ungoverned because
 // not being able to see is worse than seeing something unexpected. Library
-// drift — the eighth outcome, judged from the Intended reading, never by the
-// cross (ADR-0026) — sits just below misconfigured: the same failed
+// drift (the eighth outcome, judged from the Intended reading, never by the
+// cross; ADR-0026) sits just below misconfigured: the same failed
 // assertion, but the subject did comply before the bar moved.
 func TestSeverityOrdering(t *testing.T) {
 	want := []Outcome{BrokenPipeline, NotConfigured, NotDelivered, Misconfigured, LibraryDrift, Unknown, Ungoverned, Compliant}
@@ -203,7 +203,7 @@ func TestSeverityOrdering(t *testing.T) {
 
 // The ADR-0004 headline case: a receiver of the wanted type wired only into
 // a traces pipeline. The bare assertion matches any pipeline (the documented
-// migration path), so the config reads as satisfied — and the absence of
+// migration path), so the config reads as satisfied, and the absence of
 // logs then diagnoses as broken_pipeline, the finding a flat component list
 // could never produce the evidence for.
 func TestOrderedPipelinesCarryTheBrokenPipelineCase(t *testing.T) {
@@ -224,14 +224,14 @@ func TestConfigMatchesQualifiedComponentNames(t *testing.T) {
 	v := Evaluate(Row{Service: "checkout", Environment: "production"}, lib(req()),
 		Evidence{Effective: eff, Observed: observedLogs(time.Hour, true)}, evalAt)
 	if got := v.Findings[0].Outcome; got != Compliant {
-		t.Fatalf("outcome = %s, want compliant — otlp/onramp satisfies otlp (detail: %v)", got, v.Findings[0].Detail)
+		t.Fatalf("outcome = %s, want compliant: otlp/onramp satisfies otlp (detail: %v)", got, v.Findings[0].Detail)
 	}
 }
 
 // Criterion (ADR-0033): the same Service in two environments yields
 // independent verdicts. Each row is judged in a separate call over its own
 // Evidence, and an environment-scoped requirement produces no finding at all
-// outside its list — so no blending is possible by construction.
+// outside its list, so no blending is possible.
 func TestEnvironmentsYieldIndependentVerdicts(t *testing.T) {
 	prodOnly := req()
 	prodOnly.ID = "logs-recent-production"
@@ -249,7 +249,7 @@ func TestEnvironmentsYieldIndependentVerdicts(t *testing.T) {
 		t.Fatalf("production row has %d findings, want 2", got)
 	}
 	if got := len(staging.Findings); got != 1 {
-		t.Fatalf("staging row has %d findings, want 1 — the production-scoped requirement must not apply", got)
+		t.Fatalf("staging row has %d findings, want 1: the production-scoped requirement must not apply", got)
 	}
 	for _, f := range prod.Findings {
 		if f.Outcome != BrokenPipeline {
@@ -257,7 +257,7 @@ func TestEnvironmentsYieldIndependentVerdicts(t *testing.T) {
 		}
 	}
 	if got := staging.Findings[0].Outcome; got != Compliant {
-		t.Errorf("staging outcome = %s, want compliant — staging evidence judged the staging row", got)
+		t.Errorf("staging outcome = %s, want compliant: staging evidence judged the staging row", got)
 	}
 	if prod.Score().Failing != 2 || staging.Score().Failing != 0 {
 		t.Errorf("scores blended across environments: production %+v, staging %+v", prod.Score(), staging.Score())
@@ -371,7 +371,7 @@ func TestWaivedFindingsStopCountingButStayDiagnosed(t *testing.T) {
 		t.Fatalf("score after waiver = %+v, want total 2, failing 1, waived 1", s)
 	}
 	if v.Worst() != NotDelivered {
-		t.Errorf("worst = %s, want not_delivered — a waived broken_pipeline must not outrank a live finding", v.Worst())
+		t.Errorf("worst = %s, want not_delivered: a waived broken_pipeline must not outrank a live finding", v.Worst())
 	}
 	for _, f := range v.Findings {
 		if f.Waived != WaiverNone && f.Outcome != BrokenPipeline {
@@ -382,8 +382,8 @@ func TestWaivedFindingsStopCountingButStayDiagnosed(t *testing.T) {
 		}
 	}
 
-	// A row with every failure waived scores 1.0 — nothing is known to be
-	// wrong — with the waived count alongside so it cannot hide.
+	// A row with every failure waived scores 1.0 (nothing is known to be
+	// wrong), with the waived count alongside so it cannot hide.
 	for i := range v.Findings {
 		if v.Findings[i].Failing() {
 			v.Findings[i].Waived = WaiverGrace

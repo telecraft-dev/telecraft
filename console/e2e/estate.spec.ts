@@ -51,7 +51,7 @@ test('a collector count is a door to the flat list, pre-filtered and URL-address
   await page.goto('/estate?view=list&tier=data-flow%2Fgateway')
   await expect(page.getByTestId('collector-gw-0')).toBeVisible()
   await expect(page.getByTestId('collector-table').locator('tbody tr')).toHaveCount(3)
-  // Widening the filter shows every collector — the ungoverned included,
+  // Widening the filter shows every collector, the ungoverned included,
   // in view and never hidden (ADR-0031): the flat list is the only home
   // of per-collector detail (ADR-0042 §3.4).
   await page.getByTestId('filter-tier').selectOption('')
@@ -156,7 +156,7 @@ test('an unread lane is last-known-plus-age, never a metered zero', async ({ pag
   // The staging Tier has reported no self-telemetry at its serving SHA:
   // every lane says so, and none of them says nothing flowed.
   const staging = page.getByTestId('matrix-data-flow/gateway-staging-logs')
-  await expect(staging.locator('.cell-volume')).toHaveText('—')
+  await expect(staging.locator('.cell-volume')).toHaveText('no reading')
   await expect(staging.locator('.cell-volume')).toHaveAttribute(
     'title',
     /no self-telemetry has reported at the serving SHA yet/,
@@ -193,7 +193,7 @@ test('a lane the artefact never wired does not read as a stopped one', async ({ 
   // the numbers withheld rather than the lane denied.
   const unread = page.getByTestId('matrix-data-flow/gateway-staging-metrics')
   await expect(unread).not.toHaveClass(/lane-absent/)
-  await expect(unread.locator('.cell-volume')).toHaveText('—')
+  await expect(unread.locator('.cell-volume')).toHaveText('no reading')
 })
 
 test('the three reds stay distinct by band position and mark, not by hue', async ({ page }) => {
@@ -207,7 +207,7 @@ test('the three reds stay distinct by band position and mark, not by hue', async
   await expect(bands.nth(2)).toContainText('Conformance')
 
   // Expectation-red beside conformance-red: two findings, each named,
-  // neither swallowing the other — and delivery reading ok beside them
+  // neither swallowing the other, and delivery reading ok beside them
   // is the differentiator P4 tested (applied, conforming, expected logs
   // never landed).
   await expect(bands.nth(0)).toContainText('ok')

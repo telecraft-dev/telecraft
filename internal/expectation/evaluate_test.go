@@ -28,7 +28,7 @@ func testConfig() Config {
 	}
 }
 
-// settledRow is evidence whose artefact went APPLIED long ago — every
+// settledRow is evidence whose artefact went APPLIED long ago, so every
 // settle window has passed.
 func settledRow(obs telemetry.Observed) RowEvidence {
 	return RowEvidence{AppliedAt: t0.Add(-time.Hour), Observed: obs}
@@ -71,7 +71,7 @@ func TestRowGreenWhenArrivalsMatch(t *testing.T) {
 	}
 	for _, c := range res.Claims {
 		if c.Status != StatusGreen {
-			t.Errorf("%s: status %s (%s), want green — the config worked", c.Claim.Key(), c.Status, c.Detail)
+			t.Errorf("%s: status %s (%s), want green: the config worked", c.Claim.Key(), c.Status, c.Detail)
 		}
 	}
 	if len(res.Findings) != 0 {
@@ -81,8 +81,8 @@ func TestRowGreenWhenArrivalsMatch(t *testing.T) {
 
 // Missing expected telemetry produces an expectation finding distinct
 // from delivery and conformance findings (issue #34 AC): the backed
-// traces claim goes red with no finding of its own — its red is the
-// Observed leg the cross already owns (ADR-0038 §5a) — while the
+// traces claim goes red with no finding of its own (its red is the
+// Observed leg the cross already owns (ADR-0038 §5a)) while the
 // unbacked logs claim raises the Service-attached, advisory-grade
 // expectation finding with the fix-or-delete-the-lane fork (§5b).
 func TestRowMissingTelemetryRaisesExpectationFinding(t *testing.T) {
@@ -125,17 +125,17 @@ func TestRowMissingTelemetryRaisesExpectationFinding(t *testing.T) {
 	}
 
 	if len(res.Findings) != 1 {
-		t.Fatalf("findings = %+v, want exactly the one unbacked-claim advisory — the backed red belongs to the cross", res.Findings)
+		t.Fatalf("findings = %+v, want exactly the one unbacked-claim advisory: the backed red belongs to the cross", res.Findings)
 	}
 	f := res.Findings[0]
 	if f.Kind != ownership.Expectation {
-		t.Errorf("finding kind = %q, want expectation — its own kind, distinct from delivery and service_conformance (ADR-0038 §5)", f.Kind)
+		t.Errorf("finding kind = %q, want expectation: its own kind, distinct from delivery and service_conformance", f.Kind)
 	}
 	if !f.Kind.Valid() {
-		t.Error("the expectation finding kind is not valid in the roll-up — it must join ratio-plus-worst (ADR-0017)")
+		t.Error("the expectation finding kind is not valid in the roll-up: it must join ratio-plus-worst")
 	}
 	if f.Grade != ownership.Advisory {
-		t.Errorf("unbacked data claim graded %q, want advisory — no human demanded the signal, so it cannot fail compliance", f.Grade)
+		t.Errorf("unbacked data claim graded %q, want advisory: no human demanded the signal, so it cannot fail compliance", f.Grade)
 	}
 	if f.Subject.Kind != ownership.KindService || f.Subject.ID != fixtureRow {
 		t.Errorf("finding routed to %+v, want the Service", f.Subject)
@@ -145,7 +145,7 @@ func TestRowMissingTelemetryRaisesExpectationFinding(t *testing.T) {
 	}
 }
 
-// Inside the settle window after APPLIED, claims read neutral-pending —
+// Inside the settle window after APPLIED, claims read neutral-pending,
 // never red, never green (ADR-0038 §4b).
 func TestRowSettleWindowReadsPending(t *testing.T) {
 	set := Derive(fixtureSource(t))
@@ -164,7 +164,7 @@ func TestRowSettleWindowReadsPending(t *testing.T) {
 	}
 }
 
-// Known false readings yield unknown, never red — however long they
+// Known false readings yield unknown, never red, however long they
 // persist (ADR-0008, ADR-0038 §4d).
 func TestRowUnknownNeverRed(t *testing.T) {
 	set := Derive(fixtureSource(t))
@@ -190,7 +190,7 @@ func TestRowUnknownNeverRed(t *testing.T) {
 }
 
 // Enrichment judgement: an unmeasured attribute is unknown, a covered
-// one green, an absent one red after dampening — with the arrival claim
+// one green, an absent one red after dampening, with the arrival claim
 // green throughout, because the signal itself lands.
 func TestRowEnrichmentJudgement(t *testing.T) {
 	set := Derive(fixtureSource(t))
@@ -252,7 +252,7 @@ func (s staticInventory) Expected(context.Context, map[string]string) inventory.
 }
 
 // derivedFloor reads the provider's answer as floor resolution must see
-// it — through ForEvaluation, so a stale count could never float a floor.
+// it, through ForEvaluation, so a stale count could never float a floor.
 func derivedFloor(t *testing.T, p inventory.Provider, selector map[string]string) inventory.Count {
 	t.Helper()
 	return p.Expected(context.Background(), selector).ForEvaluation(p.Declaration(), t0)
@@ -284,7 +284,7 @@ func healthySelf() telemetry.SelfObserved {
 				Commits: map[string]int64{fixtureSHA: 40},
 				Components: []telemetry.ComponentTelemetry{
 					comp(map[string]string{"otelcol.component.kind": "processor", "otelcol.component.id": "transform/scrub", "otelcol.pipeline.id": "logs"}),
-					// The singleton deliberately drops its id — an
+					// The singleton deliberately drops its id: an
 					// expected shape, never a join failure (R-4 §5.2).
 					comp(map[string]string{"otelcol.component.kind": "processor"}),
 					// Synthetic graph nodes are tolerated and match
@@ -304,8 +304,8 @@ func healthyPopulation() inventory.Population {
 	}
 }
 
-// Every instantiated component emitting under R-4's join keys — either
-// generation, expected shapes included — judges green with no finding.
+// Every instantiated component emitting under R-4's join keys, either
+// generation, expected shapes included, judges green with no finding.
 func TestTierGreenWhenComponentsEmit(t *testing.T) {
 	set := Derive(fixtureSource(t))
 	ev := TierEvidence{RunningSHA: fixtureSHA, AppliedAt: t0.Add(-time.Hour),
@@ -330,7 +330,7 @@ func TestTierGreenWhenComponentsEmit(t *testing.T) {
 
 // A component silent past the settle window goes red once the shortfall
 // persists, raising the Tier-attached, violation-grade expectation
-// finding — "the config didn't work" in its sharpest form (ADR-0038 §5c).
+// finding: "the config didn't work" in its sharpest form (ADR-0038 §5c).
 func TestTierSilentComponentEscalates(t *testing.T) {
 	set := Derive(fixtureSource(t))
 	damper := inventory.NewDamper()
@@ -350,7 +350,7 @@ func TestTierSilentComponentEscalates(t *testing.T) {
 	}
 	for _, c := range first.Claims {
 		if c.Claim.Component == "otlphttp/shipper" && c.Status != StatusPending {
-			t.Errorf("first sight of silence judged %s, want pending — persistence-dampened (ADR-0035 §3)", c.Status)
+			t.Errorf("first sight of silence judged %s, want pending: persistence-dampened", c.Status)
 		}
 	}
 
@@ -373,14 +373,14 @@ func TestTierSilentComponentEscalates(t *testing.T) {
 	}
 	f := res.Findings[0]
 	if f.Kind != ownership.Expectation || f.Grade != ownership.Violation {
-		t.Errorf("finding = kind %q grade %q, want expectation violation — pipeline claims are violation-capable after dampening", f.Kind, f.Grade)
+		t.Errorf("finding = kind %q grade %q, want expectation violation: pipeline claims are violation-capable after dampening", f.Kind, f.Grade)
 	}
 	if f.Subject.Kind != ownership.KindTier || f.Subject.ID != "data-flow/gateway" {
 		t.Errorf("finding routed to %+v, want the Tier", f.Subject)
 	}
 }
 
-// Claims are judged against the artefact the collector reports running —
+// Claims are judged against the artefact the collector reports running,
 // never head. Handing the engine head's claims with another commit's
 // telemetry is a caller bug, refused outright (ADR-0038 §4a).
 func TestTierRefusesSHAMismatch(t *testing.T) {
@@ -388,13 +388,13 @@ func TestTierRefusesSHAMismatch(t *testing.T) {
 	ev := TierEvidence{RunningSHA: "0000000000000000000000000000000000000000",
 		Self: healthySelf(), Population: healthyPopulation()}
 	if _, err := EvaluateTier(set, "data-flow/gateway", ev, inventory.NewDamper(), testConfig(), t0); err == nil {
-		t.Fatal("a claim set derived at one SHA was judged against another commit's telemetry — the cascade ADR-0038 §4a forbids")
+		t.Fatal("a claim set derived at one SHA was judged against another commit's telemetry: the engine must refuse the cascade")
 	}
 }
 
 // never_seen escalates through the floor from the InventoryProvider
 // slice (issue #34 AC): the substrate expects 3, nothing has ever
-// matched, the shortfall persisted — a violation-grade delivery finding.
+// matched, the shortfall persisted: a violation-grade delivery finding.
 // The pipeline claims read unknown, never red: nothing runs, so silence
 // is the population's finding, and delivery failure structurally cannot
 // cascade into expectation-red (ADR-0038 §4a).
@@ -424,7 +424,7 @@ func TestNeverSeenEscalatesThroughProviderFloor(t *testing.T) {
 		}
 	}
 	if neverSeen == nil || neverSeen.Grade != inventory.Violation {
-		t.Fatalf("population findings = %+v, want never_seen escalated to violation through the derived floor (ADR-0035 §4)", res.Population)
+		t.Fatalf("population findings = %+v, want never_seen escalated to violation through the derived floor", res.Population)
 	}
 	if neverSeen.Floor.Source != inventory.FloorDerived || neverSeen.Floor.Min != 3 {
 		t.Errorf("floor = %+v, want the InventoryProvider's derived 3", neverSeen.Floor)
@@ -436,7 +436,7 @@ func TestNeverSeenEscalatesThroughProviderFloor(t *testing.T) {
 			delivery++
 		}
 		if f.Kind == ownership.Expectation {
-			t.Errorf("expectation finding raised while nothing runs: %+v — that red belongs to delivery", f)
+			t.Errorf("expectation finding raised while nothing runs: %+v: that red belongs to delivery", f)
 		}
 	}
 	if delivery != 1 {
@@ -451,7 +451,7 @@ func TestNeverSeenEscalatesThroughProviderFloor(t *testing.T) {
 }
 
 // under_populated escalates the same way (issue #34 AC): collectors
-// present but below the provider's floor, persisting — while the
+// present but below the provider's floor, persisting, while the
 // collectors that do run still have their pipeline claims judged.
 func TestUnderPopulatedEscalatesThroughProviderFloor(t *testing.T) {
 	set := Derive(fixtureSource(t))
@@ -479,7 +479,7 @@ func TestUnderPopulatedEscalatesThroughProviderFloor(t *testing.T) {
 		}
 	}
 	if under == nil || under.Grade != inventory.Violation {
-		t.Fatalf("population findings = %+v, want under_populated escalated to violation (ADR-0035 §5)", res.Population)
+		t.Fatalf("population findings = %+v, want under_populated escalated to violation", res.Population)
 	}
 	if under.Floor.Source != inventory.FloorDerived || under.Floor.Min != 3 {
 		t.Errorf("floor = %+v, want the InventoryProvider's derived 3", under.Floor)
@@ -487,7 +487,7 @@ func TestUnderPopulatedEscalatesThroughProviderFloor(t *testing.T) {
 
 	for _, c := range res.Claims {
 		if c.Status != StatusGreen {
-			t.Errorf("%s judged %s, want green — the collector that does run emits, and its claims are judged on their own evidence", c.Claim.Key(), c.Status)
+			t.Errorf("%s judged %s, want green: the collector that does run emits, and its claims are judged on their own evidence", c.Claim.Key(), c.Status)
 		}
 	}
 }

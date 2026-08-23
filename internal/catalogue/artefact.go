@@ -15,8 +15,8 @@ import (
 const FormatVersion = 1
 
 // Encode renders the Catalogue as its canonical artefact bytes. The
-// encoding is deterministic — components in (class, type) order, JSON object
-// keys sorted, no timestamps — so importing the same tag twice yields
+// encoding is deterministic (components in (class, type) order, JSON object
+// keys sorted, no timestamps), so importing the same tag twice yields
 // byte-identical artefacts, which is what makes idempotency testable and
 // artefacts diffable across an air gap.
 func (c *Catalogue) Encode() ([]byte, error) {
@@ -44,8 +44,8 @@ func ArtefactName(ref string) string {
 }
 
 // Write stores the Catalogue artefact under dir, named for its release tag.
-// The write is atomic — the bytes land in a temp file first and are renamed
-// into place — so a reader never sees a half-written Catalogue. If the file
+// The write is atomic (the bytes land in a temp file first and are renamed
+// into place), so a reader never sees a half-written Catalogue. If the file
 // already holds exactly these bytes the write is skipped and changed is
 // false: re-importing the same tag is a no-op, not a rewrite.
 func (c *Catalogue) Write(dir string) (path string, changed bool, err error) {
@@ -84,12 +84,12 @@ func (c *Catalogue) Write(dir string) (path string, changed bool, err error) {
 }
 
 // Load reads and validates one Catalogue artefact. Loading fails closed,
-// exactly like the requirements library: an artefact travels — bundled in a
-// release, downloaded, or carried across an air gap (ADR-0020 §5) — and a
+// exactly like the requirements library: an artefact travels (bundled in a
+// release, downloaded, or carried across an air gap, ADR-0020 §5) and a
 // tampered or truncated one silently accepted would corrupt every judgement
 // downstream. An unknown field, a duplicate key, an alias collision or a
 // missing mandatory field is a load error naming the file, and the returned
-// Catalogue is nil — never partially loaded.
+// Catalogue is nil, never partially loaded.
 func Load(path string) (*Catalogue, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {

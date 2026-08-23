@@ -1,4 +1,4 @@
-# ADR-0039: Self-telemetry ingestion — a rendered pattern over the `TelemetryProvider` seam
+# ADR-0039: Self-telemetry ingestion: a rendered pattern over the `TelemetryProvider` seam
 
 - Status: accepted
 - Date: 2026-08-17 (session G6)
@@ -6,7 +6,7 @@
 ## Context
 
 REQ-053 pins the seam: self-telemetry rides `TelemetryProvider`, no
-privileged side channel — the platform reads collector health from the
+privileged side channel. The platform reads collector health from the
 adopter's backend like any other telemetry. The collector's defaults will
 not make that true: R-4 (verified against v0.158.0 source) found the
 default surface is a localhost Prometheus pull nobody scrapes, OTLP-out is
@@ -14,21 +14,21 @@ opt-in per collector, the new `otelcol.component.*` scheme is
 scope-attributes-only and alpha-gated on metrics, and the join keys the
 ecosystem actually uses are the legacy datapoint attributes. Separately,
 `service.instance.id` rotates per process start, and the Foreign delivery
-path has no OpAMP status channel — self-telemetry resource attributes are
+path has no OpAMP status channel: self-telemetry resource attributes are
 the only way the platform learns what a Foreign collector runs.
 
 ## Decision
 
 1. **Every rendered artefact configures OTLP-push of internal telemetry**
-   — metrics (level `normal`) via a periodic reader, internal logs via a
-   batch processor — to the self-telemetry destination. Internal traces
+   (metrics (level `normal`) via a periodic reader, internal logs via a
+   batch processor) to the self-telemetry destination. Internal traces
    stay off in v1 (experimental upstream; no claim consumes them). The
    localhost Prometheus default is left untouched: local debugging keeps
    working. This is a **rendered pattern** in the live-check-tap stance
    (ADR-0034): pattern-and-reading, never a platform runtime component.
    The renderer owns the `service::telemetry` block; Blueprints do not
    author it (boundary against ADR-0024's collector-wide section).
-   Self-telemetry is **mandatory in every rendered artefact** — ADR-0030
+   Self-telemetry is **mandatory in every rendered artefact**: ADR-0030
    already made the Unmatched artefact self-telemetry-only, and a governed
    Tier reporting less than the ungoverned fallback would be absurd. The
    ingest volume this creates is a named, accepted cost (metered like
@@ -36,7 +36,7 @@ the only way the platform learns what a Foreign collector runs.
 2. **The self-telemetry destination is declared once, estate-level, by the
    adopter**, resolved per Tier at render, with one routing rule: **a
    Tier's self-telemetry must never depend on that Tier's own data
-   pipelines** — own exporter, own connection; a gateway never exports its
+   pipelines** (own exporter, own connection); a gateway never exports its
    own health through itself. Edge Tiers whose only network path runs
    through a gateway may transit it as ordinary OTLP data; the shared fate
    is topological reality, and its consequence is named: transport loss
@@ -53,7 +53,7 @@ the only way the platform learns what a Foreign collector runs.
    on those surfaces). `capabilities`/`fanout` synthetic kinds,
    identity-dropping singletons (`otlp` receiver, `memory_limiter`),
    two-level scraper identity, and the `otel.signal` vs `otelcol.signal`
-   prefix trap are modelled as expected shapes — R-4's caveats §5.1–5.7
+   prefix trap are modelled as expected shapes: R-4's caveats §5.1 to 5.7
    become the normaliser's test cases.
 4. **The `telemetry.newPipelineTelemetry` alpha gate ships off**, behind a
    Telecraft flag mirroring upstream's status (it breaks the default
@@ -64,18 +64,18 @@ the only way the platform learns what a Foreign collector runs.
    `service::telemetry::resource` with `telecraft.tier` (the Tier's
    `team/name` id) alongside the existing `telecraft.commit`. That pair is
    the whole join: reading → (Tier, SHA) → artefact → claims. Environment
-   is not stamped — the Tier declares it (ADR-0025); two sources of one
+   is not stamped: the Tier declares it (ADR-0025); two sources of one
    fact is drift. Baked at render, both delivery paths carry identical
    identity, so the Foreign path gains stamp-equivalent observability for
    free. ADR-0013's boundary is intact: these attributes ride the
-   collector's *self*-telemetry resource only — nothing is stamped onto
+   collector's *self*-telemetry resource only. Nothing is stamped onto
    customer data.
 6. **Node-stable identity is a substrate pattern, not a platform key**:
    where the substrate offers it (Kubernetes downward API), the rendered
    pattern interpolates node/pod identity into a resource attribute;
-   absence is tolerated — no invented host identity (ADR-0035
+   absence is tolerated. No invented host identity (ADR-0035
    discipline). No claim keys on node identity; metering benefits when
-   present. **`service.instance.id` is kept as the incarnation id** — its
+   present. **`service.instance.id` is kept as the incarnation id**. Its
    per-restart rotation is signal: incarnation churn per Tier is the
    restart-rate reading.
 7. **The stamp is a reading, never a back-door Effective.** Effective
@@ -89,7 +89,7 @@ the only way the platform learns what a Foreign collector runs.
 - The normaliser is the single place both join-key generations meet; its
   test kit follows the ADR-0036 conformance-kit pattern.
 - Adopters pay real ingest for self-telemetry (per-Tier component × signal
-  cardinality, not per-collector explosion — instances aggregate).
+  cardinality, not per-collector explosion: instances aggregate).
 - If upstream promotes the new pipeline telemetry, only the Telecraft flag
   default and the normaliser's key preference change.
 - REQ-050's parenthetical join keys (`otelcol.component.id`,

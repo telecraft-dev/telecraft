@@ -73,7 +73,7 @@ test('the effective palette resolves provenance to the Grant or ancestor Allow-l
   // The resting team is the signed-in user's: data-flow (ADR-0042 §2).
   await page.goto('/catalogue?view=palette')
   await expect(page.getByTestId('palette-summary')).toContainText('8 of 13')
-  // A Grant admits the Kafka exporter that both lists exclude — union
+  // A Grant admits the Kafka exporter that both lists exclude: union
   // after intersection, overriding the target's own declared list.
   await expect(page.getByTestId('origin-exporter/kafka')).toHaveText('grant')
   await page.getByTestId('palette-why-exporter/kafka').click()
@@ -128,7 +128,7 @@ test('an Allow-list edit exits as a PR via the forge adapter', async ({ page }) 
 test('a refused governance edit comes back with the load problems named', async ({ page }) => {
   await page.goto('/catalogue?view=governance')
   // An emptied list would ban everything: refused fail-closed, exactly as
-  // loading refuses it (ADR-0021 §4) — no proposal opens.
+  // loading refuses it (ADR-0021 §4), so no proposal opens.
   await page.getByTestId('allowlist-entries-data-flow').fill('')
   await page.getByTestId('propose').click()
   await expect(page.getByTestId('proposal-problems')).toBeVisible()

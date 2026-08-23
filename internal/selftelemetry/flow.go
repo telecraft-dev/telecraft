@@ -3,15 +3,15 @@ package selftelemetry
 // The metering half of the normalisation layer (ADR-0040 §1): which
 // self-telemetry counters a Tier's per-signal flow reading is summed from.
 // The names are R-4 §3 knowledge, pinned against collector v0.158.0 source
-// exactly like the join keys above, and they live here for the same reason
-// — a provider that picked its own metric names would be a second opinion
+// exactly like the join keys above, and they live here for the same reason::
+// a provider that picked its own metric names would be a second opinion
 // on what "in" and "out" mean.
 //
 // In is receiver-accepted items and out is exporter-sent items, per
 // ADR-0040 §1. Items are the unit (§2): every counter named here counts
 // spans, metric points or log records, which is what the helper metrics
 // emit at level `normal`. No byte counter exists on these surfaces, so no
-// byte reading exists — estimating one from item counts is the invention
+// byte reading exists, and estimating one from item counts is the invention
 // §2 forbids.
 //
 // The only reds the meter itself sources are the error-rate counters
@@ -22,14 +22,14 @@ package selftelemetry
 import "github.com/telecraft-dev/telecraft/internal/requirements"
 
 // FlowCounters names one signal's flow counters in the legacy,
-// default-on helper-metric generation — the same generation whose
+// default-on helper-metric generation, the same generation whose
 // datapoint attributes MetricIdentityAttributes joins on, so a reading
 // and its identity always come off the same surface.
 type FlowCounters struct {
 	// Accepted is receiver-accepted items: the in-rate's counter.
 	Accepted string
 
-	// Refused is receiver-refused items — an error-rate reading.
+	// Refused is receiver-refused items, an error-rate reading.
 	Refused string
 
 	// Sent is exporter-sent items: the out-rate's counter, and the one a

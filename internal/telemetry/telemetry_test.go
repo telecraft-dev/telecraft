@@ -25,7 +25,7 @@ func TestUnknownReading(t *testing.T) {
 	obs := Unknown(asOf, 15*time.Minute, "backend unreachable")
 
 	if !obs.AsOf.Equal(asOf) {
-		t.Errorf("as_of = %v, want %v — every reading carries as_of, degraded ones included", obs.AsOf, asOf)
+		t.Errorf("as_of = %v, want %v: every reading carries as_of, degraded ones included", obs.AsOf, asOf)
 	}
 	if obs.Window != 15*time.Minute {
 		t.Errorf("window = %v, want 15m", obs.Window)
@@ -44,7 +44,7 @@ func TestUnknownReading(t *testing.T) {
 			t.Errorf("%s: cause = %q, want the degradation cause", kind, sig.Cause)
 		}
 		if sig.Present || sig.Volume != 0 || sig.AttributeCoverage != nil {
-			t.Errorf("%s: observation fields populated on an unknown reading — that is a fabricated value", kind)
+			t.Errorf("%s: observation fields populated on an unknown reading, which is a fabricated value", kind)
 		}
 	}
 }

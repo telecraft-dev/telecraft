@@ -1,4 +1,4 @@
-# P2 — Estate & team roll-up view
+# P2: Estate & team roll-up view
 
 - Date: 2026-08-12
 - Status: verdict recorded
@@ -16,10 +16,10 @@ Two variants over shared fixtures (Acme Engineering tree, ~15 services,
 waivers, cross-team component routing, an ElasticFleet permanently-UNSET
 delivery column):
 
-- **A · Tree-table** — expandable team → owner → finding rows; three fixed
+- **A · Tree-table**: expandable team → owner → finding rows; three fixed
   columns (conformance / delivery / component), each ratio bar + worst badge
   + waived chip.
-- **B · Cards** — zoomable team cards with breadcrumb and a persistent
+- **B · Cards**: zoomable team cards with breadcrumb and a persistent
   current-node summary strip.
 
 Structural choices that survived contact: neutral states (`unknown`,
@@ -32,7 +32,7 @@ rendered on both sides (routed-here badge / routed-away note).
 ## Verdict
 
 **Both variants ship.** The table view and the card view are complementary
-product surfaces, not competing candidates — G7 designs the IA around both
+product surfaces, not competing candidates; G7 designs the IA around both
 (table for scanning/drill-down, cards for zooming/presentation). Recorded as
 a G7 constraint.
 

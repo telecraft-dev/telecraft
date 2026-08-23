@@ -54,7 +54,7 @@ func TestReductionIsPresentedAndNotJudged(t *testing.T) {
 		t.Errorf("reduction ratio = %v (measured %v), want ~0.9", ratio, measured)
 	}
 	if traces.Errors.Any() {
-		t.Errorf("a ninety per cent reduction raised error-rate readings: %+v — reduction is never an error (ADR-0040 §3)", traces.Errors)
+		t.Errorf("a ninety per cent reduction raised error-rate readings: %+v: reduction is never an error", traces.Errors)
 	}
 }
 
@@ -65,7 +65,7 @@ func TestErrorRateReadingsAreTheOnlyReds(t *testing.T) {
 
 	metrics, _ := p.Signal(requirements.Metrics)
 	if metrics.Volume.Reduction() != 0 {
-		t.Errorf("reduction = %d, want 0 — in equals out", metrics.Volume.Reduction())
+		t.Errorf("reduction = %d, want 0: in equals out", metrics.Volume.Reduction())
 	}
 	if !metrics.Errors.Any() || metrics.Errors.Total() != 15 {
 		t.Errorf("errors = %+v, want refused 12 + send_failed 3", metrics.Errors)
@@ -73,7 +73,7 @@ func TestErrorRateReadingsAreTheOnlyReds(t *testing.T) {
 }
 
 // A Hop's throughput is its feeding exporter's out-rate, read straight
-// from the per-exporter split — never the Tier's total divided by
+// from the per-exporter split, never the Tier's total divided by
 // anything.
 func TestHopThroughputIsTheFeedingExportersOutRate(t *testing.T) {
 	p := ForTier("data-flow/gateway", metered(), now)
@@ -83,10 +83,10 @@ func TestHopThroughputIsTheFeedingExportersOutRate(t *testing.T) {
 		t.Errorf("hop throughput = %d (known %v), want 90000", items, ok)
 	}
 	if _, ok := p.Hop(requirements.Traces, "otlp/absent"); ok {
-		t.Error("an exporter that reported nothing came back with a throughput — an unread Hop is unknown, never zero")
+		t.Error("an exporter that reported nothing came back with a throughput: an unread Hop is unknown, never zero")
 	}
 	if _, ok := p.Hop(requirements.Logs, "otlp/gateway"); ok {
-		t.Error("an unknown signal's Hop came back known — a reading nobody took is never a number (ADR-0040 §6)")
+		t.Error("an unknown signal's Hop came back known: a reading nobody took is never a number")
 	}
 }
 
@@ -197,13 +197,13 @@ func TestLossIsNotVocabulary(t *testing.T) {
 		for i, line := range strings.Split(string(body), "\n") {
 			lower := strings.ToLower(line)
 			if strings.Contains(lower, "loss") && !strings.Contains(lower, "loseable") {
-				t.Errorf(`%s:%d says "loss" — in-minus-out is reduction; the meter presents the delta and passes no judgement (ADR-0040 §3)`, name, i+1)
+				t.Errorf(`%s:%d says "loss": in-minus-out is reduction; the meter presents the delta and passes no judgement`, name, i+1)
 			}
 		}
 	}
 }
 
-// ADR-0040 §1: the two grains are never blended. Held structurally — no
+// ADR-0040 §1: the two grains are never blended. Held structurally: no
 // exported function takes both a pipeline-grain and a service-grain
 // input, so there is no shape in which per-service flow through a Tier
 // could be faked by division.
@@ -233,7 +233,7 @@ func TestTheTwoGrainsNeverMeetInOneSignature(t *testing.T) {
 				}
 			}
 			if sawPipeline && sawService {
-				t.Errorf("%s takes both grains — pipeline-grain and service-grain readings are never blended (ADR-0040 §1)", fn.Name.Name)
+				t.Errorf("%s takes both grains: pipeline-grain and service-grain readings are never blended", fn.Name.Name)
 			}
 			return true
 		})

@@ -6,8 +6,8 @@ import { Button } from './Button'
  *
  * ADR-0041 makes the panel one universal component summoned in place beside
  * whatever was read; ADR-0042 §3.2 makes inspection never navigate. Three
- * surfaces had grown their own version of it — the card panel, the claim
- * panel and the compose flyout — at three fixed widths (320px, 380px,
+ * surfaces had grown their own version of it (the card panel, the claim
+ * panel and the compose flyout) at three fixed widths (320px, 380px,
  * 380px), none of which is right for everyone: a Tier's findings and a
  * rendered YAML document want very different amounts of room, and so do a
  * 13-inch laptop and a 32-inch display.

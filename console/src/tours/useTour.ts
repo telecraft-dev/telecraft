@@ -45,7 +45,7 @@ export function useTour(): RunningTour {
    *
    * Staying on the same Workspace keeps everything the reader had and lays
    * the Step's own params over it. Crossing to another Workspace narrows
-   * to the lens, the Tour, and what the Step asked for — which is what
+   * to the lens, the Tour, and what the Step asked for, which is what
    * jump-to-object already does, because one Workspace's params mean
    * nothing in another.
    */

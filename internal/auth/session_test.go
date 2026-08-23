@@ -73,7 +73,7 @@ func TestSessionKeyFloor(t *testing.T) {
 	if _, err := NewSessions([]byte("short"), 0); err == nil {
 		t.Fatal("NewSessions accepted a key below the floor")
 	}
-	// An empty key draws a random one — the standalone shape.
+	// An empty key draws a random one, the standalone shape.
 	s, err := NewSessions(nil, 0)
 	if err != nil {
 		t.Fatal(err)

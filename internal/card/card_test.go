@@ -22,7 +22,7 @@ var readAt = time.Date(2026, 8, 18, 11, 59, 0, 0, time.UTC)
 var derivedAt = time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 
 // ADR-0041 §2: the honest neutrals are each distinct, and each of them
-// beats a verdict — every one of them means the evidence a verdict would
+// beats a verdict: every one of them means the evidence a verdict would
 // rest on is missing.
 func TestNeutralStatesTakePrecedenceOverFindings(t *testing.T) {
 	red := []ownership.Finding{{Kind: ownership.Delivery, Grade: ownership.Violation, Detail: "nothing applied"}}
@@ -45,7 +45,7 @@ func TestNeutralStatesTakePrecedenceOverFindings(t *testing.T) {
 				t.Errorf("state = %q, want %q", got.State, tc.want)
 			}
 			if tc.want != StateFinding && got.WorstSeverity != SeverityNone {
-				t.Errorf("a %s band carries severity %q — a neutral is not a verdict", tc.want, got.WorstSeverity)
+				t.Errorf("a %s band carries severity %q: a neutral is not a verdict", tc.want, got.WorstSeverity)
 			}
 		})
 	}
@@ -85,7 +85,7 @@ func TestHueIsUnderivableFromTheContract(t *testing.T) {
 	// Whole words: "required" is a reading, not a colour.
 	hue := regexp.MustCompile(`(?i)\b(colours?|colors?|hue|red|amber|green|rgb|hsl)\b|#[0-9a-f]{3,8}\b`)
 	if found := hue.FindAllString(string(payload), -1); len(found) > 0 {
-		t.Errorf("the payload carries %v — hue is underivable from the contract, which is how mono-red stays structural rather than conventional (ADR-0041 §2)", found)
+		t.Errorf("the payload carries %v: hue must not be derivable from the contract, which is how mono-red stays structural rather than conventional", found)
 	}
 }
 
@@ -97,7 +97,7 @@ func TestTheThreeBandsKeepAFixedOrder(t *testing.T) {
 	}
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("band order = %v, want %v — position is load-bearing where hue is not", got, want)
+			t.Fatalf("band order = %v, want %v: position is load-bearing where hue is not", got, want)
 		}
 	}
 }
@@ -131,7 +131,7 @@ func TestSignalRowsCarryReductionWithoutJudgement(t *testing.T) {
 	quiet.Findings = nil
 	for band, got := range Assemble(quiet).Bands {
 		if got.State != StateOK {
-			t.Errorf("%s band = %q under a ninety per cent reduction, want ok — the meter presents the delta and passes no judgement", band, got.State)
+			t.Errorf("%s band = %q under a ninety per cent reduction, want ok: the meter presents the delta and passes no judgement", band, got.State)
 		}
 	}
 }
@@ -158,14 +158,14 @@ func TestUnknownLanesCarryCauseAndNoArithmetic(t *testing.T) {
 		t.Error("an unknown lane carries no cause")
 	}
 	if logs.Volume.AsOf.IsZero() {
-		t.Error("an unknown lane carries no as-of — last-known-plus-age renders from the contract (ADR-0041 §2)")
+		t.Error("an unknown lane carries no as-of: last-known-plus-age renders from the contract")
 	}
 }
 
 // #98: a lane the Tier's artefact never wired metered `in 0 / out 0`,
 // which is the same shape a broken pipeline reads. The zero was true and
 // the rendering was a lie, so the row now carries the lane state and no
-// readings at all — there is no number left to mistake for a stopped lane.
+// readings at all: there is no number left to mistake for a stopped lane.
 //
 // The contrast is the whole point, so both cases are asserted together:
 // an unwired lane and a wired lane moving nothing meter identically, and
@@ -184,7 +184,7 @@ func TestAnUnwiredLaneAndAStoppedLaneDoNotReadAlike(t *testing.T) {
 		t.Errorf("an unwired lane = %q, want not_applicable", metrics.Lane)
 	}
 	if metrics.Volume != nil || metrics.Freshness != nil || metrics.Shape != nil {
-		t.Errorf("an unwired lane carries readings: %+v — a metered zero on a lane that does not exist reads as a fault", metrics)
+		t.Errorf("an unwired lane carries readings %+v: a metered zero on a lane that does not exist reads as a fault", metrics)
 	}
 
 	// The same meter reading on a lane the artefact does wire: a
@@ -194,7 +194,7 @@ func TestAnUnwiredLaneAndAStoppedLaneDoNotReadAlike(t *testing.T) {
 		t.Errorf("a wired lane = %q, want present", logs.Lane)
 	}
 	if logs.Volume == nil || !logs.Volume.Known || logs.Volume.In != 0 || logs.Volume.Out != 0 {
-		t.Errorf("a stopped lane = %+v, want its metered zero kept — it is a reading, and a finding", logs.Volume)
+		t.Errorf("a stopped lane = %+v, want its metered zero kept: it is a reading, and a finding", logs.Volume)
 	}
 
 	traces := rows[requirements.Traces]
@@ -216,7 +216,7 @@ func TestAnUnwiredLaneTheMeterHasFiguresForKeepsThem(t *testing.T) {
 			continue
 		}
 		if row.Lane != LanePresent {
-			t.Errorf("a lane the meter has 41,020 items for = %q, want present — the pipeline evidently exists", row.Lane)
+			t.Errorf("a lane the meter has 41,020 items for = %q, want present: the pipeline evidently exists", row.Lane)
 		}
 		if row.Volume == nil || row.Volume.In != 41_020 {
 			t.Errorf("a reading was dropped because the config disagreed with it: %+v", row)
@@ -232,10 +232,10 @@ func TestLanesGoUnknownWhenNoArtefactWasRead(t *testing.T) {
 
 	for _, row := range Assemble(in).Signals {
 		if row.Lane != LaneUnknown {
-			t.Errorf("%s lane = %q with no artefact read, want unknown — a lane nobody looked for is not a lane that is not there", row.Signal, row.Lane)
+			t.Errorf("%s lane = %q with no artefact read, want unknown: a lane nobody looked for is not a lane that is not there", row.Signal, row.Lane)
 		}
 		if row.Volume == nil {
-			t.Errorf("%s dropped its readings on an unknown lane — only not_applicable does that", row.Signal)
+			t.Errorf("%s dropped its readings on an unknown lane: only not_applicable does that", row.Signal)
 		}
 	}
 
@@ -287,7 +287,7 @@ func TestPopulationCarriesTheInventoryOutputsVerbatim(t *testing.T) {
 		t.Errorf("floor source = %q, want derived", face.Population.FloorSource)
 	}
 	if face.Population.State != PopulationUnderPopulated {
-		t.Errorf("state = %q, want under_populated — never_seen and under_populated are siblings, never degrees (ADR-0035 §5)", face.Population.State)
+		t.Errorf("state = %q, want under_populated: never_seen and under_populated are siblings, never degrees", face.Population.State)
 	}
 }
 
@@ -298,7 +298,7 @@ func TestShelfSummaryCountsRideTheFace(t *testing.T) {
 		t.Errorf("finding counts = %v, want one per kind", face.FindingCounts)
 	}
 	if face.WaivedCounts["conformance"] != 1 {
-		t.Errorf("waived counts = %v — a waiver waives the count, never the diagnosis, and rides every roll-up (ADR-0037)", face.WaivedCounts)
+		t.Errorf("waived counts = %v: a waiver waives the count, never the diagnosis, and rides every roll-up", face.WaivedCounts)
 	}
 	if face.FindingCounts["conformance"] != 1 {
 		t.Error("a waived finding vanished from the counts entirely")
@@ -312,7 +312,7 @@ func TestDrawerRefusesAComplaint(t *testing.T) {
 		WhoActs: WhoActs{Target: ObjectRef{Kind: "tier", ID: "data-flow/gateway"}, Label: "Inspect delivery in Topology"},
 	}}, nil)
 	if err == nil {
-		t.Fatal("a finding without remediation was accepted — a finding without remediation is a complaint (ADR-0041 §3)")
+		t.Fatal("a finding without remediation was accepted: every finding must say what to do")
 	}
 
 	_, err = NewDrawer("data-flow/gateway", []Finding{{
@@ -384,7 +384,7 @@ func TestSharedContractFixture(t *testing.T) {
 	}
 	want, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("reading the shared contract fixture: %v — run go test ./internal/card -update", err)
+		t.Fatalf("reading the shared contract fixture: %v (run go test ./internal/card -update)", err)
 	}
 	if string(got) != string(want) {
 		t.Errorf("the assembled payload no longer matches %s.\nThe console reads the same file: bump Version and update both sides, or run go test ./internal/card -update.\n\ngot:\n%s", path, got)

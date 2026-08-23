@@ -60,7 +60,7 @@ stages:
 
 // On the served path, cohort members receive the new artefact and the
 // remainder the old, both stamped at head (ADR-0029 §4): membership is a
-// pure function of (head, attributes) computed per connect — same inputs,
+// pure function of (head, attributes) computed per connect: same inputs,
 // same serve, on any replica.
 func TestMatchServesTheCohortTheNextArtefact(t *testing.T) {
 	root, res := rolloutFixture(t)
@@ -95,30 +95,30 @@ func TestMatchServesTheCohortTheNextArtefact(t *testing.T) {
 
 	for name, artefact := range map[string][]byte{"base": rest.Artefact, "@next": got.Artefact} {
 		if !strings.Contains(string(artefact), fixtureCommit) {
-			t.Errorf("the served %s artefact carries no commit stamp (ADR-0013)", name)
+			t.Errorf("the served %s artefact carries no commit stamp", name) // ADR-0013
 		}
 	}
 
 	// Pure and deterministic: the same attributes match the same artefact
-	// on a rebuilt snapshot — nothing was remembered in between.
+	// on a rebuilt snapshot: nothing was remembered in between.
 	again, err := LoadSnapshot(root, fixtureCommit)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if rematch := again.Match(member); !rematch.Cohort || !bytes.Equal(rematch.Artefact, got.Artefact) {
-		t.Error("membership varies across snapshot rebuilds — it must be a pure function of (head, attributes) (ADR-0032 §2)")
+		t.Error("membership varies across snapshot rebuilds: it must be a pure function of (head, attributes)") // ADR-0032 §2
 	}
 }
 
 // A Tier with an active Rollout but no servable @next artefact refuses
-// the snapshot: the server stays on the previous head — bounded staleness,
-// never a cohort member served a lie (ADR-0029 §3, ADR-0032 §1).
+// the snapshot: the server stays on the previous head. Staleness is
+// bounded, and no cohort member is ever served a lie (ADR-0029 §3, ADR-0032 §1).
 func TestSnapshotFailsClosedOnMissingNextArtefact(t *testing.T) {
 	root, _ := rolloutFixture(t)
 	if err := os.Remove(filepath.Join(root, "rendered", "pipelines", "gateway@next.yaml")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LoadSnapshot(root, fixtureCommit); err == nil || !strings.Contains(err.Error(), "@next") {
-		t.Fatalf("snapshot loaded without the @next artefact (err %v) — it must fail closed", err)
+		t.Fatalf("snapshot loaded without the @next artefact (err %v): it must fail closed", err)
 	}
 }

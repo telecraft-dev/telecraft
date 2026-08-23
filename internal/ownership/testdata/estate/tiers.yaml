@@ -1,6 +1,6 @@
 # Tiers are authored, ownable topology positions. gateway-pci is the split
 # a Tier undergoes when one subset of its collectors needs a different owner
-# (ADR-0016): the selector mechanism expresses the exception — there is no
+# (ADR-0016): the selector mechanism expresses the exception; there is no
 # per-collector override.
 - kind: tier
   id: edge

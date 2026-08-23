@@ -27,10 +27,10 @@ func TestFixtureTopologyLoads(t *testing.T) {
 		t.Error("gateway is served and must carry the OpAMP endpoint")
 	}
 	if gateway.MinExpected != 2 {
-		t.Errorf("gateway min_expected = %d — the declared population floor rides the Tier (ADR-0035 §2)", gateway.MinExpected)
+		t.Errorf("gateway min_expected = %d: the declared population floor rides the Tier", gateway.MinExpected) // ADR-0035 §2
 	}
 	if !gateway.Untrusted() {
-		t.Error("the internet Hop declares no trust level — it must fail safe to untrusted")
+		t.Error("the internet Hop declares no trust level: it must fail safe to untrusted")
 	}
 
 	edge := topo.Tiers["data-flow/edge"]
@@ -47,7 +47,7 @@ func TestFixtureTopologyLoads(t *testing.T) {
 	}
 	traversing := topo.Traversing("data-flow/gateway")
 	if len(traversing) != 1 || traversing[0].ID() != "product/checkout" {
-		t.Errorf("Traversing(gateway) = %v — strictness derives from Paths (ADR-0025 §4)", traversing)
+		t.Errorf("Traversing(gateway) = %v: strictness derives from Paths", traversing) // ADR-0025 §4
 	}
 }
 
@@ -79,7 +79,7 @@ blueprint: pipelines/flow
 `)
 	_, err := LoadTopology(root)
 	if err == nil || !strings.Contains(err.Error(), "pins no version") {
-		t.Fatalf("an unpinned binding loaded — a Tier binds exactly one Blueprint version (ADR-0025): %v", err)
+		t.Fatalf("an unpinned binding loaded, but a Tier binds exactly one Blueprint version: %v", err) // ADR-0025
 	}
 }
 
@@ -91,12 +91,12 @@ blueprint: pipelines/flow@1
 `)
 	_, err := LoadTopology(root)
 	if err == nil || !strings.Contains(err.Error(), "environment") {
-		t.Fatalf("a Tier without an Environment loaded (ADR-0025 §2): %v", err)
+		t.Fatalf("a Tier without an Environment loaded: %v", err) // ADR-0025 §2
 	}
 }
 
 // A Path through a Tier nobody authored would silently impose no judgement
-// on anything — and under-governed is the failure mode (ADR-0025 §4), so
+// on anything, and under-governed is the failure mode (ADR-0025 §4), so
 // the load refuses rather than raising a finding.
 func TestDanglingPathReferenceFailsClosed(t *testing.T) {
 	root := t.TempDir()
@@ -137,10 +137,10 @@ func TestDefaultFloorsAreValidAndCumulative(t *testing.T) {
 	}
 	p := DefaultFloors()
 	if l, ok := p.FloorFor("C1", "production"); !ok || l != catalogue.Beta {
-		t.Errorf("C1 production floor = %v %v, want beta (ADR-0023 §3)", l, ok)
+		t.Errorf("C1 production floor = %v %v, want beta", l, ok) // ADR-0023 §3
 	}
 	if _, ok := p.FloorFor("C1", "staging"); ok {
-		t.Error("non-production carries a floor — staging is where alpha is exercised (ADR-0023 §3)")
+		t.Error("non-production carries a floor, but staging is where alpha is exercised") // ADR-0023 §3
 	}
 	strictest, err := p.Strictest([]ServiceClass{"C3", "C1", "C2"})
 	if err != nil || strictest != "C1" {
@@ -149,7 +149,7 @@ func TestDefaultFloorsAreValidAndCumulative(t *testing.T) {
 }
 
 // A table where a stricter class carries a lower floor would make adding a
-// C1 Path relax a Tier's judgement — the exact inversion of ADR-0025 §4.
+// C1 Path relax a Tier's judgement, the exact inversion of ADR-0025 §4.
 func TestNonCumulativeFloorPolicyIsRejected(t *testing.T) {
 	p := FloorPolicy{
 		Order: []ServiceClass{"C1", "C2", "C3"},
@@ -170,12 +170,12 @@ func TestFloorOnLifecycleLevelIsRejected(t *testing.T) {
 		},
 	}
 	if err := p.Validate(); err == nil || !strings.Contains(err.Error(), "lifecycle") {
-		t.Fatalf("a lifecycle end-state validated as a floor (ADR-0023 §6): %v", err)
+		t.Fatalf("a lifecycle end-state validated as a floor: %v", err) // ADR-0023 §6
 	}
 }
 
 // A Tier that declares serving but no selector could never receive its own
-// config — every collector of it would land on the Unmatched artefact, and
+// config: every collector of it would land on the Unmatched artefact, and
 // silent mis-delivery is exactly what fail-closed loading exists to refuse
 // (ADR-0007, ADR-0030).
 func TestServingWithoutSelectorFailsClosed(t *testing.T) {

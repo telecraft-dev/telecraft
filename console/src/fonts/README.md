@@ -6,9 +6,9 @@ is.
 
 | File | Family | Licence |
 |---|---|---|
-| `AtkinsonHyperlegibleNext.woff2` | Atkinson Hyperlegible Next, upright, variable `wght` 400–700 | [OFL 1.1](AtkinsonHyperlegibleNext-OFL.txt) |
-| `AtkinsonHyperlegibleNext-Italic.woff2` | Atkinson Hyperlegible Next, italic, variable `wght` 400–700 | [OFL 1.1](AtkinsonHyperlegibleNext-OFL.txt) |
-| `JetBrainsMono.woff2` | JetBrains Mono, variable `wght` 400–700 | [OFL 1.1](JetBrainsMono-OFL.txt) |
+| `AtkinsonHyperlegibleNext.woff2` | Atkinson Hyperlegible Next, upright, variable `wght` 400 to 700 | [OFL 1.1](AtkinsonHyperlegibleNext-OFL.txt) |
+| `AtkinsonHyperlegibleNext-Italic.woff2` | Atkinson Hyperlegible Next, italic, variable `wght` 400 to 700 | [OFL 1.1](AtkinsonHyperlegibleNext-OFL.txt) |
+| `JetBrainsMono.woff2` | JetBrains Mono, variable `wght` 400 to 700 | [OFL 1.1](JetBrainsMono-OFL.txt) |
 
 ## Why Next, and why variable
 
@@ -18,7 +18,7 @@ one of the two published as a variable font. The console asks for weights
 400, 500, 600 and 700; the original ships only 400 and 700, so 500 and 600
 would be synthesised by the browser. Next answers all four from one file.
 
-Range-instancing to `wght` 400–700 and subsetting to Latin costs 70 KB for
+Range-instancing to `wght` 400 to 700 and subsetting to Latin costs 70 KB for
 three faces, against 426 KB for the three unsubset sources.
 
 ## Regenerating them

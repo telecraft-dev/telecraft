@@ -42,12 +42,12 @@ func writeLocalFile(localPath, dir string) (string, error) {
 	}
 	header := fmt.Sprintf(""+
 		"# Copied by telecraft-devenv from %s.\n"+
-		"# Generated: edit that file, not this one (ADR-0052).\n"+
+		"# Generated: edit that file, not this one.\n"+
 		"#\n"+
 		"# The local file beside a git-delivered collector's artefact. The\n"+
 		"# collector is given both with --config, and merges them itself: the\n"+
-		"# platform delivers nothing here, so nothing it could send would\n"+
-		"# overwrite what is in this file (REQ-041, ADR-0005).\n",
+		"# Telecraft delivers nothing here, so nothing it could send would\n"+
+		"# overwrite what is in this file.\n",
 		localPath)
 	path := filepath.Join(dir, localFileName)
 	if err := os.WriteFile(path, append([]byte(header), body...), 0o644); err != nil {

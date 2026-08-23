@@ -17,7 +17,7 @@ import { CardPanel, WhyButton } from '../estate/card'
 import { TopologyViewSwitcher } from './switcher'
 
 // The rollout ledger (ADR-0029): an active Rollout rendered cohort by
-// cohort across both delivery paths — membership from the pure function,
+// cohort across both delivery paths: membership from the pure function,
 // delivery status against the rollout artefacts from commit stamps.
 // Foreign (GitOps) members are advisory, blocking nothing: lag, never
 // failure (§7). Halt and abort states carry provenance and deep-link to
@@ -25,7 +25,7 @@ import { TopologyViewSwitcher } from './switcher'
 
 const DECISION_LABEL: Record<RolloutDecision, string> = {
   hold: 'holding',
-  blocked: 'halted — advance withheld',
+  blocked: 'halted (advance withheld)',
   advance: 'advance proposed',
   abort: 'abort proposed',
 }
@@ -40,9 +40,9 @@ const DECISION_TONE: Record<RolloutDecision, ChipTone> = {
   abort: 'violation',
 }
 
-/** One path's running split, `to` leading — the advance evidence number. */
+/** One path's running split, `to` leading: the advance evidence number. */
 function PathSplit({ split }: { split: RolloutPathProgress }) {
-  if (split.members === 0) return <span className="path-split">—</span>
+  if (split.members === 0) return <span className="path-split">none</span>
   const rest = [
     ['from', split.from],
     ['other', split.other],
@@ -90,7 +90,7 @@ function CohortRow({
       <td>{cohort.soak}</td>
       <td>
         {/* A collector count is a door to the flat list, pre-filtered
-            (ADR-0042 §3.4) — per-collector detail lives there only. */}
+            (ADR-0042 §3.4): per-collector detail lives there only. */}
         <Link
           to="/estate"
           search={(prev) => ({ ...prev, view: 'list' as const, tier: rollout.tier })}
@@ -158,7 +158,7 @@ function RolloutSection({
           <code>{rollout.from}</code> → <code>{rollout.to}</code>
         </span>
         {/* The halt/abort state deep-links to the Rollout panel, where its
-            provenance lives — inspect stays, action travels (ADR-0042 §3). */}
+            provenance lives: inspect stays, action travels (ADR-0042 §3). */}
         <Link
           from="/topology"
           to="/topology"
@@ -188,7 +188,7 @@ function RolloutSection({
         >
           {rollout.tier}
         </Link>{' '}
-        ({rollout.environment}), stage {rollout.stage + 1} of {rollout.cohorts.length} —{' '}
+        ({rollout.environment}), stage {rollout.stage + 1} of {rollout.cohorts.length}:{' '}
         {rollout.evidence.runningTo} of {rollout.evidence.membersSeen} running the to artefact
       </p>
       <table className="catalogue-table rollout-table">
@@ -234,7 +234,7 @@ function RolloutSection({
 
 /**
  * The Rollout panel: the authored facts, the evaluation's verdict with its
- * evidence, and every halted member with provenance — summoned in place
+ * evidence, and every halted member with provenance, summoned in place
  * beside the ledger, like the Tier card (ADR-0042 §3.2).
  */
 function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
@@ -383,7 +383,7 @@ export function Rollouts() {
         <div className="rollout-ledger" data-testid="rollout-ledger">
           {rollouts.data.length === 0 ? (
             <p className="section-summary">
-              No Rollout is active: every Tier is single-bound, the flat rebind (ADR-0029 §1).
+              No Rollout is active: every Tier is single-bound, the flat rebind.
             </p>
           ) : (
             rollouts.data.map((rollout) => (

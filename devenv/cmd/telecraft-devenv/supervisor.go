@@ -65,7 +65,7 @@ func runPrepare(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if len(names) == 0 {
-		fmt.Fprintf(stderr, "prepare: no identity files in %s — the devenv has no collectors to compose\n", *identity)
+		fmt.Fprintf(stderr, "prepare: no identity files in %s, so the devenv has no collectors to compose\n", *identity)
 		return 1
 	}
 
@@ -151,7 +151,7 @@ func readOverlay(path string) (map[string]any, error) {
 func withOverlay(composed []byte, extra map[string]any) ([]byte, error) {
 	header, body, ok := splitHeader(composed)
 	if !ok {
-		return nil, fmt.Errorf("the composed configuration has no header — refusing to merge into something this tool did not write")
+		return nil, fmt.Errorf("the composed configuration has no header, so this tool refuses to merge into a file it did not write")
 	}
 	var current map[string]any
 	if err := yaml.Unmarshal(body, &current); err != nil {
@@ -212,7 +212,7 @@ func compose(estateRoot, identityPath string) ([]byte, error) {
 		return nil, fmt.Errorf("%s: %w", identityPath, err)
 	}
 	if ov.BaseTier == "" {
-		return nil, fmt.Errorf("%s: no base_tier — every collector starts from a rendered Supervisor artefact, including one meant to match nothing", identityPath)
+		return nil, fmt.Errorf("%s: no base_tier. Every collector starts from a rendered Supervisor artefact, including one meant to match nothing", identityPath)
 	}
 
 	team, name, ok := strings.Cut(ov.BaseTier, "/")
@@ -222,7 +222,7 @@ func compose(estateRoot, identityPath string) ([]byte, error) {
 	basePath := filepath.Join(estateRoot, "rendered", team, name+".supervisor.yaml")
 	baseRaw, err := os.ReadFile(basePath)
 	if err != nil {
-		return nil, fmt.Errorf("%s: base_tier %q: %w — a Tier renders a Supervisor artefact only when it declares a serving block", identityPath, ov.BaseTier, err)
+		return nil, fmt.Errorf("%s: base_tier %q: %w. A Tier renders a Supervisor artefact only when it declares a serving block", identityPath, ov.BaseTier, err)
 	}
 
 	var base map[string]any
@@ -238,12 +238,12 @@ func compose(estateRoot, identityPath string) ([]byte, error) {
 
 	header := fmt.Sprintf(""+
 		"# Composed by telecraft-devenv from %s and %s.\n"+
-		"# Generated: edit the identity file, not this one (ADR-0052).\n"+
+		"# Generated: edit the identity file, not this one.\n"+
 		"#\n"+
 		"# The base is the renderer's own Supervisor artefact. The overlay is\n"+
 		"# the identity the operator supplies at install, which the renderer\n"+
 		"# deliberately does not emit: a collector is never authored, it\n"+
-		"# connects and reports what it is (ADR-0007, ADR-0013).\n",
+		"# connects and reports what it is.\n",
 		basePath, identityPath)
 	return append([]byte(header), body...), nil
 }

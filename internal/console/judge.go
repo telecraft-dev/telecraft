@@ -94,7 +94,7 @@ func (b *builder) judgeTiers(views map[string]*tierView, set expectation.Set) er
 		}
 		// A claim set derives from the artefact the collectors report
 		// running, never head (ADR-0038 §4a). Where the collectors report an
-		// older stamp the Tier's claims are simply unknown here — the
+		// older stamp the Tier's claims are unknown here. The
 		// divergence is delivery's finding, filed separately.
 		if ev.RunningSHA != "" && ev.RunningSHA != set.SHA {
 			ev.RunningSHA = ""
@@ -133,7 +133,7 @@ func (b *builder) judgeTiers(views map[string]*tierView, set expectation.Set) er
 				Severity:    SeverityViolation,
 				Dampening:   "none",
 				Summary:     fmt.Sprintf("%s %s emits no self-telemetry", claim.Claim.ComponentKind, claim.Claim.Component),
-				Remediation: "Check the component is wired into a lane that carries traffic, or remove it from the Blueprint — the artefact instantiates it and nothing is arriving.",
+				Remediation: "Check the component is wired into a lane that carries traffic, or remove it from the Blueprint. The artefact instantiates it, and nothing is arriving.",
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "blueprint", ID: v.tier.Binding().ID()},
 					Lane:   laneOf(b.bp, v.tier.Binding().ID(), claim.Claim.Component),
@@ -204,7 +204,7 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 		}
 
 		// The Expectation engine's data claims: an unbacked red is the
-		// advisory finding whose remediation is honest about the fork —
+		// advisory finding whose remediation names the fork:
 		// fix the pipeline, or delete the dead lane (ADR-0038 §5).
 		if reading, declared := b.readings.row(row.Service, row.Environment); declared {
 			for signal, sig := range reading.Signals {
@@ -235,7 +235,7 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 				Dampening: "none",
 				Summary: fmt.Sprintf("unbacked %s claim on the %s lane for %s",
 					claim.Claim.Kind, claim.Claim.Signal, row.Service),
-				Remediation: "Back the claim with a Requirement, or delete the lane that implies it — the config says this telemetry should arrive and none has.",
+				Remediation: "Back the claim with a Requirement, or delete the lane that implies it. The config says this telemetry should arrive, and none has.",
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "service", ID: b.serviceID(row.Service)},
 					Label:  "Inspect the Service in Topology",
@@ -286,8 +286,8 @@ func (b *builder) fileDrift(views map[string]*tierView) {
 	}
 }
 
-// fileRenderFindings files the render's policy findings — floor breaches
-// and stale bindings — onto their Tiers (ADR-0022 §4, ADR-0023 §5).
+// fileRenderFindings files the render's policy findings (floor breaches
+// and stale bindings) onto their Tiers (ADR-0022 §4, ADR-0023 §5).
 func (b *builder) fileRenderFindings(views map[string]*tierView) {
 	for i, f := range b.renderFindings {
 		v := views[f.Tier]
@@ -386,7 +386,7 @@ func seedDamper(damper *inventory.Damper, keys []string, since time.Time) {
 	}
 }
 
-// claimKeys is the stable identity of each claim — what dampening keys on.
+// claimKeys is the stable identity of each claim, what dampening keys on.
 func claimKeys(claims []expectation.Claim) []string {
 	out := make([]string, 0, len(claims))
 	for _, c := range claims {
@@ -437,7 +437,7 @@ func (b *builder) provider(set expectation.Set, views map[string]*tierView) *pro
 }
 
 // joinKeys renders one component's self-telemetry identity in the legacy
-// datapoint-attribute spelling R-4 pins for metrics — `receiver`,
+// datapoint-attribute spelling R-4 pins for metrics: `receiver`,
 // `processor`, `exporter`, `connector`, each holding the full rendered id.
 func joinKeys(kind selftelemetry.Kind, id string) telemetry.ComponentTelemetry {
 	return telemetry.ComponentTelemetry{
@@ -467,8 +467,8 @@ func (b *builder) runningSHA(v *tierView) string {
 	return sha
 }
 
-// appliedAt is the latest APPLIED instant across the Tier's collectors —
-// the settle window runs from the most recent transition.
+// appliedAt is the latest APPLIED instant across the Tier's collectors.
+// The settle window runs from the most recent transition.
 func (b *builder) appliedAt(v *tierView) time.Time {
 	var latest time.Time
 	for _, c := range v.matched {
@@ -572,7 +572,7 @@ func libraryAttributes(lib requirements.Library) []string {
 }
 
 // libraryWindows lists the distinct windows the requirements applying in
-// one Environment ask for — read once each, exactly as the check does.
+// one Environment ask for, read once each, exactly as the check does.
 func libraryWindows(lib requirements.Library, environment string) []time.Duration {
 	set := map[time.Duration]bool{}
 	for _, r := range lib.Sorted() {
@@ -623,7 +623,7 @@ func outcomeSeverity(o conformance.Outcome) string {
 	}
 }
 
-// populationSeverity maps a population grade. Neutral is not a pass — it is
+// populationSeverity maps a population grade. Neutral is not a pass: it is
 // excluded from every denominator (ADR-0035 §6).
 func populationSeverity(g inventory.Grade) string {
 	switch g {
@@ -664,7 +664,7 @@ func populationRemediation(f inventory.Finding) string {
 	case inventory.NeverSeen:
 		return "Check the Tier's selector against what the collectors actually report, or delete the Tier if the workload it was authored for never arrived."
 	case inventory.UnderPopulated:
-		return "Bring the population back to the floor, or lower min_expected if the estate genuinely shrank — the floor is authored in the Tier."
+		return "Bring the population back to the floor, or lower min_expected in the Tier if the estate has shrunk."
 	default:
 		return "Reconcile min_expected with the substrate's count: a declared floor above live reality usually means the estate shrank."
 	}
@@ -673,8 +673,8 @@ func populationRemediation(f inventory.Finding) string {
 func renderRemediation(f renderer.Finding) string {
 	switch f.Kind {
 	case renderer.KindFloor:
-		return "Move the lane to a component that meets this Environment and Service Class floor, or request a Grant — the floor is judged per (component, signal) against the active Catalogue."
+		return "Move the lane to a component that meets the floor for this Environment and Service Class, or request a Grant. The active Catalogue sets the floor for each component and signal."
 	default:
-		return "Rebind the Tier to the Blueprint version at head, or bump the Blueprint — the estate tree holds head content, so head is what renders."
+		return "Rebind the Tier to the Blueprint version at head, or bump the Blueprint. The estate tree holds head content, so head is what renders."
 	}
 }

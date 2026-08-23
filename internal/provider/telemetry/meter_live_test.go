@@ -6,7 +6,7 @@ package telemetry
 //
 // This is the test that matters most for the metering query shape. The
 // counters are cumulative, so throughput is a per-incarnation delta
-// collapsed by a sum_bucket pipeline aggregation over a bucket_script —
+// collapsed by a sum_bucket pipeline aggregation over a bucket_script,
 // a shape no unit test with a canned response can prove the backend
 // actually accepts. The seed puts two datapoints on each incarnation of
 // each counter, so a correct reading is a delta and a naive sum of
@@ -105,7 +105,7 @@ func TestElasticsearchLiveMeter(t *testing.T) {
 		t.Fatalf("traces metering came back unknown: %s", traces.Cause)
 	}
 
-	// Throughput is the counter delta, summed across incarnations — a
+	// Throughput is the counter delta, summed across incarnations: a
 	// naive sum of the seeded datapoints would read 1200 in and 500 out.
 	if traces.In != 1000 {
 		t.Errorf("in = %d, want 1000 (400 + 600 across two incarnations)", traces.In)
@@ -114,7 +114,7 @@ func TestElasticsearchLiveMeter(t *testing.T) {
 		t.Errorf("out = %d, want 400 (300 through the gateway exporter, 100 through debug)", traces.Out)
 	}
 	if traces.Refused != 7 {
-		t.Errorf("refused = %d, want 7 — the meter's own red", traces.Refused)
+		t.Errorf("refused = %d, want 7: the meter's own red", traces.Refused)
 	}
 
 	// A Hop's throughput is its feeding exporter's out-rate, per exporter
@@ -131,7 +131,7 @@ func TestElasticsearchLiveMeter(t *testing.T) {
 		t.Error("no newest-datapoint timestamp came back")
 	}
 	if !m.Incarnations.Known || m.Incarnations.Count != 2 {
-		t.Errorf("incarnations = %+v, want 2 — the sibling Tier's must not join", m.Incarnations)
+		t.Errorf("incarnations = %+v, want 2: the sibling Tier's must not join", m.Incarnations)
 	}
 
 	// A signal with no counters in the window is a real reading of
@@ -162,7 +162,7 @@ func TestElasticsearchLiveMeterMissingIndex(t *testing.T) {
 	m := es.Meter(context.Background(), liveTier, time.Hour)
 
 	if m.Known() {
-		t.Fatal("a pattern matching nothing came back Known — metering never invents")
+		t.Fatal("a pattern matching nothing came back Known: metering never invents")
 	}
 	for kind, sig := range m.Signals {
 		if sig.In != 0 || sig.Out != 0 {

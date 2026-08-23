@@ -16,7 +16,7 @@ import (
 
 // fixtureCatalogue builds a small Catalogue through the real artefact
 // round-trip. processor/transform is deliberately alpha for logs: routing
-// logs through it clears an alpha floor and breaches a beta one — the
+// logs through it clears an alpha floor and breaches a beta one, the
 // raise this package exists to notice.
 func fixtureCatalogue(t *testing.T) *catalogue.Catalogue {
 	t.Helper()
@@ -178,7 +178,7 @@ func detectInputs(t *testing.T, root string, f renderer.FloorPolicy) Inputs {
 }
 
 // renderAndCommit renders the estate under the given floors and writes the
-// artefact tree back to the root — the committed state a green main holds
+// artefact tree back to the root: the committed state a green main holds
 // (ADR-0028 §2).
 func renderAndCommit(t *testing.T, root string, in Inputs) {
 	t.Helper()
@@ -246,7 +246,7 @@ func TestRaisedFloorFlipsCommittedArtefactsToLibraryDrift(t *testing.T) {
 	}
 	f := rep.Findings[0]
 	if f.Facet != FacetRequirement {
-		t.Errorf("facet = %q — a raised floor is the bar moving, the Requirement facet", f.Facet)
+		t.Errorf("facet = %q: a raised floor is the bar moving, the Requirement facet", f.Facet)
 	}
 	if f.Tier != "pipelines/gateway" || f.Environment != "production" || f.Lane != "logs" {
 		t.Errorf("finding subject = %s/%s lane %s, want pipelines/gateway production logs", f.Tier, f.Environment, f.Lane)
@@ -260,7 +260,7 @@ func TestRaisedFloorFlipsCommittedArtefactsToLibraryDrift(t *testing.T) {
 		}
 	}
 	if f.Remediation == "" {
-		t.Error("a finding with no suggested fix is a complaint — remediation is mandatory")
+		t.Error("a finding with no suggested fix is a complaint: remediation is mandatory")
 	}
 }
 
@@ -280,7 +280,7 @@ func TestUncommittedTierRaisesNoFloorDrift(t *testing.T) {
 }
 
 // Criterion (ADR-0026 §2, §7): a pinned reference behind the owning team's
-// head is the Component facet — one finding per reference, routed to the
+// head is the Component facet: one finding per reference, routed to the
 // consuming Blueprint's owner, the lanes it rides listed together because
 // the fix is one pin bump.
 func TestPinBehindHeadIsComponentFacetDrift(t *testing.T) {
@@ -324,7 +324,7 @@ pipelines:
 		t.Errorf("facet = %q, want component", f.Facet)
 	}
 	if f.Blueprint != "pipelines/flow" || f.Team != "pipelines" || f.Owner != "pipelines-lead" {
-		t.Errorf("routed to %s (%s/%s), want the consuming Blueprint's owner (ADR-0026 §2)", f.Blueprint, f.Team, f.Owner)
+		t.Errorf("routed to %s (%s/%s), want the consuming Blueprint's owner", f.Blueprint, f.Team, f.Owner)
 	}
 	if f.Lane != "traces, logs" {
 		t.Errorf("lanes = %q, want both lanes listed on the one finding", f.Lane)
@@ -335,7 +335,7 @@ pipelines:
 		}
 	}
 	if !strings.Contains(f.Remediation, "v1→v3") {
-		t.Errorf("remediation %q does not carry the version diff — that is the remediation (ADR-0026 §6)", f.Remediation)
+		t.Errorf("remediation %q does not carry the version diff, which is the remediation", f.Remediation)
 	}
 }
 
@@ -380,7 +380,7 @@ func filelogLibrary(version int) requirements.Library {
 
 // Criterion (ADR-0026 §6): a claim stamped behind a moved Requirement whose
 // current version the Intended config fails is the Requirement facet of
-// library_drift — the goalposts moved. The same failure with the claim at
+// library_drift: the goalposts moved. The same failure with the claim at
 // head is the ordinary failure, the evaluator's business, and silent here.
 func TestClaimBehindMovedRequirementIsRequirementFacetDrift(t *testing.T) {
 	root := scratchEstate(t, map[string]string{
@@ -413,7 +413,7 @@ func TestClaimBehindMovedRequirementIsRequirementFacetDrift(t *testing.T) {
 	// The claim at the current version failing is never drift.
 	in.Library = filelogLibrary(1)
 	if rep, err = Detect(in); err != nil || len(rep.Findings) != 0 {
-		t.Fatalf("a claim at head failing reported drift (err %v): %v — that is the ordinary failure outcome", err, rep.Findings)
+		t.Fatalf("a claim at head failing reported drift (err %v): %v, but that is the ordinary failure outcome", err, rep.Findings)
 	}
 }
 
@@ -455,7 +455,7 @@ func (h fakeHistory) RequirementAt(id string, v int) (requirements.Requirement, 
 
 // The History seam separates drift from a false claim: when the claimed
 // version is resolvable and the config fails it too, the subject never
-// complied — the ordinary failure, silent here (ADR-0026 §6). Where history
+// complied: the ordinary failure, silent here (ADR-0026 §6). Where history
 // cannot resolve the version, the composer's stamp stays trusted.
 func TestHistoryDemotesFailsBothToOrdinaryFailure(t *testing.T) {
 	root := scratchEstate(t, map[string]string{
@@ -472,7 +472,7 @@ func TestHistoryDemotesFailsBothToOrdinaryFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(rep.Findings) != 0 {
-		t.Fatalf("fails-both reported as drift: %v — the goalposts never moved for this subject", rep.Findings)
+		t.Fatalf("fails-both reported as drift: %v, but the goalposts never moved for this subject", rep.Findings)
 	}
 
 	// History says v1 required otlp, which the config wires: true drift.
@@ -486,7 +486,7 @@ func TestHistoryDemotesFailsBothToOrdinaryFailure(t *testing.T) {
 	// History that cannot resolve the version falls back to the stamp.
 	in.History = fakeHistory{}
 	if rep, err = Detect(in); err != nil || len(rep.Findings) != 1 {
-		t.Fatalf("unresolvable history (err %v): %v — the stamp stays trusted", err, rep.Findings)
+		t.Fatalf("unresolvable history (err %v): %v, want the stamp trusted", err, rep.Findings)
 	}
 }
 

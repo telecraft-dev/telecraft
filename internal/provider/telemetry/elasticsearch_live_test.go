@@ -5,7 +5,7 @@ package telemetry
 // These tests are gated on TELECRAFT_TELEMETRY_LIVE_ENDPOINT and skip
 // cleanly when it is unset, so a plain `go test ./...` stays green on a
 // machine with no Docker and no Elasticsearch. To run them locally in one
-// command — container, seed, CLI demonstration and this suite — use:
+// command (container, seed, CLI demonstration, and this suite) use:
 //
 //	internal/provider/telemetry/demo.sh
 //
@@ -63,7 +63,7 @@ func envEndpoint(t *testing.T) string {
 
 // seedLive creates the logs index (strings mapped as keyword, matching how
 // real OTLP ingest maps attribute fields) with three records for the fixture
-// Service — two carrying http.request.method — plus an empty metrics index.
+// Service (two carrying http.request.method) plus an empty metrics index.
 func seedLive(t *testing.T, endpoint string) {
 	t.Helper()
 	logs := liveIndices[requirements.Logs]
@@ -141,13 +141,13 @@ func TestElasticsearchLiveObserve(t *testing.T) {
 
 	metrics := obs.Signals[requirements.Metrics]
 	if !metrics.Known || metrics.Present || metrics.Volume != 0 {
-		t.Errorf("metrics = %+v, want a known observed absence — the index exists and holds nothing", metrics)
+		t.Errorf("metrics = %+v, want a known observed absence: the index exists and holds nothing", metrics)
 	}
 
 	// Criterion 2, live: the traces index was never created.
 	traces := obs.Signals[requirements.Traces]
 	if traces.Known {
-		t.Errorf("traces = %+v, want Known=false — the index does not exist", traces)
+		t.Errorf("traces = %+v, want Known=false: the index does not exist", traces)
 	}
 	if !strings.Contains(traces.Cause, liveIndices[requirements.Traces]) {
 		t.Errorf("traces cause %q should name the missing index", traces.Cause)
@@ -173,7 +173,7 @@ func TestElasticsearchLiveAttributeNames(t *testing.T) {
 		}
 	}
 	if strings.Contains(got, "noise") {
-		t.Errorf("names %v include another Service's attribute — the reading is not Service-scoped", names.Names)
+		t.Errorf("names %v include another Service's attribute: the reading is not Service-scoped", names.Names)
 	}
 	if names.Truncated || names.SampledRecords != 3 || names.TotalRecords != 3 {
 		t.Errorf("sampling misreported: %+v, want 3 of 3 records and no truncation", names)

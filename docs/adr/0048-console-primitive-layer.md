@@ -32,7 +32,7 @@ a 32-inch display.
    more.** `Button` (three tones), `Chip` (five tones), `Panel`, and the
    `Mark`/`Icon` pair ADR-0047 §6 already required. Each exports a class
    helper beside the component, because roughly half of these are links
-   rather than buttons — a who-acts chip routes, it does not act — and a
+   rather than buttons (a who-acts chip routes, it does not act), and a
    link must stay an anchor. This is not a component library, which
    ADR-0047 §1 ruled out; it is the small set of things `app.css` was
    already describing several times each.
@@ -54,8 +54,8 @@ a 32-inch display.
 4. **The per-signal matrix scrolls inside the card; the card does not
    grow.** Equal heights at card grain are not negotiable (ADR-0042 §2, P4
    rule 3). Measured in-browser, the common card is roughly 250px and the
-   contract's worst case — four signal lanes each carrying a reduction and
-   an error reading — is 410px. Sizing every card for the worst case wastes
+   contract's worst case (four signal lanes each carrying a reduction and
+   an error reading) is 410px. Sizing every card for the worst case wastes
    most of the shelf; clipping loses the foot. So the matrix is bounded and
    scrolls, and the bands and the foot are on screen whatever the payload
    carries.

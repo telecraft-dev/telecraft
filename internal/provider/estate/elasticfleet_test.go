@@ -104,7 +104,7 @@ func fleetGatewayHealth() map[string]any {
 	}
 }
 
-// fleetWantHealth is fleetGatewayHealth converted — the same tree, same
+// fleetWantHealth is fleetGatewayHealth converted: the same tree, same
 // recursion.
 func fleetWantHealth() *seam.ComponentHealth {
 	return &seam.ComponentHealth{
@@ -185,29 +185,29 @@ func TestElasticFleetPassesTheConformanceKit(t *testing.T) {
 }
 
 // AC: the reading Elastic Fleet can never supply is declared incapable and
-// renders as such — absent-with-declaration, never as failure (ADR-0036
+// renders as such: absent-with-declaration, never as failure (ADR-0036
 // §1). Delivery status stays the zero value on every collector, seen or
 // unseen, so no surface can mistake it for a silent gap.
 func TestElasticFleetDeliveryStatusIsIncapableNeverFailure(t *testing.T) {
 	p := fleetProvider(t, fleetFixtureEstate())
 	if p.Declaration().Capable(seam.DeliveryStatusKind) {
-		t.Fatal("the declaration claims delivery status — Elastic Fleet is monitoring-only and the capability must be declared never (ADR-0008)")
+		t.Fatal("the declaration claims delivery status: Elastic Fleet is monitoring-only and the capability must be declared never")
 	}
 	est := p.Estate(context.Background())
 	for _, c := range est.Collectors {
 		if !reflect.DeepEqual(c.DeliveryStatus, seam.DeliveryStatus{}) {
-			t.Errorf("collector %s carries a delivery-status reading %+v — incapable stays absent-with-declaration", seam.Fingerprint(c.Identity), c.DeliveryStatus)
+			t.Errorf("collector %s carries a delivery-status reading %+v: incapable stays absent-with-declaration", seam.Fingerprint(c.Identity), c.DeliveryStatus)
 		}
 	}
 	unknown := est.Lookup(map[string]string{"service.instance.id": "nobody"})
 	if !reflect.DeepEqual(unknown.DeliveryStatus, seam.DeliveryStatus{}) {
-		t.Error("an unknown collector carries a delivery-status reading — incapable stays zero even for a collector nobody can see")
+		t.Error("an unknown collector carries a delivery-status reading: incapable stays zero even for a collector nobody can see")
 	}
 }
 
 // AC: no enforcement path through Elastic Fleet exists. Structurally: the
 // provider's exported surface is exactly the read seam, and its transport
-// refuses anything but GET — asserted over the whole fixture run and
+// refuses anything but GET, asserted over the whole fixture run and
 // against a direct write attempt.
 func TestElasticFleetHasNoEnforcementPath(t *testing.T) {
 	f := fleetFixtureEstate()
@@ -220,7 +220,7 @@ func TestElasticFleetHasNoEnforcementPath(t *testing.T) {
 	typ := reflect.TypeOf(p)
 	for i := 0; i < typ.NumMethod(); i++ {
 		if name := typ.Method(i).Name; !want[name] {
-			t.Errorf("exported method %q is not part of the read seam — the provider must offer no path that could become enforcement (ADR-0008)", name)
+			t.Errorf("exported method %q is not part of the read seam: the provider must offer no path that could become enforcement", name)
 		}
 	}
 
@@ -232,14 +232,14 @@ func TestElasticFleetHasNoEnforcementPath(t *testing.T) {
 	}
 	for _, req := range requests {
 		if !strings.HasPrefix(req, http.MethodGet+" ") {
-			t.Errorf("the provider sent %q — every request must be a GET", req)
+			t.Errorf("the provider sent %q: every request must be a GET", req)
 		}
 	}
 
 	// And the transport refuses a write outright, so even future code
 	// inside the provider cannot open the path by accident.
 	if _, err := p.http.Post(p.endpoint+"/api/fleet/agents/agent-a/remove_collector", "application/json", nil); err == nil {
-		t.Error("a POST went through the provider's transport — read-only by construction failed")
+		t.Error("a POST went through the provider's transport: the read-only transport failed")
 	} else if !strings.Contains(err.Error(), "read-only") {
 		t.Errorf("the refusal %q does not name the read-only discipline", err)
 	}
@@ -256,8 +256,8 @@ func TestElasticFleetPaginatesTheAgentList(t *testing.T) {
 	}
 }
 
-// An unreadable console is an empty estate reading — still a statement
-// with a timestamp — and every lookup against it is honestly unknown with
+// An unreadable console is an empty estate reading (still a statement
+// with a timestamp) and every lookup against it is honestly unknown with
 // a cause, never an error (ADR-0008).
 func TestElasticFleetUnreachableConsoleIsAnEmptyReading(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -290,7 +290,7 @@ func TestElasticFleetRecordWithoutIdentityIsNotACollector(t *testing.T) {
 	f.agents = append(f.agents, map[string]any{"id": "agent-anon", "type": "OPAMP", "last_checkin": checkinT0.Format(time.RFC3339)})
 	p := fleetProvider(t, f)
 	if got := len(p.Estate(context.Background()).Collectors); got != 2 {
-		t.Fatalf("estate holds %d collectors, want 2 — the unidentified record must be left out", got)
+		t.Fatalf("estate holds %d collectors, want 2: the unidentified record must be left out", got)
 	}
 }
 
@@ -313,19 +313,19 @@ func TestElasticFleetRecordWithoutCheckinIsUnknown(t *testing.T) {
 		{"health", c.Health.Known, c.Health.Cause, c.Health.AsOf},
 	} {
 		if r.known {
-			t.Errorf("%s reads Known with no readable last_checkin — an unverifiable age never feeds a verdict", r.kind)
+			t.Errorf("%s reads Known with no readable last_checkin: an unverifiable age never feeds a verdict", r.kind)
 		}
 		if !strings.Contains(r.cause, "last_checkin") {
 			t.Errorf("%s cause %q does not name the unreadable check-in", r.kind, r.cause)
 		}
 		if r.asOf.IsZero() {
-			t.Errorf("%s carries no as_of — 'we cannot see' is still a statement with a timestamp", r.kind)
+			t.Errorf("%s carries no as_of: 'we cannot see' is still a statement with a timestamp", r.kind)
 		}
 	}
 }
 
 // An effective config that cannot be read becomes Known false with the
-// parse failure as the cause — never a guess, never a silent drop.
+// parse failure as the cause, never a guess, never a silent drop.
 func TestElasticFleetUnreadableEffectiveConfigIsUnknownWithCause(t *testing.T) {
 	f := fleetFixtureEstate()
 	f.configs["agent-a"] = `{"service": {"pipelines": ["not", "a", "mapping"]}}`
@@ -353,7 +353,7 @@ func TestElasticFleetStaleRecordLosesToNewestCheckin(t *testing.T) {
 
 	est := p.Estate(context.Background())
 	if got := len(est.Collectors); got != 2 {
-		t.Fatalf("estate holds %d collectors, want 2 — one per identity, the stale re-enrolment duplicate dropped", got)
+		t.Fatalf("estate holds %d collectors, want 2: one per identity, the stale re-enrolment duplicate dropped", got)
 	}
 	c := est.Lookup(fleetGatewayIdentity)
 	if !c.Health.Known || !c.Effective.AsOf.Equal(checkinT0) {
@@ -364,7 +364,7 @@ func TestElasticFleetStaleRecordLosesToNewestCheckin(t *testing.T) {
 // AC, end to end against the fixture: the estate reading populates the
 // evaluation. Inside the staleness horizon the Effective pipelines feed
 // ForEvaluation intact; once the collector has been quiet past the horizon
-// the same reading demotes to Known false with its payload gone — stale
+// the same reading demotes to Known false with its payload gone: stale
 // data may inform a human, never a verdict (ADR-0036 §3).
 func TestElasticFleetEstatePopulatesTheEvaluation(t *testing.T) {
 	p := fleetProvider(t, fleetFixtureEstate())
@@ -384,7 +384,7 @@ func TestElasticFleetEstatePopulatesTheEvaluation(t *testing.T) {
 	quiet := checkinT0.Add(p.Declaration().RefreshCadence*seam.StaleTolerance + time.Second)
 	stale := est.ForEvaluation(quiet).Lookup(fleetGatewayIdentity)
 	if stale.Effective.Known || len(stale.Effective.Pipelines) != 0 {
-		t.Errorf("a quiet collector's config survived into evaluation: %+v — the console serves the record forever, the platform's arithmetic must demote it", stale.Effective)
+		t.Errorf("a quiet collector's config survived into evaluation: %+v: the console serves the record forever, the platform's arithmetic must demote it", stale.Effective)
 	}
 }
 

@@ -1,4 +1,4 @@
-// Spike module — deliberately nested so the root module and CI never build it.
+// Spike module: deliberately nested so the root module and CI never build it.
 // See VERDICT.md; production home would be internal/normalise if the spike holds.
 module github.com/telecraft-dev/telecraft/docs/prototypes/normaliser-spike
 

@@ -11,7 +11,7 @@ import { Shelf } from './Shelf'
 
 // The Estate Workspace (ADR-0042 §1): the shelf lands; the tree-table
 // roll-up and the flat filter-first list are view-switchers over the same
-// model — switching preserves selection, filters, and lens (rule 3.1). The
+// model: switching preserves selection, filters, and lens (rule 3.1). The
 // ADR-0041 card panel is one universal component summoned in place beside
 // whichever view holds the selection: inspection never navigates (rule 3.2).
 
@@ -36,7 +36,7 @@ export function Estate() {
       ? payload.cards.find((card) => card.tier === selected.id)
       : undefined
   // The claim flow's herd (ADR-0042 §6): a non-empty selection summons the
-  // claim panel in place of the card panel — view-switching preserves it
+  // claim panel in place of the card panel. View-switching preserves it
   // (rule 3.1), since the selection lives in the URL.
   const herd = herdIds(search.herd)
 

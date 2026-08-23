@@ -15,7 +15,7 @@ import (
 // supervised mimics what the Supervisor reports back after applying an
 // artefact verbatim: the injected extensions.opamp at an ephemeral
 // localhost port, `opamp` appended to service.extensions, and the document
-// re-marshalled — so layer 1 always differs while nothing semantic changed
+// re-marshalled, so layer 1 always differs while nothing semantic changed
 // (ADR-0005).
 func supervised(t *testing.T, artefact []byte) []byte {
 	t.Helper()
@@ -51,7 +51,7 @@ func effectiveConfig(body []byte) *protobufs.EffectiveConfig {
 }
 
 // AC: a served collector shows the correct delivery state from its commit
-// stamp plus normalised comparison — the Supervisor's report agrees with
+// stamp plus normalised comparison: the Supervisor's report agrees with
 // the artefact under the served path's profile, the stamp reads back as
 // the fixture commit, and the RemoteConfigStatus rides beside it verbatim.
 func TestDeliveryStatusForServedCollector(t *testing.T) {
@@ -73,18 +73,18 @@ func TestDeliveryStatusForServedCollector(t *testing.T) {
 		t.Fatalf("comparison = %s (cause %q), want in_sync:\n%v", st.Comparison, st.Cause, st.Changes)
 	}
 	if st.Path != delivery.PathServed {
-		t.Errorf("path = %s — the delivery path is a visible property (REQ-041)", st.Path)
+		t.Errorf("path = %s: the delivery path is a visible property", st.Path) // REQ-041
 	}
 	if st.Remote.State != estate.DeliveryApplied {
 		t.Errorf("remote = %s, want the verbatim APPLIED", st.Remote.State)
 	}
 	if st.IntendedCommit != fixtureCommit || st.EffectiveCommit != fixtureCommit {
-		t.Errorf("stamps %q / %q, want the fixture commit both sides (ADR-0013)", st.IntendedCommit, st.EffectiveCommit)
+		t.Errorf("stamps %q / %q, want the fixture commit both sides", st.IntendedCommit, st.EffectiveCommit) // ADR-0013
 	}
 }
 
 // A collector running something other than this head's artefact reads as
-// drift, localised — while FAILED and its error message ride beside the
+// drift, localised, while FAILED and its error message ride beside the
 // comparison, verbatim and unblended (ADR-0004).
 func TestDeliveryStatusForDriftedCollector(t *testing.T) {
 	root, _ := fixtureEstate(t)
@@ -107,15 +107,15 @@ func TestDeliveryStatusForDriftedCollector(t *testing.T) {
 		t.Fatalf("comparison = %s, want drifted", st.Comparison)
 	}
 	if len(st.Changes) == 0 {
-		t.Error("no layer-3 localisation for a drifted collector (ADR-0005)")
+		t.Error("no layer-3 localisation for a drifted collector") // ADR-0005
 	}
 	if st.Remote.State != estate.DeliveryFailed || st.Remote.Error == "" {
 		t.Errorf("remote = %+v, want the verbatim FAILED with its error", st.Remote)
 	}
 }
 
-// AC: a report the comparison cannot read — no effective config, an empty
-// map, a multi-file map — yields Known: false and an unknown comparison
+// AC: a report the comparison cannot read (no effective config, an empty
+// map, a multi-file map) yields Known: false and an unknown comparison
 // with its cause: can't-report never looks like failing (ADR-0004,
 // ADR-0008).
 func TestDeliveryStatusUnreadableReportsStayUnknown(t *testing.T) {
@@ -148,7 +148,7 @@ func TestDeliveryStatusUnreadableReportsStayUnknown(t *testing.T) {
 }
 
 // The layer-1 gate: the status is computed once per changed report, not
-// once per message (ADR-0005 — one parse per changed collector), and the
+// once per message (ADR-0005: one parse per changed collector), and the
 // server stores nothing new doing it (the closed-list audit elsewhere
 // stays the proof).
 func TestDeliveryStatusIsComputedOncePerLayer1Change(t *testing.T) {

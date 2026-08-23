@@ -17,7 +17,7 @@ the arrivals through the TelemetryProvider seam, both from live systems, and a
 demo estate has neither, so it declares them.
 
 That is the right answer for a demo (ADR-0049) and the wrong one for
-development. A contributor — or an agent working on the contributor's behalf —
+development. A contributor (or an agent working on the contributor's behalf)
 can see every surface and has never seen the product. No collector has
 connected to `telecraft serve` on a laptop. No span has crossed a rendered
 pipeline into a backend. `broken_pipeline`, the one verdict the product exists
@@ -43,7 +43,7 @@ backend or not at all, so a live console has no server to call.
 
 `devenv/` holds the whole environment, and `vendorlint.yaml` gains a `devenv`
 scope carrying the provider scope's rules: a product may be named, and only
-fully qualified — `Elasticsearch`, never `Elastic`; no bare `Fleet`.
+fully qualified (`Elasticsearch`, never `Elastic`; no bare `Fleet`).
 
 The alternative was to leave the tree unscanned beside `.proto/` and `.teach/`.
 Rejected: an unscanned tree is the one place a vendor word spreads without
@@ -64,8 +64,8 @@ and writes the collector estate and the arrivals into the readings file that
 `internal/console` already loads.
 
 `rows.yaml` stays authored. The Effective reading per Service and Environment
-is derivable — a Service's Paths name its Tiers, and the serving matcher
-already maps a Tier to its collectors — but deriving it needs judgements the
+is derivable (a Service's Paths name its Tiers, and the serving matcher
+already maps a Tier to its collectors), but deriving it needs judgements the
 product has not made: which collector represents a row, and what a
 disagreement between replicas of one Tier means. The devenv does not get to
 invent product semantics ahead of the product. Rows are authored in the

@@ -21,7 +21,7 @@ function splitEntries(text: string): string[] {
 /**
  * The governance editor: Allow-lists and Grants in their authored,
  * git-resident shapes (ADR-0021 §5), edited here and exiting only as a PR
- * via the forge adapter (ADR-0042 §6) — the console proposes, the PR
+ * via the forge adapter (ADR-0042 §6). The console proposes, the PR
  * decides. A refused proposal comes back with the load problems named,
  * exactly the fail-closed shape the estate loader enforces.
  */
@@ -106,9 +106,9 @@ function GovernanceEditor({
       <section className="governance-section">
         <h2>Allow-lists</h2>
         <p className="section-summary">
-          Entries are shapes — <code>class/type-pattern</code>, one per line; each declared
-          list intersects the parent&rsquo;s effective list (ADR-0021 §2). An emptied list is
-          refused: to inherit unchanged, a team declares no list at all.
+          Each entry is a pattern of the form <code>class/type-pattern</code>, one per line. A
+          team&rsquo;s list can only narrow its parent&rsquo;s effective list. An empty list is
+          refused: to inherit the parent&rsquo;s list unchanged, declare no list at all.
         </p>
         {lists.map((list, i) => (
           <div key={list.team} className="governance-list">
@@ -138,8 +138,9 @@ function GovernanceEditor({
         </ul>
         <h3>New Grant</h3>
         <p className="section-summary">
-          A Grant is a parent-authored exception: its owner&rsquo;s team must sit above the
-          target, and it admits its entries for the target&rsquo;s subtree (ADR-0021 §3).
+          A Grant is an exception a parent team makes for a team below it. Its owner&rsquo;s
+          team must sit above the target, and it allows its entries for the target and every
+          team below it.
         </p>
         <div className="governance-form">
           <label>
@@ -194,8 +195,8 @@ function GovernanceEditor({
       <section className="governance-section">
         <h2>Propose</h2>
         <p className="section-summary">
-          The edit exits as a pull request via the forge adapter, user-attributed — the
-          console proposes, the PR decides (ADR-0042 §6, ADR-0014).
+          Proposing opens a pull request attributed to you. The console never writes the
+          policy itself: the pull request review decides.
         </p>
         <div className="governance-form">
           <label>
@@ -213,7 +214,7 @@ function GovernanceEditor({
             disabled={propose.isPending}
             onClick={submit}
           >
-            {propose.isPending ? 'Proposing…' : 'Propose as a PR'}
+            {propose.isPending ? 'Proposing…' : 'Propose as a pull request'}
           </Button>
         </div>
         {propose.isError && (

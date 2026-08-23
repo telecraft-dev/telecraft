@@ -18,7 +18,7 @@ const (
 	Last  Slot = "last"
 )
 
-// OrderingRule is one piece of ordering wisdom, keyed on a catalogue type —
+// OrderingRule is one piece of ordering wisdom, keyed on a catalogue type,
 // never on a Component instance and never on authored phase metadata, which
 // ADR-0024 §6 rejected as a self-maintained taxonomy upstream does not
 // provide. Rules raise ordering findings only (ADR-0022): the renderer never
@@ -31,7 +31,7 @@ type OrderingRule struct {
 }
 
 // DefaultOrderingRules ships the ordering wisdom P1 validated: back-pressure
-// first, batching last. The set is data, not code — an adopter extends it
+// first, batching last. The set is data, not code: an adopter extends it
 // with more rules, never with a sort.
 func DefaultOrderingRules() []OrderingRule {
 	return []OrderingRule{
@@ -43,8 +43,8 @@ func DefaultOrderingRules() []OrderingRule {
 }
 
 // OrderingFindings judges every Blueprint's signal lanes against the given
-// rules. A lane entry that does not resolve is skipped — its problem is
-// already a reference finding — and the extensions block is never judged:
+// rules. A lane entry that does not resolve is skipped (its problem is
+// already a reference finding) and the extensions block is never judged:
 // extensions are collector-wide and carry no pipeline order. Ordering
 // problems surface here and only here, as findings a lane owner can act on,
 // never as a downstream renderer crash (REQ-030).
@@ -69,7 +69,7 @@ func (e Estate) OrderingFindings(rules []OrderingRule) []Finding {
 					}
 					if (rule.Slot == First && pos != 0) || (rule.Slot == Last && pos != len(classed)-1) {
 						out = append(out, Finding{KindOrdering, b.ID(), string(s),
-							fmt.Sprintf("orders %s at %s position %d of %d — %s belongs %s: %s (ADR-0024 §6)",
+							fmt.Sprintf("orders %s at %s position %d of %d, but %s belongs %s: %s",
 								entry.Reference(), rule.Class, pos+1, len(classed), rule.Type, rule.Slot, rule.Reason)})
 					}
 				}

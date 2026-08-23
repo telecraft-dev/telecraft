@@ -11,7 +11,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/ownership"
 )
 
-// fixtureCommit is the SHA every fixture render stamps — an input, so the
+// fixtureCommit is the SHA every fixture render stamps: an input, so the
 // golden artefacts are stable (ADR-0013).
 const fixtureCommit = "8b7df143d91c716ecfa5fc1730022f6b421b05cd"
 
@@ -57,7 +57,7 @@ func fixtureCatalogue(t *testing.T) *catalogue.Catalogue {
 }
 
 // fixtureInputs loads the full fixture estate under testdata/estate into
-// render Inputs, failing the test on any load problem — the fixture is
+// render Inputs, failing the test on any load problem, because the fixture is
 // meant to be a clean estate.
 func fixtureInputs(t *testing.T) Inputs {
 	t.Helper()
@@ -151,7 +151,7 @@ blueprint: pipelines/flow@1
 `
 
 // scratchSelfTelemetry is the minimal destination declaration every
-// scratch estate carries — self-telemetry is mandatory (ADR-0039 §1).
+// scratch estate carries: self-telemetry is mandatory (ADR-0039 §1).
 const scratchSelfTelemetry = `
 self_telemetry:
   endpoint: https://otlp.scratch.internal:4318

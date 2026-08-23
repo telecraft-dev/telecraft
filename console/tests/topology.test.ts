@@ -6,8 +6,8 @@ import { buildTopologyModel, pathHopPairs, pathTierIds, servicePaths } from '../
 
 // The issue #28 core bet, headless: the fixture estate at the P3-verdict
 // scale (~22k matched collectors) compiles to an engine model whose node
-// count is the authored-object count — zero per-collector nodes
-// (ADR-0007) — with every edge derived from the model and every Path
+// count is the authored-object count, zero per-collector nodes
+// (ADR-0007), with every edge derived from the model and every Path
 // traversal drawn (ADR-0044 §3).
 
 interface FixtureEstate {
@@ -53,7 +53,7 @@ describe('the fixture topology at P3-verdict scale', () => {
     expect(total).toBeLessThanOrEqual(25_000)
   })
 
-  it('compiles to one node per authored object — zero per-collector nodes', () => {
+  it('compiles to one node per authored object, zero per-collector nodes', () => {
     const model = buildTopologyModel(payload)
     expect(model.nodes).toHaveLength(payload.tiers.length + payload.sources.length)
     const geometry = layout(model)

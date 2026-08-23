@@ -1,16 +1,16 @@
 // Package telemetry defines the TelemetryProvider seam: the reading of
-// Observed state — did signal X arrive for Service Y in window W (ADR-0008).
+// Observed state: did signal X arrive for Service Y in window W (ADR-0008).
 //
 // The seam is deliberately narrow. No query language, no index name, no
 // product concept appears in it (REQ-023): the moment a backend's query
 // syntax can pass through here, only one backend is ever really supported.
-// The sanctioned extension primitive is AttributeNames — the set of
+// The sanctioned extension primitive is AttributeNames, the set of
 // attribute names in use for a Service, signal and window (ADR-0009,
-// ADR-0034) — which unlocks schema-conformance checking as pure string
+// ADR-0034), which unlocks schema-conformance checking as pure string
 // logic without widening the seam towards any vendor's API.
 //
-// Not knowing is a normal state (ADR-0008). A Provider that cannot answer —
-// unreachable backend, missing index, malformed response — reports the
+// Not knowing is a normal state (ADR-0008). A Provider that cannot answer
+// (unreachable backend, missing index, malformed response) reports the
 // affected readings with Known false and a cause, and methods return no
 // error: degradation is data in the reading, never a fabricated value and
 // never a crash. Every reading carries AsOf, the instant it was taken, so a
@@ -46,18 +46,18 @@ type Service struct {
 // internal/provider/ and are vendor-product-qualified there (ADR-0001);
 // nothing vendor-shaped crosses this interface in either direction.
 type Provider interface {
-	// Name identifies the implementation for logs and stamps — the
+	// Name identifies the implementation for logs and stamps: the
 	// vendor-product-qualified name as runtime data, never a type.
 	Name() string
 
 	// Observe reads what arrived for one Service over the trailing window:
-	// presence and volume per signal, plus — for each requested attribute
-	// name — the fraction of records in the window carrying it, measured in
+	// presence and volume per signal, plus, for each requested attribute
+	// name, the fraction of records in the window carrying it, measured in
 	// the same round trip. attributes may be empty.
 	Observe(ctx context.Context, service Service, window time.Duration, attributes []string) Observed
 
 	// AttributeNames reads the set of attribute names in use for one
-	// Service, signal and window — the sanctioned extension primitive
+	// Service, signal and window, the sanctioned extension primitive
 	// (REQ-023, ADR-0034 §4). An implementation that can only approximate
 	// (e.g. by sampling records) must say so via Truncated, never silently.
 	AttributeNames(ctx context.Context, service Service, kind requirements.SignalKind, window time.Duration) AttributeNames
@@ -68,7 +68,7 @@ type Provider interface {
 	// component-identity attribute combinations, verbatim. tier is the
 	// team-qualified Tier id, matched on the telecraft.tier resource stamp
 	// every rendered artefact bakes into its own telemetry (ADR-0039 §5).
-	// This is the only door self-telemetry readings come through — the
+	// This is the only way self-telemetry readings come in: the
 	// platform reads them from the adopter's backend like any other
 	// telemetry, never over a privileged side channel.
 	ObserveSelf(ctx context.Context, tier string, window time.Duration) SelfObserved
@@ -77,7 +77,7 @@ type Provider interface {
 	// trailing window (REQ-050, ADR-0040): per (Tier, signal) in and out
 	// item counts, the per-exporter split a Hop's throughput reads, the
 	// error-rate readings, and the Tier's incarnation count. Computed on
-	// read, never stored — the platform holds no time series, and history
+	// read, never stored, because the platform holds no time series, and history
 	// is a range query against the adopter's backend at the adopter's
 	// retention (ADR-0040 §5).
 	//
@@ -90,7 +90,7 @@ type Provider interface {
 
 // Observed is one Service's reading across all signals. AsOf and Window
 // describe the whole reading; knowledge is per signal, because degradation
-// can be too — one signal's index missing says nothing about the others.
+// can be too: one signal's index missing says nothing about the others.
 type Observed struct {
 	// AsOf is the instant the reading was taken. Always set, including on
 	// fully degraded readings: "we could not see, as of when" is still a
@@ -116,7 +116,7 @@ func (o Observed) Known() bool {
 }
 
 // SignalObservation is the reading for one signal. When Known is false the
-// observation fields are zero and mean nothing — the Cause says why the
+// observation fields are zero and mean nothing. The Cause says why the
 // provider could not see, and "we cannot see" is never rendered as "it is
 // absent" (ADR-0008).
 type SignalObservation struct {
@@ -127,14 +127,14 @@ type SignalObservation struct {
 	Volume  int64 `json:"volume"`
 
 	// Newest is the timestamp of the newest record that landed in the
-	// window — the service-grain freshness base (ADR-0040 §4): the age of
+	// window, the service-grain freshness base (ADR-0040 §4): the age of
 	// the newest landed record per (Service, Environment, signal). Zero
 	// when nothing landed, where the absence itself is the reading.
 	Newest time.Time `json:"newest,omitempty"`
 
 	// AttributeCoverage maps each requested attribute name to the fraction
 	// of records in the window carrying it, in [0, 1]. Absent when no
-	// attributes were requested or no records exist to measure — coverage
+	// attributes were requested or no records exist to measure, because coverage
 	// over zero records is omitted, never fabricated as 0 or 1.
 	AttributeCoverage map[string]float64 `json:"attribute_coverage,omitempty"`
 }
@@ -161,14 +161,14 @@ type AttributeNames struct {
 }
 
 // Signals returns the signal kinds a reading covers, in stable order
-// (ADR-0009: logs, metrics, traces — profiles deliberately absent).
+// (ADR-0009: logs, metrics, traces; profiles deliberately absent).
 func Signals() []requirements.SignalKind {
 	return []requirements.SignalKind{requirements.Logs, requirements.Metrics, requirements.Traces}
 }
 
 // Unknown builds the fully degraded reading: every signal Known false with
 // the same cause. It is what a Provider returns when the failure precedes
-// any per-signal answer — an unreachable backend, an undecodable response.
+// any per-signal answer: an unreachable backend, an undecodable response.
 func Unknown(asOf time.Time, window time.Duration, cause string) Observed {
 	obs := Observed{
 		AsOf:    asOf,

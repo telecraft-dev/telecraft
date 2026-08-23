@@ -27,7 +27,7 @@ adopter already runs.
 - Authoring is adoptable with no agent change: render into git, apply with
   whatever already applies config.
 - Staged rollout must be expressible as git state or carried by the server
-  statelessly — an open question (see `docs/open-questions.md`, OQ-1).
+  statelessly: an open question (see `docs/open-questions.md`, OQ-1).
 
 ## Sources
 

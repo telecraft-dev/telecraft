@@ -5,7 +5,7 @@ reasoning are in [ADR-0047](../adr/0047-visual-identity-and-design-tokens.md);
 this file is the values and the rules for using them.
 
 `console/src/tokens.css` is the single implementation. Where this file and
-that file disagree, the stylesheet is right and this file is stale — fix it.
+that file disagree, the stylesheet is right and this file is stale: fix it.
 
 ## How the theme resolves
 
@@ -31,7 +31,7 @@ apply()
 
 The bare `:root` block carries the dark values so a browser that has not run
 the resolver still renders a complete theme. The stored choice is a device
-preference and stays out of the URL — the documented exception to
+preference and stays out of the URL, the documented exception to
 ADR-0042 §3.5.
 
 ## Colour
@@ -127,7 +127,7 @@ On `telecraft.dev` it is the wordmark's first syllable and the pulse line's
 stroke, both on `--colour-bg`: 12.76:1 on dark, 5.40:1 on light, so it clears
 the text floor as text and the graphic floor as a stroke. It is listed in the
 palette check's `TEXT_ON` table for that ground. Until the marketing site used
-it, it was in neither table and therefore unchecked — which is the failure
+it, it was in neither table and therefore unchecked, which is the failure
 mode described under "Accessibility floors", found by walking into it.
 
 ## Typography
@@ -139,7 +139,7 @@ and `console/tools/check-zero-cdn.mjs` fails the build if one is.
 Atkinson was drawn for readers with low vision and keeps characters distinct
 from one another; JetBrains Mono has a tall x-height and an unmistakable zero,
 one and lowercase L. Atkinson is wider than a grotesque, which costs roughly
-one card per row — the trade is deliberate, for a surface people read all day.
+one card per row; the trade is deliberate, for a surface people read all day.
 
 Sizes become tokens. The state being replaced: eighty hardcoded `font-size`
 declarations in `app.css` across twelve distinct values, with the same nominal
@@ -163,7 +163,7 @@ Six steps, not a ratio. Two of them are pinned by content instead: the
 per-signal matrix at 12.5px and band rows at 13.5px. **The densest
 information on a surface is never the smallest text on it**, and nothing on
 any surface is smaller than the matrix. Before this pass the matrix's own
-notes were set at `0.9em` of a 12px row, which rendered at 10.8px — the
+notes were set at `0.9em` of a 12px row, which rendered at 10.8px, the
 smallest text in the console, on its densest data.
 
 Line height is `--leading-tight` 1.25 for headings, `--leading-snug` 1.4 for
@@ -180,8 +180,8 @@ Readings are numbers set to line up, which is the whole visual thesis
 The vendored family is Atkinson Hyperlegible **Next**: the same design, and
 the one of the two published as a variable font. The console asks for
 weights 400, 500, 600 and 700, and the original ships only 400 and 700, so
-two of the four would be synthesised by the browser. Three faces —
-upright, italic, and JetBrains Mono — range-instanced to `wght` 400–700 and
+two of the four would be synthesised by the browser. Three faces
+(upright, italic, and JetBrains Mono), range-instanced to `wght` 400 to 700 and
 subset to Latin, cost 70 KB. Provenance and the exact subsetting commands
 are in `console/src/fonts/README.md`.
 
@@ -190,7 +190,7 @@ are in `console/src/fonts/README.md`.
 | Family | Tokens |
 |---|---|
 | Space | `--space-1` … `--space-6`: 4, 8, 12, 16, 24, 32px |
-| Radius | `--radius-1` 4px, `--radius-2` 8px. Plates, not pills — the identity is datum lines and hairlines, so the largest radius stays small |
+| Radius | `--radius-1` 4px, `--radius-2` 8px. Plates, not pills: the identity is datum lines and hairlines, so the largest radius stays small |
 | Focus | `--focus-width` 2px, `--focus-offset` 2px, `--focus-colour` = `--colour-fill`. One ring everywhere, on `:focus-visible`, drawn in the fill colour so it clears 3:1 on both grounds without spending a hue |
 | Motion | `--motion-fast` 90ms, `--motion-base` 160ms, `--motion-ease` `cubic-bezier(0.2, 0, 0.13, 1)` |
 | Elevation | `--elevation-1` for plates, `--elevation-2` for dialogs and popovers. Both carry a colour, so both are defined in two blocks |
@@ -213,7 +213,7 @@ Three tiers, three different sourcing rules.
 | Tier | Source | Why |
 |---|---|---|
 | State marks | Drawn by us | ADR-0041 makes glyphs a mapping from states; they are product vocabulary |
-| Domain marks | Drawn by us | Collector, Tier, Blueprint, Component, Service — the product's nouns |
+| Domain marks | Drawn by us | Collector, Tier, Blueprint, Component, Service: the product's nouns |
 | Utility icons | Lucide (ISC) | No product meaning, no reason to draw by hand |
 
 All drawn marks share one 16-unit grid, 1.75 stroke, round caps and joins, and
@@ -232,10 +232,10 @@ Seven state marks, one per ADR-0041 band state:
 | `ok` | tick |
 | `finding` (advisory) | solid triangle |
 | `finding` (violation) | cross |
-| `not_applicable` | plain rule — nothing to judge |
-| `unknown` | broken outline — we should know and do not |
-| `pending_settle` | clock — the ADR-0038 window has not closed |
-| `stale_demoted` | closed outline, chevron down — judged, then demoted |
+| `not_applicable` | plain rule: nothing to judge |
+| `unknown` | broken outline: we should know and do not |
+| `pending_settle` | clock: the ADR-0038 window has not closed |
+| `stale_demoted` | closed outline, chevron down: judged, then demoted |
 
 The four neutrals were distinct states in the contract but collapsed to one
 glyph. Each has its own mark now; that changed the mapping and its tests,
@@ -257,10 +257,10 @@ a Tier never means.
 
 | Object | Mark | Why that shape means that word here |
 |---|---|---|
-| Collector | funnel — a rim, converging walls, one stem | Many streams poured in, one running process, one stream out. Open and inverted where `advisory`'s triangle is solid and upright |
+| Collector | funnel: a rim, converging walls, one stem | Many streams poured in, one running process, one stream out. Open and inverted where `advisory`'s triangle is solid and upright |
 | Tier | three rules, the middle one spanning the grid | A position in the collection topology: the layer that carries the policy for everything at that position, between the layers it sits between. Equal weight, because a Tier is a place and never a ranking |
 | Blueprint | a frame holding two rules of unequal length | The authored, versioned artefact you own, whose content is per-signal lanes ordered separately per signal |
-| Component | a solid block on a lane, a stub either side | One configured instance wired into a lane: an in, an out, and a thing rather than a container. Filled for the reason `advisory` is — an outline that small closes up at 16px |
+| Component | a solid block on a lane, a stub either side | One configured instance wired into a lane: an in, an out, and a thing rather than a container. Filled for the reason `advisory` is: an outline that small closes up at 16px |
 | Service | a solid dot and two arcs opening right | The governed unit: `service.name` is the origin and the arcs are what leaves it for every surface that judges it. They open right because the console draws flow left to right |
 
 The vocabulary lives in `console/src/ui/domain.ts` and the geometry in
@@ -286,7 +286,7 @@ and it still says which bands have findings.
 | Separation | &Delta;E 20 under deuteranopia and protanopia | the severity triad, pairwise |
 | Reduced motion | every transition guarded | all animation |
 
-Measured, not assumed — and measured by a program, not by hand. The palette
+Measured, not assumed, and measured by a program, not by hand. The palette
 proposed alongside ADR-0047 did not in fact clear its own floors: green
 against red separated at only &Delta;E 13.2 on light under deuteranopia,
 and three contrast pairs came in under. The shipped values are the nearest
@@ -302,12 +302,12 @@ As shipped, the worst pair in the triad:
 
 Lightness spread, not saturation, is what buys that: when hue perception
 fails, lightness is what survives. Amber against red separates comfortably
-(&Delta;E 45 to 119) precisely because amber is so much lighter — the
+(&Delta;E 45 to 119) precisely because amber is so much lighter. The
 convergence to design against was always green against red.
 
 One known result stands unchanged: the four signal lanes converge in places
-and cannot be made not to. That is addressed by ADR-0047 §5 — a signal
-colour never appears without its lane name — rather than by colour, and it
+and cannot be made not to. That is addressed by ADR-0047 §5 (a signal
+colour never appears without its lane name) rather than by colour, and it
 is the one rule here enforced by review instead of by arithmetic.
 
 ### Re-running the checks
@@ -321,10 +321,10 @@ and fails the build on a missed floor. It runs in CI beside the vendor-word
 lint and the zero-CDN check, which is where ADR-0047's consequences said it
 belonged. The method it implements: relative luminance per WCAG 2.x for
 contrast, and CIE Lab &Delta;E76 after simulating the palette through the
-Viénot–Brettel–Mollon matrices.
+Viénot, Brettel, and Mollon matrices.
 
-It also enforces the two-block rule structurally — every colour defined in
-exactly two blocks, none inside a media query — because that is the one
+It also enforces the two-block rule structurally (every colour defined in
+exactly two blocks, none inside a media query) because that is the one
 mistake which produces a console that looks correct in whichever theme the
 author happened to be in and unreadable in the other.
 
@@ -347,7 +347,7 @@ decision, not a convenience.
 |---|---|---|
 | `Button` | `primary`, `secondary`, `quiet` | Tones are structural, not chromatic: primary is a solid fill of the ink, quiet is underlined text. `.selected` is the pressed state of a toggle |
 | `Chip` | `neutral`, `ok`, `advisory`, `violation`, `ungoverned`, plus `mono` | Tone reinforces the words inside it and never replaces them |
-| `Panel` | — | The side panel, its head, its close control, and its resize handle |
+| `Panel` | none | The side panel, its head, its close control, and its resize handle |
 | `Mark` / `DomainMark` / `Icon` | seven state marks, five domain marks, seven icons | Drawn marks and Lucide utility icons, both on the 16-unit grid at 1.75 stroke. `DomainMark` is the mark row's second half rather than a fifth component: same grid, same stroke, same prop surface, a different half of the vocabulary |
 
 Each exports a class helper (`buttonClass`, `chipClass`) beside the
@@ -377,7 +377,7 @@ The pressed state is `selected`.
 The chrome is one row at every width, and it is measured rather than
 assumed (`e2e/chrome.spec.ts`). The theme control is a labelled select
 matching the environment lens beside it; it began as a three-segment
-control and did not fit — on the demo, whose chrome carries an extra
+control and did not fit: on the demo, whose chrome carries an extra
 provenance banner, it wanted 1749px inside 1600px and wrapped
 "Catalogue & Governance" onto three lines. Hiding the segment words at a
 breakpoint would have bought the space by giving up what made the control
@@ -405,7 +405,7 @@ Five artefacts, two repositories.
 `base.css` is a file: `console/src/base.css`. It came out of the top of
 `app.css` rather than being written fresh, so the console's elements are
 dressed by exactly the rules that dressed them before, and the split is what
-makes ADR-0047 §1's reasoning true in fact rather than in principle — a
+makes ADR-0047 §1's reasoning true in fact rather than in principle: a
 stylesheet crosses a repository boundary and a React component does not. Its
 consumers are all four surfaces, the console included; `app.css` is now
 structure and the console's alone.
@@ -414,7 +414,7 @@ Two things in it were never in `app.css`, because the console never needed
 them and a prose surface cannot do without them: bare links, and table
 defaults. The link rule is where `--colour-link` finally lands. Before it,
 an anchor the console had not given a class of its own rendered in the
-browser's link colour — the one hue on the surface that meant nothing, which
+browser's link colour, the one hue on the surface that meant nothing, which
 is the thing ADR-0047 §5 forbids everywhere else. Eight anchors in the
 console were in that state and now read as ink.
 

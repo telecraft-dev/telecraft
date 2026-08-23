@@ -12,7 +12,7 @@ import { buttonClass } from '../ui/Button'
  * What it renders is the instance's own answer to /api/v1/auth/providers:
  * a credential form for a password provider (basic auth), a link through
  * `/api/v1/auth/{name}/start` for each redirect provider (OIDC, and SAML
- * when it lands). An air-gapped instance lists only what it runs — no
+ * when it lands). An air-gapped instance lists only what it runs; no
  * external host is ever involved (REQ-006).
  */
 export function Login() {

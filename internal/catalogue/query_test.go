@@ -17,7 +17,7 @@ func TestQueryAPI(t *testing.T) {
 		if _, ok := cat.Lookup(Receiver, "no_such_thing"); ok {
 			t.Error("a type that was never imported resolved")
 		}
-		// kafka exists as a receiver and an exporter — never as a connector.
+		// kafka exists as a receiver and an exporter, never as a connector.
 		// A class-blind lookup would wrongly resolve this.
 		if _, ok := cat.Lookup(Connector, "kafka"); ok {
 			t.Error("kafka resolved under a class it does not exist in")

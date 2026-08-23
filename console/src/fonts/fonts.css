@@ -3,7 +3,7 @@
  * file: nothing here resolves to another origin, and
  * `console/tools/check-zero-cdn.mjs` fails the build if one ever does.
  *
- * Both are variable over `wght` 400–700, so one file answers every weight
+ * Both are variable over `wght` 400 to 700, so one file answers every weight
  * the console asks for and the browser never synthesises a bold.
  * `font-display: swap` keeps text readable while a face loads; the fallback
  * stacks are the closest system faces so the swap barely moves.

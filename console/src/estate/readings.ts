@@ -29,7 +29,7 @@ export function readingState(reading: Reading & { silent?: boolean }): ReadingSt
  * Whether a row has readings to render. A lane the Tier's artefact never
  * wired has none (#98): the counters behind them would read `in 0 / out
  * 0`, which is the same shape a pipeline that has broken reads, and the
- * two mean opposite things. An unknown lane still renders its readings —
+ * two mean opposite things. An unknown lane still renders its readings:
  * not knowing whether a lane exists is not knowing that it does not.
  */
 export function laneReads(row: SignalRow): row is SignalRow & {
@@ -47,8 +47,8 @@ export const NO_LANE = 'no lane on this Tier'
 export const NO_LANE_TITLE =
   "the Tier's artefact instantiates no pipeline for this signal, so there is nothing here to meter"
 
-/** The em dash a card shows where a number would be a fabrication. */
-export const NO_READING = '—'
+/** The words a card shows where a number would be a fabrication. */
+export const NO_READING = 'no reading'
 
 /** Item counts, short enough for a card row. Items are the unit (ADR-0040 §2). */
 export function formatItems(items: number): string {
@@ -64,7 +64,7 @@ function trim(value: number): string {
   return `${rounded}`
 }
 
-/** An age, coarsest unit first — the reader wants "3h", not 10,842 seconds. */
+/** An age, coarsest unit first: the reader wants "3h", not 10,842 seconds. */
 export function formatAge(seconds: number): string {
   if (seconds < 60) return `${Math.max(0, Math.round(seconds))}s`
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`
@@ -74,7 +74,7 @@ export function formatAge(seconds: number): string {
 
 /**
  * The volume cell: items in, items out, and the reduction between them.
- * The word is "reduction" and never anything that implies fault — the
+ * The word is "reduction" and never anything that implies fault: the
  * meter presents the delta and passes no judgement (ADR-0040 §3).
  */
 export function formatVolume(volume: VolumeReading): string {
@@ -102,7 +102,7 @@ export function errorReadings(volume: VolumeReading): { label: string; items: nu
 
 /**
  * The freshness cell. A known-empty window says so in words: "silent" is
- * a reading, where a dash would claim we could not see.
+ * a reading, where "no reading" would claim we could not see.
  */
 export function formatFreshness(freshness: FreshnessReading): string {
   switch (readingState(freshness)) {
@@ -140,5 +140,5 @@ export function readingTitle(reading: Reading, now: Date = new Date()): string {
     ? undefined
     : formatAge((now.getTime() - takenAt.getTime()) / 1000)
   const when = age ? `read ${age} ago` : `read at ${reading.asOf}`
-  return reading.known ? when : `${when} — ${reading.cause ?? 'no reading'}`
+  return reading.known ? when : `${when}: ${reading.cause ?? 'no reading'}`
 }

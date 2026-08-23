@@ -15,26 +15,26 @@ import (
 // Status is one claim's judged state. The vocabulary is a band state, not
 // a verdict word (ADR-0038 §1): data-claim reds surface through the
 // outcome cross or an expectation finding, pipeline-claim reds through
-// Tier-attached expectation findings — Status itself never becomes an
+// Tier-attached expectation findings. Status itself never becomes an
 // eighth outcome.
 type Status string
 
 const (
-	// StatusGreen: the claim is met — the config worked.
+	// StatusGreen: the claim is met, so the config worked.
 	StatusGreen Status = "green"
 
-	// StatusPending: neutral-pending — inside the settle window after
+	// StatusPending: neutral-pending: inside the settle window after
 	// APPLIED at a new SHA, or a shortfall still inside the dampening
 	// grace window (ADR-0038 §4b, §4c). Never red, never green.
 	StatusPending Status = "pending"
 
-	// StatusUnknown: the evidence cannot say — a Known false reading, no
+	// StatusUnknown: the evidence cannot say: a Known false reading, no
 	// stamped SHA, nothing landed to check an enrichment against.
 	// Unknown never reads as red (ADR-0008, ADR-0038 §4d).
 	StatusUnknown Status = "unknown"
 
 	// StatusRed: the shortfall persisted past the grace window against a
-	// known reading — the config didn't work.
+	// known reading, so the config didn't work.
 	StatusRed Status = "red"
 )
 
@@ -78,12 +78,12 @@ func (s SettleWindows) forKind(k Kind) time.Duration {
 }
 
 // DefaultObservationWindow is the default window a claim looks back over
-// — adopter-overridable, generous enough to survive overnight quiet
+// (adopter-overridable, and generous enough to survive overnight quiet,
 // (ADR-0038 §4d). The caller reads Observed over this window and the
 // judgement takes the reading as given.
 const DefaultObservationWindow = 24 * time.Hour
 
-// Config tunes the judgement. Zero values take the defaults everywhere —
+// Config tunes the judgement. Zero values take the defaults everywhere:
 // one knob vocabulary, no parallel invention (ADR-0038 §4c): Grace is
 // ADR-0035's persistence window, reused verbatim, and Population carries
 // the inventory judgement's own knobs.
@@ -108,7 +108,7 @@ func (c Config) grace() time.Duration {
 }
 
 // claimFloor is the floor a claim's dampening observes: a claim expects
-// the thing to exist at all — "at least one" — so the shortfall machinery
+// the thing to exist at all ("at least one"), so the shortfall machinery
 // of ADR-0035 applies with a floor of one and no new mechanism.
 var claimFloor = inventory.Floor{Source: inventory.FloorDeclared, Min: 1}
 
@@ -119,7 +119,7 @@ type ClaimResult struct {
 
 	// Backed reports whether a Requirement demands what the data claim
 	// asserts (ADR-0038 §5a): a backed red raises no expectation finding
-	// — it is the machinery behind the cross, whose severity and routing
+	// because it is the machinery behind the cross, whose severity and routing
 	// the Requirement world already owns. Always false on pipeline
 	// claims.
 	Backed bool
@@ -133,7 +133,7 @@ type ClaimResult struct {
 
 // RowEvidence is everything EvaluateRow needs about one (Service,
 // Environment) row: when the row's serving artefacts last went APPLIED at
-// the claims' SHA (zero when unknown — treated as settled), and the
+// the claims' SHA (zero when unknown, treated as settled), and the
 // Observed reading for the row over the observation window, with the
 // claims' enrichment attributes measured (Set.RowAttributes).
 type RowEvidence struct {
@@ -142,7 +142,7 @@ type RowEvidence struct {
 }
 
 // RowResult is one row's expectation judgement: per-claim statuses, plus
-// the expectation findings for unbacked data claims that went red —
+// the expectation findings for unbacked data claims that went red:
 // Service-attached, advisory-grade, never violation (ADR-0038 §5b): no
 // human demanded the signal, so it cannot fail compliance.
 type RowResult struct {
@@ -153,12 +153,12 @@ type RowResult struct {
 }
 
 // EvaluateRow judges one row's data claims against its Observed reading.
-// Requirement-backed claims produce no finding of their own — their red
+// Requirement-backed claims produce no finding of their own: their red
 // is the Observed leg the cross already diagnoses (not_delivered,
 // broken_pipeline); the result's Backed flag says which claims those are.
 // Unbacked reds raise the advisory expectation finding whose remediation
-// is honest about the fork: fix the pipeline, or delete the dead lane —
-// doubling as dead-config detection (ADR-0035 §7's aged-never_seen move).
+// is honest about the fork: fix the pipeline, or delete the dead lane, which
+// doubles as dead-config detection (ADR-0035 §7's aged-never_seen move).
 func EvaluateRow(set Set, service, environment string, lib requirements.Library,
 	ev RowEvidence, damper *inventory.Damper, cfg Config, now time.Time) RowResult {
 
@@ -173,7 +173,7 @@ func EvaluateRow(set Set, service, environment string, lib requirements.Library,
 				Kind:    ownership.Expectation,
 				Subject: ownership.Subject{Kind: ownership.KindService, ID: claim.Service},
 				Grade:   ownership.Advisory,
-				Detail: fmt.Sprintf("%s — no Requirement demands it, so this cannot fail compliance: fix the pipeline, or delete the dead lane (ADR-0038 §5b); the engine cannot localise where on the Path the data died — see the pipeline findings on %s",
+				Detail: fmt.Sprintf("%s. No Requirement demands it, so compliance is unaffected. Fix the pipeline, or delete the dead lane. To find where on the Path the data stopped, see the pipeline findings on %s",
 					res.Detail, strings.Join(claim.Tiers, ", ")),
 			})
 		}
@@ -190,12 +190,12 @@ func judgeDataClaim(claim Claim, ev RowEvidence, damper *inventory.Damper,
 	key := claim.Key()
 	if settling(ev.AppliedAt, cfg.Settle.forKind(claim.Kind), now) {
 		clearShortfall(damper, key, now)
-		return StatusPending, time.Time{}, fmt.Sprintf("inside the %s settle window after APPLIED — neutral-pending, never red or green (ADR-0038 §4b)", cfg.Settle.forKind(claim.Kind))
+		return StatusPending, time.Time{}, fmt.Sprintf("inside the %s settle window after APPLIED, so the claim is not judged yet", cfg.Settle.forKind(claim.Kind))
 	}
 
 	sig, seen := ev.Observed.Signals[claim.Signal]
 	if !seen || !sig.Known {
-		// Known false ⇒ unknown, never red (ADR-0038 §4d) — and the
+		// Known false ⇒ unknown, never red (ADR-0038 §4d), and the
 		// shortfall clock must not run on evidence nobody has.
 		clearShortfall(damper, key, now)
 		cause := sig.Cause
@@ -210,7 +210,7 @@ func judgeDataClaim(claim Claim, ev RowEvidence, damper *inventory.Damper,
 	switch claim.Kind {
 	case Arrival:
 		met = sig.Present
-		gap = fmt.Sprintf("expected %s never landed for %s in %s over %s — the config implies the signal and nothing arrived",
+		gap = fmt.Sprintf("expected %s never landed for %s in %s over %s. The config says this signal should land, and nothing arrived",
 			claim.Signal, claim.Service, claim.Environment, ev.Observed.Window)
 	case Enrichment:
 		if !sig.Present {
@@ -218,12 +218,12 @@ func judgeDataClaim(claim Claim, ev RowEvidence, damper *inventory.Damper,
 			// arrival claim is the one failing, and judging this one too
 			// would report one gap twice.
 			clearShortfall(damper, key, now)
-			return StatusUnknown, time.Time{}, fmt.Sprintf("no %s landed to check %s against — the arrival claim carries this gap", claim.Signal, claim.Attribute)
+			return StatusUnknown, time.Time{}, fmt.Sprintf("no %s landed to check %s against. See the arrival claim for this gap", claim.Signal, claim.Attribute)
 		}
 		coverage, measured := sig.AttributeCoverage[claim.Attribute]
 		if !measured {
 			clearShortfall(damper, key, now)
-			return StatusUnknown, time.Time{}, fmt.Sprintf("the reading did not measure attribute %q — pass Set.RowAttributes to the provider's Observe", claim.Attribute)
+			return StatusUnknown, time.Time{}, fmt.Sprintf("the reading did not measure attribute %q. Pass Set.RowAttributes to the provider's Observe", claim.Attribute)
 		}
 		met = coverage > 0
 		gap = fmt.Sprintf("the config literally inserts %s=%q on %s, and no landed record carries the attribute",
@@ -237,7 +237,7 @@ func judgeDataClaim(claim Claim, ev RowEvidence, damper *inventory.Damper,
 
 	since := damper.Observe(key, 0, claimFloor, now)
 	if now.Sub(since) < cfg.grace() {
-		return StatusPending, since, fmt.Sprintf("shortfall inside the %s grace window — persistence-dampened (ADR-0035 §3, reused by ADR-0038 §4c)", cfg.grace())
+		return StatusPending, since, fmt.Sprintf("shortfall inside the %s grace window, so the claim is not red yet", cfg.grace())
 	}
 	return StatusRed, since, gap
 }
@@ -266,12 +266,12 @@ func backed(claim Claim, lib requirements.Library) bool {
 }
 
 // TierEvidence is everything EvaluateTier needs about one Tier: the
-// artefact its collectors report running (the stamped SHA — never head),
+// artefact its collectors report running (the stamped SHA, never head),
 // when it went APPLIED, the Tier's self-telemetry reading, and the
 // population evidence from the InventoryProvider slice (ADR-0035),
 // already passed through ForEvaluation.
 type TierEvidence struct {
-	// RunningSHA is the commit stamp the Tier's collectors report — the
+	// RunningSHA is the commit stamp the Tier's collectors report, the
 	// artefact the claims must derive from (ADR-0038 §4a). Empty means
 	// the running artefact is unknown.
 	RunningSHA string
@@ -292,7 +292,7 @@ type TierEvidence struct {
 
 // TierResult is one Tier's expectation judgement: per-claim statuses,
 // the ADR-0035 population findings judged from the InventoryProvider
-// slice, and the routed findings — Tier-attached, Tier-owner-routed
+// slice, and the routed findings: Tier-attached, Tier-owner-routed
 // expectation findings for pipeline claims that went red
 // (violation-capable after dampening, ADR-0038 §5c), plus the population
 // findings converted to delivery-kind findings, so never_seen and
@@ -313,7 +313,7 @@ func EvaluateTier(set Set, tier string, ev TierEvidence, damper *inventory.Dampe
 	cfg Config, now time.Time) (TierResult, error) {
 
 	if ev.RunningSHA != "" && set.SHA != ev.RunningSHA {
-		return TierResult{}, fmt.Errorf("claim set derives from %s but tier %q reports running %s — claims are judged against the artefact the collector reports running, never head (ADR-0038 §4a): derive at the stamped SHA",
+		return TierResult{}, fmt.Errorf("claim set derives from %s but tier %q reports running %s. Claims are judged against the artefact the collector reports running, so derive at the stamped SHA",
 			set.SHA, tier, ev.RunningSHA)
 	}
 
@@ -322,7 +322,7 @@ func EvaluateTier(set Set, tier string, ev TierEvidence, damper *inventory.Dampe
 	// Floors first (ADR-0035, via the InventoryProvider slice): the
 	// population judgement escalates never_seen and under_populated
 	// through the resolved floor, and its findings join the delivery
-	// kind — a population shortfall is a delivery problem, never an
+	// kind, because a population shortfall is a delivery problem, never an
 	// expectation red in disguise.
 	out.Population = ev.Population.Findings(cfg.Population, now)
 	out.Findings = append(out.Findings, inventory.DeliveryFindings(out.Population)...)
@@ -340,7 +340,7 @@ func EvaluateTier(set Set, tier string, ev TierEvidence, damper *inventory.Dampe
 	}
 
 	if settling(ev.AppliedAt, cfg.Settle.forKind(SelfTelemetry), now) {
-		detail := fmt.Sprintf("inside the %s settle window after APPLIED at %s — neutral-pending (ADR-0038 §4b)", cfg.Settle.forKind(SelfTelemetry), set.SHA)
+		detail := fmt.Sprintf("inside the %s settle window after APPLIED at %s, so the claim is not judged yet", cfg.Settle.forKind(SelfTelemetry), set.SHA)
 		for _, claim := range claims {
 			clearShortfall(damper, claim.Key(), now)
 			out.Claims = append(out.Claims, ClaimResult{Claim: claim, Status: StatusPending, Detail: detail})
@@ -358,16 +358,16 @@ func EvaluateTier(set Set, tier string, ev TierEvidence, damper *inventory.Dampe
 		case matched:
 			clearShortfall(damper, claim.Key(), now)
 			res.Status = StatusGreen
-			res.Detail = "the component emits its own telemetry — the config worked"
+			res.Detail = "the component emits its own telemetry, so the config worked"
 		default:
 			since := damper.Observe(claim.Key(), 0, claimFloor, now)
 			res.Since = since
 			if now.Sub(since) < cfg.grace() {
 				res.Status = StatusPending
-				res.Detail = fmt.Sprintf("silent, inside the %s grace window — persistence-dampened (ADR-0035 §3)", cfg.grace())
+				res.Detail = fmt.Sprintf("silent, inside the %s grace window, so the claim is not red yet", cfg.grace())
 			} else {
 				res.Status = StatusRed
-				res.Detail = fmt.Sprintf("%s %s is instantiated in the artefact at %s and has emitted no self-telemetry past the settle window — \"the config didn't work\" in its sharpest form (ADR-0038 §5c)",
+				res.Detail = fmt.Sprintf("%s %s is instantiated in the artefact at %s and has emitted no self-telemetry past the settle window, so the config did not work",
 					claim.ComponentKind, claim.Component, set.SHA)
 				out.Findings = append(out.Findings, ownership.Finding{
 					Kind:    ownership.Expectation,
@@ -384,15 +384,15 @@ func EvaluateTier(set Set, tier string, ev TierEvidence, damper *inventory.Dampe
 
 // tierGate returns the cause that makes every pipeline claim unknown,
 // when one holds. An unapplied or unreported artefact and an empty
-// population are delivery's reds and drift's reds — never expectation's
+// population are delivery's reds and drift's reds, never expectation's
 // (ADR-0038 §4a: delivery failure is structurally unable to cascade into
 // expectation-red).
 func tierGate(ev TierEvidence) (string, bool) {
 	if ev.RunningSHA == "" {
-		return "the collectors report no commit stamp — claims are judged against the artefact the collector reports running, and no artefact is known to be in force (ADR-0038 §4a)", true
+		return "the collectors report no commit stamp, so no artefact is known to be in force and there is nothing to judge the claims against", true
 	}
 	if ev.Population.Seen == 0 {
-		return "no collector is matched into this Tier — silence here is the population's delivery finding (ADR-0035), never an expectation red", true
+		return "no collector is matched into this Tier. See the Tier's population finding", true
 	}
 	known := false
 	var causes []string
@@ -409,7 +409,7 @@ func tierGate(ev TierEvidence) (string, bool) {
 		if len(causes) > 0 {
 			cause += ": " + strings.Join(causes, "; ")
 		}
-		return cause + " — Known false reads as unknown, never red (ADR-0039 §2)", true
+		return cause + ", so the claims read as unknown", true
 	}
 	return "", false
 }
@@ -421,8 +421,8 @@ type componentKey struct {
 }
 
 // observedComponents normalises every component-identity attribute
-// combination the reading carries — through the one platform-owned
-// normaliser (ADR-0039 §3) — into the identified set and the
+// combination the reading carries, through the one platform-owned
+// normaliser (ADR-0039 §3), into the identified set and the
 // unidentified-kind set the claims match against. Synthetic graph nodes
 // and collector-level readings are tolerated and match nothing: expected
 // shapes, never failures (R-4 §5.4).

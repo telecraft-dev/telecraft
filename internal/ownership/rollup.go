@@ -5,7 +5,7 @@ import "fmt"
 // Score is the roll-up for one finding kind at one node of the tree
 // (ADR-0017 §3): a passing-over-counted ratio, a worst-outcome badge, and
 // the waived count always alongside. The ratio is kept as an integer pair,
-// deliberately: nothing here — or anywhere in this package — collapses
+// deliberately: nothing here, or anywhere in this package, collapses
 // kinds into each other or into a single blended number.
 type Score struct {
 	Passing int
@@ -22,7 +22,7 @@ type RoutedFinding struct {
 
 // Rollup is one team's view: the set of findings routed to owners in its
 // subtree (ADR-0017 §2), scored per kind. That set includes kinds beyond
-// service verdicts — a parent team's view is bigger than the sum of its
+// service verdicts: a parent team's view is bigger than the sum of its
 // services, and that is the point. Waived findings appear in Findings with
 // their diagnosis intact; they are absent only from the counted ratio.
 type Rollup struct {
@@ -34,7 +34,7 @@ type Rollup struct {
 // Rollup computes one team's roll-up over a set of findings. It is
 // computable at every level: the same call at a leaf, a mid-level team or
 // the root scores that node's subtree. A finding that fails to route or
-// carries an invalid kind or grade is an error — never silently dropped
+// carries an invalid kind or grade is an error, never silently dropped
 // from a denominator.
 func (e Estate) Rollup(team TeamID, findings []Finding) (Rollup, error) {
 	subtree, err := e.Tree.Subtree(team)
@@ -49,10 +49,10 @@ func (e Estate) Rollup(team TeamID, findings []Finding) (Rollup, error) {
 	out := Rollup{Team: team, Scores: map[FindingKind]Score{}}
 	for _, f := range findings {
 		if !f.Kind.Valid() {
-			return Rollup{}, fmt.Errorf("finding about %s %q has unknown kind %q — one of service_conformance, delivery, component_health, expectation (ADR-0017, ADR-0038)", f.Subject.Kind, f.Subject.ID, f.Kind)
+			return Rollup{}, fmt.Errorf("finding about %s %q has unknown kind %q. Use one of service_conformance, delivery, component_health, or expectation", f.Subject.Kind, f.Subject.ID, f.Kind)
 		}
 		if !f.Grade.Valid() {
-			return Rollup{}, fmt.Errorf("finding about %s %q has unknown grade %q — one of pass, advisory, violation", f.Subject.Kind, f.Subject.ID, f.Grade)
+			return Rollup{}, fmt.Errorf("finding about %s %q has unknown grade %q. Use one of pass, advisory, or violation", f.Subject.Kind, f.Subject.ID, f.Grade)
 		}
 		owner, err := e.OwnerOf(f.Subject)
 		if err != nil {
@@ -65,7 +65,7 @@ func (e Estate) Rollup(team TeamID, findings []Finding) (Rollup, error) {
 		out.Findings = append(out.Findings, RoutedFinding{Finding: f, Owner: owner})
 		s, seen := out.Scores[f.Kind]
 		if !seen {
-			// A kind whose every finding is waived keeps a pass badge — the
+			// A kind whose every finding is waived keeps a pass badge: the
 			// waived count alongside is what stops an exemption-heavy 100%
 			// from hiding (ADR-0017).
 			s.Worst = Pass

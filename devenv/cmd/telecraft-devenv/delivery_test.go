@@ -29,7 +29,7 @@ func TestACollectorThatAcceptsRemoteConfigIsServed(t *testing.T) {
 	d.Report("conn-1", identity, &protobufs.AgentToServer{Capabilities: acceptsRemoteConfig})
 
 	if got := d.Path(identity); got != "served" {
-		t.Errorf("delivery %q — this collector will apply what the server sends it, which is the served path", got)
+		t.Errorf("delivery %q: this collector will apply what the server sends it, which is the served path", got)
 	}
 }
 
@@ -43,7 +43,7 @@ func TestACollectorThatTakesNothingTheServerSendsIsGitDelivered(t *testing.T) {
 	d.Report("conn-1", identity, &protobufs.AgentToServer{Capabilities: reportsOnly})
 
 	if got := d.Path(identity); got != "git" {
-		t.Errorf("delivery %q — nothing the platform sends this collector would be applied, so it is not served", got)
+		t.Errorf("delivery %q: nothing the platform sends this collector would be applied, so it is not served", got)
 	}
 }
 
@@ -58,7 +58,7 @@ func TestADeclarationWithoutIdentityWaitsForOne(t *testing.T) {
 	d.Report("conn-1", identity, &protobufs.AgentToServer{Capabilities: reportsOnly})
 
 	if got := d.Path(identity); got != "git" {
-		t.Errorf("delivery %q — the declaration made before the identity arrived was lost", got)
+		t.Errorf("delivery %q: the declaration made before the identity arrived was lost", got)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestTheDeclarationDiesWithTheConnection(t *testing.T) {
 	// with them (ADR-0032). Nothing asks about a collector that has gone,
 	// and holding its answer would be a cache with no way to expire.
 	if got := d.Path(identity); got != "served" {
-		t.Errorf("delivery %q — a closed connection's declaration outlived it", got)
+		t.Errorf("delivery %q: a closed connection's declaration outlived it", got)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestAReconnectingCollectorIsStillServedOverItsOtherConnection(t *testing.T)
 	d.Report("conn-2", identity, &protobufs.AgentToServer{})
 
 	if got := d.Path(identity); got != "served" {
-		t.Errorf("delivery %q — a second connection made a served collector read as git-delivered", got)
+		t.Errorf("delivery %q: a second connection made a served collector read as git-delivered", got)
 	}
 }
 
@@ -101,6 +101,6 @@ func TestOneCollectorsPathSaysNothingAboutAnother(t *testing.T) {
 	d.Report("conn-2", git, &protobufs.AgentToServer{Capabilities: reportsOnly})
 
 	if d.Path(served) != "served" || d.Path(git) != "git" {
-		t.Errorf("served read as %q and git-delivered as %q — the two paths ran together", d.Path(served), d.Path(git))
+		t.Errorf("served read as %q and git-delivered as %q: the two paths ran together", d.Path(served), d.Path(git))
 	}
 }

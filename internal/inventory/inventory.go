@@ -1,16 +1,16 @@
 // Package inventory defines the InventoryProvider seam (ADR-0035): one
-// deliberately narrow question — given this Tier's selector, how many
+// deliberately narrow question: given this Tier's selector, how many
 // instances should match. The answer is a count plus an as-of timestamp,
 // Known false when the substrate cannot say (ADR-0008 discipline). The
 // seam is separate from EstateProvider by design: the estate seam reads
 // the population that exists, keyed on the collector; this seam reads what
 // should exist, from the substrate (a container orchestrator's API, a
-// CMDB, a cloud inventory) — different source, different auth, different
+// CMDB, a cloud inventory), so a different source, different auth, different
 // deployment shape.
 //
 // Expectations built on the answer are floors, never equalities (ADR-0035
 // §2): the only finding is a shortfall, surplus is never a finding, and
-// the platform never invents a count — a provider that cannot answer says
+// the platform never invents a count. A provider that cannot answer says
 // so with Known false and a cause, and an absent provider simply leaves
 // the derived source absent.
 //
@@ -36,7 +36,7 @@ import (
 
 // Declaration is an implementation's static contract declaration: stated
 // once, before any reading, and never varying per selector or per call.
-// The seam carries one reading kind — the expected count — so the
+// The seam carries one reading kind, the expected count, so the
 // declaration's load-bearing field is the cadence.
 type Declaration struct {
 	// RefreshCadence is how often the implementation's answer refreshes,
@@ -50,7 +50,7 @@ type Declaration struct {
 // Provider is the InventoryProvider seam (ADR-0035). Implementations live
 // under internal/provider/ (ADR-0001).
 type Provider interface {
-	// Name identifies the implementation for logs and stamps — a
+	// Name identifies the implementation for logs and stamps: a
 	// qualified name as runtime data, never a type.
 	Name() string
 
@@ -59,9 +59,9 @@ type Provider interface {
 
 	// Expected answers the seam's one question: how many instances should
 	// match this Tier's selector right now. A selector matching nothing is
-	// a count of zero — a real reading, not a blind spot. An empty
+	// a count of zero, a real reading, not a blind spot. An empty
 	// selector, an unreachable substrate, or an unanswerable ask comes
-	// back Known false with a cause — degradation is data in the reading,
+	// back Known false with a cause: degradation is data in the reading,
 	// never an error and never a crash (ADR-0008).
 	Expected(ctx context.Context, selector map[string]string) Count
 }
@@ -86,7 +86,7 @@ type Count struct {
 
 // StaleTolerance is the multiplier over the declared refresh cadence that
 // sets the staleness horizon (ADR-0036 §3): a count older than
-// cadence × StaleTolerance is demoted to Known false at evaluation —
+// cadence × StaleTolerance is demoted to Known false at evaluation:
 // three missed refreshes is decisively quiet, while one slow poll is not,
 // the same posture as the estate seam.
 const StaleTolerance = 3
@@ -94,7 +94,7 @@ const StaleTolerance = 3
 // ForEvaluation returns the count as floor resolution must see it: past
 // the staleness horizon at now it is demoted to Known false with its
 // payload cleared, so a stale derived count can never float a
-// fresh-looking floor. AsOf survives the demotion — "we stopped counting,
+// fresh-looking floor. AsOf survives the demotion: "we stopped counting,
 // as of when" stays a statement with a timestamp. A declaration without a
 // cadence demotes unconditionally: freshness that cannot be established
 // must not feed a floor, and the cause names the declaration's fault.
@@ -104,7 +104,7 @@ func (c Count) ForEvaluation(d Declaration, now time.Time) Count {
 	}
 	if d.RefreshCadence <= 0 {
 		return Count{Known: false, AsOf: c.AsOf,
-			Cause: "the provider declares no refresh cadence, so freshness cannot be established — a count of unverifiable age never feeds a floor (ADR-0036 §3)"}
+			Cause: "the provider declares no refresh cadence, so the age of this count cannot be checked and it cannot set a floor"}
 	}
 	horizon := d.RefreshCadence * StaleTolerance
 	age := now.Sub(c.AsOf)
@@ -112,6 +112,6 @@ func (c Count) ForEvaluation(d Declaration, now time.Time) Count {
 		return c
 	}
 	return Count{Known: false, AsOf: c.AsOf,
-		Cause: fmt.Sprintf("stale: counted %s ago, past the %s staleness horizon (declared cadence %s × tolerance %d) — stale data may inform a human, never a floor (ADR-0036 §3)",
+		Cause: fmt.Sprintf("stale: counted %s ago, past the %s staleness horizon (declared cadence %s × tolerance %d), so it cannot set a floor",
 			age.Round(time.Second), horizon, d.RefreshCadence, StaleTolerance)}
 }

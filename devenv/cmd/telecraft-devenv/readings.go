@@ -21,7 +21,7 @@ type estateReader interface {
 // deliveryReader answers how one collector came by its configuration
 // (REQ-041). It is a second reader rather than part of the estate one
 // because the EstateProvider seam carries what a collector reports about
-// its running state, never where that state came from — see delivery.go.
+// its running state, never where that state came from. See delivery.go.
 type deliveryReader interface {
 	Path(identity map[string]string) string
 }
@@ -36,8 +36,8 @@ type row struct {
 
 // composer turns the two live seams into the readings file the snapshot
 // builder loads. It decides nothing: every field it writes is something a
-// seam returned, and the one thing it adds — how long a signal has been
-// silent — is bookkeeping the production path gets from a Damper and a
+// seam returned, and the one thing it adds (how long a signal has been
+// silent) is bookkeeping the production path gets from a Damper and a
 // single-instant reading cannot have.
 type composer struct {
 	Collectors estateReader

@@ -67,8 +67,8 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 
 /**
  * The live client: the documented platform API over HTTP. Demo mode swaps
- * it for a build-time snapshot of the same documents (see api/demo.ts) —
- * the console's surfaces consume the contract, never the transport.
+ * it for a build-time snapshot of the same documents (see api/demo.ts).
+ * The console's surfaces consume the contract, never the transport.
  */
 export const liveApi: PlatformApi = {
   me: () => get<Me>('/api/v1/me'),
@@ -92,7 +92,7 @@ export const liveApi: PlatformApi = {
   /** The one evaluator, called continuously as the user edits (ADR-0022 §2). */
   validate: (draft: BlueprintDoc, environment: string) =>
     post<ComposeVerdict>('/api/v1/validate', { draft, environment }),
-  /** The composer's PR exit through the forge adapter — fail closed (ADR-0028).
+  /** The composer's PR exit through the forge adapter, fail closed (ADR-0028).
    * A claim context rides along on the draft-new-Tier path: the PR then
    * authors the Tier binding beside the Blueprint (ADR-0042 §6). */
   propose: (draft: BlueprintDoc, environment: string, claim?: ClaimContext) =>
@@ -105,7 +105,7 @@ export const liveApi: PlatformApi = {
   /**
    * The claim flow's attach exit: a PR widening the chosen Tier's selector
    * (ADR-0042 §6). A 422 comes back as named problems for the panel to
-   * show — the fail-closed refusal shape, never a thrown error.
+   * show: the fail-closed refusal shape, never a thrown error.
    */
   claim: async (request: ClaimRequest): Promise<ClaimOutcome> => {
     const res = await fetch('/api/v1/claims', {
@@ -128,7 +128,7 @@ export const liveApi: PlatformApi = {
 
   /**
    * A governance edit exits as a PR via the forge adapter (ADR-0042 §6). A
-   * 422 is the render-gate shape of refusal — the problems come back as
+   * 422 is the render-gate shape of refusal: the problems come back as
    * data for the editor to show, never as a thrown error.
    */
   proposeGovernance: async (request: GovernanceProposalRequest): Promise<ProposalOutcome> => {

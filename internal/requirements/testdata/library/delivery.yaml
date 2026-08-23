@@ -72,7 +72,7 @@
   description: >
     Spans arrived in the last hour, not merely somewhere in the last day. A
     daily window cannot tell you that tracing died this morning, and in
-    production that is the whole question. Scoped to production (ADR-0033):
+    production that is the whole question. Scoped to production:
     a quiet staging environment overnight is normal, not a finding.
   version: 1
   requirement_level: required

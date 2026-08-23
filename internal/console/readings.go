@@ -42,7 +42,7 @@ type Readings struct {
 	// with the identifying attributes Tier selectors match on.
 	Collectors []CollectorReading `yaml:"collectors"`
 
-	// Rows is the arrival reading per (Service, Environment) — the Observed
+	// Rows is the arrival reading per (Service, Environment): the Observed
 	// leg of the verdict cross (ADR-0004).
 	Rows []RowReading `yaml:"rows"`
 
@@ -52,15 +52,15 @@ type Readings struct {
 
 // CollectorReading is one collector as the estate reading sees it.
 type CollectorReading struct {
-	// ID names the collector in list surfaces. It is presentation only —
-	// identity for matching is Attributes (ADR-0013).
+	// ID names the collector in list surfaces. It is presentation only.
+	// Identity for matching is Attributes (ADR-0013).
 	ID string `yaml:"id"`
 
 	// Attributes are the reported identifying attributes: what Tier
 	// selectors and Rollout cohorts match on.
 	Attributes map[string]string `yaml:"attributes"`
 
-	// State is reporting, stale or never_seen — the flat list's state
+	// State is reporting, stale or never_seen: the flat list's state
 	// column, rendered last-known-plus-age beside LastSeen (ADR-0040).
 	State string `yaml:"state"`
 
@@ -101,7 +101,7 @@ type RowReading struct {
 // SignalReading is one signal's arrival reading.
 type SignalReading struct {
 	// Known distinguishes "the backend cannot say" from "nothing arrived".
-	// Absent defaults to known — the ordinary case in a declared reading.
+	// Absent defaults to known, the ordinary case in a declared reading.
 	Known *bool  `yaml:"known"`
 	Cause string `yaml:"cause"`
 
@@ -116,7 +116,7 @@ type SignalReading struct {
 	// raises a finding from a single instant (ADR-0035 §3) and a snapshot
 	// is a single instant, so persistence is declared here exactly as a
 	// Damper would have tracked it. Absent means the silence starts now,
-	// which reads as dampened — the honest answer for a gap nobody has
+	// which reads as dampened, the honest answer for a gap nobody has
 	// watched yet.
 	Since time.Time `yaml:"since"`
 }
@@ -137,8 +137,8 @@ type TierReading struct {
 	// by the real normaliser against a real-shaped reading.
 	Emitting []string `yaml:"emitting"`
 
-	// Silent withholds named components from an `all` declaration — the
-	// door to an honest expectation red on one component.
+	// Silent withholds named components from an `all` declaration, the
+	// way to an honest expectation red on one component.
 	Silent []string `yaml:"silent"`
 
 	// Components carries verbatim component-identity attribute
@@ -150,21 +150,21 @@ type TierReading struct {
 	// Absent means "as the collector estate reads now": a Tier with collectors has
 	// been seen, one without never has. Declaring it false on a populated
 	// Tier is meaningless and declaring it true on an empty one is the
-	// dropped-to-zero case — under-populated, never never_seen (ADR-0030).
+	// dropped-to-zero case: under-populated, never never_seen (ADR-0030).
 	EverSeen *bool `yaml:"ever_seen"`
 
-	// FirstWatched is when the platform started watching this Tier — the
+	// FirstWatched is when the platform started watching this Tier, the
 	// age base for the never_seen stale-config signal (ADR-0035 §7).
 	FirstWatched time.Time `yaml:"first_watched"`
 
 	// ShortfallSince is when the current sub-floor condition began. The
 	// judgement never raises a toothed finding from a single instant
-	// (ADR-0035 §3), and a snapshot is a single instant — so persistence
+	// (ADR-0035 §3), and a snapshot is a single instant, so persistence
 	// is declared here, exactly as a Damper would have tracked it.
 	ShortfallSince time.Time `yaml:"shortfall_since"`
 
 	// Attributes are extra component-identity attribute combinations the
-	// reading carries beyond the pipeline components — collector-level
+	// reading carries beyond the pipeline components: collector-level
 	// telemetry and synthetic graph nodes. Tolerated, matching nothing.
 	Attributes []map[string]string `yaml:"attributes"`
 
@@ -174,15 +174,15 @@ type TierReading struct {
 	Flow *FlowReading `yaml:"flow"`
 }
 
-// FlowReading is one Tier's declared pipeline-grain flow reading — the
+// FlowReading is one Tier's declared pipeline-grain flow reading, the
 // metering half of the seam (ADR-0040), as the estate declares it.
 //
 // This is the same predicament the collector estate and the arrivals are
 // in, answered the same way. ADR-0040 §1 already settles where
 // pipeline-grain metering comes from: collector self-telemetry, per
 // (Tier, signal), in = receiver-accepted and out = per-exporter sent. That
-// is precisely the grain the `tiers:` section above already declares —
-// this adds one more field of a seam the file declares two others of, and
+// is precisely the grain the `tiers:` section above already declares.
+// This adds one more field of a seam the file declares two others of, and
 // widens nothing. A snapshot has no backend to derive metering from, so
 // the estate declares the reading and this package plays it back through
 // the Provider seam, exactly as it does for the arrivals: the evaluators
@@ -193,7 +193,7 @@ type TierReading struct {
 // the mirror is what holds the two to the same shape.
 type FlowReading struct {
 	// Signals is the per-signal reading. A signal absent from the map is
-	// Known false with a stated cause — a declaration covering one lane
+	// Known false with a stated cause: a declaration covering one lane
 	// and not another degrades per lane, never wholesale (ADR-0008).
 	Signals map[string]FlowSignalReading `yaml:"signals"`
 
@@ -207,7 +207,7 @@ type FlowReading struct {
 // telemetry.MeteredSignal.
 type FlowSignalReading struct {
 	// Known distinguishes "the backend cannot say" from "nothing flowed".
-	// Absent defaults to known — the ordinary case in a declared reading.
+	// Absent defaults to known, the ordinary case in a declared reading.
 	Known *bool  `yaml:"known"`
 	Cause string `yaml:"cause"`
 
@@ -218,20 +218,20 @@ type FlowSignalReading struct {
 	In  int64 `yaml:"in"`
 	Out int64 `yaml:"out"`
 
-	// Exporters maps each exporter's rendered id — `type` or `type/name`,
-	// exactly as the Blueprint spells it — to its own sent-item count. A
+	// Exporters maps each exporter's rendered id (`type` or `type/name`,
+	// exactly as the Blueprint spells it) to its own sent-item count. A
 	// Hop's throughput is its feeding exporter's out-rate (ADR-0040 §1),
 	// and this is where that rate would be read; Out is their sum.
 	Exporters map[string]int64 `yaml:"exporters"`
 
-	// The error-rate readings — the only reds metering itself sources
+	// The error-rate readings: the only reds metering itself sources
 	// (ADR-0040 §3). In-minus-out is not among them and never becomes one.
 	Refused       int64 `yaml:"refused"`
 	SendFailed    int64 `yaml:"send_failed"`
 	EnqueueFailed int64 `yaml:"enqueue_failed"`
 
 	// Newest is the timestamp of the newest self-telemetry datapoint the
-	// counters were read from — the pipeline-grain freshness base
+	// counters were read from, the pipeline-grain freshness base
 	// (ADR-0040 §4). Absent declares a known-empty window: nothing
 	// reported, which the card renders as silent rather than as unknown.
 	Newest time.Time `yaml:"newest"`
@@ -277,10 +277,10 @@ func (t TierReading) silentSet() map[string]bool {
 
 // flowProblems validates one Tier's declared flow. The rule it enforces
 // throughout is a single one: the declaration must be a reading the meter
-// could have taken. A figure the counters cannot produce — a negative
+// could have taken. A figure the counters cannot produce (a negative
 // count off a monotonic counter, an exporter split that does not add up to
 // the out-rate it was summed from, a datapoint newer than the instant the
-// reading was taken — is an authoring mistake, and a snapshot built over
+// reading was taken) is an authoring mistake, and a snapshot built over
 // it would put a number on a card that no backend would ever have
 // returned. Fails closed, like every other authored file in the estate.
 func (t TierReading) flowProblems(asOf time.Time) []string {
@@ -298,7 +298,7 @@ func (t TierReading) flowProblems(asOf time.Time) []string {
 		sig := t.Flow.Signals[name]
 		where := fmt.Sprintf("tier %s flow %s", t.Tier, name)
 		if !requirements.SignalKind(name).Valid() {
-			problems = append(problems, fmt.Sprintf("%s — the vocabulary is logs, metrics, traces (ADR-0009)", where))
+			problems = append(problems, fmt.Sprintf("%s is not a signal: use logs, metrics, or traces", where))
 			continue
 		}
 
@@ -308,7 +308,7 @@ func (t TierReading) flowProblems(asOf time.Time) []string {
 		}
 		for _, field := range []string{"in", "out", "refused", "send_failed", "enqueue_failed"} {
 			if figures[field] < 0 {
-				problems = append(problems, fmt.Sprintf("%s declares %s %d — a negative count cannot come off a monotonic counter", where, field, figures[field]))
+				problems = append(problems, fmt.Sprintf("%s declares %s %d, but a count is never negative", where, field, figures[field]))
 			}
 		}
 
@@ -319,7 +319,7 @@ func (t TierReading) flowProblems(asOf time.Time) []string {
 			counted := sig.In != 0 || sig.Out != 0 || sig.Refused != 0 ||
 				sig.SendFailed != 0 || sig.EnqueueFailed != 0 || len(sig.Exporters) > 0
 			if counted {
-				problems = append(problems, where+" is marked unknown but carries figures — an unknown reading has no counts, or it is not unknown (ADR-0008)")
+				problems = append(problems, where+" is marked unknown but carries figures: an unknown reading has no counts")
 			}
 			if !sig.Newest.IsZero() {
 				problems = append(problems, where+" is marked unknown but carries a newest timestamp")
@@ -342,19 +342,19 @@ func (t TierReading) flowProblems(asOf time.Time) []string {
 				n := sig.Exporters[id]
 				sum += n
 				if strings.TrimSpace(id) == "" {
-					problems = append(problems, where+" declares an exporter with no id — the id is the rendered `type` or `type/name` (ADR-0040 §1)")
+					problems = append(problems, where+" declares an exporter with no id: use the rendered `type` or `type/name`")
 				}
 				if n < 0 {
-					problems = append(problems, fmt.Sprintf("%s declares exporter %q sending %d items — a negative count cannot come off a monotonic counter", where, id, n))
+					problems = append(problems, fmt.Sprintf("%s declares exporter %q sending %d items, but a count is never negative", where, id, n))
 				}
 			}
 			if sum != sig.Out {
-				problems = append(problems, fmt.Sprintf("%s declares an exporter split summing to %d against out %d — out is the sum of the exporters' own out-rates (ADR-0040 §1)", where, sum, sig.Out))
+				problems = append(problems, fmt.Sprintf("%s declares an exporter split summing to %d, but out is %d: out must equal the sum of the exporters' counts", where, sum, sig.Out))
 			}
 		}
 
 		if !sig.Newest.IsZero() && !asOf.IsZero() && sig.Newest.After(asOf) {
-			problems = append(problems, fmt.Sprintf("%s declares a newest datapoint at %s, after the as_of the reading was taken at — a reading cannot see past its own instant (ADR-0036 §2)",
+			problems = append(problems, fmt.Sprintf("%s declares a newest datapoint at %s, which is after the as_of the reading was taken at",
 				where, sig.Newest.UTC().Format(time.RFC3339)))
 		}
 	}
@@ -364,10 +364,10 @@ func (t TierReading) flowProblems(asOf time.Time) []string {
 		return problems
 	}
 	if inc.Count < 0 {
-		problems = append(problems, fmt.Sprintf("tier %s flow declares %d incarnations — a count of process starts is never negative", t.Tier, inc.Count))
+		problems = append(problems, fmt.Sprintf("tier %s flow declares %d incarnations, but a count of process starts is never negative", t.Tier, inc.Count))
 	}
 	if inc.Known != nil && !*inc.Known && inc.Count != 0 {
-		problems = append(problems, fmt.Sprintf("tier %s flow marks its incarnation count unknown but declares %d — an unknown reading has no count (ADR-0008)", t.Tier, inc.Count))
+		problems = append(problems, fmt.Sprintf("tier %s flow marks its incarnation count unknown but declares %d: an unknown reading has no count", t.Tier, inc.Count))
 	}
 	return problems
 }
@@ -384,7 +384,7 @@ func LoadReadings(path string) (Readings, error) {
 		return Readings{}, fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return Readings{}, fmt.Errorf("%s: empty file — the readings file declares the collector estate and the arrivals a repository cannot hold", path)
+		return Readings{}, fmt.Errorf("%s: empty file. Declare the collector estate and its telemetry arrivals here", path)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
@@ -394,12 +394,12 @@ func LoadReadings(path string) (Readings, error) {
 		return Readings{}, fmt.Errorf("%s: %w", path, err)
 	}
 	if err := dec.Decode(new(yaml.Node)); !errors.Is(err, io.EOF) {
-		return Readings{}, fmt.Errorf("%s: more than one YAML document in the file — one concern per file", path)
+		return Readings{}, fmt.Errorf("%s: more than one YAML document in the file. Keep one document per file", path)
 	}
 
 	var problems []string
 	if r.AsOf.IsZero() {
-		problems = append(problems, "as_of is missing — every reading carries the instant it was taken (ADR-0036 §2)")
+		problems = append(problems, "as_of is missing: every reading carries the instant it was taken")
 	}
 	seen := map[string]string{}
 	for i, c := range r.Collectors {
@@ -415,30 +415,30 @@ func LoadReadings(path string) (Readings, error) {
 			seen[c.ID] = ctx
 		}
 		if len(c.Attributes) == 0 {
-			problems = append(problems, ctx+" reports no identifying attributes — a reading nothing can match belongs to nobody (ADR-0036 §2)")
+			problems = append(problems, ctx+" reports no identifying attributes, so no Tier can match it")
 		}
 		switch c.State {
 		case "reporting", "stale", "never_seen":
 		case "":
-			problems = append(problems, ctx+" has no state — one of reporting, stale, never_seen")
+			problems = append(problems, ctx+" has no state: use reporting, stale, or never_seen")
 		default:
-			problems = append(problems, fmt.Sprintf("%s has state %q — one of reporting, stale, never_seen", ctx, c.State))
+			problems = append(problems, fmt.Sprintf("%s has state %q: use reporting, stale, or never_seen", ctx, c.State))
 		}
 		switch c.Delivery {
 		case "served", "git":
 		case "":
-			problems = append(problems, ctx+" declares no delivery path — served or git (REQ-041)")
+			problems = append(problems, ctx+" declares no delivery path: use served or git")
 		default:
-			problems = append(problems, fmt.Sprintf("%s has delivery %q — served or git (REQ-041)", ctx, c.Delivery))
+			problems = append(problems, fmt.Sprintf("%s has delivery %q: use served or git", ctx, c.Delivery))
 		}
 	}
 	for _, row := range r.Rows {
 		if row.Service == "" || row.Environment == "" {
-			problems = append(problems, "a row reading names no service or no environment — the evaluation unit is one Service in one Environment (ADR-0033)")
+			problems = append(problems, "a row reading names no service or no environment: each row is one Service in one Environment")
 		}
 		for name := range row.Signals {
 			if !requirements.SignalKind(name).Valid() {
-				problems = append(problems, fmt.Sprintf("row %s/%s reads signal %q — the vocabulary is logs, metrics, traces (ADR-0009)", row.Service, row.Environment, name))
+				problems = append(problems, fmt.Sprintf("row %s/%s reads signal %q, which is not a signal: use logs, metrics, or traces", row.Service, row.Environment, name))
 			}
 		}
 	}
@@ -448,7 +448,7 @@ func LoadReadings(path string) (Readings, error) {
 		}
 		for name := range tier.Signals {
 			if !requirements.SignalKind(name).Valid() {
-				problems = append(problems, fmt.Sprintf("tier %s reads signal %q — the vocabulary is logs, metrics, traces (ADR-0009)", tier.Tier, name))
+				problems = append(problems, fmt.Sprintf("tier %s reads signal %q, which is not a signal: use logs, metrics, or traces", tier.Tier, name))
 			}
 		}
 		problems = append(problems, tier.flowProblems(r.AsOf)...)
@@ -554,7 +554,7 @@ func (f FlowReading) incarnations(tier string) telemetry.Incarnations {
 		return telemetry.Incarnations{
 			Known: false,
 			Cause: "the estate's readings file declares no incarnation count for " + tier +
-				" — restart rate is read from the collector's own instance identity (ADR-0040 §4)",
+				", so the restart rate is unknown",
 		}
 	}
 	inc := *f.Incarnations
@@ -573,13 +573,13 @@ func (f FlowReading) incarnations(tier string) telemetry.Incarnations {
 func missing(what string) telemetry.SignalObservation {
 	return telemetry.SignalObservation{
 		Known: false,
-		Cause: "the estate's readings file declares no reading for " + what + " — not knowing is a normal state, reported as itself (ADR-0008)",
+		Cause: "the estate's readings file declares no reading for " + what,
 	}
 }
 
 // provider plays the declared readings back through the TelemetryProvider
 // seam, so the evaluators judging them cannot tell a declared reading from
-// a live one — which is the point: the judgement is the product's.
+// a live one. That is the point: the judgement is the product's.
 type provider struct {
 	readings Readings
 	window   time.Duration
@@ -595,7 +595,7 @@ type provider struct {
 var _ telemetry.Provider = (*provider)(nil)
 
 // Name identifies the reading's origin in stamps and logs. It is the
-// estate's own declaration, not a backend — and says so.
+// estate's own declaration, not a backend, and says so.
 func (p *provider) Name() string { return "telecraft/declared-readings" }
 
 func (p *provider) Observe(_ context.Context, service telemetry.Service, window time.Duration, attributes []string) telemetry.Observed {
@@ -661,7 +661,7 @@ func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Durat
 	reading, ok := p.readings.tier(tier)
 	if !ok {
 		return telemetry.SelfUnknown(p.readings.AsOf, window,
-			"the estate's readings file declares no self-telemetry reading for "+tier+" — Known false reads as unknown, never red (ADR-0039 §2)")
+			"the estate's readings file declares no self-telemetry reading for "+tier)
 	}
 	for _, kind := range telemetry.SelfSignals() {
 		sig, declared := reading.Signals[string(kind)]
@@ -686,7 +686,7 @@ func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Durat
 //
 // Degradation is per reading, not per Tier. A Tier that declares metrics
 // flow and nothing else carries a metrics row with figures beside a logs
-// row that says why it is empty — which is the whole reason knowledge is
+// row that says why it is empty, which is the whole reason knowledge is
 // held per signal at this seam.
 func (p *provider) Meter(_ context.Context, tier string, window time.Duration) telemetry.Metered {
 	reading, ok := p.readings.tier(tier)
@@ -704,8 +704,7 @@ func (p *provider) Meter(_ context.Context, tier string, window time.Duration) t
 		if !declared {
 			m.Signals[kind] = telemetry.MeteredSignal{
 				Known: false,
-				Cause: "the estate's readings file declares no " + string(kind) + " flow for " + tier +
-					" — not knowing one lane says nothing about its neighbours (ADR-0008)",
+				Cause: "the estate's readings file declares no " + string(kind) + " flow for " + tier,
 			}
 			continue
 		}

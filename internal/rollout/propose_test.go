@@ -27,7 +27,7 @@ func (f *fakeForge) Propose(_ context.Context, c forge.Change) (forge.Proposal, 
 	return forge.Proposal{ID: "1", URL: "https://forge.example/1", Branch: c.Branch}, nil
 }
 
-const proposeRolloutYAML = `# The canary rollout — comments survive the platform's edit.
+const proposeRolloutYAML = `# The canary rollout: comments survive the platform's edit.
 owner: pipelines-lead
 tier: pipelines/gateway
 from: pipelines/flow@1
@@ -87,8 +87,8 @@ func renderOK(context.Context) (map[string][]byte, error) {
 	return map[string][]byte{"rendered/pipelines/gateway.yaml": []byte("service: {}\n")}, nil
 }
 
-// A mid-rollout advance is one reviewed edit of the Rollout file — the
-// stage bump — on the deterministic branch (ADR-0029 §5, §8), submitted
+// A mid-rollout advance is one reviewed edit of the Rollout file (the
+// stage bump) on the deterministic branch (ADR-0029 §5, §8), submitted
 // through the render-in-PR flow so the proposal carries the refreshed
 // rendered tree.
 func TestProposeAdvanceBumpsTheStage(t *testing.T) {
@@ -103,7 +103,7 @@ func TestProposeAdvanceBumpsTheStage(t *testing.T) {
 		t.Fatal("no proposal opened for an advance verdict")
 	}
 	if p.Branch != "telecraft/rollout/pipelines/canary/advance-2" {
-		t.Errorf("branch = %q — deterministic names are what make racing replicas converge (ADR-0029 §8)", p.Branch)
+		t.Errorf("branch = %q: deterministic names are what make racing replicas converge", p.Branch) // ADR-0029 §8
 	}
 
 	change := f.proposed[0]
@@ -118,7 +118,7 @@ func TestProposeAdvanceBumpsTheStage(t *testing.T) {
 		t.Error("a mid-rollout advance touched the Tier file")
 	}
 	if _, rendered := change.Files["rendered/pipelines/gateway.yaml"]; !rendered {
-		t.Error("the proposal carries no refreshed rendered tree — it must go through the render-in-PR flow (ADR-0028 §1)")
+		t.Error("the proposal carries no refreshed rendered tree: it must go through the render-in-PR flow") // ADR-0028 §1
 	}
 	if !strings.Contains(change.Body, "3 running the to artefact") {
 		t.Errorf("the body carries no evidence: %s", change.Body)
@@ -145,7 +145,7 @@ func TestProposeFinalAdvanceCompletes(t *testing.T) {
 
 	change := f.proposed[0]
 	if content, ok := change.Files["teams/pipelines/rollouts/canary.yaml"]; !ok || content != nil {
-		t.Error("completion must delete the Rollout file — closed, the @next artefact retired")
+		t.Error("completion must delete the Rollout file: closed, the @next artefact retired")
 	}
 	tier := string(change.Files["teams/pipelines/tiers/gateway.yaml"])
 	if !strings.Contains(tier, "blueprint: pipelines/flow-next@1") {
@@ -182,12 +182,12 @@ func TestProposeAbortDeletesTheRollout(t *testing.T) {
 		t.Error("the abort must delete the Rollout file")
 	}
 	if _, touched := change.Files["teams/pipelines/tiers/gateway.yaml"]; touched {
-		t.Error("the abort touched the Tier file — the Tier's binding never moved")
+		t.Error("the abort touched the Tier file: the Tier's binding never moved")
 	}
 }
 
 // Halting is passive (ADR-0029 §6): a hold or blocked verdict proposes
-// nothing — no forge call, no active step, nothing to race.
+// nothing: no forge call, no active step, nothing to race.
 func TestProposeIsPassiveOnHoldAndBlocked(t *testing.T) {
 	for _, v := range []Verdict{
 		{Decision: DecisionHold, Reason: "soaking"},
@@ -199,7 +199,7 @@ func TestProposeIsPassiveOnHoldAndBlocked(t *testing.T) {
 			t.Fatal(err)
 		}
 		if proposed || len(f.proposed) != 0 {
-			t.Errorf("verdict %s opened a proposal — halting is the withheld proposal, never an action (ADR-0029 §6)", v.Decision)
+			t.Errorf("verdict %s opened a proposal: halting is the withheld proposal, never an action", v.Decision) // ADR-0029 §6
 		}
 	}
 }

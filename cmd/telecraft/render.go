@@ -22,8 +22,8 @@ import (
 // is a pure function of the estate at -commit, so CI diffs it against the
 // committed rendered/ tree.
 //
-// Exit codes: 0 rendered (policy findings, if any, are printed and routed
-// — they never block, ADR-0022 §4); 1 the render refused — a mechanical
+// Exit codes: 0 rendered (policy findings, if any, are printed and routed;
+// they never block, ADR-0022 §4); 1 the render refused, on a mechanical
 // invalidity or the one allow-list hard block (ADR-0022 §3); 2 usage or
 // load error.
 func runRender(args []string, stdout, stderr io.Writer) int {
@@ -31,7 +31,7 @@ func runRender(args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	estate := fs.String("estate", "", "estate root holding teams.yaml and the teams/ tree (required)")
 	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact (required)")
-	commit := fs.String("commit", "", "commit SHA stamped into every artefact (required, ADR-0013)")
+	commit := fs.String("commit", "", "commit SHA to stamp into every artefact (required)")
 	out := fs.String("out", "", "directory to write rendered/ and CODEOWNERS under (default: the estate root)")
 	if err := fs.Parse(args); err != nil {
 		return 2

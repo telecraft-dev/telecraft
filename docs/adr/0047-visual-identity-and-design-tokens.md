@@ -1,4 +1,4 @@
-# ADR-0047: Visual identity — our own token layer, dark-first with a light twin, colour never load-bearing
+# ADR-0047: Visual identity: our own token layer, dark-first with a light twin, colour never load-bearing
 
 - Status: accepted
 - Date: 2026-08-19
@@ -14,7 +14,7 @@ against the others: the console's placeholder cool-grey tokens, the warm
 paper and serif of `docs/terminology.html`, and the paper-plus-grid of the
 documentation site, which lives in a second repository. The console also had
 no type scale, no focus tokens, no motion tokens, no elevation tokens, and no
-icon dependency at all — its entire iconography was four Unicode characters.
+icon dependency at all: its entire iconography was four Unicode characters.
 
 Three constraints bound every option. Air-gap first-class (ADR-0019), checked
 over the built bundle by `console/tools/check-zero-cdn.mjs`, so every asset is
@@ -52,8 +52,8 @@ nowhere in it (ADR-0041 §2).
    information on the surface was set smaller than everything around it.
 
 4. **Colour means something, or it is not used.** Inside the console the
-   accent is contrast rather than hue — the active Workspace and the primary
-   button are a solid ink or bone fill — which reserves the whole colour
+   accent is contrast rather than hue (the active Workspace and the primary
+   button are a solid ink or bone fill), which reserves the whole colour
    budget for meaning. Three severity colours, four signal-lane colours, and
    a brand amber confined to the marketing surfaces where no data exists.
    Both grounds are verified, not eyeballed: every token clears 4.5:1 against
@@ -99,7 +99,7 @@ nowhere in it (ADR-0041 §2).
   than in a document; until it exists, `docs/branding/design-system.md`
   records the method and the expected values.
 - ADR-0041 §2 gains a stricter reading in §5 above. This is a tightening of
-  an existing rule, not a new one, so it needs no superseding ADR — but a
+  an existing rule, not a new one, so it needs no superseding ADR, but a
   surface that shows a signal colour without its label is now a defect.
 
 ## Sources

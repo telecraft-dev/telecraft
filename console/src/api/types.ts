@@ -6,7 +6,7 @@
 /** An Environment id, for example `production` or `staging`. */
 export type Environment = string
 
-/** GET /api/v1/me — the signed-in user, for scoping and the per-user store. */
+/** GET /api/v1/me: the signed-in user, for scoping and the per-user store. */
 export interface Me {
   id: string
   name: string
@@ -24,7 +24,7 @@ export interface Me {
 }
 
 /**
- * GET /api/v1/auth/providers — how sign-in works on this instance
+ * GET /api/v1/auth/providers: how sign-in works on this instance
  * (REQ-017, ADR-0019 §1). A `password` provider renders as a credential
  * form; a `redirect` provider renders as a link to
  * `/api/v1/auth/{name}/start`.
@@ -36,7 +36,7 @@ export interface AuthProviderInfo {
 
 /**
  * The object kinds jump-to-object can reach (ADR-0042 §1): the authored
- * objects, plus `entry` — a Catalogue entry, keyed `class/type` (ADR-0020
+ * objects, plus `entry`, a Catalogue entry, keyed `class/type` (ADR-0020
  * §3), browsable and deep-linkable though machine-generated, never authored.
  */
 export type ObjectKind =
@@ -54,10 +54,10 @@ export interface ObjectRef {
   id: string
 }
 
-/** GET /api/v1/objects — the jump-to-object index. */
+/** GET /api/v1/objects: the jump-to-object index. */
 export interface IndexedObject extends ObjectRef {
   name: string
-  /** Owning team — absent for Catalogue entries, which nobody owns. */
+  /** Owning team: absent for Catalogue entries, which nobody owns. */
   team?: string
   environment?: Environment
 }
@@ -79,8 +79,8 @@ export type BandState =
   | 'stale_demoted'
 
 /**
- * The same list at runtime, so anything that must cover every state — the
- * mark mapping in `ui/marks.ts` among them — can be checked against the
+ * The same list at runtime, so anything that must cover every state (the
+ * mark mapping in `ui/marks.ts` among them) can be checked against the
  * contract rather than against a second copy of it.
  */
 export const BAND_STATES: readonly BandState[] = [
@@ -104,7 +104,7 @@ export interface Band {
 
 /**
  * Every reading on the face carries whether it is known, why not when it
- * is not, and the instant it was taken (ADR-0041 §2) — which is what lets
+ * is not, and the instant it was taken (ADR-0041 §2), which is what lets
  * last-known-plus-age render from the contract instead of the client
  * guessing at it.
  */
@@ -132,7 +132,7 @@ export interface VolumeReading extends Reading {
   truncated?: boolean
 }
 
-/** A lane's freshness. `silent` is a known-empty window — not the same as not knowing. */
+/** A lane's freshness. `silent` is a known-empty window, not the same as not knowing. */
 export interface FreshnessReading extends Reading {
   /** RFC 3339; absent when nothing was seen. */
   newest?: string
@@ -151,12 +151,12 @@ export type SignalName = 'logs' | 'metrics' | 'traces'
 
 /**
  * Whether the Tier's rendered artefact instantiates a pipeline for a
- * signal — what the config in git wires, not what the meter saw. It is
+ * signal: what the config in git wires, not what the meter saw. It is
  * the fact the readings beside it hang off (ADR-0041 §2, ADR-0008):
  *
- * - `present` — there is a pipeline, so the readings are readings of it.
- * - `not_applicable` — there is none, so the row carries no readings.
- * - `unknown` — no artefact was available to read the lanes off.
+ * - `present`: there is a pipeline, so the readings are readings of it.
+ * - `not_applicable`: there is none, so the row carries no readings.
+ * - `unknown`: no artefact was available to read the lanes off.
  */
 export type LaneState = 'present' | 'not_applicable' | 'unknown'
 
@@ -166,7 +166,7 @@ export type LaneState = 'present' | 'not_applicable' | 'unknown'
  *
  * The three readings are absent when `lane` is `not_applicable`. Their
  * counters would all read zero and would do so truthfully, but `in 0 /
- * out 0` is also exactly how a broken pipeline reads — and a reader
+ * out 0` is also exactly how a broken pipeline reads, and a reader
  * scanning the matrix cannot tell "there is no metrics lane here" from
  * "the metrics lane has stopped". A row with no lane behind it carries no
  * numbers, so there is no zero left to misread.
@@ -217,7 +217,7 @@ export const CARD_CONTRACT_VERSION = 3
  */
 export interface CardFace {
   contractVersion: 3
-  /** Tier id — the contract keys on Tier id, never on a pair. */
+  /** Tier id: the contract keys on Tier id, never on a pair. */
   tier: string
   name: string
   /** Owning team id (a shelf summary field). */
@@ -236,7 +236,7 @@ export interface CardFace {
   waivedCounts?: Record<string, number>
   population: Population
   /**
-   * The per-signal matrix rows, in stable signal order — bands over
+   * The per-signal matrix rows, in stable signal order. Bands over
    * matrix is the card face P4's verdict shipped (variant D).
    */
   signals: SignalRow[]
@@ -279,7 +279,7 @@ export interface ProvenanceLine {
 
 /**
  * A "why?" derivation as structured provenance: claim, the config lines
- * that implied it, and the SHA judged against — fed, never reconstructed
+ * that implied it, and the SHA judged against: fed, never reconstructed
  * (ADR-0041 §3). Spatial derivations carry a trace action (ADR-0042 §5).
  */
 export interface Provenance {
@@ -292,7 +292,7 @@ export interface Provenance {
   trace?: { service: string }
 }
 
-/** GET /api/v1/drawer?tier= — the on-demand drawer payload (ADR-0041 §3). */
+/** GET /api/v1/drawer?tier= returns the on-demand drawer payload (ADR-0041 §3). */
 export interface CardDrawer {
   contractVersion: 3
   tier: string
@@ -302,21 +302,21 @@ export interface CardDrawer {
 
 /**
  * How an ungoverned collector is read (ADR-0031 §1): `served` runs the
- * Unmatched artefact (ADR-0030) — commit-stamped, health-visible,
+ * Unmatched artefact (ADR-0030): commit-stamped, health-visible,
  * governed by nobody; `foreign` is read through the estate provider and
- * never served. No stigma attaches to the delivery path — only to
+ * never served. No stigma attaches to the delivery path, only to
  * matching no selector.
  */
 export type UngovernedKind = 'served' | 'foreign'
 
 /**
- * GET /api/v1/collectors — per-collector detail, which lives in list
+ * GET /api/v1/collectors: per-collector detail, which lives in list
  * surfaces only (ADR-0042 §3.4): collector counts elsewhere are doors to
  * the flat list.
  */
 export interface CollectorRow {
   id: string
-  /** The selector-matched Tier — absent when no Tier selector matches (ADR-0031). */
+  /** The selector-matched Tier, absent when no Tier selector matches (ADR-0031). */
   tier?: string
   /** Present exactly when `tier` is absent: how the ungoverned collector is read. */
   ungoverned?: UngovernedKind
@@ -328,7 +328,7 @@ export interface CollectorRow {
   /** Last-known reading time, so last-known-plus-age renders (ADR-0040). */
   lastSeen?: string
   /**
-   * Reported identifying attributes — the identity Tier selectors match
+   * Reported identifying attributes: the identity Tier selectors match
    * on (ADR-0013). For a served ungoverned collector this is the Unmatched
    * artefact's self-telemetry evidence (ADR-0030), the raw material the
    * claim flow's suggested selector generalises over (ADR-0042 §6).
@@ -343,8 +343,8 @@ export interface TeamNode {
 }
 
 /**
- * Ungoverned collectors in view (ADR-0031 §2): concern, never failure —
- * they appear with the onboard CTA and count in no compliance
+ * Ungoverned collectors in view (ADR-0031 §2): concern, never failure.
+ * They appear with the onboard CTA and count in no compliance
  * denominator. The split names the two ways an ungoverned collector is
  * read; per-collector detail stays flat-list material (ADR-0042 §3.4).
  */
@@ -353,7 +353,7 @@ export interface UngovernedSummary {
   foreign: number
 }
 
-/** GET /api/v1/estate — the shelf's bulk face payload (ADR-0041 §2). */
+/** GET /api/v1/estate: the shelf's bulk face payload (ADR-0041 §2). */
 export interface EstatePayload {
   /** Production leads (ADR-0033). */
   environments: Environment[]
@@ -371,7 +371,7 @@ export interface DeliverySplit {
 
 /**
  * A Tier as the topology canvas draws it: the authored node plus its
- * selector-matched counts. Collectors are never drawn — they are matched
+ * selector-matched counts. Collectors are never drawn: they are matched
  * into a Tier by selector and appear only as these numbers (ADR-0007);
  * the count is a door to the flat list (ADR-0042 §3.4).
  */
@@ -407,7 +407,7 @@ export interface TopologyPath {
   through: string[]
 }
 
-/** GET /api/v1/topology — Tiers, Hops, and Paths at authored grain. */
+/** GET /api/v1/topology: Tiers, Hops, and Paths at authored grain. */
 export interface TopologyPayload {
   environments: Environment[]
   tiers: TopologyTier[]
@@ -418,8 +418,8 @@ export interface TopologyPayload {
 
 /**
  * How a rollout cohort member's config arrives (ADR-0029 §7): `served` by
- * the OpAMP path — membership computed per connect, acknowledgement by
- * config hash — or `foreign`, the adopter's own GitOps tooling, read
+ * the OpAMP path (membership computed per connect, acknowledgement by
+ * config hash) or `foreign`, the adopter's own GitOps tooling, read
  * through the telecraft.tier stamp readings (ADR-0039 §5). The Foreign
  * population reads everything and blocks nothing: advisory, lag never
  * failure.
@@ -443,8 +443,8 @@ export interface RolloutPathProgress {
 }
 
 /**
- * A stage's relation to the active stage: `entered` cohorts accumulate —
- * advancing only ever widens (ADR-0029 §4) — `active` is the stage the
+ * A stage's relation to the active stage: `entered` cohorts accumulate
+ * (advancing only ever widens, ADR-0029 §4), `active` is the stage the
  * evaluation judges, `pending` counts are the membership preview,
  * information for the reviewer, never the authoritative decision.
  */
@@ -469,7 +469,7 @@ export interface RolloutCohortProgress {
   foreign: RolloutPathProgress
 }
 
-/** One halted cohort member (ADR-0029 §6) — the condition set is extensible. */
+/** One halted cohort member (ADR-0029 §6): the condition set is extensible. */
 export interface RolloutHalt {
   collector: string
   path: RolloutPath
@@ -479,7 +479,7 @@ export interface RolloutHalt {
 
 /**
  * The evaluation's verdict on the active stage (ADR-0029 §5, §6): halting
- * is passive — `blocked` is a withheld advance, nothing races; `abort` is
+ * is passive: `blocked` is a withheld advance, nothing races; `abort` is
  * proposed at or past the threshold; `advance` is proposed for a human to
  * merge.
  */
@@ -497,7 +497,7 @@ export interface RolloutEvidence {
 }
 
 /**
- * GET /api/v1/rollouts — one active Rollout's cohort progress across both
+ * GET /api/v1/rollouts: one active Rollout's cohort progress across both
  * delivery paths (ADR-0029): membership from the pure function, delivery
  * status against the rollout artefacts from commit stamps, halt and abort
  * states with provenance.
@@ -527,7 +527,7 @@ export interface RolloutProgress {
 }
 
 /**
- * A component class: upstream `status.class`, adopted verbatim — only the
+ * A component class: upstream `status.class`, adopted verbatim. Only the
  * five pipeline classes enter a Catalogue (ADR-0020 §2).
  */
 export type ComponentClass = 'receiver' | 'processor' | 'exporter' | 'extension' | 'connector'
@@ -538,7 +538,7 @@ export interface CatalogueKey {
   type: string
 }
 
-/** Renders the key in its authored `class/type` form — also the `entry` object id. */
+/** Renders the key in its authored `class/type` form, also the `entry` object id. */
 export function formatCatalogueKey(key: CatalogueKey): string {
   return `${key.class}/${key.type}`
 }
@@ -548,9 +548,9 @@ export const SIGNAL_ORDER = ['traces', 'logs', 'metrics', 'profiles'] as const
 export type Signal = (typeof SIGNAL_ORDER)[number]
 
 /**
- * GET /api/v1/blueprints — Blueprint schema v1 documents (ADR-0024): the
+ * GET /api/v1/blueprints: Blueprint schema v1 documents (ADR-0024), the
  * domain document the Compose Workspace opens and edits. Lane entries are
- * Component references — a bare name is a local Component, `team/name@pin`
+ * Component references: a bare name is a local Component, `team/name@pin`
  * a shared one; the lists are explicitly ordered and never re-sorted.
  */
 export interface BlueprintDoc {
@@ -569,12 +569,12 @@ export interface BlueprintDoc {
   extensions: string[]
   /**
    * Version-stamped requirement claims (`req-id@3`, ADR-0026 §4): intent,
-   * never fact — the UI must not blur the two (REQ-031).
+   * never fact. The UI must not blur the two (REQ-031).
    */
   satisfies: string[]
   /**
-   * The Catalogue key each lane item instantiates — shared references
-   * included — so composer lane items deep-link to their Catalogue entries
+   * The Catalogue key each lane item instantiates, shared references
+   * included, so composer lane items deep-link to their Catalogue entries
    * (ADR-0042 §1).
    */
   components?: Record<string, CatalogueKey>
@@ -587,7 +587,7 @@ export type PaletteOrigin = 'default-allow' | 'allow-list' | 'grant'
  * One palette entry, judged for the evaluation context (ADR-0022 §5):
  * allowed shown, floor-breaching greyed with the reason, non-allowed hidden
  * (counted in `ComposePalette.hidden`, never listed). Pure presentation of
- * the evaluator's verdicts — the palette enforces nothing.
+ * the evaluator's verdicts: the palette enforces nothing.
  */
 export interface PaletteEntry {
   key: string
@@ -598,15 +598,15 @@ export interface PaletteEntry {
   residence: 'type' | 'shared'
   /** The signals the entry supports; click-add targets all of them (ADR-0043 §4). */
   signals: string[]
-  /** Upstream stability per signal — the per-(component, signal) chips (ADR-0023). */
+  /** Upstream stability per signal: the per-(component, signal) chips (ADR-0023). */
   stability: Record<string, string>
   /** What an add gesture inserts: the pinned reference for shared entries. */
   add: { ref?: string; signals: string[] }
   state: 'allowed' | 'greyed'
-  /** The greyed reason, for example `alpha on traces — below this Service's C1 floor`. */
+  /** The greyed reason, for example `alpha on traces: below this Service's C1 floor`. */
   reason?: string
   origin: PaletteOrigin
-  /** Grant provenance when origin is `grant` — the audit chain is total (ADR-0021 §3). */
+  /** Grant provenance when origin is `grant`: the audit chain is total (ADR-0021 §3). */
   grant?: { id: string; grantedBy: string; grantedTo: string }
   deprecated?: { migration: string }
 }
@@ -633,7 +633,7 @@ export interface ComposeFinding {
 
 /**
  * One requirement verdict for the Requirement-first surface: `claimed` is
- * the draft's `satisfies` intent, `met` the engine's judgement — carried
+ * the draft's `satisfies` intent, `met` the engine's judgement. Carried
  * side by side, never blended (REQ-031, ADR-0026 §5).
  */
 export interface RequirementVerdict {
@@ -649,7 +649,7 @@ export interface RequirementVerdict {
 }
 
 /**
- * POST /api/v1/validate — the one evaluator (ADR-0022 §1): the open draft
+ * POST /api/v1/validate is the one evaluator (ADR-0022 §1): the open draft
  * plus its evaluation context in, every verdict out. Stateless and
  * continuous; Save calls the same rulebook with enforcement on.
  */
@@ -666,7 +666,7 @@ export interface ComposeVerdict {
 }
 
 /**
- * POST /api/v1/proposals — the composer exit (ADR-0043 §6): a change
+ * POST /api/v1/proposals is the composer exit (ADR-0043 §6): a change
  * proposal through the forge adapter, render-in-PR, user-attributed
  * (ADR-0028, ADR-0014). The console proposes, the PR decides.
  */
@@ -677,7 +677,7 @@ export interface Proposal {
   attributedTo: string
 }
 
-/** GET /api/v1/catalogue — governed Components for browsing (ADR-0020). */
+/** GET /api/v1/catalogue: governed Components for browsing (ADR-0020). */
 export interface CatalogueComponent {
   id: string
   name: string
@@ -712,7 +712,7 @@ export const STABILITY_LEVELS: readonly StabilityLevel[] = [
 
 /**
  * One Catalogue entry: identity, per-signal stability and lifecycle of a
- * component type (ADR-0020). It states what exists — never what may be used
+ * component type (ADR-0020). It states what exists, never what may be used
  * (that is the Allow-list) and never a configured instance (that is a
  * governed Component).
  */
@@ -725,7 +725,7 @@ export interface CatalogueEntry extends CatalogueKey {
   source: 'upstream' | 'adopter'
   /** Per-signal stability; the signal vocabulary is open (ADR-0020 §1). */
   stability: Record<string, StabilityLevel>
-  /** The upstream deprecation notice per deprecated signal — ready-made remediation. */
+  /** The upstream deprecation notice per deprecated signal: ready-made remediation. */
   deprecation?: Record<string, { date: string; migration: string }>
 }
 
@@ -740,7 +740,7 @@ export interface CatalogueVersionInfo {
   source: { repository: string; ref: string; commit?: string }
 }
 
-/** GET /api/v1/catalogue/versions — the installed catalogues, active designated. */
+/** GET /api/v1/catalogue/versions: the installed catalogues, active designated. */
 export interface CatalogueVersionsPayload {
   active: string
   versions: CatalogueVersionInfo[]
@@ -773,7 +773,7 @@ export interface GrantDoc {
 }
 
 /**
- * GET /api/v1/governance — the authored, git-resident Allow-list policy
+ * GET /api/v1/governance: the authored, git-resident Allow-list policy
  * (ADR-0021 §5), plus the Owners governance edits attribute to. The console
  * derives each team's effective palette from this and the active catalogue.
  */
@@ -784,7 +784,7 @@ export interface GovernancePayload {
 }
 
 /**
- * POST /api/v1/governance/proposals — a governance edit exiting as a PR via
+ * POST /api/v1/governance/proposals is a governance edit exiting as a PR via
  * the forge adapter (ADR-0042 §6): the complete edited policy, proposed;
  * the console proposes, the PR decides. The server validates fail-closed
  * exactly as loading does and answers 422 with the problems named.
@@ -811,13 +811,13 @@ export interface ProposalOutcome {
 
 /**
  * A Tier selector as authored (ADR-0007): attribute pairs matched by
- * string equality against a collector's reported identifying attributes —
- * every pair must equal, the most specific satisfied selector wins.
+ * string equality against a collector's reported identifying attributes.
+ * Every pair must equal, the most specific satisfied selector wins.
  */
 export type Selector = Record<string, string>
 
 /**
- * POST /api/v1/claims/preview — the claim flow's continuous evaluation
+ * POST /api/v1/claims/preview is the claim flow's continuous evaluation
  * (ADR-0042 §6): the constrained selector plus context in, the impact out.
  * `mode` and `tier` join once the one question (attach or draft) is
  * answered, and the rendered Tier binding joins the answer.
@@ -837,16 +837,16 @@ export interface ClaimCandidate {
   team: string
   environment: Environment
   selector: Selector
-  /** Selector pairs the claim already satisfies — the ranking key. */
+  /** Selector pairs the claim already satisfies: the ranking key. */
   satisfied: number
   /** Pairs in the candidate's authored selector. */
   of: number
-  /** The selector attach would leave behind: the shared pairs alone —
+  /** The selector attach would leave behind: the shared pairs alone,
    * widened, never enumerated (ADR-0042 §6). */
   widened: Selector
 }
 
-/** A governed population the claim selector does not contradict — blast radius. */
+/** A governed population the claim selector does not contradict: blast radius. */
 export interface ClaimOverlap {
   tier: string
   matched: number
@@ -862,7 +862,7 @@ export interface ClaimPreview {
 }
 
 /**
- * POST /api/v1/claims — the attach exit (ADR-0042 §6): the named Tier's
+ * POST /api/v1/claims is the attach exit (ADR-0042 §6): the named Tier's
  * selector widens to the claim's, and the change exits as a PR via the
  * forge adapter, user-attributed, carrying the rendered impact preview.
  * The console proposes, the PR decides.
@@ -899,7 +899,7 @@ export interface ClaimContext {
  * The platform API as one type: what every surface consumes, and what any
  * client must implement in full. The live client speaks HTTP to an
  * instance; the demo client answers from a build-time snapshot (issue
- * #50). Declaring the contract here is what keeps the swap honest — a
+ * #50). Declaring the contract here is what keeps the swap honest: a
  * client that drifts from it fails to compile, rather than failing in a
  * surface at runtime.
  */

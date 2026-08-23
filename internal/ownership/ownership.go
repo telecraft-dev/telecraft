@@ -2,7 +2,7 @@
 // supplied through the teams.yaml seam (ADR-0017) and the owner every
 // authored object carries (REQ-015, ADR-0016). It routes findings to the
 // owner of the object each finding is about, and rolls compliance up the
-// tree as ratio-plus-worst per finding kind — waived findings always
+// tree as ratio-plus-worst per finding kind, with waived findings always
 // visible, never a single blended number at any level.
 //
 // Loading is strict and fails closed, matching internal/requirements: an
@@ -26,7 +26,7 @@ type Owner struct {
 }
 
 // Team is one node of the strict team tree (ADR-0017): at most one parent,
-// never multi-parent — with two parents every roll-up would double-count.
+// never multi-parent, because with two parents every roll-up would double-count.
 type Team struct {
 	ID       TeamID
 	Name     string
@@ -35,15 +35,15 @@ type Team struct {
 	Children []TeamID
 }
 
-// Tree is the loaded, validated team hierarchy. It arrives through a seam —
-// first-party is a reviewable teams.yaml in the estate repo — and is never
+// Tree is the loaded, validated team hierarchy. It arrives through a seam
+// (first-party is a reviewable teams.yaml in the estate repo) and is never
 // owned by the platform (ADR-0017).
 type Tree struct {
 	Teams  map[TeamID]Team
 	Owners map[OwnerID]Owner
 }
 
-// ObjectKind is the kind of an authored object — the ADR-0016 authored set —
+// ObjectKind is the kind of an authored object (the ADR-0016 authored set)
 // or, for finding subjects only, a collector.
 type ObjectKind string
 
@@ -64,7 +64,7 @@ const (
 	KindCollector ObjectKind = "collector"
 )
 
-// Authored reports whether k is in the ADR-0016 authored set — the kinds
+// Authored reports whether k is in the ADR-0016 authored set, the kinds
 // that carry an owner. A collector is deliberately not among them.
 func (k ObjectKind) Authored() bool {
 	switch k {
@@ -77,7 +77,7 @@ func (k ObjectKind) Authored() bool {
 
 // Object is one authored object as the ownership model sees it: kind, id and
 // the owner it carries. The full shape of each kind (what a Tier or a
-// Blueprint holds) belongs to other packages — ownership is an attribute,
+// Blueprint holds) belongs to other packages: ownership is an attribute,
 // not a parallel hierarchy (ADR-0016).
 type Object struct {
 	Kind  ObjectKind `yaml:"kind"`

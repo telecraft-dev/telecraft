@@ -12,7 +12,7 @@ import (
 
 // runDelivery prints one collector's delivery status: the Intended ×
 // Effective cross via the normaliser (ADR-0004, ADR-0005), computed
-// identically for both delivery paths (REQ-041) — the same computation the
+// identically for both delivery paths (REQ-041): the same computation the
 // OpAMP server runs live for served collectors, here over files so the
 // git-delivered path has the co-equal surface. -path names the collector's
 // delivery path and selects the Mutation profile the comparison runs under
@@ -20,16 +20,16 @@ import (
 // git-delivered config compares exactly.
 //
 // A file comparison carries no RemoteConfigStatus reading, so the remote
-// axis prints known=false — not knowing is a normal state, never rendered
+// axis prints known=false. Not knowing is a normal state, never rendered
 // as failure (ADR-0008). Like observe, this is a printer: it exits 0 for
 // every computed status including drift; scripting against outcomes
 // belongs to check. Exit 2 means the status could not be computed at all.
 func runDelivery(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("delivery", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	intendedPath := fs.String("intended", "", "path to the Intended config — the rendered artefact in git (required)")
+	intendedPath := fs.String("intended", "", "path to the Intended config, the rendered artefact in git (required)")
 	effectivePath := fs.String("effective", "", "path to the collector's reported Effective config (required)")
-	pathFlag := fs.String("path", "", "the collector's delivery path: served or git (required; REQ-041)")
+	pathFlag := fs.String("path", "", "the collector's delivery path: served or git (required)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -39,7 +39,7 @@ func runDelivery(args []string, stdout, stderr io.Writer) int {
 	}
 	path := delivery.Path(*pathFlag)
 	if !path.Valid() {
-		fmt.Fprintf(stderr, "delivery: unknown delivery path %q — served or git (REQ-041)\n", *pathFlag)
+		fmt.Fprintf(stderr, "delivery: unknown delivery path %q: choose served or git\n", *pathFlag)
 		return 2
 	}
 
@@ -57,7 +57,7 @@ func runDelivery(args []string, stdout, stderr io.Writer) int {
 	st, err := delivery.Compute(path, path.Profile(),
 		delivery.Intended{Known: true, Artefact: intended},
 		delivery.Effective{Known: true, Config: effective},
-		estate.DeliveryStatus{Cause: "a file comparison carries no RemoteConfigStatus reading — the OpAMP server reads it live"})
+		estate.DeliveryStatus{Cause: "a file comparison carries no RemoteConfigStatus reading: the OpAMP server reads it live"})
 	if err != nil {
 		fmt.Fprintf(stderr, "delivery: %v\n", err)
 		return 2

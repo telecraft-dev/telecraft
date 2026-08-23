@@ -12,8 +12,8 @@ import (
 )
 
 // The composer turning two live seams into a readings file. Every assertion
-// below is about it carrying what a seam returned, and — at least as often
-// — about it refusing to carry what no seam said.
+// below is about it carrying what a seam returned, and, at least as often,
+// about it refusing to carry what no seam said.
 
 var base = time.Date(2026, 8, 21, 9, 0, 0, 0, time.UTC)
 
@@ -39,19 +39,19 @@ func TestComposeCarriesTheCollectorEstate(t *testing.T) {
 	}
 	col := got.Collectors[0]
 	if col.ID != "gateway-1" {
-		t.Errorf("id %q — the instance id is the readable name", col.ID)
+		t.Errorf("id %q: the instance id is the readable name", col.ID)
 	}
 	if col.Attributes["telecraft.tier"] != "gateway" {
 		t.Error("the reported identity did not survive; nothing could match this collector")
 	}
 	if col.Version != "0.159.0" {
-		t.Errorf("version %q — the collector reported one", col.Version)
+		t.Errorf("version %q: the collector reported one", col.Version)
 	}
 	if col.State != "reporting" {
-		t.Errorf("state %q — every collector in this reading is on a live connection to the platform's own server", col.State)
+		t.Errorf("state %q: every collector in this reading is on a live connection to the platform's own server", col.State)
 	}
 	if !col.LastSeen.Equal(base.Add(-2 * time.Second)) {
-		t.Errorf("last seen %v — the reading's own instant, not the composer's", col.LastSeen)
+		t.Errorf("last seen %v: the reading's own instant, not the composer's", col.LastSeen)
 	}
 }
 
@@ -72,7 +72,7 @@ func TestComposeCarriesTheDeliveryPathTheWireShowed(t *testing.T) {
 	got := c.compose(context.Background()).Collectors[0]
 
 	if got.Delivery != "git" {
-		t.Errorf("delivery %q — the reading did not carry the path the wire showed", got.Delivery)
+		t.Errorf("delivery %q: the reading did not carry the path the wire showed", got.Delivery)
 	}
 }
 
@@ -90,7 +90,7 @@ func TestComposeNamesAnIdentityWithNoInstanceIDByItsWholeIdentity(t *testing.T) 
 	// A truncation would read as a name and be ambiguous; the whole set
 	// never is.
 	if got.ID != seam.Fingerprint(identity) {
-		t.Errorf("id %q — a collector with no instance id is named by its identity", got.ID)
+		t.Errorf("id %q: a collector with no instance id is named by its identity", got.ID)
 	}
 }
 
@@ -149,7 +149,7 @@ func TestComposeHoldsTheSilenceStartStillWhileTheGapPersists(t *testing.T) {
 	// instant (ADR-0035 §3). Restamping the start every refresh would leave
 	// every gap permanently dampened and no scenario would ever surface.
 	if !second.Equal(first) {
-		t.Errorf("the silence start moved from %v to %v — the gap would never age", first, second)
+		t.Errorf("the silence start moved from %v to %v: the gap would never age", first, second)
 	}
 }
 
@@ -197,7 +197,7 @@ func TestComposeGivesAnUnknownReadingNoSilence(t *testing.T) {
 		t.Fatal("an unknown reading was carried as known")
 	}
 	if got.Cause == "" {
-		t.Error("not knowing was carried without its cause (ADR-0008)")
+		t.Error("not knowing was carried without its cause")
 	}
 	// Not knowing is a normal state; it is never an observed gap, and
 	// dating it would turn a blind spot into a finding.
@@ -329,7 +329,7 @@ func TestObservePopulationsHoldsTheShortfallStartStill(t *testing.T) {
 	got := c.compose(context.Background()).Tiers[0]
 
 	if !got.ShortfallSince.Equal(base) {
-		t.Errorf("the shortfall start moved to %v — the gap would never age past its grace window", got.ShortfallSince)
+		t.Errorf("the shortfall start moved to %v: the gap would never age past its grace window", got.ShortfallSince)
 	}
 }
 

@@ -38,13 +38,13 @@ import type {
  * Demo mode: the console reading a build-time snapshot instead of calling a
  * server (issue #50). The snapshot holds the same documents the platform
  * API serves, produced by `telecraft snapshot` running the real evaluators
- * over the demo estate — so every surface shows real output of real code,
+ * over the demo estate, so every surface shows real output of real code,
  * and the only thing missing is the server.
  *
  * Read-only falls out by construction: there is nothing to POST to. The
- * write paths still render in full — the composer still validates on every
+ * write paths still render in full (the composer still validates on every
  * keystroke, the claim flow still previews impact, the governance editor
- * still refuses a malformed policy — and terminate at the notice below
+ * still refuses a malformed policy) and terminate at the notice below
  * instead of opening a pull request.
  */
 export const demoMode = import.meta.env.VITE_DEMO === '1'
@@ -62,11 +62,10 @@ export class DemoWriteError extends Error {
   constructor(what: string) {
     super(
       `This is a read-only demo, so ${what} stops here. On a real instance the ` +
-        `console does not write to the estate at all: it opens a pull request ` +
-        `through the forge adapter, rendered and attributed to you, and the ` +
-        `review decides (ADR-0028, ADR-0014). Everything up to this point — the ` +
-        `evaluation, the refusals, the rendered preview — is the same code that ` +
-        `runs on an instance.`,
+        `console never writes to the estate. Instead it opens a pull request, ` +
+        `rendered and attributed to you, and the review decides. Everything up to ` +
+        `this point (the evaluation, the refusals, and the rendered preview) is ` +
+        `the same code that runs on a real instance.`,
     )
     this.name = 'DemoWriteError'
   }
@@ -129,8 +128,8 @@ function snapshot(): Promise<Snapshot> {
     loading = fetch(SNAPSHOT).then((res) => {
       if (!res.ok) {
         throw new Error(
-          `${SNAPSHOT}: ${res.status} ${res.statusText} — the demo snapshot did not load, ` +
-            `so there is nothing to show. It is produced by the estate's own pipeline; ` +
+          `${SNAPSHOT}: ${res.status} ${res.statusText}. The demo snapshot did not load, ` +
+            `so there is nothing to show. The estate's own pipeline produces it, and ` +
             `a failed build leaves the previous one in place.`,
         )
       }
@@ -166,7 +165,7 @@ function subtree(teams: TeamNode, teamId: string): string[] {
   return out
 }
 
-/** The active catalogue's entries — what authoring is judged against. */
+/** The active catalogue's entries: what authoring is judged against. */
 function activeEntries(s: Snapshot): CatalogueEntry[] {
   return s.catalogues.versions.find((v) => v.version === s.catalogues.active)?.components ?? []
 }
@@ -216,8 +215,8 @@ function emptyDrawer(tier: string): CardDrawer {
 
 /**
  * The demo client. Every read answers from the snapshot; the two
- * continuous evaluators — the composer's validate and the claim flow's
- * preview — run in the browser against the same estate documents the
+ * continuous evaluators (the composer's validate and the claim flow's
+ * preview) run in the browser against the same estate documents the
  * server would judge with, so those surfaces stay live rather than canned.
  */
 export const demoApi: PlatformApi = {
@@ -314,7 +313,7 @@ export const demoApi: PlatformApi = {
   /**
    * The rollout ledger (ADR-0029). A snapshot taken before the estate had
    * a Rollout carries none, which is an empty ledger rather than a
-   * failure — the surface says so itself.
+   * failure. The surface says so itself.
    */
   rollouts: async (): Promise<RolloutProgress[]> => (await snapshot()).estate.rollouts ?? [],
 

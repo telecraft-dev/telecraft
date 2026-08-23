@@ -9,7 +9,7 @@ import { chipClass } from '../../ui/Chip'
 
 /**
  * Catalogue browsing by version (ADR-0020 §9: installed catalogues are
- * retained, never replaced — the picker consults the version asked for),
+ * retained, never replaced, and the picker consults the version asked for),
  * filtered by stability and signal. Selecting an entry summons its panel
  * in place; the governed Components table below shows the configured
  * instances of those types, each deep-linking to its Catalogue entry.
@@ -172,7 +172,7 @@ export function Browse() {
         </table>
         <h2 className="catalogue-subhead">Governed Components</h2>
         <p className="section-summary">
-          Configured instances of Catalogue types, at their pinned versions (ADR-0026).
+          Configured instances of Catalogue types, at their pinned versions.
         </p>
         <table className="catalogue-table" data-testid="catalogue-table">
           <thead>

@@ -13,8 +13,8 @@ import (
 
 // Estate is a fixture estate: the set of rows to evaluate, each carrying its
 // Effective reading. It is the tracer-bullet stand-in for the EstateProvider
-// seam (ADR-0008, ADR-0036) — an authored file plays the collector's
-// EffectiveConfig report until the OpAMP path lands — and it is what the CI
+// seam (ADR-0008, ADR-0036): an authored file plays the collector's
+// EffectiveConfig report until the OpAMP path lands. It is also what the CI
 // check mode (REQ-024) judges against real Observed readings.
 type Estate struct {
 	Rows []EstateRow
@@ -24,7 +24,7 @@ type Estate struct {
 	Grace GracePolicy
 }
 
-// EstateRow is one row of the estate — one Service in one Environment — with
+// EstateRow is one row of the estate (one Service in one Environment) with
 // the Effective reading the fixture asserts for it. A Service simply has no
 // row in an environment where it runs nothing (ADR-0033).
 type EstateRow struct {
@@ -41,7 +41,7 @@ type EstateRow struct {
 	// Reason is why this row is authored rather than derived (ADR-0055 §6).
 	// The authored estate is an override, and an override says why: a
 	// Service the platform cannot see, or an estate with no live reading at
-	// all. Optional, and empty reads as "no reason stated" — never as
+	// all. Optional, and empty reads as "no reason stated", never as
 	// nothing at all.
 	Reason string
 
@@ -60,8 +60,8 @@ type GraceEntry struct {
 }
 
 // GracePolicy is the authored Grace table, ordered highest class first. The
-// loader enforces the REQ-014 shape on it — windows shrink (never grow) as
-// class rises — so a table that quietly gave the most critical class the
+// loader enforces the REQ-014 shape on it (windows shrink, never grow, as
+// class rises), so a table that quietly gave the most critical class the
 // longest forgiveness cannot load.
 type GracePolicy []GraceEntry
 
@@ -78,8 +78,8 @@ func (p GracePolicy) WindowFor(class string) (time.Duration, bool) {
 
 // until returns when the row's Grace Period ends, and whether now falls
 // inside it. The window runs from the onboarding date for the class's
-// duration; outside it — including before onboarding, and for a row with no
-// class or no onboarding date — nothing is waived.
+// duration; outside it (including before onboarding, and for a row with no
+// class or no onboarding date) nothing is waived.
 func (p GracePolicy) until(row EstateRow, now time.Time) (time.Time, bool) {
 	if row.Class == "" || row.Onboarded.IsZero() {
 		return time.Time{}, false
@@ -96,7 +96,7 @@ func (p GracePolicy) until(row EstateRow, now time.Time) (time.Time, bool) {
 }
 
 // Environments returns every Environment the estate declares, sorted and
-// de-duplicated — the known set an authored requirement's environments list
+// de-duplicated: the known set an authored requirement's environments list
 // is checked against (ADR-0033 §3).
 func (e Estate) Environments() []string {
 	seen := map[string]bool{}
@@ -133,7 +133,7 @@ type estateFile struct {
 
 // LoadEstate reads a fixture estate file. Loading is strict and fails closed,
 // matching internal/requirements: an unknown field, a nameless service or
-// environment, or a duplicate row is a load error naming the file — a row
+// environment, or a duplicate row is a load error naming the file. A row
 // silently dropped at load would be judged by nobody, which is the lenient
 // verdict this codebase exists to refuse.
 func LoadEstate(path string) (Estate, error) {
@@ -150,14 +150,14 @@ func LoadEstate(path string) (Estate, error) {
 	}
 
 	if len(file.Services) == 0 {
-		return Estate{}, fmt.Errorf("%s: the estate declares no services — an empty estate would pass every check vacuously", path)
+		return Estate{}, fmt.Errorf("%s: the estate declares no services. An empty estate would pass every check", path)
 	}
 
 	var estate Estate
 	var problems []string
 
 	// The grace table is authored highest class first, and grace shrinks as
-	// class rises (REQ-014) — so windows must never shrink going down it.
+	// class rises (REQ-014), so windows must never shrink going down it.
 	seenClass := map[string]bool{}
 	for _, g := range file.Grace {
 		switch {
@@ -174,7 +174,7 @@ func LoadEstate(path string) (Estate, error) {
 			continue
 		}
 		if prev := len(estate.Grace) - 1; prev >= 0 && g.Window.Std() < estate.Grace[prev].Window {
-			problems = append(problems, fmt.Sprintf("grace window for class %q (%s) is shorter than class %q's (%s) — grace shrinks as class rises, and the table is ordered highest class first (REQ-014)",
+			problems = append(problems, fmt.Sprintf("grace window for class %q (%s) is shorter than class %q's (%s). Order the table highest class first, and give each lower class a window at least as long as the one above it",
 				g.Class, g.Window.Std(), estate.Grace[prev].Class, estate.Grace[prev].Window))
 		}
 		estate.Grace = append(estate.Grace, GraceEntry{Class: g.Class, Window: g.Window.Std()})
@@ -187,13 +187,13 @@ func LoadEstate(path string) (Estate, error) {
 			continue
 		}
 		if svc.Class != "" && !seenClass[svc.Class] {
-			problems = append(problems, fmt.Sprintf("service %q has class %q, which the grace table does not define — a class the table cannot place is almost always a typo", svc.Name, svc.Class))
+			problems = append(problems, fmt.Sprintf("service %q has class %q, which the grace table does not define. Check the class for a typo", svc.Name, svc.Class))
 		}
 		if !svc.Onboarded.IsZero() && svc.Class == "" {
-			problems = append(problems, fmt.Sprintf("service %q has an onboarded date but no class — Grace Periods are Service-Class-scoped (REQ-014)", svc.Name))
+			problems = append(problems, fmt.Sprintf("service %q has an onboarded date but no class. A Grace Period needs a Service Class to set its window", svc.Name))
 		}
 		if len(svc.Environments) == 0 {
-			problems = append(problems, fmt.Sprintf("service %q is deployed to no environment — a Service with no row is judged by nobody", svc.Name))
+			problems = append(problems, fmt.Sprintf("service %q is deployed to no environment, so nothing would judge it", svc.Name))
 			continue
 		}
 		for _, env := range svc.Environments {
@@ -203,7 +203,7 @@ func LoadEstate(path string) (Estate, error) {
 			}
 			row := Row{Service: svc.Name, Environment: env.Name}
 			if seenRow[row] {
-				problems = append(problems, fmt.Sprintf("service %q appears twice in environment %q — one row per (Service, Environment)", svc.Name, env.Name))
+				problems = append(problems, fmt.Sprintf("service %q appears twice in environment %q. Each Service has one row per Environment", svc.Name, env.Name))
 				continue
 			}
 			seenRow[row] = true
@@ -220,7 +220,7 @@ func LoadEstate(path string) (Estate, error) {
 
 			estate.Rows = append(estate.Rows, EstateRow{
 				Row: row,
-				// An authored fixture is a known reading by definition —
+				// An authored fixture is a known reading by definition,
 				// including one reporting no pipelines at all, which is a
 				// collector reporting an empty config, not a blind spot.
 				Effective: Effective{Known: true, Pipelines: env.Pipelines},

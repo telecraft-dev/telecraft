@@ -103,7 +103,7 @@ What review expects:
 
 Every pull request runs `.github/workflows/ci.yml`. A first job diffs the
 change and decides what the rest of them do, so a documentation-only pull
-request does not stand up Elasticsearch or install a browser — and a
+request does not stand up Elasticsearch or install a browser, and a
 skipped job reports success, which is what makes that safe. The
 [continuous integration page](ci.md) explains the gating, the live suites,
 and the workflows beyond this one.

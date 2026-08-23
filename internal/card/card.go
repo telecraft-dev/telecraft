@@ -1,12 +1,12 @@
 // Package card is the card data-contract (ADR-0041): the one seam between
 // the engine and every card surface. P3's canvas Tier cards and P4's
-// observability cards read the same face payload — one model, many
-// representations — and nothing that draws a card may consume anything
+// observability cards read the same face payload (one model, many
+// representations) and nothing that draws a card may consume anything
 // else.
 //
 // The face is cheap and bulk-fetchable for a whole shelf; the drawer is
 // fetched per card on demand. The face's three bands come in fixed order
-// — Delivery, Expectation, Conformance — and are *enum states*, never
+// (Delivery, Expectation, Conformance) and are *enum states*, never
 // colours: hue appears nowhere in this package, which is P4's mono-red
 // rule enforced structurally rather than by convention. Glyphs and band
 // order are the contract; a renderer that wants a palette derives one,
@@ -32,9 +32,9 @@ import (
 // Version is the card contract's integer version (ADR-0041 §4).
 //
 // v1 carried the bands, the population line and the shelf summary fields.
-// v2 adds the per-signal matrix rows §2 requires — volume with its
+// v2 adds the per-signal matrix rows §2 requires: volume with its
 // reduction, freshness, and the shape summary, each carrying its own
-// as-of and Known — plus the population line's ADR-0035 state and the
+// as-of and Known, plus the population line's ADR-0035 state and the
 // Tier's restart-rate reading. The bump is the visible event the ADR
 // asks for: the rows are not optional decoration, they are the skeleton
 // P4's verdict put under the bands.
@@ -99,7 +99,7 @@ type Band struct {
 	WorstSeverity Severity `json:"worstSeverity"`
 
 	// WorstFinding is the optional worst-finding label the face shows
-	// under the band — the one line, not the list.
+	// under the band: the one line, not the list.
 	WorstFinding string `json:"worstFinding,omitempty"`
 }
 
@@ -134,7 +134,7 @@ type VolumeReading struct {
 }
 
 // FreshnessReading is the age of the newest thing seen on a lane. Silent
-// is a known window with nothing in it — different from not knowing, and
+// is a known window with nothing in it, different from not knowing, and
 // kept different (ADR-0008).
 type FreshnessReading struct {
 	Reading
@@ -153,7 +153,7 @@ type FreshnessReading struct {
 
 // ShapeReading is one lane's shape summary: how many attributes the
 // applicable Requirements demand on the signal, and how many the landed
-// telemetry does not carry (ADR-0034). Zero required is a real answer —
+// telemetry does not carry (ADR-0034). Zero required is a real answer:
 // nobody demanded anything of this lane.
 type ShapeReading struct {
 	Reading
@@ -213,7 +213,7 @@ func (l LaneSet) State(kind requirements.SignalKind) LaneState {
 // verdict put under the reading bands.
 //
 // The three readings are absent when Lane is not_applicable. The counters
-// behind them would all read zero, and truthfully — but `in 0 / out 0` is
+// behind them would all read zero, and truthfully, but `in 0 / out 0` is
 // exactly how a broken pipeline reads too, and a reader scanning the
 // matrix cannot tell "there is no metrics lane on this Tier" from "the
 // metrics lane has stopped". A row with no lane behind it carries no
@@ -250,7 +250,7 @@ const (
 type Population struct {
 	Matched int `json:"matched"`
 
-	// Floor is the resolved floor, absent when no floor exists — nobody
+	// Floor is the resolved floor, absent when no floor exists: nobody
 	// is forced to guess one.
 	Floor *int `json:"floor,omitempty"`
 
@@ -258,7 +258,7 @@ type Population struct {
 	State       PopulationState       `json:"state"`
 
 	// Since is when the condition began: the shortfall onset on a toothed
-	// state, the start of watching on a neutral never_seen — the neutral
+	// state, the start of watching on a neutral never_seen, the neutral
 	// age ADR-0041 §2 asks to carry.
 	Since *time.Time `json:"since,omitempty"`
 
@@ -307,8 +307,8 @@ type Face struct {
 // BandInput is one band's evidence, in the order the honest neutrals take
 // precedence over each other.
 type BandInput struct {
-	// NotApplicable is a band with nothing to say about this Tier at all
-	// — a delivery band on a Tier the platform does not serve, say.
+	// NotApplicable is a band with nothing to say about this Tier at all:
+	// a delivery band on a Tier the platform does not serve, say.
 	NotApplicable bool
 
 	// StaleDemoted is a reading past its staleness horizon (ADR-0036 §3).
@@ -333,7 +333,7 @@ type BandInput struct {
 
 // band resolves one band's state. The neutrals come first and in a fixed
 // order, because each of them means the evidence behind a verdict is
-// missing — and a verdict rendered over missing evidence is the failure
+// missing, and a verdict rendered over missing evidence is the failure
 // mode the whole band vocabulary exists to prevent.
 func (in BandInput) band() Band {
 	switch {
@@ -389,7 +389,7 @@ type Input struct {
 	// Lanes is the set of signals the Tier's rendered artefact
 	// instantiates a pipeline for (ADR-0004's Intended reading). Nil when
 	// no artefact was available to read, which leaves every row's Lane
-	// unknown and its readings as taken — the caller that cannot see the
+	// unknown and its readings as taken: the caller that cannot see the
 	// config says so rather than declaring lanes absent.
 	Lanes LaneSet
 
@@ -449,7 +449,7 @@ func Assemble(in Input) Face {
 // The lane state is decided first, because it decides whether there is
 // anything to project. A lane the artefact does not instantiate has no
 // pipeline, so it has no flow, no freshness and no landed telemetry to
-// have a shape — and the row says exactly that by carrying none of them.
+// have a shape, and the row says exactly that by carrying none of them.
 func signalRows(in Input) []SignalRow {
 	rows := make([]SignalRow, 0, len(telemetry.Signals()))
 	for _, kind := range telemetry.Signals() {
@@ -463,7 +463,7 @@ func signalRows(in Input) []SignalRow {
 			// The artefact wires no such lane and the meter has figures
 			// for it anyway: a collector still serving an older artefact
 			// than the one in git. Suppressing the reading would hide the
-			// disagreement, so the row keeps both — Intended and Observed
+			// disagreement, so the row keeps both: Intended and Observed
 			// are separate readings and neither overrules the other
 			// (ADR-0004). The lane exists, whatever the config says.
 			row.Lane = LanePresent
@@ -521,7 +521,7 @@ func signalRows(in Input) []SignalRow {
 // reported is whether the meter came back with a figure at all for a
 // lane: any non-zero count it could only have got from a pipeline that
 // exists and ran. A pipeline that was never instantiated emits no
-// counters, so the zeros that come back for it are the sum of nothing —
+// counters, so the zeros that come back for it are the sum of nothing,
 // which is why they may be dropped, and why a non-zero may not be.
 func reported(v metering.Volume, e metering.Errors) bool {
 	return v.Known && (v.In != 0 || v.Out != 0 || e.Any())
@@ -652,10 +652,10 @@ type Drawer struct {
 func NewDrawer(tier string, findings []Finding, provenance []Provenance) (Drawer, error) {
 	for _, f := range findings {
 		if f.Remediation == "" {
-			return Drawer{}, fmt.Errorf("finding %q on tier %q carries no remediation — a finding without remediation is a complaint (ADR-0041 §3)", f.ID, tier)
+			return Drawer{}, fmt.Errorf("finding %q on tier %q carries no remediation. Every finding must say what to do", f.ID, tier)
 		}
 		if f.WhoActs.Label == "" || f.WhoActs.Target.ID == "" {
-			return Drawer{}, fmt.Errorf("finding %q on tier %q routes to nobody — every drawer finding carries a who-acts target (ADR-0041 §3)", f.ID, tier)
+			return Drawer{}, fmt.Errorf("finding %q on tier %q routes to nobody. Every finding must name who acts on it", f.ID, tier)
 		}
 	}
 	sorted := append([]Finding(nil), findings...)

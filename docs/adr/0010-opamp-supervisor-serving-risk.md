@@ -7,7 +7,7 @@
 
 The in-process `opamp` extension is report-only: it cannot accept remote
 config. Applying remote config requires the OpAMP Supervisor beside every
-served collector — a second process that takes over the collector process,
+served collector, a second process that takes over the collector process,
 which makes serving a migration, not an addition. The Supervisor has been
 alpha since creation with no graduation criteria and a five-person bench; its
 packaging for VMs and Windows is genuinely mature (signed packages, systemd
@@ -27,24 +27,24 @@ Supervisor in production; six built embedded alternatives.
   Kubernetes and VMs).
 - Renderer and install-guidance hard rules:
   1. Additional OpAMP extensions are named `opamp/<something>`, never bare
-     `opamp` — a bare `opamp` block silently overrides the Supervisor's
+     `opamp`: a bare `opamp` block silently overrides the Supervisor's
      injected endpoint.
   2. The renderer emits a node-unique identifying attribute via the Kubernetes
-     Downward API — a DaemonSet renders one manifest for all nodes.
+     Downward API: a DaemonSet renders one manifest for all nodes.
   3. Supervisor storage goes on a durable volume; an ephemeral directory mints
      a new identity per pod replacement.
-  4. `automatic_config_rollback: true` in guidance — revert-on-failure is off
+  4. `automatic_config_rollback: true` in guidance: revert-on-failure is off
      by default upstream.
   5. `accepts_remote_config` capabilities are off by default upstream and must
      be explicitly enabled in guidance.
-  6. **The server must never serve an empty config map** — the Supervisor
+  6. **The server must never serve an empty config map**: the Supervisor
      then reports APPLIED-and-healthy while running nothing. This belongs in
      the server's tests.
 
 ## Consequences
 
 - First boot with no cache and no local config yields a healthy collector
-  running a `nop` pipeline — silent nothing. What the platform shows for that
+  running a `nop` pipeline: silent nothing. What the platform shows for that
   collector is open (OQ-2) and drove the register decision (ADR-0007's
   selector-as-expectation).
 - Coexistence with a second reporting extension (e.g. ElasticFleet) is proven

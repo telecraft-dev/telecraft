@@ -1,6 +1,6 @@
 // Typings for the fixture rollout module (rollout.mjs), so the Vitest
 // suite exercises it against the same shapes the console consumes. The
-// response contract lives in src/api/types.ts — this file only types the
+// response contract lives in src/api/types.ts: this file only types the
 // module boundary.
 
 import type { RolloutProgress, RolloutRunning } from '../src/api/types'

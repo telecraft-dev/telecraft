@@ -1,14 +1,14 @@
 // Package forge defines the forge-adapter seam (ADR-0028 §4): platform-
 // authored changes become reviewed change proposals against the estate
 // repository. The platform never writes to a cluster and never commits to
-// the default branch — the proposal is the approval surface, git history is
+// the default branch: the proposal is the approval surface, git history is
 // the audit trail (ADR-0003, ADR-0014).
 //
 // The seam is deliberately narrow and vendor-neutral (ADR-0019 §4): a
 // change is a branch, a message, an acting human and a set of file
 // contents; a proposal is an opaque identifier and a URL. No forge's API
 // types, review vocabulary or authentication scheme crosses this interface
-// in either direction — implementations live under internal/provider/ and
+// in either direction. Implementations live under internal/provider/ and
 // are vendor-qualified there (ADR-0001).
 //
 // What a forge can do varies down the ADR-0028 §4 capability ladder (full →
@@ -26,14 +26,14 @@ type Identity struct {
 	// Name and Email attribute the commit. Both are required: an
 	// unattributable change is the shared-service-account failure ADR-0014
 	// exists to prevent, and Submit refuses it. The attribution shape is
-	// the adapter's choice per forge — the git author where the forge
+	// the adapter's choice per forge (the git author where the forge
 	// permits it alongside a verifiable bot identity, a co-author trailer
-	// where the forge signs only untouched bot commits — but the human is
+	// where the forge signs only untouched bot commits), but the human is
 	// always on the commit itself, never only in proposal metadata.
 	Name  string
 	Email string
 
-	// Handle is the human's account on the configured forge, when known —
+	// Handle is the human's account on the configured forge, when known:
 	// a convenience for review mentions, never required.
 	Handle string
 }
@@ -42,7 +42,7 @@ type Identity struct {
 // after Submit has run the render, the bot-refreshed rendered artefacts
 // (ADR-0028 §1).
 type Change struct {
-	// Branch names the proposal's branch — the branch-per-draft convention
+	// Branch names the proposal's branch, the branch-per-draft convention
 	// (ADR-0028); the name is an implementation detail, not a domain
 	// concept. Proposing the same branch again updates the existing
 	// proposal, which is how a red render check is retried after a fix.
@@ -64,7 +64,7 @@ type Change struct {
 	Author Identity
 
 	// Files maps repository-relative paths to full file contents. A nil
-	// value deletes the path. Authored paths never sit under rendered/ —
+	// value deletes the path. Authored paths never sit under rendered/:
 	// that tree is protected (ADR-0028 §2) and Submit refuses such a
 	// change before rendering anything.
 	Files map[string][]byte
@@ -80,7 +80,7 @@ type Proposal struct {
 }
 
 // Capabilities is an implementation's static declaration of its rungs on
-// the ADR-0028 §4 ladder. A false is "not applicable" for this forge —
+// the ADR-0028 §4 ladder. A false is "not applicable" for this forge:
 // declared once, rendered honestly, never failure (ADR-0036 §1).
 type Capabilities struct {
 	// Proposals: the forge has a change-proposal object with review
@@ -96,7 +96,7 @@ type Capabilities struct {
 
 	// VerifiedAttribution: the forge verifies the platform's bot identity
 	// on the commits it writes. Bare git carries git-author attribution
-	// unverified (ADR-0028 §4) — the render gate still holds; forge-
+	// unverified (ADR-0028 §4); the render gate still holds; forge-
 	// enforced review is what that adopter forfeited.
 	VerifiedAttribution bool
 }
@@ -105,7 +105,7 @@ type Capabilities struct {
 // internal/provider/ (ADR-0001); the first-party implementation is the
 // ADR-0014 app integration.
 type Forge interface {
-	// Name identifies the implementation for logs and proposal footers —
+	// Name identifies the implementation for logs and proposal footers:
 	// the vendor-qualified name as runtime data, never a type.
 	Name() string
 

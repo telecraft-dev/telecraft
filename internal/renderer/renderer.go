@@ -12,21 +12,21 @@
 // node-unique identifying attribute arrives via Downward API env
 // indirection, so one DaemonSet manifest yields per-node identity; and data
 // crossing an untrusted Hop has the platform's attribute namespace stripped
-// (ADR-0007) — identity is re-derived from the receiving Tier's own config
+// (ADR-0007). Identity is re-derived from the receiving Tier's own config
 // stamps, never from inbound data, because writing attributes into customer
 // data is exactly what ADR-0013 rejects.
 //
 // Enforcement at render follows ADR-0022 to the letter. Exactly one policy
 // rule hard-blocks: a Blueprint using a catalogue type outside the owning
-// team's effective palette refuses the render (§3) — the escape hatch is a
+// team's effective palette refuses the render (§3); the escape hatch is a
 // Grant, never an override. Cumulative Service Class floors (ADR-0023) are
-// judged at render — at the Tier's declared Environment crossed with the
+// judged at render, at the Tier's declared Environment crossed with the
 // strictest Service Class among Services whose Paths traverse it (ADR-0025
-// §4), per (component, signal actually routed) — and a breach is a
+// §4), per (component, signal actually routed), and a breach is a
 // violation-grade Finding routed to an owner, never a block (ADR-0022 §4,
-// ADR-0023 §5). Mechanical invalidity — a dangling reference, a rendered-id
+// ADR-0023 §5). Mechanical invalidity (a dangling reference, a rendered-id
 // collision (ADR-0024 §5), a lane that would compile to a pipeline no
-// collector accepts — always refuses: an artefact nobody reviewed must not
+// collector accepts) always refuses: an artefact nobody reviewed must not
 // exist, and a partial artefact is one nobody reviewed.
 package renderer
 
@@ -40,14 +40,14 @@ import (
 )
 
 // ServiceClass is how much a Service matters: C1 > C2 > C3, adopter-renamable
-// values, cumulative — C1 requires everything C2 does plus more (ADR-0015).
+// values, cumulative: C1 requires everything C2 does plus more (ADR-0015).
 // Never rendered as "Tier N".
 type ServiceClass string
 
 // FloorPolicy is the adopter-configurable stability-floor table (ADR-0023
 // §3): per Environment, per Service Class, the minimum upstream stability a
 // component must carry on each signal a Blueprint actually routes through
-// it. An Environment absent from Floors has no floor at all — non-production
+// it. An Environment absent from Floors has no floor at all, because non-production
 // is where alpha and development components are supposed to be exercised.
 type FloorPolicy struct {
 	// Order lists the Service Classes strictest first. Cumulative floors are
@@ -58,8 +58,8 @@ type FloorPolicy struct {
 	Floors map[string]map[ServiceClass]catalogue.Level
 }
 
-// DefaultFloors ships the ADR-0023 §3 defaults: production — C1/C2 require
-// beta-or-better, C3 requires alpha-or-better; non-production — no floor.
+// DefaultFloors ships the ADR-0023 §3 defaults. Production: C1/C2 require
+// beta-or-better, C3 requires alpha-or-better. Non-production: no floor.
 func DefaultFloors() FloorPolicy {
 	return FloorPolicy{
 		Order: []ServiceClass{"C1", "C2", "C3"},
@@ -75,7 +75,7 @@ func DefaultFloors() FloorPolicy {
 
 // ladder ranks the maturity levels a floor can compare: development < alpha
 // < beta < stable. Deprecated and unmaintained are lifecycle end-states, not
-// rungs (ADR-0023 §6) — they are judged by lifecycle findings, never by a
+// rungs (ADR-0023 §6). They are judged by lifecycle findings, never by a
 // floor, so they carry no rank here.
 var ladder = map[catalogue.Level]int{
 	catalogue.Development: 1,
@@ -86,13 +86,13 @@ var ladder = map[catalogue.Level]int{
 
 // Validate collects everything wrong with a floor policy: a class outside
 // Order, a level off the maturity ladder, or a non-cumulative table where a
-// stricter class carries a lower floor than a weaker one — which would make
+// stricter class carries a lower floor than a weaker one, which would make
 // adding a C1 Path *relax* a Tier's judgement, the exact inversion of
 // ADR-0025 §4.
 func (p FloorPolicy) Validate() error {
 	var problems []string
 	if len(p.Order) == 0 {
-		problems = append(problems, "no Service Class order — cumulative floors need to know which class is strictest (ADR-0015)")
+		problems = append(problems, "no Service Class order: the floor policy needs to know which class is strictest")
 	}
 	rank := map[ServiceClass]int{}
 	for i, c := range p.Order {
@@ -108,11 +108,11 @@ func (p FloorPolicy) Validate() error {
 				problems = append(problems, fmt.Sprintf("environment %q sets a floor for class %q, which is not in the class order", env, c))
 			}
 			if _, ok := ladder[classes[c]]; !ok {
-				problems = append(problems, fmt.Sprintf("environment %q floor for class %q is %q — a floor is a maturity rung (development, alpha, beta, stable); lifecycle is judged apart (ADR-0023 §6)", env, c, classes[c]))
+				problems = append(problems, fmt.Sprintf("environment %q floor for class %q is %q, which is not a maturity level. Use development, alpha, beta, or stable; lifecycle states are judged separately.", env, c, classes[c]))
 			}
 		}
 		// Cumulative: walking the order strictest → weakest, the floor may
-		// only stay or drop. A missing weaker class inherits nothing — its
+		// only stay or drop. A missing weaker class inherits nothing: its
 		// absence simply means no floor for that class.
 		prev := 0
 		for i := len(p.Order) - 1; i >= 0; i-- {
@@ -122,7 +122,7 @@ func (p FloorPolicy) Validate() error {
 				continue
 			}
 			if r := ladder[l]; r != 0 && r < prev {
-				problems = append(problems, fmt.Sprintf("environment %q: class %q floor %q is below a weaker class's floor — Service Classes are cumulative, C1 = C2 plus more (ADR-0015)", env, c, l))
+				problems = append(problems, fmt.Sprintf("environment %q: class %q floor %q is below a weaker class's floor. Service Classes are cumulative, so a stricter class needs at least the weaker class's floor.", env, c, l))
 			} else if r > prev {
 				prev = r
 			}
@@ -135,7 +135,7 @@ func (p FloorPolicy) Validate() error {
 }
 
 // Strictest returns the strictest of the given classes per the policy's
-// order. Every class must be in the order — an unknown class cannot be
+// order. Every class must be in the order, because an unknown class cannot be
 // ranked, and guessing would under- or over-govern silently.
 func (p FloorPolicy) Strictest(classes []ServiceClass) (ServiceClass, error) {
 	best := -1
@@ -172,7 +172,7 @@ func (p FloorPolicy) FloorFor(class ServiceClass, environment string) (catalogue
 }
 
 // Hop is one directed edge arriving at a Tier (ADR-0007). Trust is a
-// property of the Hop, never of the Tier — one gateway receives both
+// property of the Hop, never of the Tier: one gateway receives both
 // trusted and untrusted traffic. The zero value of Trusted is false: an
 // undeclared trust level fails safe to untrusted.
 type Hop struct {
@@ -205,26 +205,26 @@ func (b Binding) String() string {
 
 // parseBinding reads the authored `blueprint:` string. A binding always
 // pins: a Tier binds exactly one Blueprint version (ADR-0025 §1), so there
-// is no track-head mode here — rebinding is an authored, reviewed change.
+// is no track-head mode here. Rebinding is an authored, reviewed change.
 func parseBinding(s string) (Binding, error) {
 	at := strings.LastIndex(s, "@")
 	if at < 0 {
-		return Binding{}, fmt.Errorf("binding %q pins no version — a Tier binds exactly one Blueprint version, <team>/<name>@<version> (ADR-0025)", s)
+		return Binding{}, fmt.Errorf("binding %q pins no version: write it as <team>/<name>@<version>", s)
 	}
 	v, err := strconv.Atoi(s[at+1:])
 	if err != nil || v < 1 {
-		return Binding{}, fmt.Errorf("binding %q: the version after @ is a positive integer (ADR-0024 §7)", s)
+		return Binding{}, fmt.Errorf("binding %q: the version after @ must be a positive integer", s)
 	}
 	team, name, ok := strings.Cut(s[:at], "/")
 	if !ok || team == "" || name == "" || strings.Contains(name, "/") {
-		return Binding{}, fmt.Errorf("binding %q is not <team>/<name>@<version> — the team-qualified id, never a path, is the reference (ADR-0024)", s)
+		return Binding{}, fmt.Errorf("binding %q is not of the form <team>/<name>@<version>: use the team-qualified id, not a path", s)
 	}
 	return Binding{Team: team, Name: name, Version: v}, nil
 }
 
 // Tier is one authored topology position (ADR-0007): the rendering and
 // binding unit, loaded from `teams/<team>/tiers/<name>.yaml`. It declares
-// exactly one Environment — an attribute of the infrastructure — and binds
+// exactly one Environment (an attribute of the infrastructure) and binds
 // exactly one Blueprint version; per-Environment binding is realised through
 // sibling Tiers (ADR-0025).
 type Tier struct {
@@ -236,7 +236,7 @@ type Tier struct {
 	Blueprint string `yaml:"blueprint"`
 
 	// Selector is the Tier's collector-matching expression (ADR-0007): a
-	// collector is never authored — it connects, reports identifying
+	// collector is never authored: it connects, reports identifying
 	// attributes, and is matched into the Tier whose selector its attributes
 	// satisfy. Semantics are equality over every authored pair; the most
 	// specific satisfied selector wins. The selector doubles as the Tier's
@@ -245,7 +245,7 @@ type Tier struct {
 	Selector map[string]string `yaml:"selector"`
 
 	// MinExpected is the Tier's declared population floor (ADR-0035 §2):
-	// at least this many collectors should match — reviewable in git, for
+	// at least this many collectors should match, reviewable in git, for
 	// substrates with no queryable inventory ("at least 12 boxes in that
 	// rack"). A floor, never an equality: surplus is never a finding. Zero
 	// means no declared floor, and a live derived count always outranks
@@ -256,7 +256,7 @@ type Tier struct {
 	Hops    []Hop    `yaml:"hops"`
 
 	// Team is the owning team's directory segment, derived from the layout
-	// (ADR-0027) — never authored.
+	// (ADR-0027), never authored.
 	Team string `yaml:"-"`
 
 	binding Binding // parsed by the loader; valid on every loaded Tier
@@ -270,7 +270,7 @@ func (t Tier) Binding() Binding { return t.binding }
 
 // Untrusted reports whether any Hop arriving at this Tier is untrusted. One
 // Tier renders one artefact for all its collectors, so intake cannot be
-// split per Hop at render — any untrusted arrival makes the whole intake
+// split per Hop at render, so any untrusted arrival makes the whole intake
 // untrusted, which errs on the governed side (ADR-0025 §4).
 func (t Tier) Untrusted() bool {
 	for _, h := range t.Hops {
@@ -297,7 +297,7 @@ type Service struct {
 	Paths []Path       `yaml:"paths"`
 
 	// Team is the owning team's directory segment, derived from the layout
-	// (ADR-0027) — never authored.
+	// (ADR-0027), never authored.
 	Team string `yaml:"-"`
 }
 
@@ -314,7 +314,7 @@ type Topology struct {
 }
 
 // RolloutFor returns the active Rollout targeting the given Tier, if one is
-// authored. At most one exists — one active Rollout per Tier is a load
+// authored. At most one exists: one active Rollout per Tier is a load
 // invariant (ADR-0029 §2).
 func (t Topology) RolloutFor(tierID string) (Rollout, bool) {
 	for _, id := range sortedKeys(t.Rollouts) {
@@ -325,7 +325,7 @@ func (t Topology) RolloutFor(tierID string) (Rollout, bool) {
 	return Rollout{}, false
 }
 
-// SortedTiers returns the Tiers in stable id order — the enumerable
+// SortedTiers returns the Tiers in stable id order, the enumerable
 // artefact inventory of ADR-0025.
 func (t Topology) SortedTiers() []Tier {
 	out := make([]Tier, 0, len(t.Tiers))
@@ -364,7 +364,7 @@ func (s Service) traverses(tierID string) bool {
 }
 
 // FindingKind separates the problems the renderer can surface without
-// refusing: policy findings in the ADR-0022 sense — visible, owner-routed,
+// refusing: policy findings in the ADR-0022 sense: visible, owner-routed,
 // never a block. Mechanical invalidity never becomes a Finding; it refuses
 // the render outright.
 type FindingKind string
@@ -391,7 +391,7 @@ type Finding struct {
 	Message   string
 }
 
-// sortedKeys returns m's keys sorted — determinism is the renderer's
+// sortedKeys returns m's keys sorted. Determinism is the renderer's
 // load-bearing property, so no map is ever ranged unordered.
 func sortedKeys[K ~string, V any](m map[K]V) []K {
 	out := make([]K, 0, len(m))

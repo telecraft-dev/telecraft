@@ -8,18 +8,18 @@ order: 3
 
 Conformance is the rung that needs nothing but a connection string. You point
 `telecraft` at your telemetry backend and at a file describing what each
-Service is running, and it tells you which Services are delivering what they
-are configured to deliver, and whose problem each gap is.
+Service is running. It tells you which Services deliver what they are
+configured to deliver, and whose problem each gap is.
 
 This guide assumes you have built the CLI and cloned the demo estate as the
-[quickstart](quickstart.md) describes. All paths below are relative to your
+[quickstart](quickstart.md) describes. All paths are relative to your
 `telecraft` checkout.
 
 ## Read one Service with `observe`
 
-`telecraft observe` is the printer for the Observed reading: what landed in
-the backend for one Service over a trailing window. Use it to confirm your
-connection settings before you gate anything on them.
+`telecraft observe` prints the Observed reading: what landed in the backend
+for one Service over a trailing window. Use it to confirm your connection
+settings before you gate anything on them.
 
 ```sh
 ./telecraft observe \
@@ -50,21 +50,20 @@ traces attribute names (sampled 0 of 0 records):
 ```
 
 Read the `known` column first. `known=true present=false` means the backend
-answered and nothing arrived. That is a reading. When the backend cannot
+answered and nothing arrived. That is a reading. When the backend can't
 answer, the same line says so and names the cause:
 
 ```
 logs     known=false  cause="backend unreachable: Post \"http://localhost:9200/_msearch\": dial tcp [::1]:9200: connect: connection refused"
 ```
 
-`observe` is a printer, not a gate. It exits 0 for every reading including a
-degraded one. Scripting against presence belongs to `check`.
+`observe` prints; it doesn't gate. It exits 0 for every reading, including a
+degraded one. To script against presence, use `check`.
 
-Connection settings come from flags or from the environment:
-`TELECRAFT_TELEMETRY_ENDPOINT` and `TELECRAFT_TELEMETRY_API_KEY`. Which
-backend answers is wiring inside the provider tree; the command itself holds
-only neutral settings. The full flag list is in the
-[reference section](../reference/index.md).
+Connection settings come from flags or from the environment variables
+`TELECRAFT_TELEMETRY_ENDPOINT` and `TELECRAFT_TELEMETRY_API_KEY`. The command
+holds only neutral settings; the provider you configure decides which backend
+answers. The [reference section](../reference/index.md) lists every flag.
 
 ## Judge the estate with `check`
 
@@ -82,20 +81,19 @@ failures exist.
   > report.json
 ```
 
-The four inputs:
+The inputs:
 
-- `-library` is the requirements directory. A Requirement is a versioned
-  assertion about configuration, about signal, or about both, and every one
-  carries remediation text.
+- `-library` is the requirements directory. A Requirement is a versioned rule
+  about configuration, about signal, or about both, and every one carries its
+  own remediation text.
 - `-estate` is the file holding each Service's Effective reading per
-  Environment: the running configuration a collector reports, pipelines with
-  component order preserved. One Service in two Environments is two rows,
-  judged independently.
-- `-exemptions` is optional, and covered in [write an
-  Exemption](exemptions.md).
-- `-source` and `-catalogue` go together and are optional. They add
+  Environment: the running configuration a collector reports, with pipelines
+  in component order. One Service in two Environments is two rows, and each
+  row is judged on its own.
+- `-exemptions` is optional. [Write an Exemption](exemptions.md) covers it.
+- `-source` and `-catalogue` go together, and both are optional. They add
   `library_drift` detection over the authored estate: configuration in git
-  that passes the version it claims or pins while failing the current bar.
+  that passes the version it claims or pins while failing the current one.
 
 ## Read the report
 
@@ -111,10 +109,11 @@ The summary is the top-level answer:
 }
 ```
 
-`counting_failures` greater than zero is exactly the non-zero exit.
-`library_drift` rides `counting_failures` and is broken out beside it, so a
-gate red on drift alone is visibly red on drift. `waived` stays visible at
-every level, so a green built on Exemptions cannot look like a clean green.
+The exit code is non-zero exactly when `counting_failures` is greater than
+zero. `library_drift` is included in `counting_failures` and also broken out
+beside it, so a gate that is red on drift alone is visibly red on drift.
+`waived` stays visible at every level, so a green built on Exemptions never
+looks like a clean green.
 
 Each row carries its score and its findings:
 
@@ -135,23 +134,21 @@ Each row carries its score and its findings:
 
 ### The outcomes
 
-Each finding carries an `outcome` and its `severity` rung. The ordering is
-worst first, and it is the same ordering every badge and every roll-up sorts
-on.
+Each finding carries an `outcome` and its `severity` rung. The table runs
+worst first, and every badge and every roll-up sorts on the same order.
 
 | Outcome | Severity | What it means |
 |---|---|---|
-| `broken_pipeline` | 7 | Configured yes, observed no. Somebody meant this to work and it is not working. |
+| `broken_pipeline` | 7 | Configured yes, observed no. Somebody meant this to work, and it is not working. |
 | `not_configured` | 6 | Configured no, observed no. The owner needs to instrument. |
 | `not_delivered` | 5 | Observed no, with no configuration evidence to explain why. |
-| `misconfigured` | 4 | A configuration assertion failed with no signal reading to cross it against. |
-| `library_drift` | 3 | Passes the version it claims or pins, fails the current one. The goalposts moved. |
+| `misconfigured` | 4 | A configuration assertion failed, with no signal reading to cross it against. |
+| `library_drift` | 3 | Passes the version it claims or pins, fails the current one. The library moved on. |
 | `unknown` | 2 | No evidence from any reading. |
-| `ungoverned` | 1 | Observed yes, configured no. Passes, but surfaced: telemetry is arriving from something nobody configured. |
+| `ungoverned` | 1 | Observed yes, configured no. Passes, but shown: telemetry is arriving from something nobody configured. |
 | `compliant` | 0 | Met. |
 
-`broken_pipeline` leads because it is the finding no configuration-only tool
-can produce:
+`broken_pipeline` leads because no configuration-only tool can produce it:
 
 ```json
 {
@@ -169,8 +166,8 @@ can produce:
 
 ### The repo's own section
 
-`library_drift` findings are owned by authored configuration, never by a row,
-so they land in their own section with the team that owns them:
+`library_drift` findings belong to authored configuration, not to a row, so
+they land in their own section with the team that owns them:
 
 ```json
 {
@@ -181,14 +178,14 @@ so they land in their own section with the team that owns them:
   "lane": "traces, logs",
   "outcome": "library_drift",
   "severity": 3,
-  "message": "pins infosec/pii-redaction@2, but the owning team's head is version 3 — the reference passes the version it pins while the world has moved; a component update is available (ADR-0026 §2, §7)",
-  "remediation": "review the infosec/pii-redaction v2→v3 config diff and bump the pin in a PR — git is the source of truth, there is no live mutation (ADR-0026 §2)"
+  "message": "pins infosec/pii-redaction@2, but the owning team's head is version 3. A component update is available",
+  "remediation": "review the infosec/pii-redaction v2→v3 config diff and bump the pin in a PR"
 }
 ```
 
 An `authoring_findings` section carries problems with the authored inputs
 themselves, such as an Exemption naming a Requirement that is not in the
-library. Those are reported in every run and never enter the exit code.
+library. Every run reports them, and they never enter the exit code.
 
 ## Exit codes
 
@@ -199,7 +196,7 @@ library. Those are reported in every run and never enter the exit code.
 | 2 | The check could not run: usage, a load error, or wiring. |
 
 Exit 2 is the important one. A library that fails to load has judged nothing,
-so it is never a lenient 0:
+so the command never returns a lenient 0:
 
 ```sh
 ./telecraft check -library ../estate-demo/nope -estate ../estate-demo/demo/rows.yaml
@@ -210,20 +207,20 @@ check: requirements library directory ../estate-demo/nope does not exist
 ```
 
 The same fail-closed rule covers the inputs that loosen the exit code. An
-exemptions directory that will not load is exit 2, never a run that silently
+exemptions directory that won't load is exit 2, never a run that silently
 counted findings somebody believes are waived:
 
 ```
 check: invalid exemptions:
-  - broken-exemptions/bad.yaml: exemption "search-trace-identity" has no expiry — mandatory (REQ-014): an open-ended waiver is a deleted requirement
+  - broken-exemptions/bad.yaml: exemption "search-trace-identity" has no expiry. Every Exemption needs an expiry date, because an open-ended waiver would delete the Requirement
 ```
 
 ### Unknown counts as a failure
 
-An `unknown` outcome does not pass. It is not rounded up to green and it is
-not rounded down to a specific diagnosis: it is reported as itself, and it
-counts. Point the check at a backend that is not there and every production
-row goes red:
+An `unknown` outcome doesn't pass. The check neither rounds it up to green nor
+rounds it down to a specific diagnosis: it reports `unknown` as itself, and it
+counts. Point the check at a backend that isn't there and every production row
+goes red:
 
 ```json
 {
@@ -246,16 +243,16 @@ row goes red:
 }
 ```
 
-This is what stops a broken credential from reading as an estate that got
+This is what stops a broken credential from looking like an estate that got
 better overnight.
 
 ## Narrow to one Environment
 
-Every row is judged by default. A gate that silently checked only production
-would pass estates failing everywhere else, and the report already leads with
-production rows under any lens.
+By default, the check judges every row. A gate that silently checked only
+production would pass estates failing everywhere else, and the report already
+leads with production rows under any lens.
 
-`-environment` narrows a run when you want one lens:
+To judge one Environment, pass `-environment`:
 
 ```sh
 ./telecraft check \
@@ -274,7 +271,7 @@ production rows under any lens.
 }
 ```
 
-An Environment with no rows is exit 2, not a vacuous pass:
+An Environment with no rows is exit 2, not an empty pass:
 
 ```sh
 ./telecraft check -library ../estate-demo/requirements \
@@ -282,14 +279,14 @@ An Environment with no rows is exit 2, not a vacuous pass:
 ```
 
 ```
-check: the estate has no row in environment "qa" — a gate judging nothing would pass vacuously
+check: the estate has no row in environment "qa", so there is nothing to judge
 ```
 
 ## Wire it into CI
 
-The gate is the exit code, so the CI step is the command. Conformance that can
-only be seen in a browser is conformance that regresses between people
-remembering to look.
+The gate is the exit code, so the CI step is the command. Conformance you can
+only see in a browser regresses between the moments somebody remembers to
+look.
 
 ```yaml
 name: Conformance
@@ -329,13 +326,13 @@ jobs:
           path: report.json
 ```
 
-Three things make this behave:
+Three things make this work:
 
 1. Upload the report with `if: always()`, so a red run still leaves the
    evidence behind.
 2. Give the job the backend credentials it needs. Without them the run exits 1
    on `unknown`, which is correct but tells you nothing about the estate.
-3. Do not add `|| true`. The exit code is the whole gate.
+3. Don't add `|| true`. The exit code is the whole gate.
 
 A scheduled run matters as much as the pull-request run: `broken_pipeline`
 appears when a Service stops delivering, which is rarely the moment somebody
@@ -343,7 +340,7 @@ opens a pull request.
 
 ## What next
 
-- [Write an Exemption](exemptions.md) when a finding is agreed, owned and
+- [Write an Exemption](exemptions.md) when a gap is agreed, owned, and
   time-boxed.
 - [Author and render](author-and-render.md) puts the configuration those rows
   report under version control.

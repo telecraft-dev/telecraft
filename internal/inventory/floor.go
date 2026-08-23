@@ -12,12 +12,12 @@ const (
 	// declaration.
 	FloorDerived FloorSource = "derived"
 
-	// FloorDeclared is the Tier's authored min_expected — reviewable in
+	// FloorDeclared is the Tier's authored min_expected, reviewable in
 	// git, for substrates with no API ("at least 12 boxes in that rack").
 	FloorDeclared FloorSource = "declared"
 
 	// FloorAbsent is no floor at all: no provider, no declaration, no
-	// teeth — never_seen keeps its neutrality and nobody is forced to
+	// teeth. never_seen keeps its neutrality and nobody is forced to
 	// guess (ADR-0035 §2).
 	FloorAbsent FloorSource = ""
 )
@@ -29,8 +29,8 @@ type Floor struct {
 	Source FloorSource
 
 	// Min is the floor: at least this many instances should match. Zero
-	// with FloorDerived is a real answer — the substrate says nothing
-	// should exist — and carries no teeth, exactly like absence.
+	// with FloorDerived is a real answer (the substrate says nothing
+	// should exist) and carries no teeth, exactly like absence.
 	Min int
 
 	// AsOf is when a derived floor was counted; zero on declared and
@@ -39,7 +39,7 @@ type Floor struct {
 }
 
 // ResolveFloor ranks the two possible sources for one Tier (ADR-0035 §2):
-// a Known derived count wins outright — including a derived zero, which
+// a Known derived count wins outright, including a derived zero, which
 // is the substrate honestly expecting nothing; a positive declared
 // min_expected stands in when the derived count is absent or unknown; and
 // with neither, the floor is absent and the platform invents no count.

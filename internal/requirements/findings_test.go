@@ -26,7 +26,7 @@ func libWithEnvironments(t *testing.T, environments string) Library {
 
 // ADR-0033 §3: an environments list matching no known environment must
 // surface, not silently never apply. It is a finding rather than a load
-// error because the environment vocabulary is open and adopter-defined —
+// error because the environment vocabulary is open and adopter-defined:
 // the loader has no authority to reject a name the estate might grow.
 func TestNeverMatchingEnvironmentsListIsAnAuthoringFinding(t *testing.T) {
 	lib := libWithEnvironments(t, "[prod]") // typo: the estate says "production"
@@ -44,8 +44,8 @@ func TestNeverMatchingEnvironmentsListIsAnAuthoringFinding(t *testing.T) {
 	}
 }
 
-// One unknown entry among known ones is still a finding — that entry never
-// matches — but the message must not claim the whole requirement is dead.
+// One unknown entry among known ones is still a finding (that entry never
+// matches), but the message must not claim the whole requirement is dead.
 func TestUnknownEntryAmongKnownOnesIsAnEntryFinding(t *testing.T) {
 	lib := libWithEnvironments(t, "[production, prdouction]")
 
@@ -76,7 +76,7 @@ func TestAbsentEnvironmentsListRaisesNoFinding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Absent means "applies everywhere" — nothing to check against the
+	// Absent means "applies everywhere": nothing to check against the
 	// estate, even an estate with no known environments at all.
 	if fs := lib.EnvironmentFindings(nil); len(fs) != 0 {
 		t.Fatalf("unexpected findings for an env-neutral requirement: %v", fs)

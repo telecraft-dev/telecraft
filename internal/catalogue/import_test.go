@@ -8,7 +8,7 @@ import (
 )
 
 // snapshotDir is the testdata snapshot of representative upstream files from
-// opentelemetry-collector-contrib at v0.158.0 — verbatim metadata.yaml, with
+// opentelemetry-collector-contrib at v0.158.0: verbatim metadata.yaml, with
 // go.mod trimmed to the module line the walker reads. A snapshot of upstream
 // *inputs* is not hand-curation of the component list: the list is whatever
 // the walker finds, and these files are upstream's, not ours.
@@ -32,7 +32,7 @@ func write(t *testing.T, dir, name, body string) {
 	}
 }
 
-// writeComponent lays out one component directory — a metadata.yaml with a
+// writeComponent lays out one component directory: a metadata.yaml with a
 // sibling go.mod, which is what makes the walker see it.
 func writeComponent(t *testing.T, root, dir, metadata string) {
 	t.Helper()
@@ -46,15 +46,15 @@ func importErr(t *testing.T, root string) error {
 	t.Helper()
 	cat, _, err := Import(root, snapshotSource)
 	if err != nil && cat != nil {
-		t.Fatal("Import failed but returned a catalogue — a failed import must fail closed")
+		t.Fatal("Import failed but returned a catalogue: a failed import must fail closed")
 	}
 	return err
 }
 
 // The snapshot import is the acceptance surface: every representative
-// upstream shape — nested extensions, per-signal stability divergence,
+// upstream shape (nested extensions, per-signal stability divergence,
 // deprecated_type aliases, a deprecation notice, a non-pipeline class, a
-// module with no metadata.yaml — lands where it should.
+// module with no metadata.yaml) lands where it should.
 func TestSnapshotImportsCompletely(t *testing.T) {
 	cat, cov, err := Import(snapshotDir, snapshotSource)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestSnapshotImportsCompletely(t *testing.T) {
 		t.Error("kafka receiver claims a signal it does not carry")
 	}
 	if kafka.Module != "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver" {
-		t.Errorf("kafka receiver module = %q — the go.mod anchor was not recorded", kafka.Module)
+		t.Errorf("kafka receiver module = %q: the go.mod anchor was not recorded", kafka.Module)
 	}
 
 	// Lifecycle: the deprecated exporter carries its upstream notice.
@@ -158,7 +158,7 @@ func TestClassTypeIsThePrimaryKey(t *testing.T) {
 		t.Fatal("kafka must exist as both a receiver and an exporter")
 	}
 	if rcv.Module == exp.Module {
-		t.Error("receiver and exporter kafka resolved to the same module — the key collapsed")
+		t.Error("receiver and exporter kafka resolved to the same module: the key collapsed")
 	}
 }
 
@@ -191,7 +191,7 @@ func TestDeprecatedTypeAliasesResolve(t *testing.T) {
 }
 
 // A module under a component root with no metadata.yaml is a gap the
-// coverage report must surface — never an error, never silence.
+// coverage report must surface: never an error, never silence.
 func TestMissingMetadataIsReportedNeverSilent(t *testing.T) {
 	root := t.TempDir()
 	writeComponent(t, root, "receiver/widgetreceiver", "type: widget\nstatus:\n  class: receiver\n  stability:\n    beta: [logs]\n")
@@ -209,8 +209,8 @@ func TestMissingMetadataIsReportedNeverSilent(t *testing.T) {
 	}
 }
 
-// A parsed component of a non-pipeline class — including one whose class we
-// have never seen, since the upstream enum grew twice in two years — is
+// A parsed component of a non-pipeline class (including one whose class we
+// have never seen, since the upstream enum grew twice in two years) is
 // excluded and recorded, not dropped and not fatal.
 func TestNonPipelineClassesAreExcludedAndRecorded(t *testing.T) {
 	root := t.TempDir()
@@ -307,7 +307,7 @@ func TestDuplicateKeyFailsClosedNamingBothModules(t *testing.T) {
 }
 
 // An alias equal to another component's real type would let one component
-// shadow another's identity on lookup (ADR-0020 §10) — refused.
+// shadow another's identity on lookup (ADR-0020 §10), so it is refused.
 func TestAliasCollidingWithARealTypeFailsClosed(t *testing.T) {
 	root := t.TempDir()
 	writeComponent(t, root, "receiver/widgetreceiver", "type: widget\nstatus:\n  class: receiver\n  stability:\n    beta: [logs]\n")

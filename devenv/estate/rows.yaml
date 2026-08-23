@@ -3,8 +3,8 @@
 # flat component list (ADR-0004).
 #
 # This is the one reading the devenv leaves authored (ADR-0052 §2). Deriving
-# it from the live collectors is possible — a Service's Paths name its Tiers,
-# and the serving matcher already maps a Tier to its collectors — but it
+# it from the live collectors is possible (a Service's Paths name its Tiers,
+# and the serving matcher already maps a Tier to its collectors), but it
 # needs judgements the product has not made, and a development environment
 # does not get to invent product semantics ahead of the product.
 #

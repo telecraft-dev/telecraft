@@ -27,9 +27,17 @@ The design corpus keeps its own directories (`docs/adr/`,
 `docs/requirements/`, `docs/research/`, `docs/prototypes/`, plus
 `docs/plan.md`, `docs/open-questions.md` and `docs/glossary.md`) and is not
 part of the four-section structure. The [decisions page](decisions.md)
-explains what each corpus is for. Link into the corpus from a documentation
-page when a reader needs the reasoning; do not copy a decision into a page,
-because the copy goes stale and the ADR does not.
+explains what each corpus is for.
+
+Published pages never point into the corpus. A concept, guide, or reference
+page, the glossary, the documentation home page, `README.md`, and
+`SECURITY.md` do not cite an ADR number, a requirement id, a research note,
+or a prototype verdict, and they do not link into those directories. A
+reader of the product needs what Telecraft does, not the argument that
+produced it. Where a page needs a reason, it gives the reason in its own
+words. This Contributing section is the only place that links into the
+corpus, and it does so through the decisions page. Do not copy a decision
+into a page either: the copy goes stale and the ADR does not.
 
 ## Front matter
 
@@ -78,7 +86,17 @@ colour.
 
 **No em dashes.** Where an em dash would carry an aside or a break, use a
 comma, brackets, a colon, or two sentences. Write ranges with "to" (10 to 20
-files). This covers every dash used as punctuation, en dashes included.
+files). This covers every dash used as punctuation, en dashes included, and
+it applies to the whole repository: code comments, test messages, YAML and
+CSS comments, fixtures, and the decision corpus, not only the published
+pages. The vendor-word lint enforces it (see [the lints](#the-lints)).
+
+**No decision references in anything a user sees.** `ADR-0042`, `REQ-031`,
+`§3`, `OQ-3`, and issue numbers belong in code comments and in the corpus.
+They never appear in published pages, console text, CLI help and output,
+error messages, findings and their remediation text, or the comments the
+renderer writes into generated artefacts. Give the reason in plain words if
+the reader needs it, otherwise leave it out.
 
 The rules that come up constantly:
 
@@ -105,19 +123,44 @@ The rules that come up constantly:
 - **Describe what exists today.** Nothing unreleased is announced or hinted
   at. If a page describes planned work as if it ships, that is a bug.
 
-## The vendor-word lint
+## Vocabulary
+
+The [glossary](../glossary.md) is the ubiquitous language, and it binds
+code, documentation, and the console alike. Its terms are not synonyms to
+vary for readability: a Tier is a Tier on every surface.
+
+- Upstream vocabulary is adopted as is. Where OpenTelemetry or OpAMP has a
+  word, Telecraft uses it; a local synonym is a lint error.
+- Seam names are domain terms (`TelemetryProvider`, `EstateProvider`).
+  Implementations are qualified with the vendor's product, never the
+  company: `ElasticFleet`, `Elasticsearch`, `GrafanaFleetManagement`.
+- A Service Class is never written "Tier N". A Tier is a position in the
+  topology.
+- Every capitalised domain term an ADR introduces must appear in the
+  glossary, defined for a reader who has not read the ADR.
+
+## The lints
 
 `go run ./tools/vendorlint` runs over `docs/**` as well as over the code, and
-it fails CI. In the docs the rule narrows to one word: a bare `Fleet` appears
-nowhere. Qualify the vendor's product instead, as Elastic Fleet,
-`ElasticFleet`, `GrafanaFleetManagement`, or Datadog Fleet Automation.
+it fails CI. It is a pattern lint configured in `vendorlint.yaml`, and three
+of its scopes are about prose:
 
-Naming the banned word rather than using it is allowed: backticks, bold, and
-curly quotes all read as quoting it. The research, prototype and branding
-trees are excluded entirely, because they record external reality verbatim.
+- In the docs the vendor-word rule narrows to one word: a bare `Fleet`
+  appears nowhere. Qualify the vendor's product instead, as Elastic Fleet,
+  `ElasticFleet`, `GrafanaFleetManagement`, or Datadog Fleet Automation.
+  Naming the banned word rather than using it is allowed: backticks, bold,
+  and curly quotes all read as quoting it. The research, prototype and
+  branding trees are excluded from this rule, because they record external
+  reality verbatim.
+- The `prose` scope flags an em dash or en dash anywhere in the repository,
+  except in generated Catalogue artefacts, which record upstream text.
+- The `published` scope flags `ADR-`, `REQ-`, `OQ-`, and `§` references on
+  any published page, in `README.md`, and in `SECURITY.md`.
 
-Run the lint before you push. It is the same command in CI, and it takes a
-second.
+`go run ./tools/docslint` checks the front matter of every published page.
+
+Run both before you push. They are the same commands CI runs, and they take
+a second.
 
 ## How to add a page
 
@@ -129,8 +172,8 @@ second.
    within the section.
 4. **Write the page** in house style.
 5. **Add it to `docs/nav.yaml`**, in the position its `order` claims.
-6. **Verify.** Run `go run ./tools/vendorlint` and check that it comes back
-   clean. Follow every link you added, including relative links between
+6. **Verify.** Run `go run ./tools/vendorlint` and `go run ./tools/docslint`
+   and check that both come back clean. Follow every link you added, including relative links between
    pages.
 7. **Open the pull request**, following the
    [contribution flow](index.md#branches-and-pull-requests).

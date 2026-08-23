@@ -15,12 +15,12 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/selftelemetry"
 )
 
-// fixtureSHA is the commit the fixture derivation stamps — an input, so
+// fixtureSHA is the commit the fixture derivation stamps, an input, so
 // the golden set is stable (ADR-0013).
 const fixtureSHA = "8b7df143d91c716ecfa5fc1730022f6b421b05cd"
 
 // fixtureSource loads the fixture estate under testdata/estate at the
-// fixture SHA, failing the test on any load problem — the fixture is
+// fixture SHA, failing the test on any load problem: the fixture is
 // meant to be a valid estate.
 func fixtureSource(t *testing.T) Source {
 	t.Helper()
@@ -67,7 +67,7 @@ func TestDeriveMatchesGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(got, want) {
-		t.Errorf("derived set differs from golden — identical inputs must derive identical claims (ADR-0038 §3)\ngot:\n%s", got)
+		t.Errorf("derived set differs from golden: identical inputs must derive identical claims\ngot:\n%s", got)
 	}
 }
 
@@ -77,12 +77,12 @@ func TestDeriveIsDeterministic(t *testing.T) {
 	src := fixtureSource(t)
 	a, b := Derive(src), Derive(src)
 	if !reflect.DeepEqual(a, b) {
-		t.Error("two derivations of the same Source differ — derivation must be pure (ADR-0038 §3)")
+		t.Error("two derivations of the same Source differ: derivation must be pure")
 	}
 }
 
 // The literal-only rule, pinned (ADR-0038 §2, issue #34 AC): behaviour-
-// dependent enrichment yields no claim — k8sattributes derives nothing,
+// dependent enrichment yields no claim: k8sattributes derives nothing,
 // and neither do the resource processor's update action, its
 // from_attribute indirection, or the transform's pattern statement. No
 // claim means unknown, never red.
@@ -98,13 +98,13 @@ func TestLiteralOnlyRuleYieldsNoClaimForBehaviour(t *testing.T) {
 
 	for _, c := range enrichment {
 		if strings.HasPrefix(c.Attribute, "k8s.") {
-			t.Errorf("enrichment claim for %q — k8sattributes is runtime behaviour, and the engine claims only what it reads off the artefact (ADR-0038 §2, OQ-18 refused)", c.Attribute)
+			t.Errorf("enrichment claim for %q: k8sattributes is runtime behaviour, and the engine claims only what it reads off the artefact", c.Attribute)
 		}
 		switch c.Attribute {
 		case "host.rack":
-			t.Error("enrichment claim from an `update` action — update guarantees no presence, so it derives nothing")
+			t.Error("enrichment claim from an `update` action: update guarantees no presence, so it derives nothing")
 		case "copied.from":
-			t.Error("enrichment claim from a from_attribute entry — indirection is not a constant value")
+			t.Error("enrichment claim from a from_attribute entry: indirection is not a constant value")
 		}
 	}
 
@@ -125,7 +125,7 @@ func TestLiteralOnlyRuleYieldsNoClaimForBehaviour(t *testing.T) {
 }
 
 // Arrival claims follow the routed lanes exactly: traces and logs derive
-// per row, metrics — routed nowhere — derives nothing.
+// per row, and metrics (routed nowhere) derives nothing.
 func TestArrivalClaimsFollowRoutedLanes(t *testing.T) {
 	set := Derive(fixtureSource(t))
 
@@ -138,14 +138,14 @@ func TestArrivalClaimsFollowRoutedLanes(t *testing.T) {
 		}
 		want := map[requirements.SignalKind]bool{requirements.Traces: true, requirements.Logs: true}
 		if !reflect.DeepEqual(signals, want) {
-			t.Errorf("%s arrival claims cover %v, want %v — the metrics lane is empty, so no claim derives", env, signals, want)
+			t.Errorf("%s arrival claims cover %v, want %v: the metrics lane is empty, so no claim derives", env, signals, want)
 		}
 	}
 }
 
-// Self-telemetry claims cover every instantiated pipeline component —
+// Self-telemetry claims cover every instantiated pipeline component,
 // the k8sattributes instance included, because its own existence is
-// readable off the artefact even though its output is not — with R-4's
+// readable off the artefact even though its output is not, with R-4's
 // caveats modelled as expected shapes: memory_limiter expects the
 // unidentified shape, and extensions derive no claim.
 func TestSelfTelemetryClaimShapes(t *testing.T) {
@@ -160,7 +160,7 @@ func TestSelfTelemetryClaimShapes(t *testing.T) {
 	for _, id := range wantIdentified {
 		c, ok := claims[id]
 		if !ok {
-			t.Errorf("no self-telemetry claim for %s — every instantiated pipeline component should emit (ADR-0038 §2c)", id)
+			t.Errorf("no self-telemetry claim for %s: every instantiated pipeline component should emit", id)
 			continue
 		}
 		if c.Shape != ShapeIdentified {
@@ -173,14 +173,14 @@ func TestSelfTelemetryClaimShapes(t *testing.T) {
 		t.Fatal("no self-telemetry claim for memory_limiter/guard")
 	}
 	if guard.Shape != ShapeUnidentified {
-		t.Errorf("memory_limiter claim has shape %q — the identity-dropping singleton is an expected shape, never a failure (R-4 §5.2)", guard.Shape)
+		t.Errorf("memory_limiter claim has shape %q: the identity-dropping singleton is an expected shape, never a failure (R-4, section 5.2)", guard.Shape)
 	}
 	if guard.ComponentKind != selftelemetry.KindProcessor {
 		t.Errorf("memory_limiter claim kind = %q, want processor", guard.ComponentKind)
 	}
 
 	if _, ok := claims["health_check/health"]; ok {
-		t.Error("self-telemetry claim for an extension — R-4 pins join keys for pipeline components only, so claiming extension telemetry would be believing, not reading")
+		t.Error("self-telemetry claim for an extension: R-4 pins join keys for pipeline components only, so claiming extension telemetry would be believing, not reading")
 	}
 }
 
@@ -202,6 +202,6 @@ func TestDiff(t *testing.T) {
 		t.Fatalf("diff = %+v, want exactly the one added arrival claim", d)
 	}
 	if got := d.Added[0].String(); !strings.Contains(got, "metrics") {
-		t.Errorf("added claim renders as %q — the impact line should name the signal", got)
+		t.Errorf("added claim renders as %q: the impact line should name the signal", got)
 	}
 }

@@ -1,12 +1,12 @@
 # Identity
 
-- Status: **decided** — direction seeded in [`naming.md`](naming.md), settled
+- Status: **decided**. Direction seeded in [`naming.md`](naming.md), settled
   by ADR-0047
 - Date: 2026-08-19
 
 The name decision closed with a four-line identity direction and a note that
-it was a seed for this file. This is that file. The implementable half —
-tokens, type scale, marks, palette values — lives in
+it was a seed for this file. This is that file. The implementable half
+(tokens, type scale, marks, palette values) lives in
 [`design-system.md`](design-system.md); the decisions and their reasoning live
 in [ADR-0047](../adr/0047-visual-identity-and-design-tokens.md).
 
@@ -25,7 +25,7 @@ personality it comes from being exact, not from being decorated.
 Held from the naming decision, unchanged:
 
 - Wordmark-first. The mark supports the word; it does not replace it.
-- Workshop and precision references — calipers, blueprint linework — which
+- Workshop and precision references (calipers, blueprint linework), which
   also nod to Blueprints as a domain object.
 - Telemetry-signal motifs.
 - Serious in the documentation, warm in the community surfaces, one mark
@@ -43,14 +43,14 @@ Held from the naming decision, unchanged:
 ## The mark
 
 Three reading bands, stacked and decreasing, measured against a vertical
-datum in the brand amber. The bands are the favicon's original idea — the
-card face's three readings (ADR-0041 §2) — and they survive; the datum is
+datum in the brand amber. The bands are the favicon's original idea, the
+card face's three readings (ADR-0041 §2), and they survive; the datum is
 what they are read against, which is the product's thesis drawn literally.
 Tone falls with length, so the single-colour version loses nothing it needs.
 
 The wordmark is `telecraft` in Atkinson Hyperlegible Next at weight 600,
 outlined from the vendored face, tracked −12/1000, with one drawn
-intervention: the f–t crossbars in "craft" join into a single bar, on the
+intervention: the f-t crossbars in "craft" join into a single bar, on the
 syllable that says craft.
 
 The pack lives in [`pack/`](pack/): icons, bare marks, wordmarks, and
@@ -59,7 +59,7 @@ single-colour version, written by `pack/tools/build.py` from the `tokens.css`
 values and never edited by hand. Clear space, minimum sizes and the usage
 rules are in [`pack/README.md`](pack/README.md). `console/public/favicon.svg`
 is the canonical icon, written by the same script, and the retired navy
-`#1e2b3a` is gone (issue #101) — every colour in the mark is now one the
+`#1e2b3a` is gone (issue #101): every colour in the mark is now one the
 palette check can see.
 
 ## Voice

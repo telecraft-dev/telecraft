@@ -47,11 +47,11 @@ npm run e2e                 # Playwright against dist/ and the fixture backend
   and jump-to-object search).
 - `src/presentation/`: the per-user presentation store, the console's
   only non-git state (ADR-0042 §7, ADR-0051 §6).
-- `src/tours/`: guided Tours (ADR-0051) — the authored Steps, the one
+- `src/tours/`: guided Tours (ADR-0051): the authored Steps, the one
   runner that draws them, and the chrome control that offers the welcome.
 - `tools/`: the fixture backend and the zero-CDN check.
 - `fixtures/`: the fixture estate, mirroring
-  `internal/renderer/testdata/estate`, plus `card-contract.json` — the
+  `internal/renderer/testdata/estate`, plus `card-contract.json`, the
   shared card-contract artefact the engine writes and the console's
   contract test reads.
 
@@ -74,28 +74,28 @@ URL the user arrived on survives the round trip.
 | `/api/v1/auth/login` (POST) | Signs in with a password provider: `{provider, username, secret}` in, the session cookie and the `me` payload out. |
 | `/api/v1/auth/{name}/start` | Begins a redirect provider's round trip (OIDC; SAML when it lands); `return_to` names the path to resume. |
 | `/api/v1/auth/logout` (POST) | Ends the session. |
-| `/api/v1/me` | The signed-in user: id, name, team (the shelf's resting scope), and `editableTeams` — the team subtree the ownership tree derives their authoring rights from (ADR-0019 §2). Surfaces offer authoring actions exactly on objects owned inside that set. |
-| `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team, plus the active catalogue's entries (kind `entry`, id `class/type`, no team — nobody owns them). |
-| `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, one ADR-0041 card face per Tier, and the ungoverned band's counts — collectors matching no Tier selector, split by how they are read (served the Unmatched artefact, or foreign via the estate provider; ADR-0030/0031). Concern, never failure: they carry the onboard CTA and appear in no compliance denominator. |
+| `/api/v1/me` | The signed-in user: id, name, team (the shelf's resting scope), and `editableTeams`, the team subtree the ownership tree derives their authoring rights from (ADR-0019 §2). Surfaces offer authoring actions exactly on objects owned inside that set. |
+| `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team, plus the active catalogue's entries (kind `entry`, id `class/type`, no team, because nobody owns them). |
+| `/api/v1/estate` | The shelf's bulk payload: Environments (production leading), the team tree, one ADR-0041 card face per Tier, and the ungoverned band's counts: collectors matching no Tier selector, split by how they are read (served the Unmatched artefact, or foreign via the estate provider; ADR-0030/0031). Concern, never failure: they carry the onboard CTA and appear in no compliance denominator. |
 | `/api/v1/drawer?tier=` | The on-demand drawer for one Tier (ADR-0041 §3): findings with kind, severity, dampening state, who-acts routing target, and mandatory remediation, plus "why?" derivations as structured provenance (claim, implying config lines, judged SHA, optional trace action). |
 | `/api/v1/collectors` | Per-collector detail for the flat list, its only home (ADR-0042 §3.4): collector id, Tier, team, Environment, state, version, last seen, and the reported identifying attributes Tier selectors match on (ADR-0013). Rows without a Tier are the ungoverned population (ADR-0031), marked by how they are read (`served` or `foreign`); their attributes are the claim flow's raw material. |
-| `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. Each Tier carries its selector-matched collector count, derived Service Class, and the served/git delivery split — collectors are matched into a Tier by selector and appear only as these numbers, never as nodes (ADR-0007). |
-| `/api/v1/rollouts` | Every active Rollout's cohort progress (ADR-0029), computed per request — membership is a pure function of the authored Rollout and reported identifying attributes, never stored (§4). Each Rollout carries its authored facts (owner, target Tier, `from`/`to` bindings, active stage), the evaluation's verdict (`hold`, `blocked`, `advance`, `abort`) with its reason and evidence, per-cohort progress — cumulative membership per stage, split by delivery path, with running status against the two rendered artefacts (served by acknowledged config hash; foreign by the `telecraft.tier` stamp readings, ADR-0039 §5) — every halted member with its condition and reason (§6, the set is extensible), and "why?" provenance for the authored facts. Foreign members are advisory: lag, never failure (§7). Pending stages carry the membership preview — information for the reviewer, never the authoritative decision. |
+| `/api/v1/topology` | Tiers, ungoverned sources, Hops (with trust and signals), and Services' Paths, at authored-object grain. Each Tier carries its selector-matched collector count, derived Service Class, and the served/git delivery split. Collectors are matched into a Tier by selector and appear only as these numbers, never as nodes (ADR-0007). |
+| `/api/v1/rollouts` | Every active Rollout's cohort progress (ADR-0029), computed per request: membership is a pure function of the authored Rollout and reported identifying attributes, never stored (§4). Each Rollout carries its authored facts (owner, target Tier, `from`/`to` bindings, active stage), the evaluation's verdict (`hold`, `blocked`, `advance`, `abort`) with its reason and evidence, per-cohort progress (cumulative membership per stage, split by delivery path, with running status against the two rendered artefacts: served by acknowledged config hash, foreign by the `telecraft.tier` stamp readings, ADR-0039 §5), every halted member with its condition and reason (§6, the set is extensible), and "why?" provenance for the authored facts. Foreign members are advisory: lag, never failure (§7). Pending stages carry the membership preview: information for the reviewer, never the authoritative decision. |
 | `/api/v1/blueprints` | Blueprint schema v1 documents (ADR-0024): per-signal lanes of ordered Component references, local Components, the collector-wide extensions block, the bound Tier, version-stamped `satisfies` claims, and the Catalogue key each lane item instantiates, so lane items deep-link to their Catalogue entries. |
 | `/api/v1/catalogue` | Governed Components at their pinned versions. |
 | `/api/v1/catalogue/versions` | The installed catalogue versions (ADR-0020 §9: retained, never replaced), each with its entry count and source, and which one is active. |
 | `/api/v1/catalogue/entries?version=` | One retained catalogue version's entries: `(class, type)` identity with the `deprecated_type` alias, display name, source (`upstream` or `adopter`), per-signal stability, and per-signal deprecation notices. An unknown version is a 404, never an empty list. |
-| `/api/v1/governance` | The authored, git-resident Allow-list policy (ADR-0021 §5): Owners, Allow-lists and Grants in their authored shapes. The console derives each team's effective palette — with total provenance — from this plus the active catalogue (`src/governance/effective.ts`, the same derived-presentation pattern as the roll-up). |
-| `POST /api/v1/governance/proposals` | A governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal — opaque id, URL, branch — mirroring the forge seam (`internal/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
+| `/api/v1/governance` | The authored, git-resident Allow-list policy (ADR-0021 §5): Owners, Allow-lists and Grants in their authored shapes. The console derives each team's effective palette, with total provenance, from this plus the active catalogue (`src/governance/effective.ts`, the same derived-presentation pattern as the roll-up). |
+| `POST /api/v1/governance/proposals` | A governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal (opaque id, URL, branch) mirroring the forge seam (`internal/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
 | `POST /api/v1/validate` | The one evaluator (ADR-0022 §1): the open draft plus its Environment in; findings, palette verdicts (show, grey with reason, hidden-with-count), requirement verdicts (claimed beside met, never blended), the save gate, and the rendered-artefact preview out. Stateless; the composer calls it on every interaction, judging with the same authored governance policy and active catalogue the endpoints above serve. |
 | `POST /api/v1/proposals` | The composer exit (ADR-0043 §6): the draft becomes a change proposal through the forge adapter, render-in-PR and user-attributed (ADR-0028, ADR-0014). Enforcement is on: an allow-list violation answers 409 and no proposal opens, fail closed. An optional `claim` context (the claim flow's draft-new-Tier path, ADR-0042 §6) makes this the PR authoring the Tier binding beside the Blueprint; it is judged by the claim rulebook first and refused 422 with the problems named. |
-| `POST /api/v1/claims/preview` | The claim flow's continuous impact evaluation (ADR-0042 §6): the constrained selector plus Environment in — with `mode` and `tier` once the one question (attach or draft) is answered — and the impact out: matched ungoverned collectors split by referent, governed populations the selector does not contradict (blast radius, reported, never hidden), attach candidates ranked by selector proximity with the widened selector each implies, and the rendered Tier binding the PR would carry. For attach the judged selector is the widened one: what merge would actually serve. |
-| `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014) — the console proposes, the PR decides; the platform binary wires this to `forge.Submit` like the other proposal exits. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives — generalise-never-enumerate is enforced server-side, not assumed of the UI. |
+| `POST /api/v1/claims/preview` | The claim flow's continuous impact evaluation (ADR-0042 §6): the constrained selector plus Environment in (with `mode` and `tier` once the one question, attach or draft, is answered) and the impact out: matched ungoverned collectors split by referent, governed populations the selector does not contradict (blast radius, reported, never hidden), attach candidates ranked by selector proximity with the widened selector each implies, and the rendered Tier binding the PR would carry. For attach the judged selector is the widened one: what merge would actually serve. |
+| `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014). The console proposes, the PR decides; the platform binary wires this to `forge.Submit` like the other proposal exits. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives: generalise-never-enumerate is enforced server-side, not assumed of the UI. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 2`): three bands as enum states plus worst-finding
 labels, the per-signal matrix rows, shelf summary fields, and the
-population line. Hue appears nowhere in the contract — band position and
+population line. Hue appears nowhere in the contract: band position and
 glyph are what distinguish the three reds, and a renderer cannot make
 colour load-bearing by reading a field. The face also carries optional
 waived counts per kind (`waivedCounts`), an additive shelf summary field
@@ -104,7 +104,7 @@ and waived counts ride every roll-up level (ADR-0017, ADR-0037).
 
 Version 2 added the metering rows P4's verdict put under the bands
 (ADR-0040): per signal lane, volume as items in and out with the
-reduction between them, freshness, and a shape summary — each reading
+reduction between them, freshness, and a shape summary, each reading
 carrying its own `known`, `cause` and `asOf`, so last-known-plus-age
 renders from the contract rather than from the console guessing. It also
 added the population line's ADR-0035 `state` with its neutral age, and
@@ -113,8 +113,8 @@ dropping ninety per cent is doing its job, and the only readings the
 meter reds off are `refused`, `sendFailed` and `enqueueFailed`.
 
 Both sides of the contract are held to one artefact,
-`fixtures/card-contract.json`. The engine writes it —
-`go test ./internal/card -update` — and `tests/card-contract.test.ts`
+`fixtures/card-contract.json`. The engine writes it (with
+`go test ./internal/card -update`) and `tests/card-contract.test.ts`
 reads it, so a field added or renamed on either side without the other
 following is a failing test, and the version bump is the reviewable
 event.
@@ -132,7 +132,7 @@ go run ./cmd/telecraft snapshot \
   -rows ../estate-demo/demo/rows.yaml -readings ../estate-demo/demo/readings.yaml \
   -commit "$(git -C ../estate-demo rev-parse HEAD)" -team engineering \
   -out console/dist/demo-snapshot.json
-npm run build:demo     # VITE_DEMO=1 — the console reads the snapshot, not /api
+npm run build:demo     # VITE_DEMO=1: the console reads the snapshot, not /api
 ```
 
 `telecraft snapshot` (`internal/console`) loads the estate with the same
@@ -145,21 +145,21 @@ selector matching, `internal/allowlist` for the governance policy. Nothing
 in the snapshot is authored by hand; a rendered tree that no longer matches
 its sources refuses the build outright (ADR-0028 §2).
 
-The two things a repository cannot hold — the collector estate and the
+The two things a repository cannot hold (the collector estate and the
 arrivals, which reach a real instance through the EstateProvider and
-TelemetryProvider seams — are declared by the estate in a readings file and
+TelemetryProvider seams) are declared by the estate in a readings file and
 played back through those same seams. They are inputs like the authored
 YAML; every verdict over them is the product's.
 
 In the console, `src/api/demo.ts` answers the whole contract from the
-snapshot. Read paths project it; the two continuous evaluators — the
-composer's `validate` and the claim flow's preview — run in the browser
+snapshot. Read paths project it; the two continuous evaluators (the
+composer's `validate` and the claim flow's preview) run in the browser
 over the same estate documents the server would judge with, so Compose and
 the claim panel stay live rather than canned. The write paths render in
 full and terminate at an explanatory notice that names the pull-request
 exit they stand in for: Compose's Save, the claim flow's attach and draft
 exits, and the governance editor's proposal. Read-only falls out by
-construction — there is nothing to POST to.
+construction: there is nothing to POST to.
 
 Deep links need the host's single-page fallback: the deploy copies
 `index.html` to `404.html`, which is how a static host serves a URL the
@@ -249,34 +249,34 @@ Search params are validated by the router (ADR-0045 §3):
   Switching preserves selection and lens (ADR-0042 §3.1); a selected
   `object` of kind `rollout` implies the ledger, so a Rollout deep link
   needs no explicit view.
-- `ungoverned`: the flat list narrowed to the ungoverned population — the
+- `ungoverned`: the flat list narrowed to the ungoverned population, the
   onboard CTA's door (ADR-0031).
 - `herd`: the claim flow's selection, ungoverned collector ids
   comma-joined (ADR-0042 §6). A non-empty herd summons the claim panel;
-  view-switching preserves it. Console selection state only — the
+  view-switching preserves it. Console selection state only: the
   produced selector generalises over shared identity attributes and
   never contains these ids.
 - `lane`: the signal lane a Blueprint-shaped who-acts chip lands on in
   Compose (ADR-0042 §3.3).
 - `surface` (Compose): the surface switcher over the one open Blueprint
-  (ADR-0043 §1) — `composer` (the default), `requirements`, or `canvas`.
+  (ADR-0043 §1): `composer` (the default), `requirements`, or `canvas`.
   Switching never loses the draft.
 - `yaml`: whether the resident read-only YAML flyout is open (REQ-035);
   it rides every Compose surface.
 - `claim`, `tier`, `team`, `env` (Compose): the claim flow's
-  draft-new-Tier handoff (ADR-0042 §6) — the pre-filled selector in its
+  draft-new-Tier handoff (ADR-0042 §6): the pre-filled selector in its
   `key=value,key=value` shape plus the new Tier's id, owning team, and
   Environment. Compose opens a fresh draft Blueprint bound to the new
   Tier, and Save proposes the Tier binding beside it as one PR.
 - `view` (Catalogue & Governance): `browse` (the default), `palette`, or
-  `governance` — view-switchers over one model, like the Estate's.
+  `governance`, view-switchers over one model, like the Estate's.
 - `version`: the catalogue version browsed; absent means the active one.
-- `stability`, `signal`: the browse filters — together they filter on the
+- `stability`, `signal`: the browse filters. Together they filter on the
   named signal at the named level.
 - `team` (palette view): the team whose effective palette shows; absent
   means the signed-in user's team.
 - `request`: a `class/type` entry prefilling a Grant draft in the
-  governance view — the browse-and-request door from a non-allowed
+  governance view, the browse-and-request door from a non-allowed
   palette row (ADR-0042 §1).
 - `tour`, `step`: the running guided Tour and the Step within it, one-based
   (ADR-0051 §3). Both ride at the root beside `lens`, so a Tour survives a

@@ -4,14 +4,14 @@ import type { CollectorRow, Selector } from '../api/types'
 // console synthesises policy from observed state, bounded to draft input
 // reviewed under the impact-preview machinery. Herd-first: the suggestion
 // is computed over a selected population, generalising over the identity
-// attributes its members share — and never enumerating instance ids. The
+// attributes its members share, and never enumerating instance ids. The
 // fixture backend enforces the same rule server-side (tools/claims.mjs);
 // this module is what makes enumeration inexpressible in the UI.
 
 /**
  * Attribute keys that name one instance, never a population. The
  * generaliser drops them before suggesting, so a selector built here
- * cannot enumerate — and the server refuses them independently.
+ * cannot enumerate, and the server refuses them independently.
  */
 export const INSTANCE_KEYS: ReadonlySet<string> = new Set([
   'service.instance.id',
@@ -24,7 +24,7 @@ export const INSTANCE_KEYS: ReadonlySet<string> = new Set([
 /**
  * The suggested selector: every identity attribute the whole herd agrees
  * on, instance-naming keys dropped. The user constrains this by removing
- * pairs — widening, never enumerating (ADR-0042 §6).
+ * pairs: widening, never enumerating (ADR-0042 §6).
  */
 export function suggestSelector(herd: CollectorRow[]): Selector {
   const [first, ...rest] = herd

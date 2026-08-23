@@ -18,20 +18,20 @@ import (
 	"github.com/open-telemetry/opamp-go/server/types"
 )
 
-// DefaultFetchInterval is the default repo-snapshot poll — the bounded
+// DefaultFetchInterval is the default repo-snapshot poll: the bounded
 // staleness of ADR-0032 §1, and with the webhook fast-path not yet built,
 // the one freshness knob: "why is my merge not live yet" has a one-line
 // answer.
 const DefaultFetchInterval = 30 * time.Second
 
 // serverCapabilities is what this server offers on every response: it
-// accepts status, offers remote config, and accepts effective config —
+// accepts status, offers remote config, and accepts effective config, and
 // nothing more, because it stores nothing more (ADR-0013).
 const serverCapabilities = uint64(protobufs.ServerCapabilities_ServerCapabilities_AcceptsStatus |
 	protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig |
 	protobufs.ServerCapabilities_ServerCapabilities_AcceptsEffectiveConfig)
 
-// Tap observes the serving wire for readers off the serving path — the
+// Tap observes the serving wire for readers off the serving path; the
 // OpAMP-direct EstateProvider (ADR-0008) is the intended tap. The server
 // calls Report for every message a collector sends, passing the identity
 // attributes it flattened for matching (nil when the message carried no
@@ -69,18 +69,18 @@ type Config struct {
 	Logf func(format string, args ...any)
 
 	// Tap, when non-nil, observes every collector message and connection
-	// close — the door the OpAMP-direct EstateProvider reads through
+	// close, the way the OpAMP-direct EstateProvider reads through
 	// (ADR-0008). The serving decision is unaffected by it.
 	Tap Tap
 }
 
 // Server is the stateless OpAMP server (REQ-040): wiring plus the two
-// caches of ADR-0032's closed list, and deliberately nothing else — any
+// caches of ADR-0032's closed list, and nothing else. Any
 // field added under "storage" below must be derivable from git plus live
 // connections, or it is a design regression requiring an ADR-0032
 // amendment. TestStorageInventoryIsTheClosedList holds this shape.
 type Server struct {
-	// Wiring — configuration and the wire listener, no collector data.
+	// Wiring: configuration and the wire listener, no collector data.
 	source      Source
 	listen      string
 	interval    time.Duration
@@ -91,11 +91,11 @@ type Server struct {
 	refreshDone chan struct{}
 
 	// Storage, the closed list (ADR-0032 §1):
-	//   1. the repo snapshot at last-known head — loss is a re-fetch;
+	//   1. the repo snapshot at last-known head; loss is a re-fetch;
 	snapshot atomic.Pointer[Snapshot]
 	//   2. the per-connection layer-1 digest of the last-reported
 	//      effective config (ADR-0005), keyed by connection, dying with
-	//      it — loss is one extra parse on reconnect;
+	//      it; loss is one extra parse on reconnect;
 	digests sync.Map // types.Connection → [sha256.Size]byte
 	//   3. nothing else.
 }
@@ -103,7 +103,7 @@ type Server struct {
 // New builds a Server. Nothing is fetched or opened until Start.
 func New(cfg Config) (*Server, error) {
 	if cfg.Source == nil {
-		return nil, errors.New("no source — the server is stateless transport over a repo snapshot, so a source is what it serves (ADR-0013)")
+		return nil, errors.New("no source: the server needs an estate repository to serve")
 	}
 	if cfg.ListenEndpoint == "" {
 		return nil, errors.New("no listen endpoint")
@@ -125,7 +125,7 @@ func New(cfg Config) (*Server, error) {
 	return s, nil
 }
 
-// Start takes the initial snapshot — serving cannot begin without one —
+// Start takes the initial snapshot (serving cannot begin without one),
 // then opens the OpAMP endpoint and begins the refresh poll. It returns
 // once the listener is accepting connections.
 func (s *Server) Start(ctx context.Context) error {
@@ -227,7 +227,7 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 		// Stateless means no per-connection attribute memory (ADR-0032):
 		// a message without the description cannot be matched, so ask for
 		// full state. Any effective config riding this message is
-		// deliberately not digested — a report the server cannot act on is
+		// deliberately not digested, because a report the server cannot act on is
 		// not remembered, and the full-state re-report arrives with the
 		// description.
 		resp.Flags = uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState)
@@ -240,8 +240,8 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 		digest := digestOf(ec)
 		if prev, ok := s.digests.Load(conn); !ok || prev != digest {
 			// Layer 1 changed: the one-parse-per-changed-collector moment
-			// (ADR-0005 layer 2). The delivery status — Intended ×
-			// Effective under the served path's profile (ADR-0004) — is
+			// (ADR-0005 layer 2). The delivery status (Intended ×
+			// Effective under the served path's profile, ADR-0004) is
 			// computed here and logged, never stored; the digest itself is
 			// all that is kept.
 			s.digests.Store(conn, digest)
@@ -269,7 +269,7 @@ func (s *Server) onMessage(_ context.Context, conn types.Connection, msg *protob
 }
 
 // onConnectionClose is where the second cache honours its lifetime: the
-// digest dies with the connection (ADR-0032 §1) — and any tap learns its
+// digest dies with the connection (ADR-0032 §1), and any tap learns its
 // own per-connection holdings are now about a collector gone quiet.
 func (s *Server) onConnectionClose(conn types.Connection) {
 	s.digests.Delete(conn)
@@ -279,12 +279,12 @@ func (s *Server) onConnectionClose(conn types.Connection) {
 }
 
 // remoteConfig wraps one rendered artefact for the wire, refusing an empty
-// body outright — the never-serve-empty rule in its one enforceable place
+// body outright: the never-serve-empty rule in its one enforceable place
 // (REQ-042, ADR-0010 rule 6). The config hash is the artefact digest, so
 // an unchanged artefact round-trips as "already applied".
 func remoteConfig(artefact []byte) (*protobufs.AgentRemoteConfig, error) {
 	if len(bytes.TrimSpace(artefact)) == 0 {
-		return nil, errors.New("the artefact is empty — an empty config map applied cleanly is silent nothing (ADR-0010 rule 6)")
+		return nil, errors.New("the artefact is empty, and the server never serves an empty config map")
 	}
 	hash := sha256.Sum256(artefact)
 	return &protobufs.AgentRemoteConfig{
@@ -299,7 +299,7 @@ func remoteConfig(artefact []byte) (*protobufs.AgentRemoteConfig, error) {
 
 // attributesOf flattens the reported description to the string attributes
 // selectors match on. Identifying attributes win a key collision; only
-// string values participate — a selector is string equality (ADR-0007).
+// string values participate, because a selector is string equality (ADR-0007).
 func attributesOf(desc *protobufs.AgentDescription) map[string]string {
 	out := map[string]string{}
 	add := func(kvs []*protobufs.KeyValue) {
@@ -316,7 +316,7 @@ func attributesOf(desc *protobufs.AgentDescription) map[string]string {
 
 // digestOf computes the layer-1 digest: raw bytes of the reported
 // effective-config map, keys in sorted order so the digest is a function
-// of content alone (ADR-0005 layer 1 — one hash, no parse).
+// of content alone (ADR-0005 layer 1: one hash, no parse).
 func digestOf(ec *protobufs.EffectiveConfig) [sha256.Size]byte {
 	files := ec.GetConfigMap().GetConfigMap()
 	keys := make([]string, 0, len(files))

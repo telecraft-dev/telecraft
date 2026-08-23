@@ -12,14 +12,14 @@ they build from has moved.
 
 | Workflow | Fires on | Does |
 |---|---|---|
-| `ci.yml` | every pull request, and every push to `main` | Builds, tests and lints — the checks review waits for |
+| `ci.yml` | every pull request, and every push to `main` | Builds, tests and lints: the checks review waits for |
 | `release.yml` | a `v*` tag | Publishes the release and the design artefacts |
 | `demo-dispatch.yml` | a `v*` tag, or a manual run | Moves the `release` pointer and asks the demo to rebuild |
 | `docs-dispatch.yml` | a push to `main` touching `docs/**` | Asks telecraft.dev to rebuild the documentation |
 
 Nothing here deploys the product. Telecraft has no hosted instance to
-deploy to: an adopter runs it themselves, and the two public surfaces —
-[demo.telecraft.dev](https://demo.telecraft.dev) and telecraft.dev — are
+deploy to: an adopter runs it themselves, and the two public surfaces,
+[demo.telecraft.dev](https://demo.telecraft.dev) and telecraft.dev, are
 built by the repositories that own them, from a ref this one publishes.
 
 ## What decides which jobs run
@@ -31,7 +31,7 @@ them.
 | Output | True when the change touches |
 |---|---|
 | `code` | anything that is not `docs/**`, `README.md`, or `docs-dispatch.yml` |
-| `console` | `console/**`, `internal/console/**`, or `ci.yml` itself — and otherwise inherits `code` |
+| `console` | `console/**`, `internal/console/**`, or `ci.yml` itself, and otherwise inherits `code` |
 
 The reason is cost rather than tidiness. The live suites stand up a real
 Elasticsearch and open real pull requests against a fixture repository;
@@ -48,7 +48,7 @@ check reads the published pages, and it exists because **the site is built
 in a different repository** (issue #74): the front matter and
 `docs/nav.yaml` are the whole contract between here and there, so a block
 that does not parse fails over there, after merge, in a build nobody here
-is watching. That is not hypothetical — `docs/reference/estate-layout.md`
+is watching. That is not hypothetical: `docs/reference/estate-layout.md`
 carried an unquoted colon in its description and took the whole
 documentation build down. The tracked-executable check reads the index, so
 its subject is not a language at all: a build artefact committed beside a
@@ -76,10 +76,10 @@ Two details worth knowing before you rely on this:
 |---|---|---|
 | What changed | a diff against the base | Nothing. It decides what the rest of the table does |
 | Vendor-word lint (ADR-0001) | `go run ./tools/vendorlint` | The neutral core holds: no vendor word in `cmd/`, `internal/`, `console/` or the normative docs, and provider implementations stay product-qualified |
-| Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the site can read — the contract between this repository and the site built from it |
+| Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the site can read, the contract between this repository and the site built from it |
 | No tracked binaries (issue #122) | `go run ./tools/binlint` | No tracked file is a compiled executable. Build artefacts are built, never committed, and never shipped in a clone or a source tarball |
 | Go formatting (issue #146) | `go run ./tools/fmtlint` | Every tracked Go file is `gofmt` clean, and the ones that are not are named |
-| Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests — with no Docker and no network |
+| Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests, with no Docker and no network |
 | TelemetryProvider live | the `Live` suite against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only a test double |
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
 | Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling |
@@ -142,7 +142,7 @@ every token against the ground it sits on, measures the severity triad
 under simulated deuteranopia and protanopia, and enforces the rule that
 every colour is defined in exactly two blocks and never inside a media
 query. Before it existed, `docs/branding/design-system.md` recorded the
-method and the expected values — and the documented palette turned out not
+method and the expected values, and the documented palette turned out not
 to clear its own floors, which is precisely the failure a document cannot
 catch.
 
@@ -159,8 +159,8 @@ reasoning for it.
 ## The live suites, and why they can be green without credentials
 
 Both live jobs follow the conformance-kit discipline of ADR-0036: **absent
-credentials never fail a suite.** The Forge suite skips loudly — printing
-what it would have needed — when the `FORGE_*` secrets are not exposed, so
+credentials never fail a suite.** The Forge suite skips loudly, printing
+what it would have needed, when the `FORGE_*` secrets are not exposed, so
 a fork's pull request stays green rather than failing on something the
 contributor cannot provide.
 
@@ -175,7 +175,7 @@ the Elasticsearch suite wants.
 
 ## Reproducing a failure locally
 
-Every check is a command you can run yourself — there is nothing CI does
+Every check is a command you can run yourself: there is nothing CI does
 that the repository cannot.
 
 ```sh
@@ -196,7 +196,7 @@ If `npm run e2e` fails on a missing browser, `npx playwright install
 chromium` fetches it. **Do not add `--with-deps`.** CI leaves it off on
 purpose: it shells out to `apt-get` against the Ubuntu mirrors, and
 measured over three consecutive runs it cost 138s, 362s, and then hung
-past 25 minutes — against 14s for the suite it exists to enable. The
+past 25 minutes, against 14s for the suite it exists to enable. The
 GitHub-hosted image already ships the shared libraries Chromium needs, and
 a missing library fails the next step immediately with its name, which is
 a better failure than a hang.
@@ -214,7 +214,7 @@ else (see [writing documentation](documentation.md)).
 
 **The demo.** `demo-dispatch.yml` fires on a `v*` tag, not on a push, so
 the demo builds from a release and a bug on `main` cannot reach it
-(ADR-0049 §4, issue #86). Between releases the demo lags, deliberately —
+(ADR-0049 §4, issue #86). Between releases the demo lags, deliberately:
 there is no staging site, because `ci.yml`'s demo job already builds the
 snapshot and the demo bundle on every pull request that touches them, and
 a staging site would be a second deployment and a second public claim to
@@ -222,8 +222,8 @@ catch what CI catches first.
 
 The ref the demo checks out is a **moving `release` tag** rather than a
 version. That is not the obvious design and it is worth understanding
-before changing it: `estate-demo` builds on three events — a push to its
-own estate, a manual run, and the dispatch — and only the manual run can
+before changing it: `estate-demo` builds on three events (a push to its
+own estate, a manual run, and the dispatch) and only the manual run can
 carry a ref. Whatever its fallback names is therefore the pin for *all
 three*, so a ref travelling in the dispatch payload would mean an estate
 content push building against something else, and which platform version
@@ -234,7 +234,7 @@ So `demo-dispatch.yml` reads a tag and reaches one of three conclusions:
 | Tag | Pointer | Demo |
 |---|---|---|
 | the newest stable version | moves to it | rebuilds |
-| an older stable version | unmoved | unchanged — a fix on an older line must not drag the demo backwards |
+| an older stable version | unmoved | unchanged: a fix on an older line must not drag the demo backwards |
 | a pre-release (`v0.1.0-rc.1`) | unmoved | unchanged |
 
 That third row is what makes the release path rehearsable: a pre-release
@@ -277,6 +277,6 @@ against their own new definition rather than the previous one.
 Workflows in this repository carry their reasoning in comments, at more
 length than is usual. That is deliberate: a CI file is read most often by
 someone under time pressure trying to understand why it is failing, and
-the decisions in these files — the missing `--with-deps`, the skipped-is-
-success gating, the moving pointer — all look like mistakes until the
+the decisions in these files (the missing `--with-deps`, the skipped-is-
+success gating, the moving pointer) all look like mistakes until the
 reason is at hand. Keep that up in anything you add.

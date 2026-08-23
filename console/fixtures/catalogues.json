@@ -1,5 +1,5 @@
 {
-  "_comment": "The installed catalogues the fixture backend serves (ADR-0020 §9: retained per-version, never replaced). Two collector releases sit side by side so version browsing and upgrade diffs are exercisable: v0.158.0 is active; v0.155.0 shows the earlier reality — the span_metrics connector under its old spanmetrics name, the opencensus exporter not yet deprecated, filelog still alpha on logs, and no adopter entry yet. Entries carry identity, per-signal stability and lifecycle only — config field schemas are out of scope upstream (ADR-0020 §1).",
+  "_comment": "The installed catalogues the fixture backend serves (ADR-0020 §9: retained per-version, never replaced). Two collector releases sit side by side so version browsing and upgrade diffs are exercisable: v0.158.0 is active; v0.155.0 shows the earlier reality: the span_metrics connector under its old spanmetrics name, the opencensus exporter not yet deprecated, filelog still alpha on logs, and no adopter entry yet. Entries carry identity, per-signal stability and lifecycle only; config field schemas are out of scope upstream (ADR-0020 §1).",
   "active": "v0.158.0",
   "versions": [
     {

@@ -1,4 +1,4 @@
-# Edge collector on Kubernetes — shape taken from the live PoC evidence
+# Edge collector on Kubernetes, shape taken from the live PoC evidence
 # (ticket 06 pipeline fingerprint). This is the "rendered" side.
 receivers:
   filelog/containers:

@@ -9,20 +9,20 @@ import (
 	"time"
 )
 
-// RenderFunc produces the rendered artefacts a change implies — the call
+// RenderFunc produces the rendered artefacts a change implies: the call
 // the render-in-PR bot makes on every push (ADR-0028 §1). The returned map
 // is repository-relative paths to full contents, exactly the shape
 // Change.Files takes.
 //
 // Two failure modes are distinct and must stay so (ADR-0028 §6): a
-// *Refusal means the render refused the change — mechanical invalidity or
-// the one allow-list hard block (ADR-0022 §3) — and no amount of retrying
+// *Refusal means the render refused the change (mechanical invalidity or
+// the one allow-list hard block, ADR-0022 §3) and no amount of retrying
 // changes the answer; any other error is the renderer being unavailable,
 // which retry with backoff may ride out.
 type RenderFunc func(ctx context.Context) (map[string][]byte, error)
 
 // Refusal is a render that refused: the rendered tree cannot be produced
-// from this change, so the proposal must not open — block-at-render is
+// from this change, so the proposal must not open: block-at-render is
 // block-at-merge (ADR-0028 §3).
 type Refusal struct {
 	Reason string
@@ -55,12 +55,12 @@ const (
 // Submit is the render-in-PR submission flow (ADR-0028 §1): render the
 // change fail-closed, merge the rendered artefacts into it, stamp the
 // attribution footer, and propose it through the forge. The proposal that
-// opens carries the authored change plus the bot-refreshed rendered diffs —
+// opens carries the authored change plus the bot-refreshed rendered diffs, so
 // reviewers judge the blast radius, never approve blind.
 //
 // Fail closed means no proposal without a rendered tree: a *Refusal from
-// render returns immediately — a refused render is red however often it is
-// re-run; any other render error is retried with bounded backoff, and when
+// render returns immediately (a refused render is red however often it is
+// re-run); any other render error is retried with bounded backoff, and when
 // the renderer stays unavailable Submit returns the error and proposes
 // nothing (ADR-0028 §6). Retry across calls is the branch: proposing the
 // same Change.Branch again refreshes the existing proposal, so a fixed
@@ -91,8 +91,8 @@ func Submit(ctx context.Context, f Forge, change Change, render RenderFunc, retr
 func validate(change Change) error {
 	if change.Author.Name == "" || change.Author.Email == "" {
 		// An unattributable change is the shared-account failure ADR-0014
-		// exists to prevent — refused here, not defaulted to a bot.
-		return errors.New("submit: change carries no acting human (ADR-0014): author name and email are required")
+		// exists to prevent: refused here, not defaulted to a bot.
+		return errors.New("submit: the change names no author: an author name and email are required")
 	}
 	if change.Branch == "" {
 		return errors.New("submit: change names no branch")
@@ -102,18 +102,18 @@ func validate(change Change) error {
 	}
 	for _, path := range sortedPaths(change.Files) {
 		if path == "rendered" || strings.HasPrefix(path, "rendered/") {
-			return fmt.Errorf("submit: authored file %q sits under the protected rendered/ tree — humans never commit there (ADR-0028 §2)", path)
+			return fmt.Errorf("submit: authored file %q sits under the rendered/ tree, which only the renderer writes to", path)
 		}
 	}
 	return nil
 }
 
 // renderClosed runs the render with bounded backoff. A *Refusal fails
-// immediately; exhausting the attempts fails closed with the last error —
+// immediately; exhausting the attempts fails closed with the last error:
 // the caller gets no proposal either way (ADR-0028 §6).
 func renderClosed(ctx context.Context, render RenderFunc, retry Retry) (map[string][]byte, error) {
 	if render == nil {
-		return nil, errors.New("submit: no renderer wired — a proposal without a rendered tree would break the main-is-always-consistent invariant (ADR-0028 §2)")
+		return nil, errors.New("submit: no renderer wired, and no proposal can open without a rendered tree")
 	}
 	attempts := retry.Attempts
 	if attempts <= 0 {
@@ -132,7 +132,7 @@ func renderClosed(ctx context.Context, render RenderFunc, retry Retry) (map[stri
 		}
 		var refusal *Refusal
 		if errors.As(err, &refusal) {
-			return nil, fmt.Errorf("submit: fail closed, no proposal (ADR-0028 §3): %w", err)
+			return nil, fmt.Errorf("submit: no proposal opened: %w", err)
 		}
 		last = err
 		if attempt == attempts || ctx.Err() != nil {
@@ -141,7 +141,7 @@ func renderClosed(ctx context.Context, render RenderFunc, retry Retry) (map[stri
 		wait(ctx, backoff, retry.Sleep)
 		backoff *= 2
 	}
-	return nil, fmt.Errorf("submit: render unavailable after %d attempts, fail closed, no proposal (ADR-0028 §6): %w", attempts, last)
+	return nil, fmt.Errorf("submit: the renderer was unavailable after %d attempts, so no proposal opened: %w", attempts, last)
 }
 
 func wait(ctx context.Context, d time.Duration, sleep func(time.Duration)) {
@@ -159,7 +159,7 @@ func wait(ctx context.Context, d time.Duration, sleep func(time.Duration)) {
 
 // merge lays the rendered artefacts over the authored files. A collision
 // is refused: a generated projection with an authored double would make
-// the committed file nobody's source (ADR-0028 §4 — projections are
+// the committed file nobody's source (ADR-0028 §4: projections are
 // caches, humans edit the sources).
 func merge(authored, rendered map[string][]byte) (map[string][]byte, error) {
 	out := make(map[string][]byte, len(authored)+len(rendered))
@@ -168,7 +168,7 @@ func merge(authored, rendered map[string][]byte) (map[string][]byte, error) {
 	}
 	for _, path := range sortedPaths(rendered) {
 		if _, clash := out[path]; clash {
-			return nil, fmt.Errorf("submit: authored file %q collides with a generated projection — the generated file is a cache, edit its source instead (ADR-0028 §4)", path)
+			return nil, fmt.Errorf("submit: authored file %q collides with a generated file. Edit its source instead", path)
 		}
 		out[path] = rendered[path]
 	}
@@ -183,7 +183,7 @@ func withAttribution(body string, author Identity, forgeName string) string {
 	if author.Handle != "" {
 		who = fmt.Sprintf("%s (@%s)", who, author.Handle)
 	}
-	footer := fmt.Sprintf("Proposed by %s via %s; the commits attribute this change to them (ADR-0014).", who, forgeName)
+	footer := fmt.Sprintf("Proposed by %s via %s. The commits attribute this change to them.", who, forgeName)
 	if body == "" {
 		return footer
 	}

@@ -23,12 +23,12 @@ import { Button, buttonClass } from '../../ui/Button'
 
 /**
  * The Compose Workspace (ADR-0043): three surfaces over the one open
- * Blueprint — A · Composer, B · Requirement-first, D · Node canvas —
+ * Blueprint (A · Composer, B · Requirement-first, D · Node canvas),
  * switched without losing state, with the read-only YAML flyout resident on
  * all three (REQ-035). One validation engine re-judges every interaction
  * (ADR-0022): the workspace holds the draft and the verdict; the surfaces
  * are projections. The exit is a change proposal through the forge adapter
- * (ADR-0028) — save proposes, the PR decides; the console never writes
+ * (ADR-0028): save proposes, the PR decides; the console never writes
  * live state.
  *
  * Whether a Blueprint is yours to author is the ownership tree's answer,
@@ -212,22 +212,23 @@ function Workspace({
           <p>
             Claiming into new Tier <span className="mono">{claim.tier}</span> (
             {claim.environment}, owned by {claim.team}) with selector{' '}
-            <code data-testid="claim-banner-selector">{formatSelector(claim.selector)}</code>{' '}
-            — generalised over the herd&rsquo;s shared identity attributes, never a list of
-            instance ids. Save proposes the Tier binding beside this Blueprint as one PR.
+            <code data-testid="claim-banner-selector">{formatSelector(claim.selector)}</code>.
+            The selector is built from the identity attributes the collectors share, never a
+            list of instance ids. Save proposes the Tier binding and this Blueprint as one pull
+            request.
           </p>
         </div>
       )}
 
-      {/* Ownership decides the affordance (ADR-0019 §2): honest either way. */}
+      {/* Ownership decides the affordance (ADR-0019 §2): the surface says which it is. */}
       {me &&
         (editable ? (
           <p className="authoring editable" data-testid="compose-authoring">
-            Yours to author: {doc.team} is in your remit.
+            You can edit this Blueprint: {doc.team} is one of your teams.
           </p>
         ) : (
           <p className="authoring readonly" data-testid="compose-authoring">
-            Read-only: owned by {doc.team}. Changes route through its owners.
+            Read-only: {doc.team} owns this Blueprint. Ask its owners for changes.
           </p>
         ))}
 
@@ -236,9 +237,9 @@ function Workspace({
           {blocked && (
             <div className="save-blocked" data-testid="save-blocked">
               <p>
-                <strong>Save is disabled</strong> — {verdict.data?.save.reasons.join('; ')}. The
-                allow-list violation is the one rule that blocks (ADR-0022 §3); everything else
-                stays a finding.
+                <strong>Save is disabled</strong>: {verdict.data?.save.reasons.join('; ')}. An
+                allow-list violation is the only finding that blocks a save. Every other finding
+                is advisory.
               </p>
               <Link
                 to="/catalogue"
@@ -256,7 +257,7 @@ function Workspace({
             disabled={blocked || proposal.isPending || verdict.data === undefined}
             onClick={() => proposal.mutate()}
           >
-            Save — propose v{proposed.version} as a PR
+            Save: propose v{proposed.version} as a pull request
           </Button>
           {proposal.isError && (
             <p className="save-error" data-testid="save-error">
@@ -270,12 +271,11 @@ function Workspace({
                 <a href={proposal.data.url} data-testid="proposal-url">
                   {proposal.data.id}
                 </a>{' '}
-                opened on branch <code data-testid="proposal-branch">{proposal.data.branch}</code>{' '}
-                through the forge adapter, render-in-PR (ADR-0028) — the console proposes, the PR
-                decides.
+                opened on branch <code data-testid="proposal-branch">{proposal.data.branch}</code>.
+                The pull request carries the rendered configuration, and its review decides.
               </p>
               <p className="item-meta" data-testid="proposal-attribution">
-                Attributed to {proposal.data.attributedTo} (ADR-0014).
+                Attributed to {proposal.data.attributedTo}.
               </p>
             </div>
           )}
@@ -283,7 +283,7 @@ function Workspace({
       )}
 
       <div className="compose-work">
-        {/* Click-off closes the resident flyout without swallowing the click (P1 verdict). */}
+        {/* Click-off closes the resident flyout without swallowing the click. */}
         <div
           className="compose-surface"
           onClickCapture={yamlOpen ? closeYaml : undefined}

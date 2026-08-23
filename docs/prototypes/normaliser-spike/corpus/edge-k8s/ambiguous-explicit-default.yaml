@@ -1,7 +1,7 @@
 # ADR-0005 lists "explicit defaults" as cosmetic: batch's documented defaults
 # (send_batch_size 8192, timeout 200ms) written out explicitly vs `batch: {}`.
-# The spike expects this NOT to agree without component-schema knowledge —
-# named `ambiguous-` rather than `variant-` because whether it SHOULD agree
+# The spike expects this NOT to agree without component-schema knowledge.
+# It is named `ambiguous-` rather than `variant-` because whether it SHOULD agree
 # is a verdict question, not a fixture assertion. See VERDICT.md finding F-2.
 receivers:
   filelog/containers:

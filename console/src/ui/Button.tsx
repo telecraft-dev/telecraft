@@ -2,8 +2,8 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 /**
  * One button, three tones. Before this there were nine near-identical
- * button rules in `app.css` — the jump trigger, the trace button, the YAML
- * toggle, the propose button, sign-out, save, and three text buttons — each
+ * button rules in `app.css` (the jump trigger, the trace button, the YAML
+ * toggle, the propose button, sign-out, save, and three text buttons), each
  * re-deciding its own padding, border and radius. They are one thing.
  *
  * The tones are structural, not chromatic, because the accent is contrast
@@ -15,7 +15,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
  *              its underline, never by a colour of its own.
  *
  * `buttonClass` exists because roughly half of these are links rather than
- * buttons — a who-acts chip routes, it does not act — and a link must stay
+ * buttons (a who-acts chip routes, it does not act) and a link must stay
  * an anchor. Same class, same look, right element.
  *
  * Every who-acts control in the console is `buttonClass('secondary',

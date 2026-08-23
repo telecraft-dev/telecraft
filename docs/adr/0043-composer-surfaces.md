@@ -1,4 +1,4 @@
-# ADR-0043: The composer — three surfaces, one Blueprint, one engine
+# ADR-0043: The composer: three surfaces, one Blueprint, one engine
 
 - Status: accepted
 - Date: 2026-08-17 (session G7)
@@ -17,29 +17,29 @@ interaction rules G7 added.
 
 1. **Compose is three surfaces over the one open Blueprint**, switched
    without losing state (ADR-0042 §3.1):
-   - **A · Composer** — the primary editing surface: palette left
+   - **A · Composer**, the primary editing surface: palette left
      (Catalogue ∩ effective Allow-list, judged live), per-signal lanes
      right carrying floor chips, per-(component, signal) stability and
      per-lane targeted adds, findings as a full-width strip below.
-   - **B · Requirement-first** — the compliance overview: what this
+   - **B · Requirement-first**, the compliance overview: what this
      Service owes, coverage, one-click suggestion adds.
-   - **D · Node canvas** — the flow view, explicitly authoring-capable
+   - **D · Node canvas**, the flow view, explicitly authoring-capable
      (add/remove), rendered by the shared canvas engine (ADR-0044).
 2. **The YAML flyout is resident on all three**: the live rendered
    config, pushing the surface aside rather than covering it, click-off
-   to close, **read-only** — git is where hand edits belong (REQ-035).
+   to close, **read-only** (git is where hand edits belong, REQ-035).
 3. **One validation engine re-judges every interaction** (ADR-0022):
    palette entries allowed / greyed-with-reason / hidden-with-admitted-
    count; the single hard block (Save disabled + "request a Grant") kept
    visually different-in-kind from warnings; ordering guidance arrives as
    findings, never as a dedicated ordering UI (ADR-0024 dropped phases).
 4. **Three add gestures, one semantics**: click-add (adds to every
-   supported signal), per-lane targeted add, and **drag-authoring** —
-   dragging a palette component onto a lane or the D canvas, where the
-   drop target names the signal. Drag is a model edit; click-add remains
+   supported signal), per-lane targeted add, and **drag-authoring**
+   (dragging a palette component onto a lane or the D canvas, where the
+   drop target names the signal). Drag is a model edit; click-add remains
    the accessible baseline.
 5. **The environment toggle is the lens as evaluation context**
-   (ADR-0042 §4): switching re-runs the engine — floor findings clear or
+   (ADR-0042 §4): switching re-runs the engine. Floor findings clear or
    appear per Environment, deprecation and allow-list findings persist,
    exactly the P1-verified intuition.
 6. **Save proposes, the PR decides**: the composer's exit is a change

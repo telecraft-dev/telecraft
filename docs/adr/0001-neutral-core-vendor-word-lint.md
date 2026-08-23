@@ -7,7 +7,7 @@
 
 The platform must be backend-neutral to be a credible open-source project. The
 prior shaping work found this discipline decays unless it is mechanically
-checkable: the original codebase named a seam `FleetProvider` — a vendor
+checkable: the original codebase named a seam `FleetProvider`, a vendor
 product name inside the one package whose contract promises vendor neutrality.
 
 ## Decision
@@ -17,7 +17,7 @@ vendor-specific behaviour in the core is a design error.
 
 Naming rules, enforced by a lint over both code and docs:
 
-- **Seam (interface) names are domain terms only** — no vendor word appears in
+- **Seam (interface) names are domain terms only**. No vendor word appears in
   any interface definition: `EstateProvider`, `RegistryProvider`,
   `TelemetryProvider`.
 - **Implementations are fully qualified with the vendor's product**, never the
@@ -30,7 +30,7 @@ Naming rules, enforced by a lint over both code and docs:
 
 ## Consequences
 
-- Backend-agnosticism becomes greppable — a lint, not a habit. The lint ships
+- Backend-agnosticism becomes greppable: a lint, not a habit. The lint ships
   in Phase 0, before the code it checks.
 - Porting the prior conformance code requires renames (e.g. the
   `internal/provider/telemetry/elastic.go` implementation talks to

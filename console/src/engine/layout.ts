@@ -145,7 +145,7 @@ export function edgePath(edge: RoutedEdge): string {
 }
 
 /**
- * Routes a chain of nodes — a Path's Tiers in order — as one orthogonal
+ * Routes a chain of nodes (a Path's Tiers in order) as one orthogonal
  * polyline per consecutive pair, each nudged by `offset` so several traced
  * Paths stay visually distinct on shared corridors (ADR-0044 §4). A
  * single-node chain (a gateway on-ramp Path straight to one Tier,
