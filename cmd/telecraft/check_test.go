@@ -88,8 +88,14 @@ func TestCheckUsageErrors(t *testing.T) {
 	if code := run([]string{"conform"}, &stdout, &stderr); code != 2 {
 		t.Errorf("unknown subcommand: exit %d, want 2", code)
 	}
-	if code, _, msg := runCheckCmd(t); code != 2 || !strings.Contains(msg, "-library and -estate") {
-		t.Errorf("missing flags: exit %d, stderr %q — want 2 naming the flags", code, msg)
+	if code, _, msg := runCheckCmd(t); code != 2 || !strings.Contains(msg, "-library") {
+		t.Errorf("missing library: exit %d, stderr %q — want 2 naming the flag", code, msg)
+	}
+	if code, _, msg := runCheckCmd(t, "-library", t.TempDir()); code != 2 || !strings.Contains(msg, "-estate") {
+		t.Errorf("no estate and no derivation: exit %d, stderr %q — want 2 naming the flag", code, msg)
+	}
+	if code, _, msg := runCheckCmd(t, "-library", t.TempDir(), "-collectors", "collectors.yaml"); code != 2 || !strings.Contains(msg, "-source") {
+		t.Errorf("derivation without a topology: exit %d, stderr %q — want 2 saying which Tier answers is unknown", code, msg)
 	}
 }
 

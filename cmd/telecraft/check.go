@@ -15,6 +15,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/conformance"
 	"github.com/telecraft-dev/telecraft/internal/drift"
 	"github.com/telecraft-dev/telecraft/internal/ownership"
+	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
@@ -55,7 +56,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	library := fs.String("library", "", "requirements library directory (required)")
-	estatePath := fs.String("estate", "", "estate file — services and their per-environment effective config (required)")
+	estatePath := fs.String("estate", "", "estate file — services and their per-environment effective config (required unless -collectors derives them)")
+	collectors := fs.String("collectors", "", "recorded collector estate reading — derives each row's Effective reading from the collectors that report it, with -estate as the override (needs -source; ADR-0055)")
 	exemptionsDir := fs.String("exemptions", "", "exemptions directory — authored waivers (optional; ADR-0037)")
 	ownershipDir := fs.String("ownership", "", "estate ownership directory holding teams.yaml and the authored objects — needed only to resolve team-scoped exemptions")
 	source := fs.String("source", "", "authored estate root holding teams/ and rendered/ — enables library_drift detection (REQ-025; needs -catalogue)")
@@ -67,11 +69,23 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if *library == "" || *estatePath == "" {
-		fmt.Fprintln(stderr, "check: -library and -estate are required")
+	if *library == "" {
+		fmt.Fprintln(stderr, "check: -library is required")
 		return 2
 	}
-	if (*source == "") != (*artefact == "") {
+	if *estatePath == "" && *collectors == "" {
+		fmt.Fprintln(stderr, "check: -estate is required, unless -collectors derives each row's Effective reading instead (ADR-0055)")
+		return 2
+	}
+	if *collectors != "" && *source == "" {
+		fmt.Fprintln(stderr, "check: -collectors needs -source — the topology says which Tier answers for each row (ADR-0055 §1)")
+		return 2
+	}
+	if *artefact != "" && *source == "" {
+		fmt.Fprintln(stderr, "check: -catalogue needs -source — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
+		return 2
+	}
+	if *source != "" && *artefact == "" && *collectors == "" {
 		fmt.Fprintln(stderr, "check: -source and -catalogue go together — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
 		return 2
 	}
@@ -81,7 +95,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
 	}
-	estate, err := conformance.LoadEstate(*estatePath)
+	now := time.Now().UTC()
+	estate, err := resolveEstate(*estatePath, *collectors, *source, now)
 	if err != nil {
 		fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
@@ -90,7 +105,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	// The drift detection is pure repo judgement, so it runs — and fails
 	// closed — before any backend is touched.
 	var driftReport *drift.Report
-	if *source != "" {
+	if *source != "" && *artefact != "" {
 		rep, err := detectDrift(*source, *artefact, lib)
 		if err != nil {
 			fmt.Fprintf(stderr, "check: %v\n", err)
@@ -175,7 +190,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 
 	attrs := attributesIn(lib)
 	report := checkReport{
-		EvaluatedAt: time.Now().UTC(),
+		EvaluatedAt: now,
 		Provider:    tel.Name(),
 	}
 	for _, f := range lib.EnvironmentFindings(estate.Environments()) {
@@ -198,6 +213,22 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		if err := waivers.Apply(&verdict, row, report.EvaluatedAt); err != nil {
 			fmt.Fprintf(stderr, "check: %v\n", err)
 			return 2
+		}
+		if row.Overridden {
+			// An override is visible or it is worthless: the whole point
+			// of deriving the Effective leg is that nothing gets to assert
+			// a config no collector confirmed without saying so (ADR-0055
+			// §6).
+			reason := row.Reason
+			if reason == "" {
+				reason = "no reason stated"
+			}
+			report.Overrides = append(report.Overrides, overrideReport{
+				Service:     row.Service,
+				Environment: row.Environment,
+				Reason:      reason,
+			})
+			report.Summary.OverriddenRows++
 		}
 		rr := renderRow(verdict)
 		report.Rows = append(report.Rows, rr)
@@ -252,6 +283,47 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// resolveEstate produces the estate the run judges. With no -collectors it
+// is the authored file, exactly as it has always been. With -collectors the
+// Effective leg comes off the EstateProvider seam like every other reading
+// (ADR-0055): each row is answered by the collectors on the first Tier of
+// its Service's Path, and the authored file, when supplied, becomes the
+// override that wins where a human has stated a reason.
+//
+// Both inputs fail closed. An estate the run cannot read is exit 2, never a
+// run that judged fewer rows than the operator believes.
+func resolveEstate(estatePath, collectors, source string, now time.Time) (conformance.Estate, error) {
+	var authored conformance.Estate
+	var err error
+	if estatePath != "" {
+		if authored, err = conformance.LoadEstate(estatePath); err != nil {
+			return conformance.Estate{}, err
+		}
+	}
+	if collectors == "" {
+		return authored, nil
+	}
+
+	topo, err := renderer.LoadTopology(source)
+	if err != nil {
+		return conformance.Estate{}, err
+	}
+	recorded, err := estateprovider.NewRecorded(estateprovider.RecordedConfig{Path: collectors})
+	if err != nil {
+		return conformance.Estate{}, err
+	}
+	derived := conformance.Derive(conformance.Derivation{
+		Topology: topo,
+		Reading:  recorded.Estate(context.Background()),
+		Authored: authored,
+		Now:      now,
+	})
+	if len(derived.Rows) == 0 {
+		return conformance.Estate{}, fmt.Errorf("the topology under %s has no Service with a Path, so the derivation produced no rows — a gate judging nothing would pass vacuously (ADR-0055 §1)", source)
+	}
+	return derived, nil
 }
 
 // gatherEvidence reads the Observed evidence for one row: each distinct
@@ -341,7 +413,20 @@ type checkReport struct {
 	LibraryDrift []driftFindingReport `json:"library_drift,omitempty"`
 	Housekeeping []housekeepingReport `json:"housekeeping,omitempty"`
 
+	// Overrides names every row whose Effective reading came from the
+	// authored estate while a derived one was available, with the reason
+	// the author stated (ADR-0055 §6). Present only on a derived run: with
+	// no -collectors there is nothing to override.
+	Overrides []overrideReport `json:"overrides,omitempty"`
+
 	Summary summaryReport `json:"summary"`
+}
+
+// overrideReport is one authored row standing in front of a derived one.
+type overrideReport struct {
+	Service     string `json:"service"`
+	Environment string `json:"environment"`
+	Reason      string `json:"reason"`
 }
 
 // driftFindingReport is one library_drift finding: the facet slices the
@@ -418,6 +503,11 @@ type summaryReport struct {
 	CountingFailures int `json:"counting_failures"`
 	Waived           int `json:"waived"`
 	LibraryDrift     int `json:"library_drift"`
+
+	// OverriddenRows counts the rows an authored estate answered for while
+	// a derived reading was available, so a green built on overrides is
+	// visibly built on overrides (ADR-0055 §6).
+	OverriddenRows int `json:"overridden_rows"`
 }
 
 func renderRow(v conformance.Verdict) rowReport {
