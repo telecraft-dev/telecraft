@@ -8,7 +8,7 @@ on:
 jobs:
   # What changed decides what runs. A documentation-only pull request has no
   # business installing a browser or standing up Elasticsearch, and when the
-  # runners are slow that wait is the whole review latency. The three checks
+  # runners are slow that wait is the whole review latency. The four checks
   # below this job are the deliberate exceptions: each reads the whole tree
   # rather than the code in it, so a documentation-only change is exactly
   # the change that can break them. They carry no `if:` and run on
@@ -108,6 +108,37 @@ jobs:
         with:
           go-version: stable
       - run: go run ./tools/binlint
+
+  # The Go formatting check (issue #146). Ungated for a fourth reason: the
+  # tree holds Go that `code` calls documentation. `changes` sets `code`
+  # false for a branch touching only `docs/**`, and the normaliser spike
+  # under `docs/prototypes/` is Go in a module of its own, so gating this
+  # on `code` would leave the Go the build job never compiles unguarded as
+  # well. Formatting is a property of the tree rather than of
+  # a diff range, and the check costs a checkout and one `go run`, so there
+  # is nothing to buy by gating it.
+  #
+  # It exists because three test files sat unformatted for months and every
+  # check the repository had went green on all of them. `go build` and
+  # `go test` do not read layout, and `go vet` reports suspicious
+  # constructs rather than formatting, so an unformatted file passed
+  # everything.
+  #
+  # This is `go run ./tools/fmtlint` rather than a bare `gofmt -l .` step
+  # on purpose. `gofmt -l` exits 0 whether or not it names a file, so the
+  # obvious step is green while it prints the problem. The tool exits 1 on
+  # a finding, reads the index rather than the working tree, and carries a
+  # self-test that makes `go test ./...` fail on the next drift before it
+  # ever reaches a runner.
+  format-lint:
+    name: Go formatting (issue #146)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go run ./tools/fmtlint
 
   test:
     name: Build and test
