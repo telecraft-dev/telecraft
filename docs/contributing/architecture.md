@@ -70,7 +70,7 @@ Each seam package defines one interface and its vocabulary, and nothing else.
 | `internal/estate` | The EstateProvider seam: the collector estate in one call, keyed on the collector. Also the static capability declaration, the minimum populated set, and the staleness arithmetic that demotes an old reading before it can feed a verdict. |
 | `internal/inventory` | The InventoryProvider seam: given a Tier's selector, how many instances should match. Also the population findings the answer produces. |
 | `internal/forge` | The forge-adapter seam: a change is a branch, a message, an acting human and a set of file contents; a proposal is an opaque identifier and a URL. Implementations declare a static capability ladder. |
-| `internal/auth` | The authentication seam and the ownership-derived authorisation it feeds. Two flow shapes, password and redirect, cover every first-party provider. |
+| `internal/auth` | The authentication seam and the ownership-derived authorisation it feeds. Two flow shapes, password and redirect, cover every first-party provider. The redirect flow hands its provider two values per attempt, the CSRF state and a secret the browser never sees, and both ride the caller's signed cookie rather than a server-side store (ADR-0019, ADR-0013). |
 
 ### The authored model
 
