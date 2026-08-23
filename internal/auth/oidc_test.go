@@ -265,6 +265,79 @@ func TestOIDCCompleteRejectsBadTokens(t *testing.T) {
 	}
 }
 
+// Acceptance (issue #124): iat and nbf are judged when the token asserts
+// them, and the clock-skew allowance is what separates a token from an
+// issuer whose clock disagrees slightly from one that is genuinely invalid.
+func TestOIDCCompleteJudgesTheTimeClaimsWithinTheSkewAllowance(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+
+	// The allowance is bounded, which is what keeps it an allowance. A
+	// token whose expiry passed a minute ago stays refused.
+	if clockSkew <= 0 || clockSkew >= time.Minute {
+		t.Fatalf("clockSkew = %v, want a bounded allowance under a minute", clockSkew)
+	}
+
+	mutate := func(f func(map[string]any)) map[string]any {
+		c := idp.goodClaims(o.ClientID, "state-1")
+		f(c)
+		return c
+	}
+	// Just inside the allowance, and far outside it. The signing time is
+	// the moment the exchange runs, so both offsets are read against a
+	// clock that has moved on a little since the claims were built.
+	near, far := 10*time.Second, 10*time.Minute
+
+	refused := []struct {
+		name   string
+		claims map[string]any
+		want   string
+	}{
+		{"a token that is not valid yet", mutate(func(c map[string]any) {
+			c["nbf"] = time.Now().Add(far).Unix()
+		}), "not valid yet"},
+		{"a token issued in the future", mutate(func(c map[string]any) {
+			c["iat"] = time.Now().Add(far).Unix()
+		}), "issued in the future"},
+	}
+	for _, tc := range refused {
+		t.Run(tc.name, func(t *testing.T) {
+			idp.claims = tc.claims
+			_, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Complete = %v, want an error saying the token is %s", err, tc.want)
+			}
+		})
+	}
+
+	accepted := []struct {
+		name   string
+		claims map[string]any
+	}{
+		{"an nbf a little ahead of this clock", mutate(func(c map[string]any) {
+			c["nbf"] = time.Now().Add(near).Unix()
+		})},
+		{"an iat a little ahead of this clock", mutate(func(c map[string]any) {
+			c["iat"] = time.Now().Add(near).Unix()
+		})},
+		{"an exp a little behind this clock", mutate(func(c map[string]any) {
+			c["exp"] = time.Now().Add(-near).Unix()
+		})},
+		{"a token asserting neither iat nor nbf", mutate(func(c map[string]any) {
+			delete(c, "iat")
+			delete(c, "nbf")
+		})},
+	}
+	for _, tc := range accepted {
+		t.Run(tc.name, func(t *testing.T) {
+			idp.claims = tc.claims
+			if _, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}}); err != nil {
+				t.Fatalf("Complete refused %s: %v", tc.name, err)
+			}
+		})
+	}
+}
+
 func TestOIDCCompleteRejectsAForgedSignature(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
