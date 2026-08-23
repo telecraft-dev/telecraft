@@ -80,10 +80,15 @@ func TestArtefactPushesSelfTelemetry(t *testing.T) {
 		t.Errorf("%s = %v, want %s — the reading join is the (Tier, SHA) pair", CommitAttribute, got, fixtureCommit)
 	}
 
-	// The production Tier resolves the production override (ADR-0039 §2).
-	for _, signal := range []string{"metrics", "logs"} {
-		if ep := pushEndpoint(t, tel, signal); ep != "https://otlp-prod.observability.internal:4318" {
-			t.Errorf("%s push endpoint = %q, want the production override", signal, ep)
+	// The production Tier resolves the production override (ADR-0039 §2),
+	// and each block carries its own signal path: these exporters take the
+	// endpoint as the complete URL (ADR-0053 §1).
+	for signal, want := range map[string]string{
+		"metrics": "https://otlp-prod.observability.internal:4318/v1/metrics",
+		"logs":    "https://otlp-prod.observability.internal:4318/v1/logs",
+	} {
+		if ep := pushEndpoint(t, tel, signal); ep != want {
+			t.Errorf("%s push endpoint = %q, want %q — the production override with the signal path", signal, ep, want)
 		}
 	}
 	if _, ok := tel["traces"]; ok {
@@ -103,7 +108,7 @@ func TestSelfTelemetryResolvesPerTierEnvironment(t *testing.T) {
 		t.Fatal(err)
 	}
 	tel := telemetryBlock(t, doc)
-	if ep := pushEndpoint(t, tel, "metrics"); ep != "https://otlp.observability.internal:4318" {
+	if ep := pushEndpoint(t, tel, "metrics"); ep != "https://otlp.observability.internal:4318/v1/metrics" {
 		t.Errorf("staging push endpoint = %q, want the estate endpoint — staging declares no override", ep)
 	}
 }
@@ -121,7 +126,7 @@ func TestUnmatchedArtefactPushesSelfTelemetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	tel := telemetryBlock(t, doc)
-	if ep := pushEndpoint(t, tel, "logs"); ep != "https://otlp.observability.internal:4318" {
+	if ep := pushEndpoint(t, tel, "logs"); ep != "https://otlp.observability.internal:4318/v1/logs" {
 		t.Errorf("unmatched push endpoint = %q, want the estate endpoint — no Tier, no Environment", ep)
 	}
 	resource, _ := tel["resource"].(map[string]any)
@@ -169,6 +174,15 @@ func TestLoadSelfTelemetryFailsClosed(t *testing.T) {
 		"empty override":     "self_telemetry:\n  endpoint: https://x:4318\n  environments:\n    production: \"\"\n",
 		"unknown field":      "self_telemetry:\n  endpoint: https://x:4318\n  headers:\n    a: b\n",
 		"misspelled section": "self-telemetry:\n  endpoint: https://x:4318\n",
+		// The renderer appends the signal path, so an endpoint that
+		// carries one is refused at load rather than rendered into a
+		// doubled path nobody would ever see fail (ADR-0053 §2).
+		"endpoint carries a signal path":                 "self_telemetry:\n  endpoint: https://x:4318/v1/metrics\n",
+		"endpoint carries a signal path, trailing slash": "self_telemetry:\n  endpoint: https://x:4318/v1/logs/\n",
+		"override carries a signal path":                 "self_telemetry:\n  endpoint: https://x:4318\n  environments:\n    production: https://y:4318/v1/logs\n",
+		// v1 renders no internal traces, and an endpoint pointing at
+		// their path is still not a base endpoint.
+		"endpoint carries the traces path": "self_telemetry:\n  endpoint: https://x:4318/v1/traces\n",
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -180,5 +194,94 @@ func TestLoadSelfTelemetryFailsClosed(t *testing.T) {
 				t.Fatalf("loaded %q without error — the declaration fails closed", name)
 			}
 		})
+	}
+}
+
+// ADR-0053 §1: the exporters under service::telemetry take the endpoint as
+// the complete URL, so the renderer completes it per signal. §3: over grpc
+// there is no request path to complete, and appending one would name a
+// host that does not exist.
+func TestSelfTelemetrySignalEndpoint(t *testing.T) {
+	cases := []struct {
+		name             string
+		self             SelfTelemetry
+		environment      string
+		metrics, logging string
+	}{
+		{
+			name:    "http default appends the signal path",
+			self:    SelfTelemetry{Endpoint: "https://x:4318"},
+			metrics: "https://x:4318/v1/metrics",
+			logging: "https://x:4318/v1/logs",
+		},
+		{
+			name:    "a trailing slash does not double the separator",
+			self:    SelfTelemetry{Endpoint: "https://x:4318/otlp/"},
+			metrics: "https://x:4318/otlp/v1/metrics",
+			logging: "https://x:4318/otlp/v1/logs",
+		},
+		{
+			name:    "grpc takes the endpoint untouched",
+			self:    SelfTelemetry{Endpoint: "otlp.observability.internal:4317", Protocol: "grpc"},
+			metrics: "otlp.observability.internal:4317",
+			logging: "otlp.observability.internal:4317",
+		},
+		{
+			name:        "an Environment override is completed the same way",
+			self:        SelfTelemetry{Endpoint: "https://x:4318", Environments: map[string]string{"production": "https://prod:4318/otlp"}},
+			environment: "production",
+			metrics:     "https://prod:4318/otlp/v1/metrics",
+			logging:     "https://prod:4318/otlp/v1/logs",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := c.self.signalEndpoint(c.environment, "metrics"); got != c.metrics {
+				t.Errorf("metrics endpoint = %q, want %q", got, c.metrics)
+			}
+			if got := c.self.signalEndpoint(c.environment, "logs"); got != c.logging {
+				t.Errorf("logs endpoint = %q, want %q", got, c.logging)
+			}
+		})
+	}
+}
+
+// A grpc estate renders both blocks with the bare host and port: the
+// signal lives in the RPC method, not in a URL path (ADR-0053 §3).
+func TestGRPCSelfTelemetryRendersNoSignalPath(t *testing.T) {
+	in := fixtureInputs(t)
+	in.SelfTelemetry = SelfTelemetry{Endpoint: "otlp.observability.internal:4317", Protocol: "grpc"}
+	res, err := Render(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := yaml.Unmarshal(res.Artefacts[UnmatchedArtefactPath], &doc); err != nil {
+		t.Fatal(err)
+	}
+	tel := telemetryBlock(t, doc)
+	for _, signal := range []string{"metrics", "logs"} {
+		block, _ := tel[signal].(map[string]any)
+		var entries []any
+		if signal == "metrics" {
+			entries, _ = block["readers"].([]any)
+		} else {
+			entries, _ = block["processors"].([]any)
+		}
+		entry, _ := entries[0].(map[string]any)
+		var wrapped map[string]any
+		for _, key := range []string{"periodic", "batch"} {
+			if inner, ok := entry[key].(map[string]any); ok {
+				wrapped = inner
+			}
+		}
+		exporter, _ := wrapped["exporter"].(map[string]any)
+		otlp, _ := exporter["otlp"].(map[string]any)
+		if got := otlp["endpoint"]; got != "otlp.observability.internal:4317" {
+			t.Errorf("%s grpc push endpoint = %v, want the endpoint untouched", signal, got)
+		}
+		if got := otlp["protocol"]; got != "grpc" {
+			t.Errorf("%s push protocol = %v, want grpc", signal, got)
+		}
 	}
 }

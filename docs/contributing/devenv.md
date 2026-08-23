@@ -138,22 +138,16 @@ go run ./cmd/telecraft delivery \
   -path served
 ```
 
-### Two things that do not work yet
+### One thing that does not work yet
 
 The environment runs the real thing, so it shows you the real thing's gaps.
-Both of these are the environment working, not failing.
+This is the environment working, not failing.
 
 **Drift reads red on every collector.** A collector running exactly what it was
 served reports `drifted` with 77 changes, because it reports its fully
 defaulted configuration and the artefact is sparse. Real drift is in there, one
 line among many. See
 [issue #110](https://github.com/telecraft-dev/telecraft/issues/110).
-
-**Self-telemetry lands nowhere.** The collectors push their own metrics and
-logs to the estate's declared destination and get `405` on every attempt: one
-endpoint cannot address two signal paths. So the expectation band stays at
-`pending_settle`, and nothing downstream of ADR-0039's ingestion has run here.
-See [issue #109](https://github.com/telecraft-dev/telecraft/issues/109).
 
 The same estate answers `telecraft check`, against the live backend:
 

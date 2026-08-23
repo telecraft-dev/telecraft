@@ -80,18 +80,20 @@ service:
     # Self-telemetry pushes to the estate's declared destination over its
     # own exporter and connection — never through this Tier's own data
     # pipelines (REQ-053, ADR-0039 §2). Internal traces stay off in v1.
+    # These exporters take the endpoint as the complete URL, so the signal
+    # path is rendered in rather than appended at run time (ADR-0053).
     metrics:
       level: normal
       readers:
         - periodic:
             exporter:
               otlp:
-                endpoint: http://elasticsearch:9200/_otlp
+                endpoint: http://elasticsearch:9200/_otlp/v1/metrics
                 protocol: http/protobuf
     logs:
       processors:
         - batch:
             exporter:
               otlp:
-                endpoint: http://elasticsearch:9200/_otlp
+                endpoint: http://elasticsearch:9200/_otlp/v1/logs
                 protocol: http/protobuf

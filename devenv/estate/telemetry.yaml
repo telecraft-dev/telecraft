@@ -3,8 +3,9 @@
 # same place; a production estate points this somewhere the main path's
 # outage cannot also blind (see estate-demo, which splits them).
 #
-# The host resolves on the compose network, and the exporter appends the
-# signal path, so this becomes /_otlp/v1/metrics at run time.
+# The host resolves on the compose network. This is the base endpoint: the
+# renderer appends the signal path per block, so the artefact carries
+# /_otlp/v1/metrics and /_otlp/v1/logs (ADR-0053).
 self_telemetry:
   endpoint: http://elasticsearch:9200/_otlp
   protocol: http/protobuf
