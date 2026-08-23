@@ -4,12 +4,49 @@ import {
   createRouter,
   redirect,
 } from '@tanstack/react-router'
+import { lazy } from 'react'
 import { AuthGate } from './auth/AuthGate'
 import { AppShell } from './chrome/AppShell'
-import { Catalogue } from './surfaces/catalogue/Catalogue'
-import { Compose } from './surfaces/compose/Compose'
-import { Estate } from './surfaces/estate/Estate'
-import { Topology } from './surfaces/topology/Topology'
+
+// Each Workspace loads its own code (issue #125). The four Workspaces
+// (ADR-0042 §1) already meet at the router, so the router is where the
+// bundle divides: a Workspace reached through a dynamic import is a chunk
+// of its own, fetched on the navigation that first needs it.
+//
+// The reason to bother is the canvas engine's substrate. `@xyflow/react` is
+// the console's one substantial dependency (ADR-0045 §2), and only
+// Topology's flow canvas and Compose's node canvas draw with it. Split
+// here, it leaves the entry chunk that Estate and Catalogue also pay for,
+// and lands in a chunk those two Workspaces share.
+//
+// These are `React.lazy` rather than the router's own
+// `lazyRouteComponent`, and the difference is not cosmetic.
+// `lazyRouteComponent` hands the router a `preload()` the router calls on
+// every navigation, which keeps each match in its asynchronous loading path
+// even when the module has been in memory for minutes. In a console where
+// every surface state is a search param, that path is walked on each
+// keystroke of a filter and each tick of a checkbox, and the match renders
+// its pending state in between: the Workspace blanks and remounts, and a
+// controlled input reverts under the reader's hand. `React.lazy` resolves
+// once and renders synchronously afterwards, so only the first navigation
+// to a Workspace waits.
+//
+// The chunks are same-origin assets Vite emits into `dist/assets`, so
+// splitting takes nothing outside the origin and the zero-CDN rule is
+// untouched (ADR-0019, ADR-0045 §5). `tools/check-bundle-budget.mjs` holds
+// the entry chunk to a ceiling, so the split cannot quietly undo itself.
+const Estate = lazy(() =>
+  import('./surfaces/estate/Estate').then((m) => ({ default: m.Estate })),
+)
+const Topology = lazy(() =>
+  import('./surfaces/topology/Topology').then((m) => ({ default: m.Topology })),
+)
+const Compose = lazy(() =>
+  import('./surfaces/compose/Compose').then((m) => ({ default: m.Compose })),
+)
+const Catalogue = lazy(() =>
+  import('./surfaces/catalogue/Catalogue').then((m) => ({ default: m.Catalogue })),
+)
 
 // Every surface state is URL-addressable — workspace, selection, lens
 // (ADR-0042 §3.5): the search params below are that rule as a
