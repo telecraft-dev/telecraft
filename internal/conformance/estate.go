@@ -37,6 +37,20 @@ type EstateRow struct {
 	// zero mean no Grace Period ever applies to this Service.
 	Class     string
 	Onboarded time.Time
+
+	// Reason is why this row is authored rather than derived (ADR-0055 §6).
+	// The authored estate is an override, and an override says why: a
+	// Service the platform cannot see, or an estate with no live reading at
+	// all. Optional, and empty reads as "no reason stated" — never as
+	// nothing at all.
+	Reason string
+
+	// Overridden marks a row Derive took from the authored estate while a
+	// derived reading was available. Only Derive sets it: a plain
+	// LoadEstate has nothing to override, so every row there is simply the
+	// estate. Surfaces report it, so a green built on overrides is visibly
+	// built on overrides (ADR-0037's posture, ADR-0055 §6).
+	Overridden bool
 }
 
 // GraceEntry maps one Service Class to its onboarding window.
@@ -112,6 +126,7 @@ type estateFile struct {
 		Environments []struct {
 			Name      string     `yaml:"name"`
 			Pipelines []Pipeline `yaml:"pipelines"`
+			Reason    string     `yaml:"reason"`
 		} `yaml:"environments"`
 	} `yaml:"services"`
 }
@@ -211,6 +226,7 @@ func LoadEstate(path string) (Estate, error) {
 				Effective: Effective{Known: true, Pipelines: env.Pipelines},
 				Class:     svc.Class,
 				Onboarded: svc.Onboarded.Std(),
+				Reason:    env.Reason,
 			})
 		}
 	}
