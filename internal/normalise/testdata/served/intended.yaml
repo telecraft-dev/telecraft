@@ -1,0 +1,90 @@
+# The Intended side of issue #110: the rendered gateway artefact the
+# platform served, carried here from devenv/estate/rendered/platform/
+# gateway.yaml with its backend endpoint made neutral (ADR-0001).
+#
+# Sparse, because a human wrote the blueprint it came from. Every key here
+# is an assertion the estate makes; every key it does not mention is one it
+# does not (ADR-0054 §1).
+receivers:
+  otlp/otlp-in:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  attributes/telecraft.untrusted-hop:
+    actions:
+      - action: delete
+        pattern: ^telecraft\.
+  batch/batcher:
+    send_batch_size: 1024
+    timeout: 2s
+  memory_limiter/guard:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+exporters:
+  otlp_http/platform.backend-exporter:
+    compression: gzip
+    endpoint: http://backend.observability.svc.cluster.local:4318/_otlp
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 60s
+    sending_queue:
+      enabled: true
+      queue_size: 1000
+extensions:
+  health_check/health:
+    endpoint: 0.0.0.0:13133
+service:
+  extensions:
+    - health_check/health
+  pipelines:
+    traces:
+      receivers:
+        - otlp/otlp-in
+      processors:
+        - attributes/telecraft.untrusted-hop
+        - memory_limiter/guard
+        - batch/batcher
+      exporters:
+        - otlp_http/platform.backend-exporter
+    metrics:
+      receivers:
+        - otlp/otlp-in
+      processors:
+        - attributes/telecraft.untrusted-hop
+        - memory_limiter/guard
+        - batch/batcher
+      exporters:
+        - otlp_http/platform.backend-exporter
+    logs:
+      receivers:
+        - otlp/otlp-in
+      processors:
+        - attributes/telecraft.untrusted-hop
+        - memory_limiter/guard
+        - batch/batcher
+      exporters:
+        - otlp_http/platform.backend-exporter
+  telemetry:
+    resource:
+      k8s.node.name: ${env:TELECRAFT_NODE_NAME}
+      telecraft.commit: d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0
+      telecraft.tier: platform/gateway
+    metrics:
+      level: normal
+      readers:
+        - periodic:
+            exporter:
+              otlp:
+                endpoint: http://backend.observability.svc.cluster.local:4318/_otlp
+                protocol: http/protobuf
+    logs:
+      processors:
+        - batch:
+            exporter:
+              otlp:
+                endpoint: http://backend.observability.svc.cluster.local:4318/_otlp
+                protocol: http/protobuf
