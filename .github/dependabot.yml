@@ -1,0 +1,94 @@
+version: 2
+
+# Nothing else watches the dependencies (issue #127). The Go module has two
+# direct requirements beyond the standard library, the console has seven at
+# runtime, and the workflows pin their actions by major version. Today
+# `npm audit` is clean and the Go tree carries no known advisory, which is a
+# state to keep rather than one to rediscover in six months, and the tree is
+# small enough that keeping it is cheap.
+#
+# Everything below arrives as an ordinary pull request, so ci.yml runs the
+# full suite over it: the build, both lints, the console typecheck, the unit
+# tests and both browser suites. An update either goes green or names what it
+# broke, which is why these can be grouped without losing the reading.
+#
+# Grouped, because ungrouped is one pull request per dependency and a quiet
+# week upstream is still five or six of them, each spending its own CI run
+# and its own review. None of that traffic carries per-dependency
+# information: the bumps are almost all patch releases, and the question a
+# reviewer asks is whether the suite passes with all of them applied. One
+# pull request per ecosystem asks that question once. When a group does go
+# red, the reviewer reads which dependency the failure names and takes that
+# one out with an `ignore` entry or a manual bump, which is rarer than the
+# green weeks the grouping pays for.
+#
+# Weekly, because daily updates arrive faster than anyone here reviews them,
+# and an unreviewed Dependabot pull request gets worse with age: it rebases
+# itself on every push to main, spends a CI run each time it does, and trains
+# the reviewer to skip it. Weekly matches the pace this repository moves at.
+# Security updates are not on this schedule at all: Dependabot raises those
+# when it learns of the advisory, whatever the interval below says.
+#
+# Monday, so a batch that needs a follow-up has a working week in front of it
+# rather than a weekend.
+#
+# The commit prefixes are here because the subject format is a rule
+# (docs/contributing/index.md): an area, a colon, and what the commit does.
+# Dependabot's default subject has no area, so `main` would carry a line that
+# no human contributor is allowed to write.
+
+updates:
+  # The Go core. The root module is the only one that ships. Both
+  # `docs/prototypes/` and `internal/catalogue/testdata/` carry go.mod files
+  # of their own, and neither is built, tested or released: the prototype
+  # trees are the record of a spike, and the testdata modules are a vendored
+  # upstream snapshot the Catalogue importer reads as fixtures. Dependabot
+  # looks only where it is told, so leaving them off this list is what keeps
+  # them off the review queue.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      go-modules:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps
+
+  # The console (ADR-0045). Runtime and build dependencies are grouped
+  # together rather than split by `dependency-type`, because one job proves
+  # both: a bundler or test-runner bump that breaks the console fails
+  # `npm run build` or `npm run e2e` in the same run that would catch a
+  # runtime one, so splitting them would buy a second pull request and no
+  # second reading.
+  - package-ecosystem: npm
+    directory: /console
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      console:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps
+
+  # The actions the workflows use. They are pinned by major version, which
+  # moves them within a major on its own and never across one, so this entry
+  # is the only thing that will ever propose the next major. `directory: /`
+  # is not the repository root standing in for something better: it is the
+  # value this ecosystem takes, and Dependabot reads `.github/workflows/`
+  # from it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: ci

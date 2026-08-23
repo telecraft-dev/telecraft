@@ -190,6 +190,30 @@ release` answers what the demo is built from.
 
 Cutting a release is [its own page](releases.md).
 
+## Dependency updates
+
+`.github/dependabot.yml` covers three ecosystems: the root Go module, the
+console's npm tree, and the actions the workflows use. It is not a workflow,
+and it fires on a schedule rather than on anything that happens here, which
+is why it is absent from the table at the top of this page.
+
+Each ecosystem is grouped and weekly, so a week of upstream releases arrives
+as one pull request per ecosystem rather than one per dependency. Those are
+ordinary pull requests: `ci.yml` gates them exactly as it gates yours, so a
+grouped bump either goes green or names the dependency that broke it, and
+the reviewer's question is the one CI already answers. The file carries the
+full reasoning in its comments (issue #127).
+
+Two things to know before you rely on it:
+
+- **Security updates ignore the schedule.** Dependabot raises a fix when it
+  learns of the advisory, not on the next Monday.
+- **Only the listed directories are watched.** The root `go.mod` and
+  `console/package.json` are the tree's shipping manifests. The `go.mod`
+  files under `docs/prototypes/` and `internal/catalogue/testdata/` are a
+  spike record and a vendored fixture set, and nothing builds them, so
+  nothing updates them either.
+
 ## Changing a workflow
 
 A change to `ci.yml` sets `console` true, so the console and demo jobs run
