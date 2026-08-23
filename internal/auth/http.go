@@ -192,15 +192,30 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	}
 	state := base64.RawURLEncoding.EncodeToString(raw)
 
-	to, err := provider.Begin(r.Context(), state, h.callbackURL(r, provider.Name()))
+	// The verifier is drawn separately from the state, never derived from
+	// it: the state travels in the redirect URL and comes back in the
+	// callback query, so a verifier computed from it would be recomputable
+	// by whoever holds an intercepted code, which is the attack RFC 7636
+	// exists for (issue #145). Thirty-two random bytes encode to the 43
+	// unreserved characters RFC 7636 §4.1 asks a verifier to be.
+	rawVerifier := make([]byte, 32)
+	if _, err := rand.Read(rawVerifier); err != nil {
+		writeError(w, http.StatusInternalServerError, "sign-in failed")
+		return
+	}
+	verifier := base64.RawURLEncoding.EncodeToString(rawVerifier)
+
+	to, err := provider.Begin(r.Context(), state, verifier, h.callbackURL(r, provider.Name()))
 	if err != nil {
 		writeError(w, http.StatusBadGateway, fmt.Sprintf("the identity provider is not reachable: %v", err))
 		return
 	}
 
-	// The round trip's CSRF anchor: state and return path, signed, in a
-	// short-lived cookie — nothing stored server-side (ADR-0013 posture).
-	blob := state + "|" + returnTo
+	// The round trip's anchor: state, verifier and return path, signed, in
+	// a short-lived cookie — nothing stored server-side (ADR-0013 posture).
+	// HttpOnly is what keeps the verifier a secret the browser carries but
+	// no script in it can read.
+	blob := stateCookieBlob(state, verifier, returnTo)
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: blob + "." + h.cfg.Sessions.sign(blob), Path: "/api/v1/auth/",
 		MaxAge: 600, HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
@@ -216,16 +231,20 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	cookie, err := r.Cookie(stateCookie)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "this sign-in attempt did not start here, or took longer than ten minutes")
+		writeError(w, http.StatusBadRequest, errStateCookie.Error())
 		return
 	}
-	state, returnTo, ok := h.verifyStateCookie(cookie.Value)
-	if !ok || state != r.URL.Query().Get("state") {
-		writeError(w, http.StatusBadRequest, "this sign-in attempt did not start here, or took longer than ten minutes")
+	state, verifier, returnTo, err := h.verifyStateCookie(cookie.Value)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if state != r.URL.Query().Get("state") {
+		writeError(w, http.StatusBadRequest, errStateCookie.Error())
 		return
 	}
 
-	id, err := provider.Complete(r.Context(), state, h.callbackURL(r, provider.Name()), r.URL.Query())
+	id, err := provider.Complete(r.Context(), state, verifier, h.callbackURL(r, provider.Name()), r.URL.Query())
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, fmt.Sprintf("sign-in failed: %v", err))
 		return
@@ -300,16 +319,67 @@ func (h *Handler) setSession(w http.ResponseWriter, id Identity) error {
 	return nil
 }
 
-func (h *Handler) verifyStateCookie(value string) (state, returnTo string, ok bool) {
+// stateCookieVersion tags the state cookie's payload. The tag is what
+// makes a cookie an earlier build wrote recognisable rather than merely
+// short: a sign-in already in flight across a deploy is refused for what
+// it is, instead of being read under a layout it was never written in.
+const stateCookieVersion = "v2"
+
+// stateCookieBlob encodes the round trip's anchor as the signed payload
+// version|state|verifier|returnTo.
+//
+// The pipe is safe against the values it separates because only the last
+// of them can contain one. The version is this package's constant, and
+// the state and the verifier are base64url, whose alphabet is A to Z,
+// a to z, 0 to 9, "-" and "_". So the three separators this function
+// writes are the first three pipes in the payload, whatever the return
+// path holds, and verifyStateCookie's three left-to-right cuts land on
+// exactly them: the return path takes the remainder verbatim, pipes and
+// all, and no value can smuggle a field boundary into another.
+func stateCookieBlob(state, verifier, returnTo string) string {
+	return stateCookieVersion + "|" + state + "|" + verifier + "|" + returnTo
+}
+
+// errStateCookie is what every unusable state cookie says: absent,
+// unsigned, malformed, or outlived by its own ten-minute life. They read
+// as one message on purpose, the way a failed session does: which check
+// refused the cookie is nothing a forger needs.
+var errStateCookie = fmt.Errorf("this sign-in attempt did not start here, or took longer than ten minutes")
+
+// errStateCookieOldFormat is the deploy-window case: a payload this
+// instance signed, so it is genuinely one of ours, but written before the
+// verifier joined the cookie. It cannot be completed, because the verifier
+// the authorization request committed to did not survive the restart, so
+// it fails closed and says why rather than reading the older layout as if
+// it were this one.
+var errStateCookieOldFormat = fmt.Errorf("this sign-in started before the server was updated, so it can no longer be completed: sign in again")
+
+// verifyStateCookie checks the signature and takes the payload apart.
+// Every field is judged before any of them is returned, so a payload that
+// is malformed in any way is refused whole rather than half-read.
+func (h *Handler) verifyStateCookie(value string) (state, verifier, returnTo string, err error) {
 	blob, sig, found := strings.Cut(value, ".")
 	if !found || !hmac.Equal([]byte(h.cfg.Sessions.sign(blob)), []byte(sig)) {
-		return "", "", false
+		return "", "", "", errStateCookie
 	}
-	state, returnTo, found = strings.Cut(blob, "|")
-	if !found || state == "" || !safeReturnTo(returnTo) {
-		return "", "", false
+	version, rest, found := strings.Cut(blob, "|")
+	if !found {
+		return "", "", "", errStateCookie
 	}
-	return state, returnTo, true
+	if version != stateCookieVersion {
+		// The signature already vouched for the payload, so a tag that is
+		// not this one is a cookie an older build of this instance wrote.
+		return "", "", "", errStateCookieOldFormat
+	}
+	state, rest, found = strings.Cut(rest, "|")
+	if !found || state == "" {
+		return "", "", "", errStateCookie
+	}
+	verifier, returnTo, found = strings.Cut(rest, "|")
+	if !found || verifier == "" || !safeReturnTo(returnTo) {
+		return "", "", "", errStateCookie
+	}
+	return state, verifier, returnTo, nil
 }
 
 func (h *Handler) callbackURL(r *http.Request, provider string) string {

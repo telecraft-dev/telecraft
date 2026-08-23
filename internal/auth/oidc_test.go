@@ -121,13 +121,31 @@ func (idp *fakeIdP) provider() *OIDC {
 	return &OIDC{Issuer: idp.issuer, ClientID: "telecraft-console", ClientSecret: "s3cret"}
 }
 
-const testCallback = "http://console.example/api/v1/auth/oidc/callback"
+const (
+	testCallback = "http://console.example/api/v1/auth/oidc/callback"
+
+	// testVerifier and testOtherVerifier stand in for the random material
+	// the HTTP layer draws per sign-in: 43 unreserved characters each, the
+	// shape RFC 7636 §4.1 asks a verifier to be. Two of them, because a
+	// verifier is only meaningful against another attempt's.
+	testVerifier      = "D0TcJ7haTijb0XJeD3wgp_XG437krNB0eGHoIPhpTCc"
+	testOtherVerifier = "u6uJhM3ehb6CKKNNKY2HmEYGx0FIVrItgyvXCvdtKrc"
+)
+
+// legacyVerifierFrom is the derivation issue #124 shipped and issue #145
+// removed: the verifier as a labelled hash of the state. It survives here
+// only so a test can hold an attacker's own recomputation of it against
+// the flow, and prove that recomputation no longer opens a code.
+func legacyVerifierFrom(state string) string {
+	sum := sha256.Sum256([]byte("telecraft-oidc-verifier." + state))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
 
 func TestOIDCBeginBuildsTheAuthorizationRequest(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
 
-	to, err := o.Begin(context.Background(), "state-1", testCallback)
+	to, err := o.Begin(context.Background(), "state-1", testVerifier, testCallback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,14 +173,15 @@ func TestOIDCBeginBuildsTheAuthorizationRequest(t *testing.T) {
 	}
 }
 
-// Acceptance (issue #124): the authorization request commits to an S256
-// challenge over the verifier the state derives, so the code the issuer
-// hands back is bound to this sign-in attempt and to nothing else.
+// Acceptance (issue #124, tightened by #145): the authorization request
+// commits to an S256 challenge over the verifier the caller supplies, so
+// the code the issuer hands back is bound to that secret and to nothing
+// else.
 func TestOIDCBeginCarriesAnS256CodeChallenge(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
 
-	to, err := o.Begin(context.Background(), "state-1", testCallback)
+	to, err := o.Begin(context.Background(), "state-1", testVerifier, testCallback)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,44 +193,78 @@ func TestOIDCBeginCarriesAnS256CodeChallenge(t *testing.T) {
 	if got := q.Get("code_challenge_method"); got != "S256" {
 		t.Fatalf("code_challenge_method = %q, want S256", got)
 	}
-	if got, want := q.Get("code_challenge"), challengeFor(verifierFrom("state-1")); got != want {
+	if got, want := q.Get("code_challenge"), challengeFor(testVerifier); got != want {
 		t.Fatalf("code_challenge = %q, want %q", got, want)
 	}
 	// The challenge is the hash, never the verifier: sending the verifier
 	// through the browser would bind the code to a value an interceptor
 	// already holds.
-	if q.Get("code_challenge") == verifierFrom("state-1") {
+	if q.Get("code_challenge") == testVerifier {
 		t.Fatal("the authorization request carries the verifier itself, not its S256 challenge")
 	}
-	// Nothing is stored to make that work: the same state derives the same
-	// verifier on any instance, at any time (ADR-0019).
-	if verifierFrom("state-1") == verifierFrom("state-2") {
-		t.Fatal("two sign-in attempts derive the same verifier")
+	// The commitment follows the verifier, not the state: two attempts
+	// under the same state commit to different challenges, which is what
+	// makes the verifier the thing a code is bound to.
+	other, err := o.Begin(context.Background(), "state-1", testOtherVerifier, testCallback)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if verifierFrom("state-1") == nonceFrom("state-1") {
-		t.Fatal("the verifier and the nonce derive to the same value")
+	otherQ, err := url.Parse(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if otherQ.Query().Get("code_challenge") == q.Get("code_challenge") {
+		t.Fatal("two verifiers under one state commit to the same challenge")
+	}
+	// The three artefacts of one sign-in stay distinct values: the nonce
+	// derives from the state, the challenge derives from the verifier, and
+	// neither discloses the other.
+	if q.Get("code_challenge") == q.Get("nonce") || testVerifier == nonceFrom("state-1") {
+		t.Fatal("the verifier, the challenge and the nonce are not distinct values")
+	}
+}
+
+// Acceptance (issue #145): a code cannot be completed with a verifier
+// recomputed from the state. The issuer enforces PKCE over the challenge
+// this sign-in committed to, and the exchange presents the verifier the
+// derivation issue #124 shipped would have produced, which is everything
+// an interceptor holding the callback could compute for itself.
+func TestOIDCCompleteRefusesAVerifierRecomputedFromTheState(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+	idp.codeChallenge = challengeFor(testVerifier)
+	idp.claims = idp.goodClaims(o.ClientID, "state-1")
+
+	_, err := o.Complete(context.Background(), "state-1", legacyVerifierFrom("state-1"), testCallback, url.Values{"code": {"c0de"}})
+	if err == nil || !strings.Contains(err.Error(), "token exchange") {
+		t.Fatalf("Complete = %v, want the token endpoint to refuse a verifier recomputed from the state", err)
+	}
+
+	// The real verifier passes the same issuer, which is what shows the
+	// refusal above was the verifier and not the enforcement itself.
+	if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}}); err != nil {
+		t.Fatalf("Complete with the matching verifier = %v", err)
 	}
 }
 
 // Acceptance (issue #124): an exchange whose verifier does not match the
 // challenge is refused. The issuer here enforces PKCE over the challenge
-// state-1 committed to, and the exchange runs under a different state, so
-// the verifier Complete presents is the wrong one.
+// one sign-in committed to, and the exchange runs with another attempt's
+// verifier, so the verifier Complete presents is the wrong one.
 func TestOIDCCompleteFailsOnAMismatchedVerifier(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
-	idp.codeChallenge = challengeFor(verifierFrom("state-1"))
-	idp.claims = idp.goodClaims(o.ClientID, "state-2")
+	idp.codeChallenge = challengeFor(testVerifier)
+	idp.claims = idp.goodClaims(o.ClientID, "state-1")
 
-	_, err := o.Complete(context.Background(), "state-2", testCallback, url.Values{"code": {"c0de"}})
+	_, err := o.Complete(context.Background(), "state-1", testOtherVerifier, testCallback, url.Values{"code": {"c0de"}})
 	if err == nil || !strings.Contains(err.Error(), "token exchange") {
 		t.Fatalf("Complete = %v, want the token endpoint to refuse the mismatched verifier", err)
 	}
 
-	// The matching state passes the same issuer, which is what shows the
+	// The matching verifier passes the same issuer, which is what shows the
 	// refusal above was the verifier and not the enforcement itself.
-	idp.claims = idp.goodClaims(o.ClientID, "state-1")
-	if _, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}}); err != nil {
+	if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}}); err != nil {
 		t.Fatalf("Complete with the matching verifier = %v", err)
 	}
 }
@@ -224,7 +277,7 @@ func TestOIDCCompleteVerifiesTheCodeFlow(t *testing.T) {
 	o := idp.provider()
 	idp.claims = idp.goodClaims(o.ClientID, "state-1")
 
-	id, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}, "state": {"state-1"}})
+	id, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}, "state": {"state-1"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +310,7 @@ func TestOIDCCompleteRejectsBadTokens(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			idp.claims = tc.claims
-			_, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}})
+			_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Complete = %v, want an error naming the %s", err, tc.want)
 			}
@@ -303,7 +356,7 @@ func TestOIDCCompleteJudgesTheTimeClaimsWithinTheSkewAllowance(t *testing.T) {
 	for _, tc := range refused {
 		t.Run(tc.name, func(t *testing.T) {
 			idp.claims = tc.claims
-			_, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}})
+			_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("Complete = %v, want an error saying the token is %s", err, tc.want)
 			}
@@ -331,7 +384,7 @@ func TestOIDCCompleteJudgesTheTimeClaimsWithinTheSkewAllowance(t *testing.T) {
 	for _, tc := range accepted {
 		t.Run(tc.name, func(t *testing.T) {
 			idp.claims = tc.claims
-			if _, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}}); err != nil {
+			if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}}); err != nil {
 				t.Fatalf("Complete refused %s: %v", tc.name, err)
 			}
 		})
@@ -356,7 +409,7 @@ func TestOIDCCompleteRejectsAForgedSignature(t *testing.T) {
 		TokenEndpoint:         rogue.URL,
 		JWKSURI:               idp.issuer + "/jwks",
 	}
-	_, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{"code": {"c0de"}})
+	_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
 	if err == nil || !strings.Contains(err.Error(), "signature") {
 		t.Fatalf("Complete = %v, want a signature failure", err)
 	}
@@ -378,19 +431,19 @@ func TestOIDCCompleteRejectsUnsignedAlgorithms(t *testing.T) {
 func TestOIDCCompleteSurfacesProviderErrors(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
-	_, err := o.Complete(context.Background(), "state-1", testCallback,
+	_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback,
 		url.Values{"error": {"access_denied"}, "error_description": {"the human said no"}})
 	if err == nil || !strings.Contains(err.Error(), "access_denied") {
 		t.Fatalf("Complete = %v", err)
 	}
-	if _, err := o.Complete(context.Background(), "state-1", testCallback, url.Values{}); err == nil {
+	if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{}); err == nil {
 		t.Fatal("Complete accepted a callback with no code")
 	}
 }
 
 func TestOIDCDiscoveryFailuresAreNamed(t *testing.T) {
 	o := &OIDC{Issuer: "", ClientID: ""}
-	if _, err := o.Begin(context.Background(), "s", testCallback); err == nil {
+	if _, err := o.Begin(context.Background(), "s", testVerifier, testCallback); err == nil {
 		t.Fatal("Begin ran with no issuer configured")
 	}
 
@@ -399,7 +452,7 @@ func TestOIDCDiscoveryFailuresAreNamed(t *testing.T) {
 	}))
 	defer srv.Close()
 	o = &OIDC{Issuer: srv.URL, ClientID: "c"}
-	_, err := o.Begin(context.Background(), "s", testCallback)
+	_, err := o.Begin(context.Background(), "s", testVerifier, testCallback)
 	if err == nil || !strings.Contains(err.Error(), "discovery") {
 		t.Fatalf("Begin = %v, want a discovery error", err)
 	}

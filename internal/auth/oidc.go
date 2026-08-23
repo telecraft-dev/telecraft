@@ -52,11 +52,12 @@ type oidcDiscovery struct {
 }
 
 // Begin implements RedirectProvider: the authorization request URL. The
-// nonce and the PKCE verifier are both derived from the caller's state, so
-// replay protection and code binding need no server-side storage. Complete
-// recomputes both, requires the ID token to carry the nonce, and presents
-// the verifier the challenge here commits to.
-func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, error) {
+// nonce is derived from the caller's state, so replay protection needs no
+// server-side storage: Complete recomputes it and requires the ID token to
+// carry it. The PKCE challenge is the S256 transformation of the caller's
+// verifier, so the request commits to a secret it does not disclose, and
+// Complete presents that same secret to the token endpoint.
+func (o *OIDC) Begin(ctx context.Context, state, verifier, callbackURL string) (string, error) {
 	disc, err := o.discover(ctx)
 	if err != nil {
 		return "", err
@@ -68,7 +69,7 @@ func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, er
 		"scope":                 {"openid profile email"},
 		"state":                 {state},
 		"nonce":                 {nonceFrom(state)},
-		"code_challenge":        {challengeFor(verifierFrom(state))},
+		"code_challenge":        {challengeFor(verifier)},
 		"code_challenge_method": {"S256"},
 	}
 	sep := "?"
@@ -80,7 +81,7 @@ func (o *OIDC) Begin(ctx context.Context, state, callbackURL string) (string, er
 
 // Complete implements RedirectProvider: exchange the code, verify the ID
 // token, return the claims as an Identity.
-func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params url.Values) (Identity, error) {
+func (o *OIDC) Complete(ctx context.Context, state, verifier, callbackURL string, params url.Values) (Identity, error) {
 	if e := params.Get("error"); e != "" {
 		return Identity{}, fmt.Errorf("the identity provider refused the sign-in: %s %s", e, params.Get("error_description"))
 	}
@@ -99,7 +100,7 @@ func (o *OIDC) Complete(ctx context.Context, state, callbackURL string, params u
 		"redirect_uri":  {callbackURL},
 		"client_id":     {o.ClientID},
 		"client_secret": {o.ClientSecret},
-		"code_verifier": {verifierFrom(state)},
+		"code_verifier": {verifier},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, disc.TokenEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -357,33 +358,6 @@ func (o *OIDC) client() *http.Client {
 // protection is stateless end to end.
 func nonceFrom(state string) string {
 	sum := sha256.Sum256([]byte("telecraft-oidc-nonce." + state))
-	return base64.RawURLEncoding.EncodeToString(sum[:])
-}
-
-// verifierFrom binds the PKCE code verifier to the caller's CSRF state the
-// same way nonceFrom binds the nonce, so the authorization code is bound to
-// this sign-in attempt without a server-side store. The label keeps this
-// derivation separate from the nonce's, so neither value discloses the
-// other. The result is 43 unreserved characters, which is what RFC 7636
-// asks a verifier to be.
-//
-// Be precise about what this buys. The state is high-entropy, but it is
-// not a secret: it travels in the authorisation URL and comes back in the
-// callback query, where the handler reads it. Anyone holding the callback
-// can therefore recompute the verifier from this source. Against an
-// intercepted authorisation code, which is the attack PKCE was written
-// for, the derivation adds nothing, and the client secret is still what
-// binds the code to this instance.
-//
-// What it does buy is conformance with OAuth 2.1, which makes PKCE
-// mandatory, and refusal of a code substituted from a different sign-in
-// attempt, whose state derives a different verifier. It costs no
-// coordination, which is what keeps ADR-0019's air-gapped deployment free
-// of shared state. Deriving the verifier from separate random material
-// carried in the signed cookie would close the interception gap too, at
-// the price of a change to the RedirectProvider seam.
-func verifierFrom(state string) string {
-	sum := sha256.Sum256([]byte("telecraft-oidc-verifier." + state))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
