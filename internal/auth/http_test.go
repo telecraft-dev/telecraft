@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/cookiejar"
@@ -229,6 +230,151 @@ func TestOIDCLoginRoundTripsThroughTheHandler(t *testing.T) {
 	me := decodeMe(t, res)
 	if me.ID != "jo@example.com" || me.Team != "data-flow" {
 		t.Fatalf("me = %+v", me)
+	}
+}
+
+// stateCookieValue reads the state cookie a response sets.
+func stateCookieValue(t *testing.T, res *http.Response) string {
+	t.Helper()
+	for _, c := range res.Cookies() {
+		if c.Name == stateCookie {
+			return c.Value
+		}
+	}
+	t.Fatal("the response set no state cookie")
+	return ""
+}
+
+// Acceptance (issue #145): the verifier the authorization request commits
+// to is independent crypto/rand material carried in the signed state
+// cookie. Nothing the callback carries recomputes it, and the round trip
+// completes against an issuer that enforces the challenge.
+func TestOIDCStartDrawsAnIndependentVerifierIntoTheStateCookie(t *testing.T) {
+	idp := newFakeIdP(t)
+	oidc := idp.provider()
+	h := testHandler(t, oidc)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	c := client(t, srv)
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	// start runs one sign-in as far as the redirect, and reports what the
+	// authorization request committed to beside what the cookie holds.
+	start := func() (state, challenge, verifier string) {
+		t.Helper()
+		res, err := c.Get(srv.URL + "/api/v1/auth/oidc/start")
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		to, err := url.Parse(res.Header.Get("Location"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		state, verifier, returnTo, err := h.verifyStateCookie(stateCookieValue(t, res))
+		if err != nil {
+			t.Fatalf("the cookie start wrote does not verify: %v", err)
+		}
+		if returnTo != "/" {
+			t.Fatalf("the cookie carries the return path %q, want the default", returnTo)
+		}
+		if got := to.Query().Get("state"); got != state {
+			t.Fatalf("the authorization request carries state %q, the cookie %q", got, state)
+		}
+		return state, to.Query().Get("code_challenge"), verifier
+	}
+
+	state, challenge, verifier := start()
+	if len(verifier) != 43 {
+		t.Fatalf("the verifier is %d characters, want the 43 RFC 7636 §4.1 asks for", len(verifier))
+	}
+	if _, err := base64.RawURLEncoding.DecodeString(verifier); err != nil {
+		t.Fatalf("the verifier %q is not base64url, so it is not the unreserved set: %v", verifier, err)
+	}
+	if got := challengeFor(verifier); got != challenge {
+		t.Fatalf("code_challenge = %q, want the S256 of the cookie's verifier %q", challenge, got)
+	}
+	// The point of the change: the callback carries the state, and the
+	// state computes nothing. An interceptor holding the code and the
+	// state still cannot produce the verifier the exchange needs.
+	if verifier == legacyVerifierFrom(state) || challenge == challengeFor(legacyVerifierFrom(state)) {
+		t.Fatal("the verifier is recomputable from the state the callback carries")
+	}
+	if verifier == state || verifier == nonceFrom(state) {
+		t.Fatal("the verifier is a value the round trip already publishes")
+	}
+
+	// Independent per attempt: two sign-ins share no material at all.
+	state2, challenge2, verifier2 := start()
+	if verifier2 == verifier || state2 == state || challenge2 == challenge {
+		t.Fatal("two sign-in attempts drew the same material")
+	}
+
+	// The exchange presents the cookie's verifier: this issuer enforces
+	// the challenge the second authorization request committed to.
+	idp.codeChallenge = challenge2
+	idp.claims = idp.goodClaims(oidc.ClientID, state2)
+	res, err := c.Get(srv.URL + "/api/v1/auth/oidc/callback?code=c0de&state=" + url.QueryEscape(state2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("callback under an issuer enforcing PKCE = %d, want 302", res.StatusCode)
+	}
+}
+
+// Acceptance (issue #145): a state cookie this instance did not write in
+// this format is refused rather than read loosely, and the deploy-window
+// case is named. A sign-in in flight when the server was updated carries a
+// payload the current build signs but cannot complete, because the
+// verifier its authorization request committed to was never in it.
+func TestOIDCCallbackRefusesAMalformedOrOldFormatStateCookie(t *testing.T) {
+	idp := newFakeIdP(t)
+	h := testHandler(t, idp.provider())
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	signed := func(blob string) string { return blob + "." + h.cfg.Sessions.sign(blob) }
+
+	cases := []struct {
+		name   string
+		cookie string
+		want   string
+	}{
+		{"the state-and-return-path payload an older build wrote", signed("state-1|/compose"), "before the server was updated"},
+		{"an older build's payload whose return path holds a pipe", signed("state-1|/a|/b"), "before the server was updated"},
+		{"a payload with no separator at all", signed("state-1"), "did not start here"},
+		{"a payload with an empty state", signed("v2||" + testVerifier + "|/"), "did not start here"},
+		{"a payload with an empty verifier", signed("v2|state-1||/"), "did not start here"},
+		{"a payload with no return path", signed("v2|state-1|" + testVerifier), "did not start here"},
+		{"a payload with an off-site return path", signed("v2|state-1|" + testVerifier + "|https://elsewhere.example"), "did not start here"},
+		{"a payload nothing signed", "v2|state-1|" + testVerifier + "|/", "did not start here"},
+		{"a payload whose signature is somebody else's", "v2|state-1|" + testVerifier + "|/.bm90LWEtc2lnbmF0dXJl", "did not start here"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/auth/oidc/callback?code=c0de&state=state-1", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.AddCookie(&http.Cookie{Name: stateCookie, Value: tc.cookie})
+			res, err := srv.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer res.Body.Close()
+			if res.StatusCode != http.StatusBadRequest {
+				t.Fatalf("callback with %s = %d, want 400", tc.name, res.StatusCode)
+			}
+			var body map[string]string
+			if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(body["error"], tc.want) {
+				t.Fatalf("callback with %s answered %q, want a message naming %q", tc.name, body["error"], tc.want)
+			}
+		})
 	}
 }
 

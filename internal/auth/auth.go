@@ -98,18 +98,36 @@ type PasswordProvider interface {
 // it across the round trip in a signed cookie, and passes the same value
 // to both calls so a provider can bind its own artefacts (an OIDC nonce, a
 // SAML RelayState) to it without server-side storage.
+//
+// Verifier is the round trip's secret, which the state is not: the state
+// travels in the redirect URL and comes back in the callback query, so
+// anything computed from it is known to whoever holds the callback. The
+// HTTP layer draws the verifier from crypto/rand per attempt, carries it
+// in the same signed HttpOnly cookie, and passes the same value to both
+// calls. A provider commits to it in Begin only through a one-way
+// transformation (OIDC's PKCE S256 challenge), and presents it in Complete
+// only over the provider's own back channel (the token exchange), so it
+// never reaches the browser. A provider with nothing to bind ignores it.
+//
+// Both values ride the caller's cookie, so neither call reads or writes
+// anything the instance has to keep. That is what lets an air-gapped
+// deployment run this flow with no shared store behind it (ADR-0019,
+// ADR-0013).
 type RedirectProvider interface {
 	Provider
 
 	// Begin returns the identity provider URL that starts the round trip.
 	// callbackURL is where the provider sends the human back — Complete's
-	// address.
-	Begin(ctx context.Context, state, callbackURL string) (string, error)
+	// address. verifier is the raw secret, and what the URL carries is a
+	// one-way transformation of it, never the secret itself.
+	Begin(ctx context.Context, state, verifier, callbackURL string) (string, error)
 
 	// Complete consumes the callback parameters and returns the verified
-	// identity. It fails when the callback carries a provider error, the
-	// state does not match, or the identity assertion does not verify.
-	Complete(ctx context.Context, state, callbackURL string, params url.Values) (Identity, error)
+	// identity. verifier is the same secret Begin committed to, presented
+	// to the identity provider over the back channel. It fails when the
+	// callback carries a provider error, the state does not match, or the
+	// identity assertion does not verify.
+	Complete(ctx context.Context, state, verifier, callbackURL string, params url.Values) (Identity, error)
 }
 
 // ErrBadCredentials is the uniform password-verification failure: wrong
