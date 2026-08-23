@@ -29,7 +29,7 @@ type Scope struct {
 }
 
 // Rule flags every match of Pattern unless the match lies entirely inside a
-// same-line match of one of the Allow patterns — so "Elastic Fleet" can
+// same-line match of one of the Allow patterns, so "Elastic Fleet" can
 // permit the "Fleet" inside it while a bare "Fleet" stays an error.
 type Rule struct {
 	Pattern string   `yaml:"pattern"`

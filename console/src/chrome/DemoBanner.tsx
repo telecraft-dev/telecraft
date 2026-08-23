@@ -6,7 +6,7 @@ import { Chip } from '../ui/Chip'
  * The demo's own statement of what it is (issue #50): a build-time
  * snapshot of one estate, not a live instance. It stands where the
  * sign-out control does on an instance, because in the demo there is no
- * session to end — and it names the estate and the commit the snapshot was
+ * session to end. It names the estate and the commit the snapshot was
  * taken at, so what is on screen is traceable to a reviewable tree.
  *
  * The repository is shown as text, never as a link: the bundle references

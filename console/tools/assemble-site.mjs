@@ -6,14 +6,14 @@
 // URL-addressable (ADR-0042 §3.5), which on a static host means those URLs
 // have to resolve to something. A not-found document that happens to be
 // the shell renders the right page but answers 404, and a 404 breaks link
-// previews, sharing and every uptime check — the URL works for a human and
+// previews, sharing and every uptime check: the URL works for a human and
 // is broken for everything else. So each Workspace URL gets a real
 // document and answers 200; `404.html` stays for the deeper parameterised
 // routes, whose shapes are unbounded and which no static host can
 // enumerate.
 //
-// Both spellings of each route are written — `<route>.html` and
-// `<route>/index.html` — because static hosts differ on which one a bare
+// Both spellings of each route are written (`<route>.html` and
+// `<route>/index.html`), because static hosts differ on which one a bare
 // path resolves to, and the URL the router owns should answer whichever
 // rule the host applies.
 //
@@ -25,7 +25,7 @@ import process from 'node:process'
 
 /**
  * The Workspace URLs to pre-render, mirroring src/chrome/workspaces.ts.
- * tests/site.test.ts holds the two lists together — a Workspace added to
+ * tests/site.test.ts holds the two lists together: a Workspace added to
  * the chrome and not here would ship a URL that 404s.
  */
 export const WORKSPACE_ROUTES = ['/estate', '/topology', '/compose', '/catalogue']

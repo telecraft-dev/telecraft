@@ -5,7 +5,7 @@
 # local value for a key the artefact also sets is simply overwritten: on the
 # served path the estate wins every argument it chooses to have. What
 # survives is a key the estate never described, and that is the honest drift
-# here — the running collector doing something no reviewed artefact asked
+# here: the running collector doing something no reviewed artefact asked
 # for.
 #
 # There are two grains of that, and this file carries one of each, because
@@ -24,7 +24,7 @@ service:
         - otlp_http/platform.backend-exporter
 
 # The second is a setting. The gateway artefact sets this component's batch
-# size and timeout, and says nothing about a maximum. This does — and it is
+# size and timeout, and says nothing about a maximum. This does, and it is
 # deliberately NOT drift after ADR-0054: the cross judges the keys the
 # artefact asserts, so a key it never mentions is excused whether the
 # collector defaulted it or a local file set it. Both halves are here so the

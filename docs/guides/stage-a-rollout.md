@@ -6,13 +6,13 @@ order: 6
 
 # Stage a Rollout
 
-A Rollout stages one Tier's rebinding from one Blueprint version to another,
-in cohorts, instead of flipping the whole population at once. It is opt-in and
-never mandatory ceremony: the default remains the flat rebind, which is
-editing the Tier's `blueprint:` field in a pull request.
+A Rollout moves one Tier from one Blueprint version to another in cohorts,
+instead of flipping the whole population at once. It is optional: the default
+is still the flat rebind, which means editing the Tier's `blueprint:` field in
+a pull request.
 
 Reach for a Rollout when the population is large enough, or the change risky
-enough, that you want the first stage to be two boxes you trust.
+enough, that you want the first stage to be two machines you trust.
 
 This guide edits a copy of the demo estate, which already carries one active
 Rollout:
@@ -47,25 +47,25 @@ stages:
     soak: 24h
 ```
 
-- `owner` must be the target Tier's owner. A Rollout is the Tier owner's
-  instrument, never a cross-team lever.
+- `owner` must be the target Tier's owner. A Rollout is the Tier owner's tool,
+  never a cross-team lever.
 - `tier` is the one Tier this Rollout stages. Cohorts subdivide that Tier's
   population; a cohort is never a Tier itself.
-- `from` must equal the Tier's current binding. `to` names the candidate, and
-  the two must bind distinct Blueprints, so the candidate is authored as a
-  sibling Blueprint.
-- `stage` is the index of the active stage, zero-based. Advancing is a
+- `from` must equal the Tier's current binding. `to` names the candidate. The
+  two must bind distinct Blueprints, so you author the candidate as a sibling
+  Blueprint.
+- `stage` is the index of the active stage, counting from zero. Advancing is a
   reviewed edit of this one field.
-- `hash_attributes` pins the attributes fractional membership hashes over. It
-  is pinned with the object because changing it mid-Rollout would reshuffle
-  every fractional cohort.
+- `hash_attributes` pins the attributes that fractional membership hashes
+  over. It is pinned with the object, because changing it mid-Rollout would
+  reshuffle every fractional cohort.
 - `soak` is the minimum time a stage must have been active before its advance
   can be proposed.
 
 ## Cohorts
 
-A stage's cohort has three forms, and they are mixable. Membership is their
-union, so "the three boxes I trust, plus 5%" is one stage.
+A stage's cohort has three forms, and you can mix them. Membership is their
+union, so "the three machines I trust, plus 5%" is one stage.
 
 ```yaml
 cohort:
@@ -79,8 +79,7 @@ cohort:
 
 Two properties are worth knowing before you rely on them:
 
-- The fractional form is statistically 5%, never exactly 5%. That is accepted
-  openly rather than papered over.
+- The fractional form is statistically 5%, never exactly 5%.
 - Membership is the union of every stage up to and including the active one,
   so advancing only ever widens. No collector flaps backwards out of a cohort.
 
@@ -90,7 +89,7 @@ the same answer, which is why the server needs no coordination.
 
 ## The Tier is dual-bound while it runs
 
-While the Rollout file exists, the Tier binds both Blueprints and the render
+While the Rollout file exists, the Tier binds both Blueprints, and the render
 emits both artefacts at head:
 
 ```sh
@@ -107,28 +106,28 @@ kafka-bridge.yaml
 kafka-bridge@next.yaml
 ```
 
-The base artefact is the *from* binding and goes to everybody outside the
+The base artefact is the *from* binding, and it goes to everybody outside the
 cohort:
 
 ```
 # Tier data-flow/kafka-bridge (production), Blueprint data-flow/bridge-standard@2, commit 0000000000000000000000000000000000000000.
 ```
 
-`kafka-bridge@next.yaml` is the *to* binding, and goes to cohort members:
+`kafka-bridge@next.yaml` is the *to* binding, and it goes to cohort members:
 
 ```
 # Tier data-flow/kafka-bridge (production), Blueprint data-flow/bridge-next@1, commit 0000000000000000000000000000000000000000.
 ```
 
-Both are in git, both are reviewable, and the choice between them is made per
-connect from the collector's own attributes.
+Both are in git, both are reviewable, and the server chooses between them on
+each connect from the collector's own attributes.
 
-While a Rollout is active, the Rollout file is the only door. A direct rebind
-of the Tier fails render validation:
+While a Rollout is active, the Rollout file is the only way to rebind the
+Tier. A direct rebind fails render validation:
 
 ```
 render: invalid topology sources:
-  - rollout "data-flow/bridge-canary" binds from data-flow/bridge-standard@2 but tier "data-flow/kafka-bridge" binds data-flow/bridge-next@1 — while a Rollout is active the Rollout file is the only door, so a direct rebind fails render validation (ADR-0029 §2)
+  - rollout "data-flow/bridge-canary" binds from data-flow/bridge-standard@2 but tier "data-flow/kafka-bridge" binds data-flow/bridge-next@1. While a Rollout is active, the Rollout file is the only way to rebind the Tier.
 ```
 
 ## Advance
@@ -139,33 +138,33 @@ Advancing is one line: bump `stage` in a pull request.
 stage: 2
 ```
 
-Render again and both artefacts are still there. What changed is who is in the
-cohort, which the server recomputes on the next connect. Both render commands
-exit 0; a validation failure exits 2 and writes nothing.
+Render again, and both artefacts are still there. What changed is who is in
+the cohort, which the server recomputes on the next connect. Both render
+commands exit 0; a validation failure exits 2 and writes nothing.
 
-The stage number is an index into the authored stages, so it cannot run past
+The stage number is an index into the authored stages, so it can't run past
 the end:
 
 ```
 render: invalid topology sources:
-  - ../my-estate/teams/data-flow/rollouts/bridge-canary.yaml: rollout "data-flow/bridge-canary" declares stage 5 of 3 — the active stage is an index into the authored stages; completion deletes the file rather than counting past the end (ADR-0029 §5)
+  - ../my-estate/teams/data-flow/rollouts/bridge-canary.yaml: rollout "data-flow/bridge-canary" declares stage 5 of 3. The stage is a zero-based index into the stages list. To complete the rollout, delete the file instead of counting past the end.
 ```
 
-On an instance, the platform proposes that edit for you when the stage's exit
-criteria are met, on a deterministic branch, and a human merges it. The
-platform only ever proposes: there is no control loop that merges its own
-change. Halting is passive: it is the proposal that never arrives.
+On an instance, Telecraft proposes that edit for you when the stage's exit
+criteria are met, on a deterministic branch, and a human merges it. Telecraft
+only ever proposes: there is no control loop that merges its own change.
+Halting is passive: it is the proposal that never arrives.
 
 Two halt conditions ship, and they gate the advance:
 
-- A cohort member reporting `FAILED` for the candidate artefact's hash. It
-  took the offer, the apply failed, and the Supervisor has already reverted
-  it. A `FAILED` for any other hash belongs to some other delivery.
-- A cohort member that took the candidate and then went silent within the soak
+- A cohort member reports `FAILED` for the candidate artefact's hash. It took
+  the offer, the apply failed, and the Supervisor has already reverted it. A
+  `FAILED` for any other hash belongs to some other delivery.
+- A cohort member takes the candidate and then goes silent within the soak
   window. That is the crash-loop signature that never reports `FAILED`.
 
-Any halted cohort member blocks the advance. At or past 10% of the seen cohort
-halted, the abort is proposed rather than the advance.
+Any halted cohort member blocks the advance. When 10% or more of the seen
+cohort has halted, Telecraft proposes the abort instead of the advance.
 
 ## Complete
 
@@ -194,7 +193,8 @@ kafka-bridge.yaml
 
 ## Abort
 
-Aborting is deleting the Rollout file alone, leaving the Tier bound to *from*:
+Aborting is deleting the Rollout file alone, which leaves the Tier bound to
+*from*:
 
 ```sh
 rm ../my-estate/teams/data-flow/rollouts/bridge-canary.yaml
@@ -210,16 +210,16 @@ kafka-bridge.yaml
 ```
 
 The `@next` artefact is gone, and every collector in the Tier is back on the
-base artefact on its next connect. Nothing needs to be rolled back by hand,
-because nothing was ever mutated: the whole Rollout was one small file in git.
+base artefact on its next connect. Nothing needs rolling back by hand, because
+nothing was ever mutated: the whole Rollout was one small file in git.
 
 ## What the Foreign path sees
 
-A git-delivered collector is not served by the platform, so the platform
-cannot hand it the candidate artefact and cannot read its `RemoteConfigStatus`.
-Rollouts still work there; the reading is advisory rather than authoritative.
+Telecraft doesn't serve a git-delivered collector, so it can't hand it the
+candidate artefact and can't read its `RemoteConfigStatus`. Rollouts still
+work there, but the reading is advisory rather than authoritative.
 
-The platform decides which artefact a Foreign collector is running from what it
+Telecraft decides which artefact a Foreign collector is running from what it
 can see, in this order:
 
 1. An `APPLIED` acknowledgement naming a config hash, where one exists. Only
@@ -230,16 +230,16 @@ can see, in this order:
 
 That gives four readings: `to`, `from`, `other` (a different commit entirely,
 or a foreign config), and `unknown`. Wiring that both artefacts share
-distinguishes nothing, so it reads `unknown` rather than being guessed at.
+distinguishes nothing, so it reads `unknown` rather than a guess.
 
 The important consequence: a Foreign cohort member still on the *from*
-artefact is lag, never failure. Foreign delivery timing was never the
-platform's to control, and the `FAILED` halt signal is honestly unavailable
-there. The Rollout reads everything and blocks nothing on that path.
+artefact is lag, never failure. Telecraft never controlled Foreign delivery
+timing, and the `FAILED` halt signal isn't available there. The Rollout reads
+everything and blocks nothing on that path.
 
 ## What next
 
 - [Serve configurations](serve-configs.md) covers how cohort members receive
   the candidate artefact.
 - [Check conformance](check-conformance.md) answers whether the new Blueprint
-  version actually delivers.
+  version delivers.

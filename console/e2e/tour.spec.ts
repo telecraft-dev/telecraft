@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { TOURS } from '../src/tours/registry'
 
-// Guided Tours (ADR-0051). The pure rules — placement, clamping, which
-// URLs a Tour may open itself on — are held by tests/tours.test.ts. What
+// Guided Tours (ADR-0051). The pure rules (placement, clamping, which
+// URLs a Tour may open itself on) are held by tests/tours.test.ts. What
 // only a browser can answer is here, and the first of those is §4's
 // invariant: every anchor a Tour was authored with resolves to something
 // on the surface it names.
@@ -12,7 +12,7 @@ const PRESENTATION_KEY = 'telecraft.console.presentation.v1.demo-user'
 /**
  * A reader who has never been offered anything, which the saved state is
  * not. Cleared once, from a URL that is nobody's bare arrival, so the next
- * navigation is the first thing the Tour sees — and so that what the Tour
+ * navigation is the first thing the Tour sees, and so that what the Tour
  * writes afterwards survives, which is the whole point of the test below.
  */
 async function asNewReader(page: Page) {
@@ -48,7 +48,7 @@ test('every Step of every Tour points at something that is really there', async 
       }
 
       // The anchor exists, is on screen, and the card is beside it rather
-      // than centred — a Step degrading to centred in production is
+      // than centred: a Step degrading to centred in production is
       // survivable (§4), a Step authored against an anchor nobody carries
       // is a defect.
       const anchor = page.locator(`[data-tour="${step.anchor}"]`).first()

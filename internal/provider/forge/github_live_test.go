@@ -7,7 +7,7 @@ package forge
 //
 // The suite is gated on the provisioned credentials and skips loudly when
 // they are absent (the ADR-0036 kit discipline: a plain `go test ./...`
-// stays green anywhere), and skips — also loudly — when the App
+// stays green anywhere), and skips, also loudly, when the App
 // installation cannot reach the estate repository, the org-owner step that
 // may still be pending:
 //
@@ -39,7 +39,7 @@ func liveForge(t *testing.T) (*GitHubApp, string) {
 	installation := os.Getenv("FORGE_INSTALLATION_ID")
 	key := os.Getenv("FORGE_APP_PRIVATE_KEY")
 	if appID == "" || installation == "" || key == "" {
-		t.Skipf("SKIPPING live forge contract test: FORGE_APP_ID, FORGE_INSTALLATION_ID and FORGE_APP_PRIVATE_KEY are not all set — provision them from the org's Actions secrets to run the live pull-request flow")
+		t.Skipf("SKIPPING live forge contract test: FORGE_APP_ID, FORGE_INSTALLATION_ID and FORGE_APP_PRIVATE_KEY are not all set: provision them from the org's Actions secrets to run the live pull-request flow")
 	}
 	repo := os.Getenv("FORGE_LIVE_REPO")
 	if repo == "" {
@@ -58,7 +58,7 @@ func liveForge(t *testing.T) (*GitHubApp, string) {
 	g := f.(*GitHubApp)
 
 	// The access probe: estate-fixture must be on the installation's
-	// selected-repository list — an org-owner step that may lag the
+	// selected-repository list, an org-owner step that may lag the
 	// credential provisioning. Its absence is a skip with a pointer, never
 	// a red suite.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -69,7 +69,7 @@ func liveForge(t *testing.T) (*GitHubApp, string) {
 	if err := g.api(ctx, http.MethodGet, g.repoPath(""), nil, &probe); err != nil {
 		var apiErr *apiError
 		if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
-			t.Skipf("SKIPPING live forge contract test: the App installation cannot see %s (404) — add the repository to installation %s's repository access (the pending org-owner step from issue #18), then re-run", repo, installation)
+			t.Skipf("SKIPPING live forge contract test: the App installation cannot see %s (404): add the repository to installation %s's repository access (the pending org-owner step from issue #18), then re-run", repo, installation)
 		}
 		t.Fatalf("access probe: %v", err)
 	}
@@ -79,7 +79,7 @@ func liveForge(t *testing.T) (*GitHubApp, string) {
 // TestGitHubAppLiveSubmit is the issue #18 acceptance flow, live: a change
 // submitted through the adapter opens a pull request containing rendered
 // artefacts, attributed to the acting human; a second submit refreshes the
-// same proposal — the retry path.
+// same proposal, the retry path.
 func TestGitHubAppLiveSubmit(t *testing.T) {
 	g, _ := liveForge(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -133,9 +133,9 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 		t.Errorf("pull request author is %q (%s), want the App's bot identity", pr.User.Login, pr.User.Type)
 	}
 
-	// The branch commit carries the App's verified bot identity — GitHub
+	// The branch commit carries the App's verified bot identity (GitHub
 	// signs a bot commit only when it carries no custom author or
-	// committer — and the acting human as Co-authored-by, git-level
+	// committer) and the acting human as Co-authored-by, git-level
 	// attribution without a forge account (ADR-0014, ADR-0019 §3).
 	sha := branchSHA(t, ctx, g, branch)
 	var commit struct {
@@ -156,10 +156,10 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.HasSuffix(commit.Author.Name, "[bot]") {
-		t.Errorf("commit author = %+v, want the App's bot identity — a custom author forfeits the signature", commit.Author)
+		t.Errorf("commit author = %+v, want the App's bot identity: a custom author forfeits the signature", commit.Author)
 	}
 	// The committer of a createCommitOnBranch commit is GitHub's own
-	// web-flow signing identity ("GitHub <noreply@github.com>") — the same
+	// web-flow signing identity ("GitHub <noreply@github.com>"), the same
 	// committer web-interface commits carry, and never the App bot. Pinned
 	// exactly: any other committer means the commit did not go through the
 	// signing path.
@@ -167,10 +167,10 @@ func TestGitHubAppLiveSubmit(t *testing.T) {
 		t.Errorf("committer = %q <%s>, want GitHub's web-flow signing identity", commit.Committer.Name, commit.Committer.Email)
 	}
 	if !commit.Verification.Verified {
-		t.Error("commit is not signature-verified — the App rung of the ladder promises verified attribution (ADR-0028 §4)")
+		t.Error("commit is not signature-verified: the App rung of the ladder promises verified attribution")
 	}
 	if !strings.Contains(commit.Message, "Co-authored-by: Jo Live-Contract <jo.live@example.com>") {
-		t.Errorf("commit message does not co-author the acting human (ADR-0014):\n%s", commit.Message)
+		t.Errorf("commit message does not co-author the acting human:\n%s", commit.Message)
 	}
 
 	// The proposal carries the rendered artefact next to the authored file.

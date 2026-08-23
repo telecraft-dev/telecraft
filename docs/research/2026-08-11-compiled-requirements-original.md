@@ -262,7 +262,7 @@ constrained by R1.4)_
 Decided work that the literal brief excludes. Each is written so it can be
 adopted or dropped deliberately.
 
-### 8.1 Conformance (rung 1) — built, and where the differentiator lives
+### 8.1 Conformance (rung 1): built, and where the differentiator lives
 
 Already working code in the existing `ampup` repo: tiers with inheritance,
 requirements asserting on config and signal, load-time validation, mandatory
@@ -285,7 +285,7 @@ that exits non-zero for CI.
 - **Drop drift detection from any pitch.** Alloy and Splunk both ship it and
   Splunk markets it by name. Table stakes. _(ticket 04)_
 
-### 8.2 Serving (rung 3) — decided in, and the one carried risk
+### 8.2 Serving (rung 3): decided in, and the one carried risk
 
 - **Amp-Up serves everything, with GitOps as an alternative rather than a
   fallback.** One artefact, two ways to move it, chosen per collector by the

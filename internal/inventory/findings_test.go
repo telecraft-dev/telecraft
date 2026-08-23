@@ -22,7 +22,7 @@ func one(t *testing.T, findings []Finding, class Class) Finding {
 	return out[0]
 }
 
-// No inventory source and no declaration: no invented count, no teeth —
+// No inventory source and no declaration: no invented count, no teeth:
 // the only finding is the neutral never_seen (ADR-0035 §2, §4).
 func TestNoSourceNoTeeth(t *testing.T) {
 	p := Population{Tier: "data-flow/edge", ShortfallSince: t0.Add(-time.Hour)}
@@ -30,13 +30,13 @@ func TestNoSourceNoTeeth(t *testing.T) {
 
 	f := one(t, got, NeverSeen)
 	if f.Grade != Neutral {
-		t.Fatalf("never_seen grade = %q with no floor — neutrality is untouched without one (ADR-0035 §4)", f.Grade)
+		t.Fatalf("never_seen grade = %q with no floor: neutrality is untouched without one", f.Grade)
 	}
 	if len(got) != 1 {
-		t.Fatalf("findings = %+v — with no floor the platform never invents a count or a shortfall", got)
+		t.Fatalf("findings = %+v: with no floor the platform never invents a count or a shortfall", got)
 	}
 	if routed := DeliveryFindings(got); len(routed) != 0 {
-		t.Fatalf("a neutral never_seen entered the roll-up: %+v — un-toothed neutral states stay excluded (P2's rule, ADR-0035 §6)", routed)
+		t.Fatalf("a neutral never_seen entered the roll-up: %+v: un-toothed neutral states stay excluded (P2's rule)", routed)
 	}
 }
 
@@ -50,7 +50,7 @@ func TestNeverSeenEscalatesUnderAFloor(t *testing.T) {
 	}
 	f := one(t, p.Findings(Config{Grace: 5 * time.Minute}, t0), NeverSeen)
 	if f.Grade != Violation {
-		t.Fatalf("grade = %q, want violation — floor > 0 and zero matches persisted past the window (ADR-0035 §4)", f.Grade)
+		t.Fatalf("grade = %q, want violation: floor > 0 and zero matches persisted past the window", f.Grade)
 	}
 	if !strings.Contains(f.Detail, "≥40") || !strings.Contains(f.Detail, "seen 0") {
 		t.Fatalf("detail %q does not read as \"expected ≥40, seen 0\"", f.Detail)
@@ -67,12 +67,12 @@ func TestNeverSeenDampenedInsideGrace(t *testing.T) {
 	}
 	f := one(t, p.Findings(Config{Grace: 5 * time.Minute}, t0), NeverSeen)
 	if f.Grade != Neutral {
-		t.Fatalf("grade = %q inside the grace window — a shortfall must persist before any finding raises (ADR-0035 §3)", f.Grade)
+		t.Fatalf("grade = %q inside the grace window: a shortfall must persist before any finding raises", f.Grade)
 	}
 }
 
 // Collectors present but below the floor, persisting: under_populated,
-// the sibling class — never a degree of never_seen (ADR-0035 §5).
+// the sibling class, never a degree of never_seen (ADR-0035 §5).
 func TestUnderPopulatedBelowFloor(t *testing.T) {
 	p := Population{
 		Tier:           "data-flow/edge",
@@ -84,14 +84,14 @@ func TestUnderPopulatedBelowFloor(t *testing.T) {
 	got := p.Findings(Config{Grace: 5 * time.Minute}, t0)
 	f := one(t, got, UnderPopulated)
 	if f.Grade != Violation {
-		t.Fatalf("grade = %q, want violation — the floor is unmet (ADR-0035 §5)", f.Grade)
+		t.Fatalf("grade = %q, want violation: the floor is unmet", f.Grade)
 	}
 	if !strings.Contains(f.Detail, "≥40") || !strings.Contains(f.Detail, "seen 12") {
 		t.Fatalf("detail %q does not read as \"expected ≥40, seen 12\"", f.Detail)
 	}
 	for _, x := range got {
 		if x.Class == NeverSeen {
-			t.Fatal("a Tier with collectors present raised never_seen — the classes are siblings, never conflated (ADR-0035 §5)")
+			t.Fatal("a Tier with collectors present raised never_seen: the classes are siblings, never conflated")
 		}
 	}
 }
@@ -120,7 +120,7 @@ func TestSurplusIsNeverAFinding(t *testing.T) {
 		EverSeen: true,
 	}
 	if got := p.Findings(Config{}, t0); len(got) != 0 {
-		t.Fatalf("findings = %+v — expectations are floors, never equalities", got)
+		t.Fatalf("findings = %+v: expectations are floors, never equalities", got)
 	}
 }
 
@@ -135,7 +135,7 @@ func TestUnderPopulatedDampenedInsideGrace(t *testing.T) {
 		ShortfallSince: t0.Add(-time.Minute),
 	}
 	if got := p.Findings(Config{Grace: 5 * time.Minute}, t0); len(got) != 0 {
-		t.Fatalf("findings = %+v inside the grace window — scale events have an honest transient", got)
+		t.Fatalf("findings = %+v inside the grace window: scale events have an honest transient", got)
 	}
 }
 
@@ -156,7 +156,7 @@ func TestDeclaredAboveDerivedIsAVisibleConflict(t *testing.T) {
 		t.Fatalf("floor_conflict grade = %q, want advisory", f.Grade)
 	}
 	if f.Floor.Source != FloorDerived || f.Floor.Min != 12 {
-		t.Fatalf("resolved floor = %+v — derived outranks declared (ADR-0035 §2)", f.Floor)
+		t.Fatalf("resolved floor = %+v: derived outranks declared", f.Floor)
 	}
 	// seen 12 meets the derived floor of 12: no shortfall finding rides
 	// along with the conflict.
@@ -166,15 +166,15 @@ func TestDeclaredAboveDerivedIsAVisibleConflict(t *testing.T) {
 }
 
 // An aged neutral never_seen is flagged as the stale-config signal
-// (ADR-0035 §7) — still neutral, still excluded from the roll-up.
+// (ADR-0035 §7), still neutral, still excluded from the roll-up.
 func TestAgedNeverSeenIsAStaleConfigSignal(t *testing.T) {
 	p := Population{Tier: "data-flow/edge", FirstWatched: t0.Add(-91 * 24 * time.Hour)}
 	f := one(t, p.Findings(Config{}, t0), NeverSeen)
 	if !f.StaleConfig {
-		t.Fatal("a 91-day never_seen is not flagged — the aged neutral case is the stale-config signal (ADR-0035 §7)")
+		t.Fatal("a 91-day never_seen is not flagged: the aged neutral case is the stale-config signal")
 	}
 	if f.Grade != Neutral {
-		t.Fatalf("grade = %q — the stale-config signal is a presentation affordance, never a new finding class", f.Grade)
+		t.Fatalf("grade = %q: the stale-config signal is a presentation affordance, never a new finding class", f.Grade)
 	}
 	if !strings.Contains(f.Detail, "91 days") {
 		t.Fatalf("detail %q does not surface the age", f.Detail)
@@ -212,10 +212,10 @@ func TestDamperTracksShortfallOnset(t *testing.T) {
 		t.Fatalf("recovered Tier still holds onset %v", since)
 	}
 	if since := d.Observe("data-flow/edge", 12, floor, t0.Add(4*time.Minute)); !since.Equal(t0.Add(4 * time.Minute)) {
-		t.Fatalf("a fresh shortfall after recovery: onset = %v, want %v — the full grace window applies again", since, t0.Add(4*time.Minute))
+		t.Fatalf("a fresh shortfall after recovery: onset = %v, want %v: the full grace window applies again", since, t0.Add(4*time.Minute))
 	}
 	if since := d.Observe("data-flow/edge", 0, Floor{}, t0.Add(5*time.Minute)); !since.IsZero() {
-		t.Fatal("a floor-less Tier accrued a shortfall — no floor, no teeth (ADR-0035 §2)")
+		t.Fatal("a floor-less Tier accrued a shortfall: no floor, no teeth")
 	}
 }
 
@@ -234,13 +234,13 @@ func TestDeliveryFindingsJoinTheRollup(t *testing.T) {
 	}
 	for _, f := range routed {
 		if f.Kind != ownership.Delivery {
-			t.Fatalf("kind = %q — a population shortfall is a delivery problem (ADR-0035 §6)", f.Kind)
+			t.Fatalf("kind = %q: a population shortfall is a delivery problem", f.Kind)
 		}
 		if f.Subject.Kind != ownership.KindTier || f.Subject.ID != "data-flow/edge" {
-			t.Fatalf("subject = %+v — population findings are Tier-attached", f.Subject)
+			t.Fatalf("subject = %+v: population findings are Tier-attached", f.Subject)
 		}
 	}
 	if routed[0].Grade != ownership.Violation || routed[1].Grade != ownership.Advisory {
-		t.Fatalf("grades = %q, %q — want violation then advisory", routed[0].Grade, routed[1].Grade)
+		t.Fatalf("grades = %q, %q, want violation then advisory", routed[0].Grade, routed[1].Grade)
 	}
 }

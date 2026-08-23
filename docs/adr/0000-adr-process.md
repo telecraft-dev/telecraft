@@ -16,7 +16,7 @@ Decisions are recorded as ADRs in `docs/adr/`, numbered sequentially, one
 decision per file, with sections: Status, Context, Decision, Consequences,
 Sources.
 
-ADRs 0001–0014 are **seeded**: retroactive records of decisions made during the
+ADRs 0001 to 0014 are **seeded**: retroactive records of decisions made during the
 prior shaping work, written down here so the corpus is uniform. Each cites the
 shaping ticket(s) and research that produced it (`docs/research/shaping-tickets/`).
 They are `accepted` on arrival because the arguing already happened; re-opening

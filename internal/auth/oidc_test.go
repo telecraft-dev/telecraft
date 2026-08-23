@@ -18,7 +18,7 @@ import (
 
 // fakeIdP is a local OpenID Connect issuer: discovery, a token endpoint
 // and a JWKS over one RSA key. It stands in for the self-hosted identity
-// provider of an air-gapped deployment — everything the OIDC provider
+// provider of an air-gapped deployment: everything the OIDC provider
 // talks to lives on the loopback interface.
 type fakeIdP struct {
 	key    *rsa.PrivateKey
@@ -269,7 +269,7 @@ func TestOIDCCompleteFailsOnAMismatchedVerifier(t *testing.T) {
 	}
 }
 
-// Acceptance: login works via OIDC in tests (issue #26) — the code flow
+// Acceptance: login works via OIDC in tests (issue #26): the code flow
 // against a loopback issuer verifies end to end and yields the claims that
 // attribute the human.
 func TestOIDCCompleteVerifiesTheCodeFlow(t *testing.T) {
@@ -394,7 +394,7 @@ func TestOIDCCompleteJudgesTheTimeClaimsWithinTheSkewAllowance(t *testing.T) {
 func TestOIDCCompleteRejectsAForgedSignature(t *testing.T) {
 	idp := newFakeIdP(t)
 	o := idp.provider()
-	// A second key — one the real IdP's JWKS does not carry — signs an
+	// A second key, one the real IdP's JWKS does not carry, signs an
 	// otherwise perfect token, and a rogue token endpoint serves it.
 	forger := newFakeIdP(t)
 	token := forger.signJWT(t, idp.goodClaims(o.ClientID, "state-1"))
@@ -459,7 +459,7 @@ func TestOIDCDiscoveryFailuresAreNamed(t *testing.T) {
 }
 
 // The compiler holds the seam promise: OIDC is a RedirectProvider, Basic a
-// PasswordProvider — the two facets a SAML implementation would slot into.
+// PasswordProvider: the two facets a SAML implementation would slot into.
 var (
 	_ RedirectProvider = (*OIDC)(nil)
 	_ PasswordProvider = Basic{}

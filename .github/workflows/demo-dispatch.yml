@@ -11,7 +11,7 @@ name: Demo
 # and a bug that reaches main reaches them (issue #86). So the demo now
 # builds from a release, and between releases it lags: that is the ruling in
 # ADR-0049 §4, and the reason it is the right one is that a change on main is
-# already exercised before it merges — ci.yml's demo job builds the snapshot
+# already exercised before it merges, because ci.yml's demo job builds the snapshot
 # and the demo bundle on every pull request that touches them. A staging site
 # would be a second deployment, a second domain and a second published claim
 # to keep honest, to catch what CI catches first.
@@ -22,8 +22,8 @@ name: Demo
 # obvious. estate-demo builds on three events: a push to its own estate, a
 # manual run, and the dispatch below. Only the manual run can carry a ref,
 # and a repository dispatch carries no inputs at all. So if the pinned ref
-# arrived in the dispatch payload, an estate content push — a card added, a
-# reading edited — would build against the fallback instead, and which
+# arrived in the dispatch payload, an estate content push (a card added, a
+# reading edited) would build against the fallback instead, and which
 # platform version the public site runs would depend on which event happened
 # to fire last. Whatever the fallback names is therefore the pin, and it has
 # to name the current release on every one of those events.
@@ -131,7 +131,7 @@ jobs:
 
       # The same App the forge adapter uses (ADR-0014). It needs access to
       # estate-demo in its installation; without that the token request
-      # fails and this job goes red, which is the point — a release that
+      # fails and this job goes red, which is the point: a release that
       # never reaches the demo should be visible, not silent. That is the
       # same contract docs-dispatch.yml holds for the documentation site.
       - name: Mint an App token for estate-demo

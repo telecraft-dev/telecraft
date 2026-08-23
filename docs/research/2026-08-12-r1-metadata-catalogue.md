@@ -9,38 +9,38 @@
 
 ## TL;DR verdict
 
-**Yes — with caveats.** `metadata.yaml` is a sound substrate for the Catalogue's
+**Yes, with caveats.** `metadata.yaml` is a sound substrate for the Catalogue's
 **identity + stability** scope, which is all G2 needs.
 
 - Coverage is **100%**: **267/267** real pipeline components across both repos
   carry `status.class` and a non-empty `status.stability`. No gaps.
-- The `status:` block — the only part we depend on — has been **additive-only
+- The `status:` block (the only part we depend on) has been **additive-only
   for two years**; zero breaking changes since v0.99.0 (2024).
 - Trivially **vendorable**: ~960 KB raw YAML → ~110 KB JSON → **~8 KB gzipped**.
   A pinned sparse checkout is **3.9 MB**. All repos **Apache-2.0**.
 
 **Biggest finding: we may not have to build this from scratch.** An official
-aggregated, versioned, nightly-regenerated catalogue already exists —
-`open-telemetry/opentelemetry-ecosystem-explorer` — derived from these same
+aggregated, versioned, nightly-regenerated catalogue already exists,
+`open-telemetry/opentelemetry-ecosystem-explorer`, derived from these same
 `metadata.yaml` files (§3). Consume it as a cross-check, not as the source.
 
 Four caveats, two of them genuine traps:
 
-1. **A depth-1 directory walk silently misses 20 real components** — contrib
+1. **A depth-1 directory walk silently misses 20 real components**: contrib
    nests `extension/{encoding,observer,storage}/*` a level deeper, including
    `file_storage`, `k8s_observer`, `docker_observer`. This bit this research
    mid-flight (§2).
 2. **`type` alone is not a unique key.** 26 type strings are reused across
-   classes — `datadog` is a connector, exporter, extension *and* receiver. The
+   classes: `datadog` is a connector, exporter, extension *and* receiver. The
    primary key must be **`(class, type)`** (§2).
-3. **`status.distributions` drifts** from the real OCB manifests — 10 mismatches
+3. **`status.distributions` drifts** from the real OCB manifests, with 10 mismatches
    at v0.158.0. Derive distro membership from the manifests (§4).
 4. **Stability is per-signal.** 36 components carry >1 level at once, so the
    allow-list must key on *(component, signal)*; `class: pkg` must also be
    filtered out (§7).
 
 Config field schemas are **not** in `metadata.yaml` for any real component and
-won't be for several quarters (§5) — scope to identity + stability now, as
+won't be for several quarters (§5), so scope to identity + stability now, as
 planned.
 
 ---
@@ -49,7 +49,7 @@ planned.
 
 Documented in-repo at `cmd/mdatagen/metadata-schema.yaml` (a commented
 exemplar, not a JSON Schema) with prose in `cmd/mdatagen/README.md`. There is
-**no schema version number** — it is versioned implicitly by the release tag.
+**no schema version number**: it is versioned implicitly by the release tag.
 
 Top-level keys on `main`: `type`, `deprecated_type`, `display_name`,
 `description`, `parent`, `scope_name`, `generated_package_name`,
@@ -103,7 +103,7 @@ Also verified: `core/processor/batchprocessor` (beta, 3 signals, large
 `deprecation:` sub-block was added (PR #12464, 2025-03-04); the `class` enum
 gained `scraper, converter, provider`; the signal enum gained `converter,
 provider` (and `profiles` in practice); and `stability` became **required**
-(PR #14070, 2025-10-29) — a tightening, not a break. Every other change landed
+(PR #14070, 2025-10-29), a tightening, not a break. Every other change landed
 in the telemetry/metrics/attributes/entities sections we don't read.
 **The identity+stability core is stable.**
 
@@ -124,14 +124,14 @@ Walking `<repo>/<kind>/*/` **and** `<repo>/<kind>/*/*/` for dirs with a
 | **TOTAL** | **12** | **255** | **267** |
 
 **Every component dir with a `go.mod` has a `metadata.yaml`; all 267 carry
-class and stability.** Coverage is not the risk — correct *enumeration* is.
+class and stability.** Coverage is not the risk; correct *enumeration* is.
 
 ### Three enumeration traps
 
-**(a) Nested components — the trap that caught this research.** A depth-1 glob
+**(a) Nested components: the trap that caught this research.** A depth-1 glob
 returns 246 and looks plausible, but omits **20 contrib extensions nested one
 level deeper**: `extension/encoding/*` (11), `observer/*` (5), `storage/*` (3),
-`dbauth/*`, `tailstorage/*`. Not obscure — they include **`file_storage`,
+`dbauth/*`, `tailstorage/*`. Not obscure: they include **`file_storage`,
 `db_storage`, `k8s_observer`, `docker_observer`, `ecs_observer`,
 `host_observer`** and the whole `*_encoding` family. Discover by `go.mod`, not
 fixed depth.
@@ -142,7 +142,7 @@ fixed depth.
 Upstream's own registry **fails to filter these** and ships 5 as components (§3).
 
 **(c) Over-broad `find`.** `find -name metadata.yaml` returns 99 core / 375
-contrib — the excess is subcomponents (`hostmetricsreceiver/internal/scraper/*`),
+contrib; the excess is subcomponents (`hostmetricsreceiver/internal/scraper/*`),
 fixtures, `internal/` packages and mdatagen samples.
 
 ### `(class, type)` is the primary key
@@ -166,7 +166,7 @@ in `internal/metadata/`, generated tests, and recently per-component
 `config.schema.yaml`. **No aggregated artefact, no JSON index.** Aggregation is
 on us or on someone upstream.
 
-### ⚠ `opentelemetry-ecosystem-explorer` — the upstream aggregated catalogue
+### ⚠ `opentelemetry-ecosystem-explorer`, the upstream aggregated catalogue
 
 The significant discovery of R-1. `open-telemetry/opentelemetry-ecosystem-explorer`
 (created 2026-01-21, live at `explorer.opentelemetry.io`, **Apache-2.0**)
@@ -180,19 +180,19 @@ Envelope `distribution, version, repository, component_type, schema_hash,
 components[]`; each entry nests the component's `metadata` verbatim (`type`,
 `display_name`, `description`, `status.{class,stability,distributions,codeowners}`).
 It is **versioned per release and retained** (`v0.154.0` … `v0.158.0` plus
-`v0.158.1-SNAPSHOT` — directly satisfying "pin to a collector version") and
+`v0.158.1-SNAPSHOT`, directly satisfying "pin to a collector version") and
 **regenerated nightly** (`nightly-registry-update.yml`, cron `0 2 * * *`) by
 `ecosystem-automation/collector-watcher/`, which clones core+contrib and parses
-their `metadata.yaml` — same substrate, same semantics. It also ships
+their `metadata.yaml`: same substrate, same semantics. It also ships
 `component_readmes/*.md`, `meta/schemas/`, `deprecations.yaml` and a
 `schema_hash` per file. **Verified count at v0.158.0: 271** (core 17, contrib 254).
 
-**But not authoritative enough to consume blindly:** **5 false positives** —
+**But not authoritative enough to consume blindly:** **5 false positives**:
 `xreceiver`, `xprocessor`, `xexporter`, `xconnector`, `xextension` are
 `class: pkg` experimental interface packages, so the real count is 266. (The
 other 2-component delta is expected tag-vs-`main` drift.) There is **no JSON
-API** (`/api/components` 404s; static SPA) — raw GitHub YAML is the machine
-interface — and the repo is six months old with no layout stability guarantee.
+API** (`/api/components` 404s; static SPA), so raw GitHub YAML is the machine
+interface, and the repo is six months old with no layout stability guarantee.
 
 ### The opentelemetry.io registry is **not** usable
 
@@ -200,11 +200,11 @@ interface — and the repo is six months old with no layout stability guarantee.
 `data/registry/*.yml` submitted by PR (`content/en/ecosystem/registry/adding.md`),
 schema `data/registry-schema.json`. It has the only true JSON endpoint
 (`/ecosystem/registry/index.json`, 1165 entries) but is **disqualified twice**:
-**no stability field at all**, and only 297 `language: collector` entries — not
+**no stability field at all**, and only 297 `language: collector` entries, not
 generated from `metadata.yaml`. Separately the site's `data/collector/*.yml`
 (266 components, per-signal stability) powers the docs' component tables, but
 its generator `scripts/collector-sync/` **reads the ecosystem-explorer
-registry** — confirming the explorer as the upstream aggregation point.
+registry**, confirming the explorer as the upstream aggregation point.
 
 ### Tools that already walk every `metadata.yaml`
 
@@ -214,14 +214,14 @@ registry** — confirming the explorer as the upstream aggregation point.
 githubgen"*), and `checkapi` (API-conformance lint). Contrib's `cmd/githubgen/`
 is now a stub pointing at `opentelemetry-go-build-tools` (contrib #37294).
 **Walking every `metadata.yaml` is a well-trodden, upstream-sanctioned
-pattern** — our aggregation is neither novel nor fragile.
+pattern**: our aggregation is neither novel nor fragile.
 
 ---
 
 ## 4. Versioning and distribution manifests
 
 Components release in lockstep; every release is a tag `vX.Y.Z` on both repos,
-and `metadata.yaml` files exist at old tags — but only back to a point. Core
+and `metadata.yaml` files exist at old tags, but only back to a point. Core
 carried **0** at v0.60.0 (2022-09-14), 15 at v0.100.0 (2024-05-06) and 99 at
 v0.158.0. Contrib adopted earlier and was already near-complete two years ago
 (v0.106.0, 2024-07-29: 93 receivers / 24 processors / 45 exporters / 11
@@ -242,21 +242,21 @@ receivers:
 
 Five distros at v0.158.0: `otelcol` (32 modules), `otelcol-contrib` (252),
 `otelcol-k8s` (74), `otelcol-otlp` (5), `otelcol-ebpf-profiler` (21). So
-**"what is in distro X at version Y" is directly derivable** — join manifest
+**"what is in distro X at version Y" is directly derivable**: join manifest
 `gomod` paths to each component's `go.mod` `module` line.
 
 ### ⚠ `status.distributions` drifts from reality
 
 Cross-checking the field against the manifests at v0.158.0 gives **10 mismatches**:
-claims `contrib` but absent from the manifest — `spanpruningprocessor`,
+claims `contrib` but absent from the manifest: `spanpruningprocessor`,
 `activedirectoryinvreceiver`, `googlecloudpubsubpushreceiver`, `signalfxreceiver`
 (contrib HEAD is literally "remove signalfxreceiver from otelcontribcol");
-shipped in `otelcol-contrib` but metadata omits it — `sumologicextension`,
+shipped in `otelcol-contrib` but metadata omits it: `sumologicextension`,
 `coralogixprocessor`, `icmpcheckreceiver`; shipped in `otelcol-k8s` but metadata
-omits `k8s` — `spanmetricsconnector`, `cgroupruntimeextension`,
+omits `k8s`: `spanmetricsconnector`, `cgroupruntimeextension`,
 `metricsgenerationprocessor`.
 
-Also `otelcol-ebpf-profiler` has **no token at all** — the canonical set in
+Also `otelcol-ebpf-profiler` has **no token at all**: the canonical set in
 `cmd/mdatagen/internal/status.go` is only `core | contrib | k8s | otlp`, so that
 distro is invisible to `metadata.yaml`. **Treat `status.distributions` as a hint;
 derive membership from manifests.**
@@ -273,22 +273,22 @@ won't for several quarters.** Identity+stability scope is the right call.
 schemas via `schemagen`, **2** build the generation tool, **3** migrate all
 components, **4** extend OCB to a whole-collector schema.
 
-- **Phase 1 — effectively done.** `cmd/schemagen` (moved into core 2026-06-15)
+- **Phase 1: effectively done.** `cmd/schemagen` (moved into core 2026-06-15)
   reverse-extracts JSON Schema from Go structs; **419 `config.schema.yaml` files
   committed** (27 core / 392 contrib). But its README says *"In Development"*,
   *"only for temporary use"*, it **cannot extract defaults or validation
   constraints**, and CI freshness covers only 9 dirs.
-- **Phase 2 — tooling built, pilot unfinished.** mdatagen gained config JSON
+- **Phase 2: tooling built, pilot unfinished.** mdatagen gained config JSON
   Schema generation (#14548, 2026-03-03), Go struct generation (#14693),
-  validators, default setters and README generation (Feb–May 2026). The last
+  validators, default setters and README generation (Feb to May 2026). The last
   open sub-issue **#14566 "Pilot migration of a handful of components"** has
   **zero comments and is untouched since 2026-06-10**.
-- **Phase 3 — not started for components.** Migrated so far: shared config
+- **Phase 3: not started for components.** Migrated so far: shared config
   *packages* only (`configtls`, `configretry`, `configcompression`,
   `configmiddleware`, `configauth`, `scraperhelper`, `filter`) via an
   `exported_configs:` key. **Not one receiver/processor/exporter/connector/
   extension has been migrated.**
-- **Phase 4 — blocked.** PR #15366 (combined schema via OCB) open since
+- **Phase 4: blocked.** PR #15366 (combined schema via OCB) open since
   2026-05-27, `mergeable_state: blocked`; the author pinged the OCB codeowner
   2026-06-10, 06-29 and 08-05 with no response. Issue #15010
   (`otelcol print-schema`) untouched since 2026-04-27.
@@ -296,15 +296,15 @@ components, **4** extend OCB to a whole-collector schema.
 Verified on `main` today: `metadata.yaml` with top-level `config:` = **3, all
 mdatagen samples**; with `exported_configs:` = **10, all shared core packages**;
 generated `config.schema.json` = **11 core, 0 contrib**. Tracking issue **#14543**
-is open, created 2026-02-06, **last comment 2026-03-05 — five months stale**, no
-labels, no milestone, its Phase-2 checklist never updated for the March–May work.
+is open, created 2026-02-06, **last comment 2026-03-05, five months stale**, no
+labels, no milestone, its Phase-2 checklist never updated for the March to May work.
 
 **Timeline signal: pessimistic.** Tool-building moved fast; adoption stalled on
 human review. A published whole-collector schema is gated on a PR blocked two
 months plus bug #15728 (the combined schema rejects the very common empty-body
 `receivers:\n  otlp:` form). **Do not plan around config schemas landing in
 metadata.yaml before mid-2027.** For G7 form generation, the `config.schema.yaml`
-bootstrap files are the pragmatic interim source — broad coverage, but no
+bootstrap files are the pragmatic interim source: broad coverage, but no
 defaults or validation.
 
 ---
@@ -314,7 +314,7 @@ defaults or validation.
 All four repos are **Apache-2.0** (confirmed from each `LICENSE`). Apache-2.0
 permits redistribution of derived data; retain the licence text and a NOTICE
 attributing sources. No copyleft, no field-of-use restriction. Component names
-and stability are facts, not creative content — low risk regardless.
+and stability are facts, not creative content, so low risk regardless.
 
 Footprint: full shallow clone of core + contrib is 266 MB, but a **pinned sparse
 checkout** (`**/metadata.yaml`, `**/go.mod`) of core @ v0.158.0 is **3.9 MB**.
@@ -344,7 +344,7 @@ Build-time only; the air-gapped runtime never fetches anything.
 6. Embed in the release artefact (no sidecar service). Record source SHAs so a
    catalogue is reproducible and auditable.
 
-A proof-of-concept for steps 3–5 ran in this session against v0.158.0 and
+A proof-of-concept for steps 3 to 5 ran in this session against v0.158.0 and
 `main`, producing all 267 components with correct stability.
 
 **Cross-check upstream rather than replacing it.** Consuming ecosystem-explorer
@@ -373,52 +373,52 @@ tallies (a component can appear in several): alpha 139, beta 115, development
 42, deprecated 4, stable 3, unmaintained 1.
 
 Note how thin the top is: **only 3 components are `stable`** (`otlp`
-receiver/exporter, `otlphttp` exporter — and only for traces/metrics/logs). A
+receiver/exporter, `otlphttp` exporter, and only for traces/metrics/logs). A
 "stable only" policy would make the platform unusable. Realistic allow-list
 floors are `beta` for production Service Classes, `alpha` for the long tail.
 
 Policy-relevant observations:
 
-- **Stability is per-signal.** 36 components carry ≥2 levels — `otlpreceiver` is
+- **Stability is per-signal.** 36 components carry ≥2 levels: `otlpreceiver` is
   `stable` for traces/metrics/logs but `alpha` for profiles. **A "beta or
   better" rule must evaluate per (component, signal)**, or it wrongly admits
   alpha profiles support or wrongly excludes a stable receiver.
 - `deprecated` and `unmaintained` are **not** rungs on the maturity ladder but
   orthogonal end-states. Model them as a separate `lifecycle` axis. Deprecated
-  components carry machine-readable `deprecation.<signal>.{date,migration}` —
+  components carry machine-readable `deprecation.<signal>.{date,migration}`,
   ready-made remediation advice for the console.
 - **62 components have a `deprecated_type` alias** (`spanmetrics` →
   `span_metrics`). Allow-list matching and config linting must resolve aliases
   or teams hit false "not in Catalogue" failures on working configs.
-- 15 carry free-text `warnings`; 9 have no `codeowners.active` — a leading
+- 15 carry free-text `warnings`; 9 have no `codeowners.active`, a leading
   indicator of drift toward `unmaintained`.
 - 15 distinct signal tokens exist (connectors use `X_to_Y`, extensions the
-  literal `extension`). Treat the vocabulary as **open** — pass unknown tokens
+  literal `extension`). Treat the vocabulary as **open**: pass unknown tokens
   through rather than validating against a closed enum; it grew twice in 2 years.
 
 ---
 
 ## Recommendations for session G2
 
-1. **Adopt `metadata.yaml` as the Catalogue substrate** — coverage is complete
+1. **Adopt `metadata.yaml` as the Catalogue substrate**: coverage is complete
    (267/267), the schema stable, and it is trivially vendorable.
 2. **Build the walker ourselves; diff against ecosystem-explorer in CI.** Don't
    consume the upstream registry directly (5 `class: pkg` false positives, no
-   compatibility guarantee) — but don't ignore it either (§3).
+   compatibility guarantee), but don't ignore it either (§3).
 3. **Key on `(class, type)`, and enumerate recursively** by `go.mod` discovery,
    filtering on `status.class`. `type` alone collapses 29 components; a depth-1
    walk drops `file_storage`, `k8s_observer` and 18 others (§2).
 4. **Scope to identity + stability + lifecycle.** Don't wait for or design
    around config schemas (§5); revisit at G7 for form generation.
 5. **Derive distribution membership from OCB manifests**, not
-   `status.distributions` (§4). Log divergence — it's a useful drift signal.
+   `status.distributions` (§4). Log divergence; it's a useful drift signal.
 6. **Model stability per (component, signal)**; retrofitting is painful. Keep
    `deprecated`/`unmaintained` on a separate lifecycle axis, and note a "stable
-   only" policy is unusable — only 3 qualify (§7).
+   only" policy is unusable, because only 3 qualify (§7).
 7. **Resolve `deprecated_type` aliases** in Catalogue lookups (62 components).
 8. **Pin and record source commits** in every catalogue artefact; make the
    Catalogue a build-time output embedded in the release (~8 KB gzipped).
-   **Do not build a runtime fetcher**, even behind a flag — ADR-0019's air-gap
+   **Do not build a runtime fetcher**, even behind a flag: ADR-0019's air-gap
    constraint is satisfied free by build-time generation, and a fetcher would
    create two code paths and a drift surface.
 9. **Consider "catalogue diff" as a first-class feature.** Pinned reproducible
@@ -426,5 +426,5 @@ Policy-relevant observations:
    deprecated, removed, stability changes). Upstream's `schema_hash` and
    `deprecations.yaml` are prior art worth mirroring.
 10. **Add an ADR** recording the substrate choice, the `(class, type)` key and
-    the manifest-over-metadata decision — non-obvious calls future sessions will
+    the manifest-over-metadata decision, non-obvious calls future sessions will
     otherwise re-litigate.

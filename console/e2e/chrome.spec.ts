@@ -14,7 +14,7 @@ test('the theme resolves in three states and survives a reload', async ({ page }
   await theme.selectOption('light')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 
-  // The choice is a device preference, so it is remembered — and it is not
+  // The choice is a device preference, so it is remembered, and it is not
   // in the URL, which is the documented exception to ADR-0042 §3.5.
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
@@ -97,7 +97,7 @@ test('nothing in the chrome wraps, overlaps, or is printed over', async ({ page 
   // control pushed the demo's chrome to 1749px inside 1600px and
   // "Catalogue & Governance" wrapped onto three lines. Then the fix for
   // that let the Workspace navigation shrink past its own content, so the
-  // names ran underneath the controls beside them — a worse failure, and
+  // names ran underneath the controls beside them: a worse failure, and
   // one the height assertion could not see, because an overlapping row is
   // still one row.
   //

@@ -11,7 +11,7 @@ import (
 
 // Source is where the serving path gets its repo snapshot. Both
 // implementations end in LoadSnapshot over a directory: the git dependency
-// is git-the-tool, never git-the-service (ADR-0032 §3) — a local bare
+// is git-the-tool, never git-the-service (ADR-0032 §3): a local bare
 // repository fully satisfies the transport floor, and a single binary plus
 // a directory is a complete standalone instance.
 type Source interface {
@@ -20,7 +20,7 @@ type Source interface {
 	Snapshot(ctx context.Context) (*Snapshot, error)
 }
 
-// DirSource serves an estate checkout already on disk — the standalone and
+// DirSource serves an estate checkout already on disk, the standalone and
 // local-development rung of ADR-0032 §3, and the air-gap posture
 // (ADR-0019) in the same shape. Nothing is fetched; each snapshot re-reads
 // the directory, so an external `git pull` is picked up on the next poll.
@@ -31,7 +31,7 @@ type DirSource struct {
 
 // Snapshot compiles the directory as it stands. The head SHA is read from
 // the surrounding git history when there is one; a plain directory serves
-// fine without it — the artefacts carry their own commit stamps
+// fine without it, because the artefacts carry their own commit stamps
 // (ADR-0013).
 func (d DirSource) Snapshot(ctx context.Context) (*Snapshot, error) {
 	commit, err := git(ctx, d.Root, "rev-parse", "HEAD")
@@ -48,7 +48,7 @@ func (d DirSource) Snapshot(ctx context.Context) (*Snapshot, error) {
 // serving the previous snapshot.
 type GitSource struct {
 	// URL is anything git clones: an SSH or HTTPS remote, or a local
-	// `file:///…/estate.git` bare repository — the air-gap floor.
+	// `file:///…/estate.git` bare repository, the air-gap floor.
 	URL string
 
 	// Dir is where the clone lives. It is a cache of git, never a fork of
@@ -78,7 +78,7 @@ func (g GitSource) Snapshot(ctx context.Context) (*Snapshot, error) {
 }
 
 // git runs one git command, returning its trimmed stdout. Errors carry the
-// command and its combined output — a failed fetch needs to say why.
+// command and its combined output, because a failed fetch needs to say why.
 func git(ctx context.Context, dir string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir

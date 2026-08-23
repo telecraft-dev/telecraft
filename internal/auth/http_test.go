@@ -148,7 +148,7 @@ func TestLogoutEndsTheSession(t *testing.T) {
 	}
 }
 
-// Acceptance: login works via OIDC in tests (issue #26) — the whole
+// Acceptance: login works via OIDC in tests (issue #26): the whole
 // redirect round trip through the handler against a loopback issuer, with
 // nothing beyond this process involved (REQ-006).
 func TestOIDCLoginRoundTripsThroughTheHandler(t *testing.T) {
@@ -440,7 +440,7 @@ func TestOIDCCallbackNamesTheFixWhenTheEstateDoesNotKnowTheEmail(t *testing.T) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusForbidden {
-		t.Fatalf("callback = %d, want 403 — the identity is verified, the estate just has no place for it", res.StatusCode)
+		t.Fatalf("callback = %d, want 403: the identity is verified, the estate just has no place for it", res.StatusCode)
 	}
 	var body map[string]string
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
@@ -490,8 +490,8 @@ func TestNewHandlerRefusesBadWiring(t *testing.T) {
 		t.Fatalf("NewHandler = %v, want a duplicate-name refusal", err)
 	}
 	_, err = NewHandler(HandlerConfig{Providers: []Provider{facetless{}}})
-	if err == nil || !strings.Contains(err.Error(), "facet") {
-		t.Fatalf("NewHandler = %v, want a facet refusal", err)
+	if err == nil || !strings.Contains(err.Error(), "neither a password provider") {
+		t.Fatalf("NewHandler = %v, want a refusal naming the missing flow", err)
 	}
 }
 
@@ -501,7 +501,7 @@ func (facetless) Name() string { return "facetless" }
 
 func TestSessionSurvivesOnlyWhileTheEstateKnowsTheUser(t *testing.T) {
 	// Two handlers over the same sessions key: the second's users.yaml no
-	// longer holds jo — the session cookie still verifies, but Require
+	// longer holds jo. The session cookie still verifies, but Require
 	// refuses, which is how removal from users.yaml revokes.
 	sessions := testSessions(t)
 	usersWith := usersWithPassword(t, "correct horse battery")

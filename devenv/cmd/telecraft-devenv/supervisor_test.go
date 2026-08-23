@@ -12,7 +12,7 @@ import (
 
 // The composition of a Supervisor configuration: the renderer's artefact
 // plus the identity the operator supplies. Every assertion below is about
-// the two halves staying distinguishable — the base is reproducible from
+// the two halves staying distinguishable: the base is reproducible from
 // the estate, the overlay is not, and a merge that quietly dropped either
 // would make the devenv's collectors unlike the ones it claims to model.
 
@@ -53,7 +53,7 @@ func TestMergeMapsLeavesItsInputsAlone(t *testing.T) {
 	mergeMaps(base, over)
 
 	if _, ok := base["agent"].(map[string]any)["executable"]; ok {
-		t.Error("the base was mutated — composing one collector would leak into the next")
+		t.Error("the base was mutated: composing one collector would leak into the next")
 	}
 }
 
@@ -270,7 +270,7 @@ func TestPrepareWritesOneDirectoryPerCollector(t *testing.T) {
 		t.Errorf("no local file for the git-delivered collector: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(out, "appliance-1", "supervisor.yaml")); !os.IsNotExist(err) {
-		t.Error("a git-delivered collector was given a Supervisor configuration — nothing serves it")
+		t.Error("a git-delivered collector was given a Supervisor configuration: nothing serves it")
 	}
 }
 

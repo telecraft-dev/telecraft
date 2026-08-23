@@ -25,8 +25,8 @@ import (
 )
 
 // GitHubApp is the first-party Forge implementation (ADR-0014): the
-// platform authenticates as a GitHub App — never a personal or shared
-// token — and writes commits authored by the App's bot identity,
+// platform authenticates as a GitHub App (never a personal or shared
+// token) and writes commits authored by the App's bot identity,
 // GitHub-signed and marked verified (the committer is GitHub's web-flow
 // signing identity, as on web-interface commits), with the acting human
 // attributed as Co-authored-by (ADR-0028 §4's "verifiable bot identity").
@@ -34,22 +34,22 @@ import (
 // The commit itself is written through the GraphQL createCommitOnBranch
 // mutation, deliberately: GitHub signs a bot's commit only when the
 // request carries no custom author and no custom committer, so the
-// mutation — which accepts neither — is the one door to verified commits.
+// mutation, which accepts neither, is the one door to verified commits.
 // The git-data commit endpoint was tried first and taught the lesson: a
 // custom author is silently copied into the committer and the signature
 // is forfeited. Human authorship therefore rides as a Co-authored-by
-// trailer — git-level attribution that survives clones and renders as
-// authorship — plus the proposal-body footer Submit stamps (ADR-0014).
+// trailer (git-level attribution that survives clones and renders as
+// authorship) plus the proposal-body footer Submit stamps (ADR-0014).
 //
 // Everything else is the REST v3 API: mint a short-lived App JWT,
 // exchange it for an installation token, then drive the refs and
-// pull-request endpoints. No GitHub SDK — the dependency would be larger
+// pull-request endpoints. No GitHub SDK: the dependency would be larger
 // than the handful of calls Propose makes.
 type GitHubApp struct {
 	owner string
 	repo  string
 
-	// appID is the JWT issuer: the App ID or the Client ID — GitHub
+	// appID is the JWT issuer: the App ID or the Client ID; GitHub
 	// accepts either, and recommends the Client ID.
 	appID          string
 	installationID string
@@ -80,7 +80,7 @@ type GitHubAppConfig struct {
 	// PrivateKeyPEM is the App's RSA signing key (PKCS#1 or PKCS#8 PEM).
 	PrivateKeyPEM []byte
 
-	// APIBase overrides the REST endpoint — GitHub Enterprise Server, or
+	// APIBase overrides the REST endpoint: GitHub Enterprise Server, or
 	// a test double. Empty means https://api.github.com.
 	APIBase string
 
@@ -159,7 +159,7 @@ func (g *GitHubApp) Capabilities() seam.Capabilities {
 
 // Propose implements the seam: reset the change's branch onto the base,
 // write one signed bot commit carrying every file change with the acting
-// human as co-author (ADR-0014), then open the pull request — or refresh
+// human as co-author (ADR-0014), then open the pull request, or refresh
 // the one the branch already carries, which is how a red render check is
 // retried in place.
 func (g *GitHubApp) Propose(ctx context.Context, change seam.Change) (seam.Proposal, error) {
@@ -194,9 +194,9 @@ func (g *GitHubApp) Propose(ctx context.Context, change seam.Change) (seam.Propo
 }
 
 // createCommit writes the change's one commit through createCommitOnBranch:
-// the only commit shape GitHub signs for an App — no custom author, no
+// the only commit shape GitHub signs for an App: no custom author, no
 // custom committer; the commit lands authored by the App's bot identity
-// and committed by GitHub's own web-flow signing identity — with the
+// and committed by GitHub's own web-flow signing identity, with the
 // acting human attributed as Co-authored-by (ADR-0014). The branch sits at
 // expectedHead; the mutation refuses to land on anything else, so a
 // concurrent move cannot be silently overwritten.
@@ -265,7 +265,7 @@ func (g *GitHubApp) createCommit(ctx context.Context, change seam.Change, expect
 }
 
 // moveBranch creates the branch at sha, or force-moves it when it already
-// exists — the branch is the draft, reset onto the base before every
+// exists. The branch is the draft, reset onto the base before every
 // propose lands its fresh commit (ADR-0028 §1: re-rendered on every push).
 func (g *GitHubApp) moveBranch(ctx context.Context, branch, sha string) error {
 	err := g.api(ctx, http.MethodPost, g.repoPath("/git/refs"), map[string]any{
@@ -286,13 +286,13 @@ func (g *GitHubApp) moveBranch(ctx context.Context, branch, sha string) error {
 }
 
 // ensureProposal opens the pull request for the branch, or refreshes the
-// one already standing for it — reopening it first if it needs that.
+// one already standing for it, reopening it first if it needs that.
 //
 // It deliberately asks for every state, not just open ones. Propose resets
 // the branch to base before it commits, because createCommitOnBranch is
 // the only commit shape GitHub signs for an App and it will only write
 // onto a branch already sitting at the parent it is given. For as long as
-// it takes that commit to land, the branch holds nothing ahead of base —
+// it takes that commit to land, the branch holds nothing ahead of base,
 // and GitHub, seeing a pull request with no commits in it, closes the
 // pull request. It is a race with a background job on their side, so it
 // fires on some retries and not others.
@@ -329,7 +329,7 @@ func (g *GitHubApp) ensureProposal(ctx context.Context, change seam.Change, base
 		}
 		// Reopening is how the retry contract survives GitHub having
 		// closed our own proposal out from under us. A proposal someone
-		// closed on purpose reopens too — the alternative is opening a
+		// closed on purpose reopens too: the alternative is opening a
 		// second one beside it, which is worse in every case.
 		if pr.State == "closed" {
 			refresh["state"] = "open"
@@ -413,7 +413,7 @@ func (g *GitHubApp) api(ctx context.Context, method, path string, in, out any) e
 }
 
 // graphQL makes one installation-authenticated GraphQL call. GraphQL
-// reports failure in-band — HTTP 200 with an errors array — so the
+// reports failure in-band (HTTP 200 with an errors array), so the
 // envelope is checked here and data is decoded into out only on success.
 func (g *GitHubApp) graphQL(ctx context.Context, query string, variables map[string]any, out any) error {
 	token, err := g.installationToken(ctx)
@@ -448,7 +448,7 @@ func (g *GitHubApp) graphQL(ctx context.Context, query string, variables map[str
 	return nil
 }
 
-// apiError is a non-2xx REST answer. Callers branch on Status — 422 on a
+// apiError is a non-2xx REST answer. Callers branch on Status: 422 on a
 // ref create means "exists", 404 on the repo means the installation does
 // not reach it.
 type apiError struct {

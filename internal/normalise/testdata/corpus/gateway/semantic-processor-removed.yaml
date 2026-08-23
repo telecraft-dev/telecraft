@@ -1,5 +1,5 @@
 # SEMANTIC change vs base.yaml: the untrusted-attribute strip processor is
-# gone from the traces pipeline (and the processor definition removed) — the
+# gone from the traces pipeline (and the processor definition removed): the
 # exact class of silent governance regression the check exists to catch.
 receivers:
   otlp:

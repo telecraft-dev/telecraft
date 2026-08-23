@@ -2,7 +2,7 @@ import type { TopologyPath, TopologyPayload } from '../../api/types'
 import type { EngineModel } from '../../engine/types'
 
 // The topology vocabulary compiled to the engine model (ADR-0044 §1):
-// pure functions, so the never-draw-collectors bet is testable headless —
+// pure functions, so the never-draw-collectors bet is testable headless:
 // a payload at any estate scale yields exactly one node per authored
 // object, and every edge derives from the model (Hops carrying the Paths;
 // ADR-0007). Nothing here, and nothing in the rendering shell, accepts a

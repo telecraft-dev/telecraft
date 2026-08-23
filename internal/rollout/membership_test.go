@@ -25,7 +25,7 @@ func fractionalRollout(stage int) renderer.Rollout {
 
 // Membership is deterministic and pure (the first acceptance criterion):
 // identical inputs yield identical membership on any call, and widening a
-// fraction admits a strict superset — the bucket is fixed per collector,
+// fraction admits a strict superset: the bucket is fixed per collector,
 // only the cut moves (ADR-0029 §4).
 func TestFractionalMembershipIsDeterministicAndWidens(t *testing.T) {
 	five, fifty := 0, 0
@@ -37,7 +37,7 @@ func TestFractionalMembershipIsDeterministicAndWidens(t *testing.T) {
 			t.Fatalf("host %d: membership varies between identical calls", i)
 		}
 		if atFive && !atFifty {
-			t.Fatalf("host %d is in the 5%% cohort but not the 50%% one — widening must be a strict superset, or collectors flap backwards (ADR-0029 §4)", i)
+			t.Fatalf("host %d is in the 5%% cohort but not the 50%% one: widening must be a strict superset, or collectors flap backwards", i) // ADR-0029 §4
 		}
 		if atFive {
 			five++
@@ -46,13 +46,13 @@ func TestFractionalMembershipIsDeterministicAndWidens(t *testing.T) {
 			fifty++
 		}
 	}
-	// Statistically 5%, not exactly 5% — accepted openly (§4). The counts
+	// Statistically 5%, not exactly 5%, accepted openly (§4). The counts
 	// are deterministic, so loose bounds cannot flake.
 	if five == 0 || fifty <= five || fifty >= 1000 {
-		t.Errorf("cohort sizes five=%d fifty=%d out of 1000 — the fractions should carve real, growing, partial cohorts", five, fifty)
+		t.Errorf("cohort sizes five=%d fifty=%d out of 1000: the fractions should carve real, growing, partial cohorts", five, fifty)
 	}
 	if five < 20 || five > 100 {
-		t.Errorf("5%% of 1000 hosts admitted %d — far from the statistical target", five)
+		t.Errorf("5%% of 1000 hosts admitted %d: far from the statistical target", five)
 	}
 }
 
@@ -87,7 +87,7 @@ func TestFormsUnionAndStagesAccumulate(t *testing.T) {
 	laterStage := map[string]string{"host.name": "any", "region": "us-east-1"}
 
 	if !Member(r, enumerated) || !Member(r, byAttribute) {
-		t.Error("stage 0 membership is the union of its forms — both should be members")
+		t.Error("stage 0 membership is the union of its forms: both should be members")
 	}
 	if Member(r, laterStage) {
 		t.Error("a stage-1 cohort member is admitted while stage 0 is active")
@@ -98,12 +98,12 @@ func TestFormsUnionAndStagesAccumulate(t *testing.T) {
 		"enumerated": enumerated, "by attribute": byAttribute, "later stage": laterStage,
 	} {
 		if !Member(r, attrs) {
-			t.Errorf("at stage 1 the %s member is out — advancing only ever widens", name)
+			t.Errorf("at stage 1 the %s member is out: advancing only ever widens", name)
 		}
 	}
 }
 
-// Preview runs the same function against an estate snapshot — information
+// Preview runs the same function against an estate snapshot: information
 // for the reviewer, never the authoritative decision (ADR-0029 §4). The
 // population is scoped by the Tier's selector.
 func TestPreviewScopesToTheTierPopulation(t *testing.T) {

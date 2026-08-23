@@ -26,7 +26,7 @@ test('edges derive from the model; no gesture draws or redraws one', async ({ pa
   const canvas = page.getByTestId(CANVAS)
   // Every drawn edge is a Hop signal lane: 3 Hops carrying 3+2+2 signals.
   // A Hop carries the lanes its source Tier wires and no others, so the
-  // two governed sources carry two each — neither wires a metrics lane.
+  // two governed sources carry two each; neither wires a metrics lane.
   await expect(canvas.locator('.canvas-edge')).toHaveCount(7)
   // Nothing is connectable: there is no handle a drag could start an
   // edge from (ADR-0044 §3).
@@ -50,7 +50,7 @@ test('drag is row-constrained and persists in the per-user store', async ({ page
   const edgeBefore = (await edge.boundingBox())!
   const before = (await gateway.boundingBox())!
   const gapBefore = before.x - edgeBefore.x
-  // Drag right and down: only the horizontal component may land — a node
+  // Drag right and down: only the horizontal component may land: a node
   // can never leave its Environment row (ADR-0044 §3).
   await page.mouse.move(before.x + before.width / 2, before.y + 10)
   await page.mouse.down()
@@ -60,7 +60,7 @@ test('drag is row-constrained and persists in the per-user store', async ({ page
   expect(after.x - before.x).toBeGreaterThan(60)
   expect(Math.abs(after.y - before.y)).toBeLessThan(2)
   // The within-row offset lands in the presentation store, per user
-  // (ADR-0042 §7) — presentation only, never model truth.
+  // (ADR-0042 §7): presentation only, never model truth.
   const stored = await page.evaluate(() => {
     const raw = window.localStorage.getItem('telecraft.console.presentation.v1.demo-user')
     return raw === null ? null : (JSON.parse(raw) as { arrangement?: Record<string, Record<string, number>> })
@@ -76,7 +76,7 @@ test('drag is row-constrained and persists in the per-user store', async ({ page
 // This suite runs the instance build, where simulate starts off: motion on
 // a picture of a real estate would be a claim about throughput the console
 // cannot support. The demo build starts it on for the opposite reason, and
-// that default is verified against the deployed site rather than here —
+// that default is verified against the deployed site rather than here:
 // this harness serves one build, and standing up a second for a one-line
 // default is not worth what it costs.
 test('simulate animates journeys and changes nothing persistent', async ({ page }) => {
@@ -103,7 +103,7 @@ test('simulate animates journeys and changes nothing persistent', async ({ page 
 
 test('multiple Paths per Service render distinctly', async ({ page }) => {
   // checkout: an edge-chain Path and a gateway on-ramp Path (no collector
-  // at all, ADR-0007) — each with its own overlay identity.
+  // at all, ADR-0007), each with its own overlay identity.
   await page.goto('/topology?object=service%3Aproduct%2Fcheckout')
   await expect(page.getByTestId('trace-path-0')).toHaveText('edge → gateway')
   await expect(page.getByTestId('trace-path-1')).toHaveText('straight to gateway-staging')
@@ -127,7 +127,7 @@ test('multiple Paths per Service render distinctly', async ({ page }) => {
 test('the universal card panel and deep links work from canvas nodes', async ({ page }) => {
   await page.goto('/topology')
   const canvas = page.getByTestId(CANVAS)
-  // Clicking a Tier summons the universal card panel in place — the same
+  // Clicking a Tier summons the universal card panel in place: the same
   // component as the shelf, inspection never navigates (ADR-0042 §3.2).
   await canvas.locator('[data-id="data-flow/gateway"] .canvas-node-name').click()
   await expect(page).toHaveURL(/\/topology\?.*object=tier%3Adata-flow%2Fgateway/)
@@ -135,7 +135,7 @@ test('the universal card panel and deep links work from canvas nodes', async ({ 
   await expect(page.getByTestId('panel-title')).toHaveText('gateway')
   // One face payload, many representations (ADR-0041 §4): the flow
   // readings the shelf shows are the same readings here, from the same
-  // contract — volume, freshness and shape per signal lane.
+  // contract: volume, freshness and shape per signal lane.
   const flow = page.getByTestId('panel-flow')
   await expect(flow.getByTestId('matrix-data-flow/gateway-traces')).toContainText('1M → 100k')
   await expect(flow.getByTestId('matrix-data-flow/gateway-traces')).toContainText('30s')

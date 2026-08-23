@@ -23,7 +23,7 @@ func writeRecording(t *testing.T, body string) string {
 }
 
 // recordedGateway is two gateway collectors, one of which the source could
-// not read — the ordinary shape a recording takes.
+// not read, the ordinary shape a recording takes.
 const recordedGateway = `
 as_of: 2026-08-18T12:00:00Z
 refresh_cadence: 30s
@@ -78,7 +78,7 @@ func TestRecordedReadingKeepsComponentOrderVerbatim(t *testing.T) {
 		t.Fatalf("gw-1 effective = %+v, want a known reading of two pipelines", c.Effective)
 	}
 	if got := c.Effective.Pipelines[1].Receivers; len(got) != 2 || got[0] != "filelog" {
-		t.Errorf("receivers = %v, want filelog before otlp — component order is part of the config (ADR-0004)", got)
+		t.Errorf("receivers = %v, want filelog before otlp: component order is part of the config", got)
 	}
 }
 
@@ -89,13 +89,13 @@ func TestRecordedUnreadableCollectorStaysUnknownWithItsCause(t *testing.T) {
 	}
 	c := p.Estate(context.Background()).Lookup(map[string]string{"service.instance.id": "gw-2"})
 	if c.Effective.Known {
-		t.Fatalf("gw-2 effective = %+v, want an unknown reading — a collector the source could not read is not one reporting nothing", c.Effective)
+		t.Fatalf("gw-2 effective = %+v, want an unknown reading: a collector the source could not read is not one reporting nothing", c.Effective)
 	}
 	if !strings.Contains(c.Effective.Cause, "never reported") {
 		t.Errorf("cause = %q, want the recorded cause carried through", c.Effective.Cause)
 	}
 	if c.Effective.AsOf.IsZero() {
-		t.Error("an unknown reading still carries as_of — we could not see, as of when (ADR-0036 §2)")
+		t.Error("an unknown reading still carries as_of: we could not see, as of when")
 	}
 }
 
@@ -106,7 +106,7 @@ func TestRecordedReadingIsStampedWhenItWasTakenNotWhenItWasRead(t *testing.T) {
 	}
 	est := p.Estate(context.Background())
 	if got := est.AsOf.Format("2006-01-02T15:04:05Z"); got != "2026-08-18T12:00:00Z" {
-		t.Errorf("as_of = %s, want the instant recorded in the file — a recording does not get fresher by being opened", got)
+		t.Errorf("as_of = %s, want the instant recorded in the file: a recording does not get fresher by being opened", got)
 	}
 }
 
@@ -121,7 +121,7 @@ func TestRecordedDeclaresHealthAndDeliveryIncapable(t *testing.T) {
 	}
 	for _, kind := range []seam.ReadingKind{seam.HealthKind, seam.DeliveryStatusKind} {
 		if _, declared := decl.Readings[kind]; !declared {
-			t.Errorf("reading %q is unmentioned — incapable is a declaration, never an omission (ADR-0036 §1)", kind)
+			t.Errorf("reading %q is unmentioned: incapable is a declaration, never an omission", kind)
 		}
 		if decl.Capable(kind) {
 			t.Errorf("reading %q is declared capable but the format cannot carry it", kind)
@@ -166,7 +166,7 @@ func TestRecordedLoadFailsClosed(t *testing.T) {
 		{
 			name: "unreadable carrying pipelines",
 			body: "as_of: 2026-08-18T12:00:00Z\nrefresh_cadence: 30s\ncollectors:\n  - identity: {id: a}\n    effective: {known: false, cause: quiet, pipelines: [{name: logs}]}\n",
-			want: "payload means nothing",
+			want: "carries no payload",
 		},
 		{
 			name: "same collector twice",
@@ -178,7 +178,7 @@ func TestRecordedLoadFailsClosed(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := NewRecorded(RecordedConfig{Path: writeRecording(t, tc.body)})
 			if err == nil {
-				t.Fatalf("the reading loaded — a recording nobody can trust the shape of is worse than none")
+				t.Fatalf("the reading loaded: a recording nobody can trust the shape of is worse than none")
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want it to name %q", err, tc.want)
@@ -189,6 +189,6 @@ func TestRecordedLoadFailsClosed(t *testing.T) {
 
 func TestRecordedMissingFileIsALoadError(t *testing.T) {
 	if _, err := NewRecorded(RecordedConfig{Path: filepath.Join(t.TempDir(), "absent.yaml")}); err == nil {
-		t.Error("an absent recording loaded — the run must fail rather than judge an estate it never read")
+		t.Error("an absent recording loaded: the run must fail rather than judge an estate it never read")
 	}
 }

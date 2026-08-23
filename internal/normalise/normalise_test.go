@@ -54,7 +54,7 @@ func corpusDirs(t *testing.T) []string {
 
 // AC: cosmetic YAML differences never read as divergence. Every variant-*
 // file must agree with its base at layer 2 under every profile, while layer
-// 1 (raw bytes) disagrees — cosmetic difference is exactly the gap between
+// 1 (raw bytes) disagrees: cosmetic difference is exactly the gap between
 // those two layers (spike H-1).
 func TestCosmeticVariantsAgreeAtLayer2(t *testing.T) {
 	for _, dir := range corpusDirs(t) {
@@ -66,7 +66,7 @@ func TestCosmeticVariantsAgreeAtLayer2(t *testing.T) {
 		for _, v := range variants {
 			raw := load(t, v)
 			if Layer1(base) == Layer1(raw) {
-				t.Errorf("%s: layer 1 equal to base — fixture is not a variant", v)
+				t.Errorf("%s: layer 1 equal to base: fixture is not a variant", v)
 			}
 			for _, p := range coreProfiles() {
 				if got, want := layer2(t, raw, p), layer2(t, base, p); got != want {
@@ -79,8 +79,8 @@ func TestCosmeticVariantsAgreeAtLayer2(t *testing.T) {
 	}
 }
 
-// The Supervisor's effective.yaml — injected extensions.opamp at an
-// ephemeral port, `opamp` appended to service.extensions — must agree with
+// The Supervisor's effective.yaml (injected extensions.opamp at an
+// ephemeral port, `opamp` appended to service.extensions) must agree with
 // the rendered config under the supervisor profile, and must NOT agree
 // under the exact profile: the allow-list is load-bearing, not decorative
 // (spike H-2).
@@ -94,7 +94,7 @@ func TestSupervisorReportAgrees(t *testing.T) {
 		t.Fatalf("supervisor profile: rendered vs reported disagree:\n%v", Layer3(a, b))
 	}
 	if layer2(t, base, Exact()) == layer2(t, rep, Exact()) {
-		t.Fatal("exact profile agreed — the supervisor mutations vanished, fixture broken")
+		t.Fatal("exact profile agreed: the supervisor mutations vanished, fixture broken")
 	}
 }
 
@@ -157,14 +157,14 @@ func TestSemanticChangesFlipLayer2AndLocalise(t *testing.T) {
 
 // ADR-0046 §2 struck "explicit defaults" from the cosmetic list: without
 // component-schema knowledge the normaliser cannot know 8192 is batch's
-// default, so spelled-out defaults DISAGREE with the empty form —
+// default, so spelled-out defaults DISAGREE with the empty form,
 // deliberately (spike F-2). If this test ever fails, F-2's premise needs
 // re-examination, not this assertion loosening.
 func TestExplicitDefaultsDoNotAgree(t *testing.T) {
 	base := load(t, "testdata/corpus/edge-k8s/base.yaml")
 	def := load(t, "testdata/corpus/edge-k8s/ambiguous-explicit-default.yaml")
 	if layer2(t, base, Exact()) == layer2(t, def, Exact()) {
-		t.Fatal("explicit defaults agreed at layer 2 — F-2's premise is wrong, revisit ADR-0046")
+		t.Fatal("explicit defaults agreed at layer 2: F-2's premise is wrong; revisit the normaliser decision")
 	}
 	a, _ := Normalised(base, Exact())
 	b, _ := Normalised(def, Exact())
@@ -183,7 +183,7 @@ func TestProfileNameIsPartOfDigestIdentity(t *testing.T) {
 	// No opamp anywhere: the supervisor allow-list has nothing to strip.
 	base := load(t, "testdata/corpus/hostmetrics/base.yaml")
 	if layer2(t, base, Exact()) == layer2(t, base, Supervisor()) {
-		t.Fatal("digests compare equal across profiles — the profile name must be mixed into the hash domain")
+		t.Fatal("digests compare equal across profiles: the profile name must be mixed into the hash domain")
 	}
 }
 
@@ -198,7 +198,7 @@ func TestMalformedProfileNameIsRefused(t *testing.T) {
 }
 
 // AC (spike verdict known edge): duplicate map keys fail closed at every
-// level — last-writer-wins parsing would let two documents that differ in
+// level: last-writer-wins parsing would let two documents that differ in
 // their shadowed entries digest equal, silent no-drift on a real change.
 func TestDuplicateMapKeysFailClosed(t *testing.T) {
 	cases := map[string]string{
@@ -213,7 +213,7 @@ func TestDuplicateMapKeysFailClosed(t *testing.T) {
 	}
 }
 
-// AC (spike verdict known edge): YAML merge keys fail closed — merge
+// AC (spike verdict known edge): YAML merge keys fail closed: merge
 // expansion applies precedence rules the delivery paths are not known to
 // share. A quoted "<<" is an ordinary string key and stays legal.
 func TestMergeKeysFailClosed(t *testing.T) {
@@ -232,14 +232,14 @@ func TestMergeKeysFailClosed(t *testing.T) {
 // refused rather than guessed at.
 func TestForeignShapesFailClosed(t *testing.T) {
 	if _, err := Layer2([]byte("8888: scrape\n"), Exact()); err == nil {
-		t.Error("a non-string map key was accepted — quote it or refuse it")
+		t.Error("a non-string map key was accepted: quote it or refuse it")
 	}
 	if _, err := Layer2([]byte("a: !custom x\n"), Exact()); err == nil {
 		t.Error("a custom tag was accepted")
 	}
 }
 
-// JSON is a YAML subset and must normalise identically — the fourth
+// JSON is a YAML subset and must normalise identically, the fourth
 // cosmetic axis of spike H-1 in its smallest form.
 func TestJSONNormalisesLikeYAML(t *testing.T) {
 	y := []byte("a: 1\nb:\n  - x\n  - true\n")
@@ -304,12 +304,12 @@ func TestATelemetryLevelIsTheSameLevelInAnyCasing(t *testing.T) {
 
 // The fold is scoped to the telemetry levels: everywhere else a case
 // difference is a real difference, and a case-blind comparer would digest
-// two different configs equal — silent no-drift (ADR-0005).
+// two different configs equal, a silent no-drift (ADR-0005).
 func TestCaseFoldingStopsAtTheTelemetryLevels(t *testing.T) {
 	lower := []byte("exporters:\n  otlp/out:\n    endpoint: gateway.internal:4317\n")
 	upper := []byte("exporters:\n  otlp/out:\n    endpoint: Gateway.Internal:4317\n")
 	if layer2(t, lower, Exact()) == layer2(t, upper, Exact()) {
-		t.Error("an endpoint compares case-blind — case folding has escaped the telemetry levels")
+		t.Error("an endpoint compares case-blind: case folding has escaped the telemetry levels")
 	}
 	if layer2(t, []byte("service:\n  telemetry:\n    metrics:\n      level: basic\n"), Exact()) ==
 		layer2(t, []byte("service:\n  telemetry:\n    metrics:\n      level: detailed\n"), Exact()) {
@@ -331,7 +331,7 @@ func TestTheTwoEncodingsOfTheTelemetryResourceAgree(t *testing.T) {
 		t.Errorf("the map and list encodings of one resource disagree: %v", Layer3(a, b))
 	}
 	if layer2(t, authored, Exact()) == layer2(t, reported, Exact()) {
-		t.Error("the exact profile agreed — the re-encoding is a supervisor reading-path mutation, not canonical form")
+		t.Error("the exact profile agreed: the re-encoding is a supervisor reading-path mutation, not canonical form")
 	}
 }
 

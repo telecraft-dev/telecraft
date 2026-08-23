@@ -15,12 +15,12 @@ import (
 // Artefact is one rendered artefact as the rollout reading needs it: the
 // bytes, the hash the served path acknowledges (the serving wire's config
 // hash is the artefact digest), and the pipeline wiring the EstateProvider
-// seam reports — the two signals that tell which artefact a collector
+// seam reports: the two signals that tell which artefact a collector
 // actually runs.
 type Artefact struct {
 	Bytes []byte
 
-	// Hash is sha256 over the raw bytes — byte-identical to the config
+	// Hash is sha256 over the raw bytes, byte-identical to the config
 	// hash the serving path offers, so a RemoteConfigStatus acknowledging
 	// it names this artefact exactly.
 	Hash []byte
@@ -72,7 +72,7 @@ func ParseArtefact(raw []byte) (Artefact, error) {
 type Running string
 
 const (
-	// RunningUnknown: the readings cannot tell — no Effective or delivery
+	// RunningUnknown: the readings cannot tell: no Effective or delivery
 	// reading, or wiring the two artefacts share. Not knowing is a normal
 	// state (ADR-0008); it counts toward nothing.
 	RunningUnknown Running = "unknown"
@@ -80,21 +80,21 @@ const (
 	RunningFrom Running = "from"
 	RunningTo   Running = "to"
 
-	// RunningOther: the collector runs neither artefact — another commit
+	// RunningOther: the collector runs neither artefact: another commit
 	// entirely (delivery lag, ADR-0004's stale) or a foreign config.
 	RunningOther Running = "other"
 )
 
 // RunningArtefact decides which artefact one collector runs. The served
-// path answers by acknowledged config hash — exact; the Foreign path
+// path answers by acknowledged config hash, which is exact; the Foreign path
 // answers by the reported pipeline wiring crossed with what the stamps
-// already told delivery (ADR-0029 §7) — as exact as the seam's reading
+// already told delivery (ADR-0029 §7), which is as exact as the seam's reading
 // allows. Wiring both artefacts share distinguishes nothing and reads
 // unknown rather than guessed.
 func RunningArtefact(c estate.Collector, from, to Artefact) Running {
 	// Only an APPLIED acknowledgement names what runs: a FAILED reading's
-	// hash names what was refused — the collector self-reverted (ADR-0010)
-	// — and an APPLYING one is not there yet. Both fall through to the
+	// hash names what was refused (the collector self-reverted, ADR-0010),
+	// and an APPLYING one is not there yet. Both fall through to the
 	// reported wiring.
 	if r := c.DeliveryStatus; r.Known && r.State == estate.DeliveryApplied && len(r.ConfigHash) > 0 {
 		switch {
@@ -104,7 +104,7 @@ func RunningArtefact(c estate.Collector, from, to Artefact) Running {
 			return RunningFrom
 		}
 		// An unrecognised hash is another artefact, but the collector may
-		// have reported fresher Effective wiring since — fall through.
+		// have reported fresher Effective wiring since, so fall through.
 	}
 	if !c.Effective.Known {
 		return RunningUnknown
@@ -123,7 +123,7 @@ func RunningArtefact(c estate.Collector, from, to Artefact) Running {
 }
 
 // pipelinesEqual compares reported wiring against an artefact's: the same
-// pipelines wiring the same components in the same order (ADR-0004 — order
+// pipelines wiring the same components in the same order (ADR-0004: order
 // is part of the reading).
 func pipelinesEqual(a, b []estate.Pipeline) bool {
 	if len(a) != len(b) {

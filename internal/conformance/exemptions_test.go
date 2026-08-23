@@ -45,7 +45,7 @@ func TestLoadExemptions(t *testing.T) {
 		t.Fatalf("loaded %d exemptions, want 2", len(got))
 	}
 	if got[0].ID != "checkout-migration" || got[1].ID != "payments-onboarding" {
-		t.Errorf("order %q, %q — exemptions load in stable ID order", got[0].ID, got[1].ID)
+		t.Errorf("order %q, %q: exemptions load in stable ID order", got[0].ID, got[1].ID)
 	}
 	if got[0].Service != "checkout" || got[1].Team != "payments" {
 		t.Errorf("subjects not parsed: %+v", got)
@@ -55,20 +55,20 @@ func TestLoadExemptions(t *testing.T) {
 	}
 }
 
-// A directory with no exemption files is none, not an error — unlike the
+// A directory with no exemption files is none, not an error. Unlike the
 // requirements library, where empty would pass everything vacuously, zero
 // exemptions is the strictest state there is.
 func TestLoadExemptionsEmptyDir(t *testing.T) {
 	got, err := LoadExemptions(t.TempDir())
 	if err != nil || len(got) != 0 {
-		t.Fatalf("empty dir: got %v, %v — want none and no error", got, err)
+		t.Fatalf("empty dir: got %v, %v, want none and no error", got, err)
 	}
 	if _, err := LoadExemptions(filepath.Join(t.TempDir(), "absent")); err == nil {
-		t.Error("a missing directory must fail — it is almost always the wrong path")
+		t.Error("a missing directory must fail: it is almost always the wrong path")
 	}
 }
 
-// Criterion: an Exemption without owner or expiry fails load — along with
+// Criterion: an Exemption without owner or expiry fails load, along with
 // every other half-authored shape a waiver must not take (REQ-014, ADR-0037).
 func TestExemptionLoadFailsClosed(t *testing.T) {
 	valid := func(mutilate func(map[string]string)) string {
@@ -141,7 +141,7 @@ func TestExemptionLoadFailsClosed(t *testing.T) {
 				t.Fatal("load succeeded, want a failure that names the problem")
 			}
 			if len(got) != 0 {
-				t.Error("a failed load must fail closed — no exemptions returned")
+				t.Error("a failed load must fail closed: no exemptions returned")
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error %q does not mention %q", err, tc.want)
@@ -160,7 +160,7 @@ func TestExemptionDuplicateIDAcrossFiles(t *testing.T) {
 }
 
 // ADR-0037 §3: an expired Exemption left in the tree is an authoring
-// finding — dead config — and one waiving a requirement the library does
+// finding (dead config), and one waiving a requirement the library does
 // not hold can never take effect, which is almost always a typo whose
 // author believes a waiver is in force.
 func TestExemptionFindings(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Acceptance: a finding routes to the owner of the object it is about —
+// Acceptance: a finding routes to the owner of the object it is about:
 // the broken PII processor pages the security team, the unmet Service floor
 // pages the Service's owner (ADR-0016 §4).
 func TestFindingRoutesToOwnerOfSubjectObject(t *testing.T) {
@@ -51,7 +51,7 @@ func TestFindingRoutesToOwnerOfSubjectObject(t *testing.T) {
 }
 
 // Acceptance: a collector inherits ownership from the Tier it matched into
-// (ADR-0016 §5) — and the split Tier is how a subset gets a different owner.
+// (ADR-0016 §5), and the split Tier is how a subset gets a different owner.
 func TestCollectorFindingInheritsTierOwner(t *testing.T) {
 	est := loadFixture(t)
 
@@ -64,7 +64,7 @@ func TestCollectorFindingInheritsTierOwner(t *testing.T) {
 	}
 
 	// The same collector population, split into gateway-pci by selector,
-	// routes to the split Tier's owner — no per-collector override exists.
+	// routes to the split Tier's owner: no per-collector override exists.
 	pci, err := est.OwnerOf(Subject{Kind: KindCollector, ID: "host-17", Tier: "gateway-pci"})
 	if err != nil {
 		t.Fatal(err)

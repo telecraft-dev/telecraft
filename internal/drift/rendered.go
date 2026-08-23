@@ -11,7 +11,7 @@ import (
 
 // Artefact is one committed rendered artefact: the claim record for floor
 // drift (see the package comment). Commit is the SHA the artefact is
-// stamped with (ADR-0013) — its own statement of when it was rendered —
+// stamped with (ADR-0013), its own statement of when it was rendered;
 // empty when the artefact carries no stamp.
 type Artefact struct {
 	Path   string // repo-relative, as committed
@@ -19,7 +19,7 @@ type Artefact struct {
 }
 
 // Rendered is the committed artefact set, keyed by the Tier id each
-// artefact renders for — the `rendered/<team>/<tier>.yaml` layout inverted
+// artefact renders for: the `rendered/<team>/<tier>.yaml` layout inverted
 // (ADR-0027).
 type Rendered map[string]Artefact
 
@@ -28,7 +28,7 @@ type Rendered map[string]Artefact
 const renderedDir = "rendered"
 
 // LoadRendered reads the committed artefact set under one estate root. A
-// missing rendered/ tree is an estate not yet rendered — an empty set, not
+// missing rendered/ tree is an estate not yet rendered: an empty set, not
 // an error: nothing has claimed anything, so nothing can have drifted. A
 // file that does not parse as YAML is an error: humans never commit under
 // rendered/, so a mangled artefact is corruption, and judging around it
@@ -49,8 +49,8 @@ func LoadRendered(root string) (Rendered, error) {
 		}
 		team := t.Name()
 		if strings.HasPrefix(team, "_") {
-			// Reserved estate-level artefacts — the Unmatched config lives
-			// at rendered/_estate/ (ADR-0030) — are not Tier artefacts and
+			// Reserved estate-level artefacts (the Unmatched config lives
+			// at rendered/_estate/, ADR-0030) are not Tier artefacts and
 			// claim nothing a floor can move under.
 			continue
 		}
@@ -76,8 +76,8 @@ func LoadRendered(root string) (Rendered, error) {
 	return out, nil
 }
 
-// stampedCommit reads the artefact's own identity stamp — the
-// telecraft.commit resource attribute every render writes (ADR-0013) —
+// stampedCommit reads the artefact's own identity stamp (the
+// telecraft.commit resource attribute every render writes, ADR-0013),
 // tolerating its absence: an unstamped artefact is still config in git.
 func stampedCommit(path string) (string, error) {
 	raw, err := os.ReadFile(path)

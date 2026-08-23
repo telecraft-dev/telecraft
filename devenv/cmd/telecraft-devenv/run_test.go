@@ -14,7 +14,7 @@ import (
 // is started, and the console server it stands up once it has.
 //
 // Deliberately uncovered: everything past the point the OpAMP server
-// starts — the refresh loop, the readings file, the snapshot rebuild and
+// starts: the refresh loop, the readings file, the snapshot rebuild and
 // the signal-driven shutdown. Those need collectors connecting over the
 // wire and a telemetry backend answering, which is what the environment is
 // for and what Docker provides; a test double standing in for both would
@@ -166,7 +166,7 @@ func TestTheConsoleServerSaysWhenThereIsNoSnapshotYet(t *testing.T) {
 		t.Fatalf("status %d, want 503", res.StatusCode)
 	}
 	body := readAll(t, res)
-	if !strings.Contains(body, "no snapshot yet — the first refresh has not finished") {
+	if !strings.Contains(body, "no snapshot yet: the first refresh has not finished") {
 		t.Errorf("the response does not say why there is nothing to serve:\n%s", body)
 	}
 }
@@ -193,7 +193,7 @@ func TestTheConsoleServerServesTheCurrentSnapshot(t *testing.T) {
 		t.Errorf("Content-Type %q, want application/json", got)
 	}
 	if got := res.Header.Get("Cache-Control"); got != "no-store" {
-		t.Errorf("Cache-Control %q — a snapshot that changes every few seconds must not be cached", got)
+		t.Errorf("Cache-Control %q: a snapshot that changes every few seconds must not be cached", got)
 	}
 	if body := readAll(t, res); body != `{"estate":{"cards":[]}}` {
 		t.Errorf("body = %s, want the snapshot that was set", body)

@@ -18,14 +18,14 @@ import { laneOrder } from './draft'
 import { Button } from '../../ui/Button'
 import { Icon } from '../../ui/Icon'
 
-// D · Node canvas, the flow view — explicitly authoring-capable
+// D · Node canvas, the flow view, explicitly authoring-capable
 // (ADR-0043 §1): remove on every node, drag-authoring drops where the
 // band names the signal (§4). The composer graph is the canvas engine's
 // second vocabulary (ADR-0044 §1): each signal lane compiles to a band of
 // (lane, entry) nodes chained by per-signal edges, so a node's vertical
-// position is a function of its signal band and nothing else — geometry
+// position is a function of its signal band and nothing else: geometry
 // stays fully derived, composer nodes never drag, edges are never
-// hand-drawn (§2–3).
+// hand-drawn (§2 to §3).
 
 type ComposeNode = Node<{
   label: string

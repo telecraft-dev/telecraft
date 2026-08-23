@@ -1,12 +1,12 @@
 // Package expectation is the Expectation engine (REQ-051, ADR-0038):
 // machinery behind existing verdicts, never new vocabulary. From the
-// Intended config at a commit SHA it derives Claims — checkable assertions
-// about what telemetry should arrive — and judges arrivals against them,
+// Intended config at a commit SHA it derives Claims (checkable assertions
+// about what telemetry should arrive) and judges arrivals against them,
 // so that green means "the config worked", never merely "the config
 // applied".
 //
 // The engine is machinery, not vocabulary (ADR-0038 §1). Data claims are
-// the computation that decides the Observed leg of ADR-0004's cross — a
+// the computation that decides the Observed leg of ADR-0004's cross: a
 // Service's "expected traces never landed" *is* not_delivered, and the
 // Expectation is why the evaluator knew to look. Pipeline claims join the
 // Tier-attached finding family of ADR-0030/0035. No eighth outcome, no
@@ -14,25 +14,25 @@
 // expectations.
 //
 // Three claim kinds, derived literal-only (ADR-0038 §2): arrival (per
-// (Service, Environment, signal) — the signal should land, derived from
+// (Service, Environment, signal): the signal should land, derived from
 // the Service's Paths through the rendered pipelines), enrichment (per
-// (Service, Environment) — attributes the rendered config explicitly,
+// (Service, Environment): attributes the rendered config explicitly,
 // literally inserts should be present on landed telemetry), and
-// self-telemetry (per Tier — each instantiated component should emit its
+// self-telemetry (per Tier: each instantiated component should emit its
 // own telemetry under R-4's join keys). The principle: the engine claims
-// only what it can read off the artefact at a SHA — never what it believes
+// only what it can read off the artefact at a SHA, never what it believes
 // about component semantics. Anything requiring knowledge of a component's
-// runtime behaviour (k8sattributes, resourcedetection) yields no claim —
+// runtime behaviour (k8sattributes, resourcedetection) yields no claim, and
 // therefore unknown, never red. The curated behaviour-model layer is the
 // named post-v1 seam (OQ-18), refused here: a false expectation-red would
 // poison trust in the whole band.
 //
 // Derivation runs at evaluation time as a pure function of the artefact
-// (ADR-0038 §3): no expectations file is ever committed — a materialised
+// (ADR-0038 §3): no expectations file is ever committed, because a materialised
 // copy is a drift surface against the artefact it restates. Memoisation
 // (Memo) is in-memory, keyed by SHA, and confirmed loseable. The
 // render-in-PR check displays the expectation diff (Diff) impact-report
-// style — computed twice, stored never.
+// style: computed twice, stored never.
 package expectation
 
 import (
@@ -51,7 +51,7 @@ type Kind string
 const (
 	// Arrival: the signal should land for the Service in the Environment,
 	// derived from the Service's Paths through the rendered pipelines.
-	// Feeds not_delivered — the Observed leg of the cross (ADR-0004).
+	// Feeds not_delivered, the Observed leg of the cross (ADR-0004).
 	Arrival Kind = "arrival"
 
 	// Enrichment: an attribute the rendered config explicitly, literally
@@ -61,7 +61,7 @@ const (
 	Enrichment Kind = "enrichment"
 
 	// SelfTelemetry: an instantiated component should emit its own
-	// telemetry under R-4's join keys — the pipeline claim family, judged
+	// telemetry under R-4's join keys: the pipeline claim family, judged
 	// per Tier.
 	SelfTelemetry Kind = "self_telemetry"
 )
@@ -76,7 +76,7 @@ const (
 	// keys, exactly as the YAML spells it.
 	ShapeIdentified Shape = "identified"
 
-	// ShapeUnidentified: an identity-dropping singleton (R-4 §5.2) — the
+	// ShapeUnidentified: an identity-dropping singleton (R-4 §5.2): the
 	// component deliberately reports only its kind, and the upstream RFC
 	// blesses the pattern. Expecting the id would model absence as
 	// failure.
@@ -91,7 +91,7 @@ type Claim struct {
 	Kind Kind `json:"kind"`
 
 	// SHA is the commit the claim derives from. Claims are judged against
-	// the artefact the collector reports running — the stamped SHA, never
+	// the artefact the collector reports running, the stamped SHA, never
 	// head (ADR-0038 §4a).
 	SHA string `json:"sha"`
 
@@ -110,7 +110,7 @@ type Claim struct {
 	Value     string `json:"value,omitempty"`
 
 	// Tier keys a pipeline claim (team-qualified Tier id); on data claims,
-	// Tiers lists the Tiers whose artefacts back the claim — the context a
+	// Tiers lists the Tiers whose artefacts back the claim, the context a
 	// Service-attached finding attaches, because helper metrics are
 	// component totals and the engine cannot honestly localise where on
 	// the Path the data died (ADR-0038 §5b).
@@ -157,7 +157,7 @@ func (c Claim) String() string {
 
 // Set is one derived Expectation: every claim the Intended config at one
 // SHA makes, in stable Key order. A Set is derived, never authored, and
-// never persisted (ADR-0038 §3) — treat it as read-only.
+// never persisted (ADR-0038 §3), so treat it as read-only.
 type Set struct {
 	SHA    string  `json:"sha"`
 	Claims []Claim `json:"claims"`
@@ -176,7 +176,7 @@ func (s Set) ForTier(tier string) []Claim {
 }
 
 // ForRow returns the data claims for one (Service, Environment) row, in
-// stable order — the evaluation unit of ADR-0033.
+// stable order, the evaluation unit of ADR-0033.
 func (s Set) ForRow(service, environment string) []Claim {
 	var out []Claim
 	for _, c := range s.Claims {
@@ -188,7 +188,7 @@ func (s Set) ForRow(service, environment string) []Claim {
 }
 
 // RowAttributes returns the enrichment attribute names claimed for one
-// row and signal, sorted — what the caller passes to a
+// row and signal, sorted: what the caller passes to a
 // TelemetryProvider's Observe so the reading measures the claims'
 // coverage in the same round trip.
 func (s Set) RowAttributes(service, environment string, kind requirements.SignalKind) []string {
@@ -204,7 +204,7 @@ func (s Set) RowAttributes(service, environment string, kind requirements.Signal
 	return out
 }
 
-// Delta is the expectation diff between two derivations — what the
+// Delta is the expectation diff between two derivations, what the
 // render-in-PR check displays ("this change adds an arrival claim for
 // traces"), computed twice, stored never (ADR-0038 §3).
 type Delta struct {
@@ -242,7 +242,7 @@ func Diff(before, after Set) Delta {
 }
 
 // identity is claim identity for diffing: the Key plus the asserted value
-// and shape, without the SHA — the SHA is which derivation, not what is
+// and shape, without the SHA, because the SHA is which derivation, not what is
 // claimed.
 func identity(c Claim) string {
 	return c.Key() + "|" + c.Value + "|" + string(c.Shape)

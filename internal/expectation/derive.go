@@ -14,7 +14,7 @@ import (
 
 // Source is the Intended config at one SHA: the authored trees the
 // rendered artefacts are a deterministic function of (ADR-0028 §2), which
-// is why deriving from them *is* reading the artefact — the same lane
+// is why deriving from them *is* reading the artefact: the same lane
 // compilation the render uses (renderer.Intended) projects the pipelines,
 // and component configs are emitted verbatim under their rendered ids.
 type Source struct {
@@ -28,7 +28,7 @@ type Source struct {
 
 // Derive computes the Expectation for one Source: a pure, deterministic
 // function of the artefact at a SHA (ADR-0038 §3). Nothing is committed
-// and nothing is looked up beyond the trees — no catalogue, no substrate,
+// and nothing is looked up beyond the trees: no catalogue, no substrate,
 // no component semantics. Pieces that do not resolve (a binding to a
 // missing Blueprint, a dangling reference) simply derive no claim: their
 // problems refuse the render and route as findings elsewhere; this
@@ -84,7 +84,7 @@ func Derive(src Source) Set {
 	// Data claims, per (Service, Environment) (ADR-0033: expectations
 	// derive per row from that environment's bound config version). A
 	// Service's Paths name Tiers; each Tier declares one Environment and
-	// binds one Blueprint — the artefact whose lanes state what should
+	// binds one Blueprint, the artefact whose lanes state what should
 	// land.
 	serviceIDs := make([]string, 0, len(src.Topology.Services))
 	for id := range src.Topology.Services {
@@ -108,7 +108,7 @@ func Derive(src Source) Set {
 				if !ok {
 					// Profiles: routed by Blueprints but absent from the
 					// requirements vocabulary (ADR-0009) and from the
-					// TelemetryProvider reading — a claim nobody can
+					// TelemetryProvider reading: a claim nobody can
 					// judge would sit unknown forever, so none derives.
 					continue
 				}
@@ -187,7 +187,7 @@ func judgeableSignal(lane string) (requirements.SignalKind, bool) {
 }
 
 // instantiated resolves every signal-lane entry of a Blueprint to its
-// component, deduplicated by rendered id in stable order — the instances
+// component, deduplicated by rendered id in stable order: the instances
 // the artefact places, as the render would place them.
 func instantiated(est blueprint.Estate, bp blueprint.Blueprint) []blueprint.Component {
 	seen := map[string]bool{}
@@ -212,8 +212,8 @@ func instantiated(est blueprint.Estate, bp blueprint.Blueprint) []blueprint.Comp
 	return out
 }
 
-// resolve finds the Component a reference points at — the Blueprint's own
-// locals for a bare name, the estate's shared Components otherwise —
+// resolve finds the Component a reference points at (the Blueprint's own
+// locals for a bare name, the estate's shared Components otherwise),
 // matching the renderer's resolution, so a claim can never disagree with
 // what would render.
 func resolve(est blueprint.Estate, bp blueprint.Blueprint, r blueprint.Reference) (blueprint.Component, bool) {
@@ -264,8 +264,8 @@ type insertion struct {
 // literally inserts or upserts with constant values (ADR-0038 §2b). The
 // families are closed: the resource and attributes processors' static
 // actions, and transform statements that set an attribute to a string
-// literal. Every other component type — k8sattributes, resourcedetection,
-// anything whose output depends on runtime behaviour — yields no claim:
+// literal. Every other component type (k8sattributes, resourcedetection,
+// anything whose output depends on runtime behaviour) yields no claim:
 // no claim means unknown, never red, and the behaviour-model layer is the
 // refused OQ-18 seam.
 func literalInsertions(comp blueprint.Component, signal requirements.SignalKind) []insertion {
@@ -282,7 +282,7 @@ func literalInsertions(comp blueprint.Component, signal requirements.SignalKind)
 
 // staticActions reads the resource/attributes processors' shared action
 // list: entries with action insert or upsert, a scalar constant value,
-// and no from_attribute/from_context indirection. update is excluded — it
+// and no from_attribute/from_context indirection. update is excluded: it
 // only writes where the attribute already exists, so it guarantees no
 // presence.
 func staticActions(raw any) []insertion {
@@ -328,15 +328,15 @@ func scalar(v any) (string, bool) {
 }
 
 // setLiteral matches exactly the transform statements the engine can read
-// as literal insertions: set of an attributes["key"] path — bare or under
-// one context prefix — to a double-quoted string constant. Anything else
+// as literal insertions: set of an attributes["key"] path, bare or under
+// one context prefix, to a double-quoted string constant. Anything else
 // in a transform (patterns, functions, references to other attributes)
 // derives no claim.
 var setLiteral = regexp.MustCompile(
 	`^\s*set\(\s*(?:(?:resource|scope|span|spanevent|log|metric|datapoint)\.)?attributes\[\s*"([^"\\]+)"\s*\]\s*,\s*"([^"\\]*)"\s*\)\s*$`)
 
 // transformStatementGroups maps a lane's signal to the transform
-// processor's statement group for that signal — statements for other
+// processor's statement group for that signal: statements for other
 // signals do nothing in this lane and derive nothing here.
 var transformStatementGroups = map[requirements.SignalKind]string{
 	requirements.Logs:    "log_statements",
@@ -345,8 +345,8 @@ var transformStatementGroups = map[requirements.SignalKind]string{
 }
 
 // transformLiterals reads a transform processor's statement group for the
-// lane's signal, accepting both authored forms — flat statement strings
-// and context blocks with a statements list — and keeps only setLiteral
+// lane's signal, accepting both authored forms (flat statement strings
+// and context blocks with a statements list) and keeps only setLiteral
 // matches.
 func transformLiterals(config map[string]any, signal requirements.SignalKind) []insertion {
 	group, ok := config[transformStatementGroups[signal]].([]any)

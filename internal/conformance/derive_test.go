@@ -114,14 +114,14 @@ func TestRowReadsTheCollectorNearestTheService(t *testing.T) {
 		t.Fatalf("effective = %+v, want the edge collector's reading", row.Effective)
 	}
 	if got := row.Effective.Pipelines[0].Receivers; len(got) != 1 || got[0] != "filelog" {
-		t.Errorf("receivers = %v, want the first Tier's filelog rather than the gateway's otlp — the row is the collector nearest the Service", got)
+		t.Errorf("receivers = %v, want the first Tier's filelog rather than the gateway's otlp: the row is the collector nearest the Service", got)
 	}
 }
 
 func TestRowTakesTheServiceClassFromTheTopology(t *testing.T) {
 	row := only(t, derive(t, reading(edgeCollector("edge-1", filelogPipeline())), Estate{}))
 	if row.Class != "C1" {
-		t.Errorf("class = %q, want C1 from the authored Service — the Service Class lives in the topology", row.Class)
+		t.Errorf("class = %q, want C1 from the authored Service: the Service Class lives in the topology", row.Class)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestReplicasThatDisagreeLeaveTheRowUnknown(t *testing.T) {
 	), Estate{}))
 
 	if row.Effective.Known {
-		t.Fatalf("effective = %+v, want an unknown reading — two collectors reporting two configs is not one answer", row.Effective)
+		t.Fatalf("effective = %+v, want an unknown reading: two collectors reporting two configs is not one answer", row.Effective)
 	}
 	if len(row.Effective.Pipelines) > 0 {
 		t.Error("an unknown reading carries no pipelines: nothing downstream may quietly use a winner nobody picked")
@@ -151,7 +151,7 @@ func TestReplicasThatAgreeLeaveTheRowKnown(t *testing.T) {
 	), Estate{}))
 
 	if !row.Effective.Known || len(row.Effective.Pipelines) != 1 {
-		t.Fatalf("effective = %+v, want the agreed reading — replicas running the same config are one answer", row.Effective)
+		t.Fatalf("effective = %+v, want the agreed reading: replicas running the same config are one answer", row.Effective)
 	}
 }
 
@@ -162,7 +162,7 @@ func TestOneUnreadableReplicaLeavesTheRowUnknown(t *testing.T) {
 	row := only(t, derive(t, reading(edgeCollector("edge-1", filelogPipeline()), quiet), Estate{}))
 
 	if row.Effective.Known {
-		t.Fatalf("effective = %+v, want unknown — agreement that cannot be established has not been established", row.Effective)
+		t.Fatalf("effective = %+v, want unknown: agreement that cannot be established has not been established", row.Effective)
 	}
 	if !strings.Contains(row.Effective.Cause, "never reported a config") {
 		t.Errorf("cause = %q, want the unreadable collector's own cause carried through", row.Effective.Cause)
@@ -173,7 +173,7 @@ func TestNoCollectorMatchedLeavesTheRowUnknownRatherThanEmpty(t *testing.T) {
 	row := only(t, derive(t, reading(gatewayCollector("gw-1", otlpPipeline())), Estate{}))
 
 	if row.Effective.Known {
-		t.Fatalf("effective = %+v, want unknown — a Service whose Tier reports no collector has no reading, not an empty one", row.Effective)
+		t.Fatalf("effective = %+v, want unknown: a Service whose Tier reports no collector has no reading, not an empty one", row.Effective)
 	}
 	if !strings.Contains(row.Effective.Cause, "no collector in the estate reading matches") {
 		t.Errorf("cause = %q, want it to say nothing matched the first Tier", row.Effective.Cause)
@@ -184,7 +184,7 @@ func TestACollectorReportingNoPipelinesIsAKnownReadingOfNothing(t *testing.T) {
 	row := only(t, derive(t, reading(edgeCollector("edge-1")), Estate{}))
 
 	if !row.Effective.Known {
-		t.Fatalf("effective = %+v, want a known reading — a collector reporting an empty config is not a blind spot", row.Effective)
+		t.Fatalf("effective = %+v, want a known reading: a collector reporting an empty config is not a blind spot", row.Effective)
 	}
 	if len(row.Effective.Pipelines) != 0 {
 		t.Errorf("pipelines = %+v, want none", row.Effective.Pipelines)
@@ -201,7 +201,7 @@ func TestAFirstTierWithNoSelectorLeavesTheRowUnknown(t *testing.T) {
 	row := only(t, est)
 
 	if row.Effective.Known {
-		t.Fatalf("effective = %+v, want unknown — a Tier with no selector has no platform-known population", row.Effective)
+		t.Fatalf("effective = %+v, want unknown: a Tier with no selector has no platform-known population", row.Effective)
 	}
 	if !strings.Contains(row.Effective.Cause, "declares no selector") {
 		t.Errorf("cause = %q, want it to say why no collector could be attributed", row.Effective.Cause)
@@ -217,7 +217,7 @@ func TestAStaleCollectorCannotFeedARow(t *testing.T) {
 	}))
 
 	if row.Effective.Known {
-		t.Fatalf("effective = %+v, want unknown — a reading past the staleness horizon never feeds a verdict", row.Effective)
+		t.Fatalf("effective = %+v, want unknown: a reading past the staleness horizon never feeds a verdict", row.Effective)
 	}
 	if !strings.Contains(row.Effective.Cause, "stale") {
 		t.Errorf("cause = %q, want the staleness demotion carried into the row", row.Effective.Cause)
@@ -237,7 +237,7 @@ func TestAServiceGetsOneRowPerEnvironmentItsPathsEnter(t *testing.T) {
 	est := Derive(Derivation{Topology: topo, Reading: reading(edgeCollector("edge-1", filelogPipeline())), Now: readAt})
 
 	if got := est.Environments(); len(got) != 2 || got[0] != "production" || got[1] != "staging" {
-		t.Fatalf("environments = %v, want one row per Environment the Paths enter (ADR-0033)", got)
+		t.Fatalf("environments = %v, want one row per Environment the Paths enter", got)
 	}
 }
 
@@ -251,7 +251,7 @@ func TestAnAuthoredRowOverridesTheDerivedOne(t *testing.T) {
 	row := only(t, derive(t, reading(edgeCollector("edge-1", filelogPipeline())), authored))
 
 	if got := row.Effective.Pipelines[0].Receivers[0]; got != "journald" {
-		t.Errorf("receivers = %v, want the authored row — an operator's explicit statement is never discarded silently", got)
+		t.Errorf("receivers = %v, want the authored row: an operator's explicit statement is never discarded silently", got)
 	}
 	if !row.Overridden {
 		t.Error("the row is not marked overridden, so a report built on it could not say so")
@@ -270,7 +270,7 @@ func TestAnAuthoredRowTheTopologyDerivesNothingForIsStillJudged(t *testing.T) {
 	est := derive(t, reading(edgeCollector("edge-1", filelogPipeline())), authored)
 
 	if len(est.Rows) != 2 {
-		t.Fatalf("rows = %+v, want the derived row and the authored one — dropping a row stops governing a Service", est.Rows)
+		t.Fatalf("rows = %+v, want the derived row and the authored one: dropping a row stops governing a Service", est.Rows)
 	}
 	if est.Rows[0].Service != "legacy/billing" {
 		t.Errorf("rows are not in Service order: %+v", est.Rows)
@@ -297,7 +297,7 @@ func TestADerivedRowKeepsTheGracePeriodInputs(t *testing.T) {
 		}
 	}
 	if !derived.Onboarded.Equal(onboarded) {
-		t.Errorf("onboarded = %v, want the authored date — a Service keeps its Grace Period without authoring its pipelines", derived.Onboarded)
+		t.Errorf("onboarded = %v, want the authored date: a Service keeps its Grace Period without authoring its pipelines", derived.Onboarded)
 	}
 	if len(est.Grace) != 1 {
 		t.Errorf("grace = %+v, want the authored table carried through: no topology holds it", est.Grace)
@@ -312,6 +312,6 @@ func TestAnUnknownDerivedRowIsNeverNotConfigured(t *testing.T) {
 		t.Fatalf("findings = %+v, want one", v.Findings)
 	}
 	if got := v.Findings[0].Outcome; got != Unknown {
-		t.Errorf("outcome = %s, want unknown — a row nothing could be read for is not an accusation against its owner (ADR-0008)", got)
+		t.Errorf("outcome = %s, want unknown: a row nothing could be read for is not an accusation against its owner", got)
 	}
 }

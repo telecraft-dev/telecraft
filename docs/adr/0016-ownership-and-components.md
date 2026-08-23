@@ -15,7 +15,7 @@ downstream team's config.
 
 ## Decision
 
-1. **Every authored object carries an owner** — CODEOWNERS-style. The
+1. **Every authored object carries an owner**, CODEOWNERS-style. The
    authored set: **Component, Blueprint, Tier (topology position), Hop, Path,
    Service, Requirement, Exemption** (which already carried a mandatory
    owner). Ownership is an attribute, not a parallel hierarchy.
@@ -26,7 +26,7 @@ downstream team's config.
 3. **Inheritance is by reference, never by copy.** A downstream blueprint
    references the gateway team's exporter Component; when the owning team
    changes it, every consumer re-renders with the change. (Prior art:
-   Grafana Fleet Management's server-side merge; Bindplane's Library — whose
+   Grafana Fleet Management's server-side merge; Bindplane's Library, whose
    lack of parameterisation is its most-cited gap.)
 4. **Findings route to the owner of the object the finding is about**, not
    the owner of the file it renders into: a broken PII processor pages
@@ -44,9 +44,9 @@ downstream team's config.
 - The rendered artefact for any collector is multi-owner by construction;
   review routing (e.g. GitHub CODEOWNERS on rendered paths and on
   component/blueprint sources) can enforce that a change to an Infosec-owned
-  Component requires Infosec review — designed in G3.
+  Component requires Infosec review (designed in G3).
 - Owner/Team *hierarchy* semantics (nesting, roll-up, exemption authority,
-  tenancy-to-git) remain open in G1 — this ADR fixes what is ownable, not
+  tenancy-to-git) remain open in G1: this ADR fixes what is ownable, not
   how owners aggregate.
 - Component versioning and its interaction with blueprint versioning is a G3
   question (OQ-10).

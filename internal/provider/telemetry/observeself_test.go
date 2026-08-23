@@ -12,7 +12,7 @@ import (
 )
 
 // selfLogsOK is a logs response carrying one commit stamp and two
-// scope-attributed identity buckets — a batch processor and the
+// scope-attributed identity buckets: a batch processor and the
 // identity-dropping memory_limiter (kind only, R-4 §5.2).
 const selfLogsOK = `{"status":200,"hits":{"total":{"value":40}},"aggregations":{
 	"commits":{"sum_other_doc_count":0,"buckets":[{"key":"8b7df143d91c716ecfa5fc1730022f6b421b05cd","doc_count":40}]},
@@ -22,7 +22,7 @@ const selfLogsOK = `{"status":200,"hits":{"total":{"value":40}},"aggregations":{
 	]}}}`
 
 // selfMetricsOK is a metrics response with legacy datapoint-attribute
-// buckets — a receiver, a processor carrying the trap spelling otel.signal,
+// buckets: a receiver, a processor carrying the trap spelling otel.signal,
 // and the all-null collector-level bucket (process metrics).
 const selfMetricsOK = `{"status":200,"hits":{"total":{"value":90}},"aggregations":{
 	"commits":{"sum_other_doc_count":0,"buckets":[{"key":"8b7df143d91c716ecfa5fc1730022f6b421b05cd","doc_count":90}]},
@@ -50,7 +50,7 @@ func TestElasticsearchObserveSelfReading(t *testing.T) {
 		t.Fatalf("a fully successful reading must be Known: %+v", obs)
 	}
 	if len(obs.Signals) != 2 {
-		t.Fatalf("self-telemetry covers logs and metrics — traces stay off in v1 (ADR-0039 §1); got %d signals", len(obs.Signals))
+		t.Fatalf("self-telemetry covers logs and metrics, and traces stay off in v1; got %d signals", len(obs.Signals))
 	}
 
 	// The query is scoped by the Tier stamp, and identity comes from the
@@ -69,7 +69,7 @@ func TestElasticsearchObserveSelfReading(t *testing.T) {
 		t.Errorf("logs = %+v, want present with volume 40", logs)
 	}
 	if logs.Commits["8b7df143d91c716ecfa5fc1730022f6b421b05cd"] != 40 {
-		t.Errorf("logs commits = %v — the serving SHA is half the join (ADR-0039 §5)", logs.Commits)
+		t.Errorf("logs commits = %v: the serving SHA is half the join", logs.Commits)
 	}
 	if len(logs.Components) != 2 {
 		t.Fatalf("logs components = %+v, want 2 identity combinations", logs.Components)
@@ -79,7 +79,7 @@ func TestElasticsearchObserveSelfReading(t *testing.T) {
 		t.Errorf("normalised first logs identity = %+v", got)
 	}
 	if got := selftelemetry.Normalise(logs.Components[1].Attributes); got.Class != selftelemetry.ClassUnidentified || got.Kind != selftelemetry.KindProcessor {
-		t.Errorf("memory_limiter-shaped identity = %+v, want an unidentified processor, never a failure (R-4 §5.2)", got)
+		t.Errorf("memory_limiter-shaped identity = %+v, want an unidentified processor, never a failure (R-4, section 5.2)", got)
 	}
 
 	metrics := obs.Signals[requirements.Metrics]
@@ -87,7 +87,7 @@ func TestElasticsearchObserveSelfReading(t *testing.T) {
 		t.Fatalf("metrics = %+v, want volume 90 with 3 identity combinations", metrics)
 	}
 	if got := selftelemetry.Normalise(metrics.Components[1].Attributes); got.Kind != selftelemetry.KindProcessor || got.Signal != "logs" {
-		t.Errorf("legacy processor identity = %+v, want signal from otel.signal (R-4 §5.6)", got)
+		t.Errorf("legacy processor identity = %+v, want signal from otel.signal (R-4, section 5.6)", got)
 	}
 	if got := selftelemetry.Normalise(metrics.Components[2].Attributes); got.Class != selftelemetry.ClassCollector {
 		t.Errorf("the all-null bucket = %+v, want a collector-level reading", got)
@@ -95,7 +95,7 @@ func TestElasticsearchObserveSelfReading(t *testing.T) {
 }
 
 // Issue #33 criterion 3: self-telemetry the provider cannot see reads as
-// Known false with a cause — never a failure, never an observed silence.
+// Known false with a cause, never a failure, never an observed silence.
 func TestElasticsearchObserveSelfMissingIndexReadsUnknown(t *testing.T) {
 	es, _ := newFake(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(msearchResponse(notFound, selfMetricsOK)))

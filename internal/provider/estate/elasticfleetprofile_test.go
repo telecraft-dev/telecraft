@@ -33,7 +33,7 @@ func layer2(t *testing.T, raw []byte, p normalise.Profile) string {
 }
 
 // AC: Elastic Fleet's reported copy must agree with the rendered config
-// under the elastic-fleet profile, and must NOT agree under exact — the
+// under the elastic-fleet profile, and must NOT agree under exact: the
 // allow-list is load-bearing (spike H-3).
 func TestElasticFleetReportAgrees(t *testing.T) {
 	base := load(t, "base.yaml")
@@ -45,7 +45,7 @@ func TestElasticFleetReportAgrees(t *testing.T) {
 		t.Fatalf("elastic-fleet profile: rendered vs reported disagree:\n%v", normalise.Layer3(a, b))
 	}
 	if layer2(t, base, normalise.Exact()) == layer2(t, rep, normalise.Exact()) {
-		t.Fatal("exact profile agreed — the ElasticFleet mutations vanished, fixture broken")
+		t.Fatal("exact profile agreed: the ElasticFleet mutations vanished, fixture broken")
 	}
 }
 
@@ -63,7 +63,7 @@ func TestCosmeticVariantsAgreeUnderElasticFleetProfile(t *testing.T) {
 			t.Fatal(err)
 		}
 		if normalise.Layer1(base) == normalise.Layer1(raw) {
-			t.Errorf("%s: layer 1 equal to base — fixture is not a variant", v)
+			t.Errorf("%s: layer 1 equal to base: fixture is not a variant", v)
 		}
 		if layer2(t, raw, ElasticFleetProfile()) != layer2(t, base, ElasticFleetProfile()) {
 			t.Errorf("%s: cosmetic variant read as divergence under elastic-fleet", v)
@@ -72,7 +72,7 @@ func TestCosmeticVariantsAgreeUnderElasticFleetProfile(t *testing.T) {
 }
 
 // A semantic change outside the redaction list must still flip layer 2
-// under the elastic-fleet profile — a real change never hides behind the
+// under the elastic-fleet profile: a real change never hides behind the
 // allow-list (spike H-4).
 func TestSemanticChangeFlipsUnderElasticFleetProfile(t *testing.T) {
 	base := load(t, "base.yaml")
@@ -102,10 +102,10 @@ func TestElasticFleetProfileIsBlindToRedactedValues(t *testing.T) {
 	}
 
 	if layer2(t, base, ElasticFleetProfile()) != layer2(t, mutated, ElasticFleetProfile()) {
-		t.Fatal("elastic-fleet profile saw through redaction — either the redaction rule changed or the fixture is wrong")
+		t.Fatal("elastic-fleet profile saw through redaction: either the redaction rule changed or the fixture is wrong")
 	}
 	if layer2(t, base, normalise.Exact()) == layer2(t, mutated, normalise.Exact()) {
-		t.Fatal("exact profile missed a real value change — canonical encoding is broken")
+		t.Fatal("exact profile missed a real value change: canonical encoding is broken")
 	}
 }
 
@@ -129,6 +129,6 @@ func TestOpampExtensionEntryPresenceStillCompares(t *testing.T) {
 		t.Fatal(err)
 	}
 	if layer2(t, base, ElasticFleetProfile()) == layer2(t, removed, ElasticFleetProfile()) {
-		t.Fatal("a removed opamp extension entry digested equal — presence must still compare")
+		t.Fatal("a removed opamp extension entry digested equal: presence must still compare")
 	}
 }

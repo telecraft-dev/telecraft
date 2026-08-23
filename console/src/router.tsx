@@ -48,8 +48,8 @@ const Catalogue = lazy(() =>
   import('./surfaces/catalogue/Catalogue').then((m) => ({ default: m.Catalogue })),
 )
 
-// Every surface state is URL-addressable — workspace, selection, lens
-// (ADR-0042 §3.5): the search params below are that rule as a
+// Every surface state is URL-addressable: workspace, selection, lens
+// (ADR-0042 §3.5). The search params below are that rule as a
 // compiler-checked contract (ADR-0045 §3). A console state that cannot be
 // cited in a PR comment does not exist.
 
@@ -113,13 +113,13 @@ export interface EstateSearch {
   view?: EstateView
   /** Flat-list pre-filter: the Tier a collector count opened (ADR-0042 §3.4). */
   tier?: string
-  /** Flat-list filters — explicit filters stay available; the lens never is one. */
+  /** Flat-list filters: explicit filters stay available; the lens never is one. */
   team?: string
   env?: string
-  /** Flat-list filter: ungoverned collectors only — the onboard CTA's door (ADR-0031). */
+  /** Flat-list filter: ungoverned collectors only, the onboard CTA's door (ADR-0031). */
   ungoverned?: boolean
   /** The claim flow's herd: selected ungoverned collector ids, comma-joined
-   * (ADR-0042 §6). Console selection state, never a selector — the produced
+   * (ADR-0042 §6). Console selection state, never a selector: the produced
    * selector generalises and enumerates nothing. */
   herd?: string
 }
@@ -142,8 +142,8 @@ const estateRoute = createRoute({
   }),
 })
 
-/** The Topology view-switchers: the flow canvas, and the rollout ledger —
- * one model, complementary representations (ADR-0042 §1, ADR-0029). */
+/** The Topology view-switchers: the flow canvas, and the rollout ledger.
+ * One model, complementary representations (ADR-0042 §1, ADR-0029). */
 export type TopologyView = 'flow' | 'rollout'
 
 export interface TopologySearch {
@@ -211,7 +211,7 @@ export interface CatalogueSearch {
   view?: CatalogueView
   /** The catalogue version browsed; absent means the active one (ADR-0020 §9). */
   version?: string
-  /** Browse filters — together they filter on the named signal at the named level. */
+  /** Browse filters: together they filter on the named signal at the named level. */
   stability?: string
   signal?: string
   /** The palette's team; absent means the signed-in user's team. */

@@ -1,5 +1,5 @@
 # A fixture estate: each Service, the Environments it is deployed to, and
-# the Effective reading the fixture asserts per (Service, Environment) —
+# the Effective reading the fixture asserts per (Service, Environment):
 # pipelines with component order preserved (ADR-0004). The same Service in
 # two environments is two rows, judged independently (ADR-0033).
 services:

@@ -68,7 +68,7 @@ func usersErr(t *testing.T, body string) string {
 		t.Fatalf("LoadUsers accepted an invalid file")
 	}
 	if len(users.byEmail) != 0 {
-		t.Fatalf("LoadUsers failed but returned users — a failed load must fail closed")
+		t.Fatalf("LoadUsers failed but returned users: a failed load must fail closed")
 	}
 	return err.Error()
 }
@@ -87,9 +87,9 @@ func TestIdentityAttributionMatchesTheForgeSeam(t *testing.T) {
 	id := Identity{Subject: "abc", Name: "Jo Author", Email: "jo@example.com"}
 	got := id.Attribution()
 	if got.Name != "Jo Author" || got.Email != "jo@example.com" {
-		t.Fatalf("Attribution() = %+v — the claims must author the change verbatim (ADR-0019 §3)", got)
+		t.Fatalf("Attribution() = %+v, want the claims to author the change verbatim", got)
 	}
 	if got.Handle != "" {
-		t.Fatalf("Attribution() invented a forge handle %q — a handle is the forge integration's to add", got.Handle)
+		t.Fatalf("Attribution() invented a forge handle %q: a handle is the forge integration's to add", got.Handle)
 	}
 }

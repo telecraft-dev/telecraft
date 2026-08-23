@@ -6,37 +6,34 @@ order: 4
 
 # Blueprint file format
 
-A Blueprint is a named, integer-versioned composition of Components. It's
-never annotated collector config: it serialises per-signal lanes under the
-upstream signal names, each an explicitly ordered list of Component
-references, plus one collector-wide `extensions` block.
+A Blueprint is a named, integer-versioned composition of Components. It isn't
+annotated collector config. It lists per-signal lanes under the upstream
+signal names, each an explicitly ordered list of Component references, plus
+one collector-wide `extensions` block.
 
 Blueprints live at `teams/<team>/blueprints/<name>.yaml` and shared Components
 at `teams/<team>/components/<name>.yaml`. See
-[Estate layout](estate-layout.md) for the rules every authored file obeys.
+[Estate layout](estate-layout.md) for the rules every authored file follows.
 
-Load a tree with `blueprint-check`, which prints what loaded and every
+To load a tree, run `blueprint-check`. It prints what loaded and every
 finding. `telecraft render` performs the same load.
-
-The decisions behind the format are ADR-0024 (the schema) and ADR-0026 (pinned
-references and library drift).
 
 ## Blueprint fields
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `name` | string | yes | none | Must equal the filename without its extension. |
-| `version` | integer | yes | none | Monotonic integer, 1 or higher, bumped by the owner in the same change. |
+| `version` | integer | yes | none | An integer, 1 or higher. The owner raises it in the same change that alters the Blueprint. |
 | `owner` | string | yes | none | The accountable party. |
 | `satisfies` | list of strings | no | empty | Version-stamped Requirement claims. See [Satisfies claims](#satisfies-claims). |
 | `components` | list of Components | no | empty | The Blueprint's local Components, declared inline. |
 | `pipelines` | mapping | no | empty | The four per-signal lanes. See [Lanes](#lanes). |
 | `extensions` | list of entries | no | empty | The collector-wide extensions block. |
 
-A Blueprint with no lane entries and no extensions is a load error: it would
-render an empty collector.
+A Blueprint with no lane entries and no extensions is a load error, because
+it would render an empty collector.
 
-The Blueprint's team-qualified id is `<team>/<name>`, derived from the file's
+The Blueprint's team-qualified id is `<team>/<name>`, taken from the file's
 place in the layout.
 
 ```yaml
@@ -85,22 +82,22 @@ extensions:
 
 ## Component fields
 
-The same schema serves both residences. A shared Component is a standalone
-file with a mandatory `owner` and the team-qualified id `<team>/<name>`. A
-local Component sits inline in a Blueprint's `components:` list, is implicitly
-owned by the Blueprint's owner, and isn't referenceable from outside it.
+One schema serves both kinds of Component. A shared Component is a standalone
+file with a required `owner` and the team-qualified id `<team>/<name>`. A
+local Component sits inline in a Blueprint's `components:` list, belongs to
+the Blueprint's owner, and can't be referenced from outside that Blueprint.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `name` | string | yes | none | On a shared Component, must equal the filename without its extension. On a local Component, it's the name lane entries reference. |
+| `name` | string | yes | none | On a shared Component, must equal the filename without its extension. On a local Component, the name that lane entries reference. |
 | `class` | string | yes | none | One of `receiver`, `processor`, `exporter`, `connector`, `extension`. |
 | `type` | string | yes | none | The catalogue type this Component configures. |
-| `version` | integer | yes | none | Monotonic integer, 1 or higher. |
-| `owner` | string | shared only | none | Mandatory on a shared Component, forbidden on a local one. |
-| `config` | mapping | no | empty | The otelcol configuration body, emitted verbatim under the rendered id. |
+| `version` | integer | yes | none | An integer, 1 or higher. |
+| `owner` | string | shared only | none | Required on a shared Component, forbidden on a local one. |
+| `config` | mapping | no | empty | The otelcol configuration body, written as is under the rendered id. |
 
-Which Catalogue version judges a Component is the consuming Tier's concern.
-The Component states what it is, never what may be used.
+A Component says what it is. The Tier that uses it decides which Catalogue
+version judges it.
 
 ```yaml
 # teams/data-flow/components/gateway-exporter.yaml
@@ -116,14 +113,14 @@ config:
 ### Rendered ids
 
 Each placed Component renders under a `type/name` id: a shared Component as
-`<type>/<team>.<name>`, a local one as `<type>/<name>`. Provenance is in the
-id, and a collision between two rendered ids refuses the render.
+`<type>/<team>.<name>`, a local one as `<type>/<name>`. The id carries the
+provenance. If two rendered ids collide, the render refuses.
 
 ## Lanes
 
-`pipelines` recognises exactly four keys, named verbatim after the upstream
-signal names. Each is optional and defaults to empty. The vocabulary is
-closed: an invented lane name is an unknown field and fails the load.
+`pipelines` accepts exactly four keys, named after the upstream signal names.
+Each is optional and defaults to empty. Any other lane name is an unknown
+field and fails the load.
 
 | Key | Contains |
 |---|---|
@@ -132,18 +129,18 @@ closed: an invented lane name is an unknown field and fails the load.
 | `logs` | Ordered entries for the logs pipeline. |
 | `profiles` | Ordered entries for the profiles pipeline. |
 
-`extensions` sits beside `pipelines`, not inside it, and carries the
-collector-wide extensions block. Where a lane name is reported in a finding,
-the extensions block is reported as `extensions`.
+`extensions` sits beside `pipelines`, not inside it, and holds the
+collector-wide extensions block. Findings report the extensions block under
+the lane name `extensions`.
 
-The renderer never re-sorts a lane. What you author is what renders; ordering
-wisdom surfaces as findings instead. See [Ordering findings](#ordering-findings).
+The renderer never re-sorts a lane. What you write is what renders. If an
+order contradicts a rule, the renderer reports a finding instead. See
+[Ordering findings](#ordering-findings).
 
 ## Lane entries
 
-Every lane entry has exactly two fields. There's deliberately no third: an
-entry can only ever point at a Component, so a raw inline otelcol block is
-unrepresentable.
+Every lane entry has exactly two fields. An entry can only point at a
+Component, so you can't write a raw inline otelcol block.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -160,18 +157,17 @@ A reference is an id, never a path:
 | `<team>/<name>@<version>` | A shared Component pinned to that version. |
 | `<team>/<name>` with `track: head` | A shared Component tracking the owning team's head. |
 
-The pin after `@` is a positive integer. A pin that isn't parses as a load
-error.
+The pin after `@` is a positive integer. Anything else is a load error.
 
-Rules the loader enforces on each reference:
+The loader enforces these rules on each reference:
 
 - A shared reference either pins a version or sets `track: head`. Doing
   neither is a load error: shared references pin by default, so write the pin.
 - Doing both is a load error.
-- A local reference must not carry a pin: a local travels with its Blueprint,
-  so a pin can only ever dangle.
-- A local reference must not set `track: head`: a local has no head apart from
-  the Blueprint it lives in.
+- A local reference must not carry a pin. A local Component travels with its
+  Blueprint, so there's nothing for a pin to point at.
+- A local reference must not set `track: head`. A local Component has no head
+  apart from the Blueprint it lives in.
 - A local reference must name a Component this Blueprint declares.
 - The same id appearing twice in one lane is a load error.
 - A declared local Component that no lane references is a load error.
@@ -181,13 +177,13 @@ Rules the loader enforces on each reference:
 Each `satisfies` entry is the string `<requirement-id>@<version>`: the
 Requirement id the Blueprint claims to satisfy, stamped with the Requirement
 version the claim was made against. An unversioned claim is a load error,
-because it couldn't drift detectably. Claiming the same Requirement twice is a
+because drift couldn't be detected. Claiming the same Requirement twice is a
 load error.
 
-A claim is intent, never fact. The evaluator always judges against the
-Requirement's current version, so a claim is never a way to freeze the
-goalposts; a claim stamped behind the current version is what `library_drift`
-detects. See [Requirements](requirements.md).
+A claim states intent. The evaluator always judges against the Requirement's
+current version, so a claim can't freeze the rule at an older version. A
+claim stamped behind the current version is what `library_drift` detects. See
+[Requirements](requirements.md).
 
 ```yaml
 satisfies:
@@ -216,9 +212,9 @@ The load refuses on:
 ## Findings
 
 Problems that cross object boundaries don't block the load. They surface as
-findings, route to the owner of the Blueprint they're about, and carry the
-lane so the fix is a one-list edit. One team's retraction must never stop
-every other team's render.
+findings, route to the owner of the Blueprint they're about, and name the
+lane, so the fix is an edit to one list. One team's retraction never stops
+another team's render.
 
 Each finding carries a kind, the Blueprint id, the lane, and a message.
 
@@ -227,8 +223,8 @@ Each finding carries a kind, the Blueprint id, the lane, and a message.
 Kind `reference`. Raised when a structurally valid reference can't deliver
 what it promises:
 
-- The referenced shared Component doesn't exist, having been never authored or
-  since retracted.
+- The referenced shared Component doesn't exist: it was never authored, or it
+  has since been retracted.
 - The pin is ahead of the owning team's current version, so the pinned version
   doesn't exist at head.
 - An entry in the `extensions` block references something that isn't an
@@ -236,15 +232,15 @@ what it promises:
 - An entry in a signal lane references an extension. Extensions are
   collector-wide and never live in a signal lane.
 
-A pin merely behind head is deliberately not a reference finding. That's
-`library_drift`, a different diagnosis with its own detection.
+A pin behind head is not a reference finding. That's `library_drift`, which
+has its own detection.
 
 ### Ordering findings
 
 Kind `ordering`. Raised when a lane's explicit order contradicts an ordering
 rule keyed on a catalogue type. Position is judged among the same-class
 entries of that lane, because that's how the rendered pipeline executes. The
-`extensions` block is never judged: extensions carry no pipeline order.
+`extensions` block is never judged: extensions have no pipeline order.
 
 The rules that ship:
 

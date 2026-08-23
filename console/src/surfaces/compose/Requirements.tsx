@@ -5,7 +5,7 @@ import { Button } from '../../ui/Button'
  * B · Requirement-first, the compliance overview (ADR-0043 §1): what this
  * Service owes, coverage, and one-click suggestion adds. The claim column
  * is the draft's `satisfies` intent; the verdict column is the engine's
- * judgement — carried side by side and never blurred (REQ-031). Claims are
+ * judgement, carried side by side and never blurred (REQ-031). Claims are
  * judged against the requirement's current version whatever version they
  * stamp (ADR-0026 §5).
  */
@@ -81,8 +81,8 @@ export function Requirements({
         </tbody>
       </table>
       <p className="item-meta">
-        A `satisfies` entry is a claim of intent; the verdict column is the engine's judgement of
-        the draft — the two never blend (REQ-031).
+        A `satisfies` entry says what the draft intends to meet. The verdict column says what
+        the engine found. The two are shown side by side and never combined.
       </p>
     </div>
   )

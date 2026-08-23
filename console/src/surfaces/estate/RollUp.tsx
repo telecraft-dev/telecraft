@@ -7,7 +7,7 @@ import { Mark } from '../../ui/Mark'
 
 // The tree-table roll-up (ADR-0042 §1, ADR-0017): ratio-plus-worst per
 // finding kind, never blended, waived counts always alongside. The lens is
-// the evaluation context — the ratios are judged under it — and every team
+// the evaluation context (the ratios are judged under it) and every team
 // row stays visible whatever it names: emphasis and context, never a
 // filter (ADR-0042 §4). The all-Environments column keeps the lens honest.
 
@@ -45,8 +45,8 @@ export function RollUp({ payload }: { payload: EstatePayload }) {
   return (
     <section className="rollup" data-testid="rollup">
       <p className="section-summary">
-        Ratios judged under the <strong data-testid="rollup-lens">{lens}</strong> lens; waived
-        counts ride every level.
+        Ratios are judged under the <strong data-testid="rollup-lens">{lens}</strong> lens.
+        Waived counts appear at every level.
       </p>
       <table className="catalogue-table rollup-table" data-testid="rollup-table">
         <thead>

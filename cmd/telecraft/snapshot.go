@@ -15,7 +15,7 @@ import (
 
 // runSnapshot writes the console API snapshot: the JSON documents the
 // platform API would serve, computed by the real evaluators over one estate
-// checkout (issue #50). It is what makes a static console honest — a
+// checkout (issue #50). It is what makes a static console honest: a
 // bundle plus this file is the whole demo, and every verdict in it came out
 // of the same packages the server calls.
 //
@@ -23,7 +23,7 @@ import (
 // readings the estate declares, so re-running it on every push is the
 // product pipeline, not a demo-shaped imitation of one.
 //
-// Exit codes: 0 written; 1 the snapshot could not be built — including a
+// Exit codes: 0 written; 1 the snapshot could not be built, including a
 // rendered/ tree that no longer matches the sources (ADR-0028 §2); 2 usage
 // or load error.
 func runSnapshot(args []string, stdout, stderr io.Writer) int {
@@ -33,15 +33,15 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact (required)")
 	catalogues := fs.String("catalogues", "", "directory of installed Catalogue artefacts (default: the active artefact's directory)")
 	library := fs.String("library", "", "requirements library directory (required)")
-	exemptions := fs.String("exemptions", "", "exemptions directory — authored waivers (optional; ADR-0037)")
+	exemptions := fs.String("exemptions", "", "exemptions directory holding authored waivers (optional)")
 	rows := fs.String("rows", "", "conformance estate file: each Service's Effective reading per Environment (required)")
-	readings := fs.String("readings", "", "readings file: the collector estate and the arrivals a repository cannot hold (required)")
-	commit := fs.String("commit", "", "commit SHA the snapshot is taken at (required, ADR-0013)")
+	readings := fs.String("readings", "", "readings file: the collector estate and the live readings a repository cannot hold (required)")
+	commit := fs.String("commit", "", "commit SHA the snapshot is taken at (required)")
 	repository := fs.String("repository", "", "estate repository name, shown as the demo's source link")
 	user := fs.String("user", "demo-user", "id of the user the snapshot presents as signed in")
 	userName := fs.String("user-name", "Demo user", "display name of that user")
-	userEmail := fs.String("user-email", "", "attribution address of that user (ADR-0014)")
-	team := fs.String("team", "", "that user's team: the shelf's resting scope (required, ADR-0042 §2)")
+	userEmail := fs.String("user-email", "", "email address of that user, used for attribution")
+	team := fs.String("team", "", "that user's team, which is the Shelf's default scope (required)")
 	out := fs.String("out", "", "file the snapshot is written to (default: stdout)")
 	if err := fs.Parse(args); err != nil {
 		return 2

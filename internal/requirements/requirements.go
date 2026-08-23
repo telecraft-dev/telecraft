@@ -2,12 +2,12 @@
 // versioned catalogue of assertions a Service is judged against (REQ-021).
 //
 // The library is a directory of YAML files, one concern per file, so that a
-// change to one Requirement is a one-file diff in review — which is the whole
+// change to one Requirement is a one-file diff in review, which is the whole
 // point of keeping the library in git. Loading is strict and fails closed: an
 // unknown field, a malformed document or a missing mandatory field is a load
 // error naming the file and the field, never a silently lenient verdict.
 //
-// A Requirement expresses signal presence, volume and attribute coverage —
+// A Requirement expresses signal presence, volume and attribute coverage,
 // never a backend query language (REQ-023). The moment a requirement can
 // embed a query string, TelemetryProvider stops being an abstraction and only
 // one backend is ever really supported, so no such field exists in this model.
@@ -94,14 +94,14 @@ func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 // MarshalYAML writes the same string form UnmarshalYAML reads, so a
 // document this package wrote loads back into this package. Without it a
 // window round-trips to its nanosecond count, which is a valid YAML integer
-// and not a duration string — a file that writes cleanly and then fails to
+// and not a duration string: a file that writes cleanly and then fails to
 // load, naming a line the writer never typed.
 func (d Duration) MarshalYAML() (any, error) { return time.Duration(d).String(), nil }
 
 func (d Duration) Std() time.Duration { return time.Duration(d) }
 
 // Requirement is one named, versioned assertion with mandatory remediation
-// text — a finding with no suggested fix is a complaint. It may assert on
+// text, so every finding tells you what to do. It may assert on
 // Effective state, on Observed state, or on both.
 type Requirement struct {
 	ID          string `yaml:"id"`
@@ -123,7 +123,7 @@ type Requirement struct {
 
 	// Environments is the optional applicability list (ADR-0033): the
 	// Requirement applies only in the named Environments, and absent means
-	// all of them. One env-neutral assertion with a narrowing list — never a
+	// all of them. One env-neutral assertion with a narrowing list, never a
 	// per-environment variant file, which would drift.
 	Environments []string `yaml:"environments"`
 

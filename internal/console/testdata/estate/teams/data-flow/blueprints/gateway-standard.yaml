@@ -1,6 +1,6 @@
 # The lone Blueprint. The logs lane routes a transform the fixture
 # catalogue rates alpha for logs, which breaches the C1 production floor
-# the traversing Service imposes — a finding, never a block (ADR-0023 §5).
+# the traversing Service imposes: a finding, never a block (ADR-0023 §5).
 name: gateway-standard
 version: 2
 owner: gateway-owners

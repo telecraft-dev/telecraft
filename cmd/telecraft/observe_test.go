@@ -68,7 +68,7 @@ func TestObserveCommandPrintsDegradedReadingsAndExitsZero(t *testing.T) {
 		"-timeout", "10s",
 	}, &stdout, &stderr)
 	if code != 0 {
-		t.Fatalf("exit %d, want 0 — not knowing is a normal state (ADR-0008)\nstderr:\n%s", code, stderr.String())
+		t.Fatalf("exit %d, want 0: not knowing is a normal state\nstderr:\n%s", code, stderr.String())
 	}
 	out := stdout.String()
 	for _, want := range []string{
@@ -101,8 +101,8 @@ func TestObserveCommandTakesItsEndpointFromTheEnvironment(t *testing.T) {
 	}
 }
 
-// Deliberately uncovered: the branches that print a known reading —
-// present, volume, per-attribute coverage, and the sampled attribute-name
+// Deliberately uncovered: the branches that print a known reading
+// (present, volume, per-attribute coverage, and the sampled attribute-name
 // list. Reaching them means a telemetry backend answering real queries,
 // which the provider's own live suite covers against a real one rather
 // than against a double standing in for it here.

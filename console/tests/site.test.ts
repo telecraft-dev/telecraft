@@ -5,7 +5,7 @@ import { entryDocuments, WORKSPACE_ROUTES } from '../tools/assemble-site'
 // The deploy pre-renders one entry document per Workspace URL so a static
 // host answers those URLs 200 (ADR-0042 §3.5). The list the assembler
 // walks and the list the chrome renders are two copies of one fact, and a
-// Workspace added to one and not the other ships a URL that 404s — which
+// Workspace added to one and not the other ships a URL that 404s, which
 // is precisely the failure the pre-rendering exists to remove.
 
 describe('the assembled site covers every Workspace URL', () => {

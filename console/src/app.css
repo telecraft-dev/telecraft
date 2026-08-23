@@ -1,7 +1,7 @@
 /* Structure only, and the console's alone: the elements are dressed by
  * `base.css` beside this file and every value comes from `tokens.css`
  * (ADR-0047 §1, design-system.md "Distribution"). Nothing below names a hex
- * value, a pixel size, or a typeface — that is the token-swap contract
+ * value, a pixel size, or a typeface: that is the token-swap contract
  * ADR-0045 §4 bought and ADR-0047 spent.
  *
  * A rule that would be true of a bare element on any Telecraft surface
@@ -25,7 +25,7 @@
 /* ---- The button, in three tones (ADR-0047 §4) ----
    Tones are structural, not chromatic: the accent is contrast, so a primary
    button is a solid fill of the ink and a quiet one is underlined text.
-   `.button` is also applied directly to anchors — a who-acts chip routes
+   `.button` is also applied directly to anchors: a who-acts chip routes
    rather than acts, and must stay a link. */
 
 .button {
@@ -193,7 +193,7 @@
   background: var(--colour-chrome);
   border-bottom: 1px solid var(--colour-rule);
   /* One row, always. A wrapping chrome pushes every surface below it down
-     and reads as a layout accident rather than a decision — measured on the
+     and reads as a layout accident rather than a decision: measured on the
      demo, where the extra provenance banner tipped it over and the bar grew
      from 48px to 107px.
      Past the point where truncating the provenance is not enough, the bar
@@ -254,7 +254,7 @@
   gap: var(--space-3);
   /* Nothing in here shrinks below its own content either. Squeezing a
      control does not make it smaller, it makes its text wrap, and the bar
-     grows again — 109px at 1024px before this. The provenance line gives
+     grows again: 109px at 1024px before this. The provenance line gives
      way at a bounded width, and past that the bar scrolls. */
   flex-shrink: 0;
 }
@@ -372,7 +372,7 @@
 }
 
 /* Light, never a lid. The dimming is a shadow that reaches past any
-   viewport, so the anchor sits in a hole in it — and the whole element is
+   viewport, so the anchor sits in a hole in it, and the whole element is
    transparent to the pointer, which is what keeps the product underneath
    usable while a Tour runs (ADR-0051 §2). */
 .tour-spotlight {
@@ -744,7 +744,7 @@
    statement across the cells the readings would have filled, rather than
    as three of them: the shape of the row is what tells a reader scanning
    the matrix that this lane is absent, not stopped. The mark is
-   ADR-0047 §7's not_applicable rule — a plain datum, nothing judged — and
+   ADR-0047 §7's not_applicable rule (a plain datum, nothing judged), and
    the row is dimmed and italic so it recedes behind the lanes that carry
    readings without ever being invisible. */
 .signal-matrix .cell-lane {
@@ -1319,7 +1319,7 @@
 }
 
 /* The save area: the one hard block reads different in kind from every
-   warning (ADR-0022 §3, P1 verdict) — a banner and a disabled Save, never
+   warning (ADR-0022 §3, P1 verdict): a banner and a disabled Save, never
    another strip entry. */
 
 .save-area {
@@ -1952,7 +1952,7 @@
 }
 
 /* The demo's own statement of what it is: a snapshot, not an instance.
-   Words carry it — the badge's hue only reinforces (ADR-0041 §2). */
+   Words carry it: the badge's hue only reinforces (ADR-0041 §2). */
 
 .demo-banner {
   display: flex;
@@ -1997,7 +1997,7 @@
 
 /* The claim flow (ADR-0042 §6, ADR-0031): the ungoverned band, the herd
  * selection, and the claim panel. Ungoverned reads as concern, never
- * failure — the band borrows the topology band's neutral tone, no
+ * failure: the band borrows the topology band's neutral tone, no
  * severity hue anywhere. */
 
 .ungoverned-band {
@@ -2205,7 +2205,7 @@
   color: var(--severity-advisory);
 }
 
-/* Foreign membership is advisory: lag, never failure (ADR-0029 §7) — the
+/* Foreign membership is advisory: lag, never failure (ADR-0029 §7). The
  * chip says so in words, and nothing about it reads as red. */
 
 .rollout-halts {

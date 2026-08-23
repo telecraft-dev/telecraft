@@ -8,8 +8,8 @@ order: 5
 
 Serving is the optional third rung: a stateless OpAMP server that hands
 rendered artefacts from git to connected collectors. It stores nothing
-durable, so stopping it loses delivery and never the record. GitOps stays a
-co-equal alternative, chosen per collector rather than per estate.
+durable, so stopping it loses delivery and never the record. GitOps stays an
+equal alternative, chosen per collector rather than per estate.
 
 Nothing here sits in your telemetry path. If the server is down, collectors
 keep running the configuration they already have.
@@ -34,11 +34,11 @@ serve: serving head 870c9b8a26458402c1982359bcdea90fdb7ef73d on 127.0.0.1:4321, 
 The head SHA in that line is the git head of the source the server is reading.
 Each artefact carries its own stamp, set by the render that produced it, and
 that stamp is what later joins a collector's reading back to the artefact it
-is running. The two SHAs differ whenever the committed `rendered/` tree was
-stamped by an earlier commit than the one at head.
+is running. The two SHAs differ whenever an earlier commit than head stamped
+the committed `rendered/` tree.
 
 The OpAMP endpoint is at `/v1/opamp` and speaks WebSocket. A plain HTTP GET
-gets you a refusal, which is a useful liveness probe:
+gets a refusal, which makes a useful liveness probe:
 
 ```
 GET / -> 404
@@ -50,7 +50,7 @@ serve: Cannot upgrade HTTP connection to WebSocket: websocket: the client is not
 ```
 
 Stop the server with a signal. It exits 0 after a clean shutdown, 1 if it
-could not start or stop, and 2 on usage.
+could not start or stop, and 2 on a usage error.
 
 Exactly one flag names the source:
 
@@ -58,17 +58,17 @@ Exactly one flag names the source:
 serve: exactly one of -estate or -repo names the source
 ```
 
-The estate has to be an estate. A directory with no `teams/` tree is refused
-at startup rather than serving an empty config map:
+The estate has to be an estate. The server refuses a directory with no
+`teams/` tree at startup, rather than serving an empty config map:
 
 ```
-serve: initial repo snapshot: /tmp/empty has no teams/ tree — the estate layout is teams/<team>/{tiers,services}/<name>.yaml (ADR-0027)
+serve: initial repo snapshot: /tmp/empty has no teams/ tree: the estate layout is teams/<team>/{tiers,services}/<name>.yaml
 ```
 
 ## Run it against a git repository
 
-`-repo` names a git URL the server fetches and polls. This is the shape for an
-estate that lives somewhere other than the box the server runs on:
+`-repo` names a git URL the server fetches and polls. Use this shape when the
+estate lives somewhere other than the machine the server runs on:
 
 ```sh
 ./telecraft serve \
@@ -83,23 +83,23 @@ serving on 127.0.0.1:4322
 serve: serving head 870c9b8a26458402c1982359bcdea90fdb7ef73d on 127.0.0.1:4322, fetch interval 10s
 ```
 
-`-fetch-interval` is the one freshness knob there is, and it bounds how stale
-a served artefact can be. `-cache` is a cache of git, not state: losing it
-costs one re-clone. Omit it and the server uses a fresh temporary directory it
-removes on exit.
+`-fetch-interval` is the only freshness setting, and it bounds how stale a
+served artefact can be. `-cache` is a cache of git, not state: losing it costs
+one re-clone. Omit it and the server uses a fresh temporary directory, which
+it removes on exit.
 
-A fetch that fails does not take the server down. It logs and keeps serving
-the previous head, because a stale head is better than no head.
+A failed fetch does not take the server down. The server logs it and keeps
+serving the previous head, because a stale head is better than no head.
 
 ### Which source to pick
 
 | | `-estate` | `-repo` |
 |---|---|---|
-| Where the estate lives | A checkout on the same box | Any git URL, `file://` included |
+| Where the estate lives | A checkout on the same machine | Any git URL, `file://` included |
 | Freshness | Whatever wrote the directory, picked up on the poll | Bounded by `-fetch-interval` |
 | Suits | Air-gapped and standalone instances | Instances beside a hosted estate repository |
 
-Both are stateless. Membership, matching and delivery are pure functions of
+Both are stateless. Membership, matching, and delivery are pure functions of
 the head and the collector's reported attributes, so replicas need no
 coordination and no leader.
 
@@ -107,59 +107,58 @@ coordination and no leader.
 
 A served collector runs an [OpAMP
 Supervisor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/cmd/opampsupervisor)
-beside it. The Supervisor is what speaks OpAMP, writes the collector's
-configuration file, restarts the collector, and reports back what it is
-actually running.
+beside it. The Supervisor speaks OpAMP, writes the collector's configuration
+file, restarts the collector, and reports back what it is running.
 
-The renderer writes the Supervisor's configuration for you, beside the
-collector artefact, for every Tier that declares a `serving:` block:
+For every Tier that declares a `serving:` block, the renderer writes the
+Supervisor's configuration for you, beside the collector artefact:
 
 ```yaml
-# Generated by the telecraft renderer — humans never commit here (ADR-0027, ADR-0028).
-# Supervisor config for Tier data-flow/gateway, commit dea1233454af2285b1c7c2f130d396a6046b9293 (ADR-0010).
+# Generated by the telecraft renderer. Do not edit by hand: change the source in git and render again.
+# Supervisor config for Tier data-flow/gateway, commit dea1233454af2285b1c7c2f130d396a6046b9293.
 server:
   endpoint: wss://opamp.telecraft.internal/v1/opamp
 capabilities:
-  # Off upstream by default; serving is the point (ADR-0010).
+  # Off upstream by default; on here so the Supervisor accepts served config.
   accepts_remote_config: true
   reports_effective_config: true
   reports_health: true
 agent:
-  # Revert-on-failure is off by default upstream (ADR-0010).
+  # Off upstream by default; on here so a failed config reverts on its own.
   automatic_config_rollback: true
 storage:
-  # A durable volume — an ephemeral directory mints a new identity
-  # per pod replacement (ADR-0010).
+  # Mount a durable volume here: an ephemeral directory gives the
+  # collector a new identity every time the pod is replaced.
   directory: /var/lib/telecraft/supervisor
 ```
 
-Four of those settings are load-bearing, and three of them are not upstream
-defaults:
+Four of those settings matter, and three of them are not upstream defaults:
 
 - `accepts_remote_config` lets the Supervisor take a served configuration at
   all.
-- `reports_effective_config` is what makes the Effective reading exist. Without
-  it the platform can see what it sent and never what is running.
+- `reports_effective_config` is what makes the Effective reading exist.
+  Without it, Telecraft can see what it sent and never what is running.
 - `automatic_config_rollback` reverts a configuration the collector fails to
-  start on, which is what turns a bad artefact into a report rather than an
-  outage.
+  start on. That turns a bad artefact into a report rather than an outage.
 - `storage.directory` must be a durable volume. An ephemeral directory mints a
   new identity on every pod replacement, and the population count churns.
 
 That file is not runnable as delivered. It says where the server is and how
 the Supervisor behaves, and nothing about which collector this is or which
-binary to run. Both are yours, and
-[installing a served collector](#install-a-served-collector) is where they go.
+binary to run. Both are yours to supply, and
+[installing a served collector](#install-a-served-collector) shows where they
+go.
 
 A Tier with no `serving:` block renders no supervisor artefact. Those
-collectors are git-delivered, which the platform calls the Foreign path:
-legitimate, not lesser, and visible as a property of each collector.
+collectors are git-delivered, which Telecraft calls the Foreign path. It is a
+legitimate path, not a lesser one, and each collector shows which path it
+uses.
 
 ## How a collector is matched
 
-A collector is never authored. It connects, reports its identifying
-attributes, and the server matches those attributes against the Tier selectors
-at head:
+You never author a collector. It connects, reports its identifying
+attributes, and the server matches those attributes against the Tier
+selectors at head:
 
 ```yaml
 selector:
@@ -168,8 +167,8 @@ selector:
 ```
 
 Matching is equality over every authored pair. The most specific satisfied
-selector, meaning the one with the most pairs, wins; an equal-specificity tie
-resolves to the first Tier in id order, so replicas cannot disagree.
+selector, meaning the one with the most pairs, wins. An equal-specificity tie
+resolves to the first Tier in id order, so replicas can't disagree.
 
 The attributes on the other side of that comparison come from the collector's
 installation. Nothing in git supplies them, which is what
@@ -177,23 +176,23 @@ installation. Nothing in git supplies them, which is what
 
 ## The Unmatched artefact
 
-A collector matching no selector is not ignored and is not sent an empty
-config map. It gets the Unmatched artefact: a real, commit-stamped
+A collector that matches no selector is not ignored, and it is not sent an
+empty config map. It gets the Unmatched artefact: a real, commit-stamped
 configuration with self-telemetry on and no data pipelines.
 
 ```yaml
-# Generated by the telecraft renderer — humans never commit here (ADR-0027, ADR-0028).
-# The Unmatched artefact, commit dea1233454af2285b1c7c2f130d396a6046b9293 (ADR-0030): served to a
-# collector matching no Tier selector. Self-telemetry only, no data
-# pipelines. Not the quarantine destination — that term is data-level
-# routing (ADR-0031).
+# Generated by the telecraft renderer. Do not edit by hand: change the source in git and render again.
+# The Unmatched artefact, commit dea1233454af2285b1c7c2f130d396a6046b9293: served to a collector
+# that matches no Tier selector. Self-telemetry only, no data
+# pipelines. This is not the quarantine destination, which routes
+# data rather than collectors.
 service:
   telemetry:
     resource:
       k8s.node.name: ${env:TELECRAFT_NODE_NAME}
       telecraft.commit: dea1233454af2285b1c7c2f130d396a6046b9293
-      # Labelled governed-by-nobody — what makes the onboard CTA rich
-      # (ADR-0030, ADR-0031).
+      # Marks this collector as matching no Tier, so the console can
+      # show it and offer to onboard it.
       telecraft.unmatched: true
     metrics:
       level: normal
@@ -206,37 +205,38 @@ service:
 ```
 
 Generated comments and the matching `logs` block are cut for length. The
-`telecraft.unmatched: true` label is the point. An ungoverned collector
-that is served this artefact reports itself, so it shows up in the console as
-governed by nobody rather than being silent. It lives at
-`rendered/_estate/unmatched.yaml` and is owned by the root team.
+`telecraft.unmatched: true` label is the point. An ungoverned collector served
+this artefact reports itself, so it shows up in the console as governed by
+nobody rather than staying silent. The artefact lives at
+`rendered/_estate/unmatched.yaml`, and the root team owns it.
 
-Ungoverned collectors are counted against nobody: they appear in no compliance
-denominator. They appear in the estate view, which is a different thing.
+Ungoverned collectors count against nobody: they appear in no compliance
+denominator. They do appear in the estate view, which is a different thing.
 
 ## Install a served collector
 
-The rendered Supervisor artefact is not a finished configuration, and a
-Supervisor started on it unchanged gets you a collector the server cannot
-place. The file carries what the estate decides: where the server is, which
-capabilities to turn on, where to keep state. It carries nothing about which
-collector this is, and nothing about which binary to run. You supply both at
-install, by merging an overlay over the rendered file.
+The rendered Supervisor artefact is not a finished configuration. Start a
+Supervisor on it unchanged and you get a collector the server can't place. The
+file carries what the estate decides: where the server is, which capabilities
+to turn on, and where to keep state. It carries nothing about which collector
+this is, and nothing about which binary to run. You supply both at install
+time, by merging an overlay over the rendered file.
 
 Two keys are missing, for two different reasons:
 
 - `agent.description.identifying_attributes` is the identity the collector
-  reports, and the only thing the server matches on. Without it the collector
-  reports nothing a selector can satisfy, so it is served the Unmatched
-  artefact. That is the server behaving correctly, and it is not what you
-  wanted.
+  reports, and the only thing the server matches on. Without it, the collector
+  reports nothing a selector can satisfy, so the server serves it the
+  Unmatched artefact. That is the server behaving correctly, and it is not
+  what you wanted.
 - `agent.executable` is the collector binary the Supervisor starts as a child.
-  It is a property of the image or the package you installed rather than of
-  the estate, so nothing in git knows it.
+  It belongs to the image or the package you installed, not to the estate, so
+  nothing in git knows it.
 
 ### The overlay, and the selector it satisfies
 
-These two files are one sentence. The Tier authors the first half:
+These two files are two halves of one sentence. The Tier authors the first
+half:
 
 ```yaml
 # teams/data-flow/tiers/gateway.yaml, authored
@@ -264,10 +264,10 @@ agent:
       service.instance.id: gateway-1
 ```
 
-Report more than the selector names and matching still succeeds: a selector is
-equality over the pairs it authors and says nothing about the rest. Report
-fewer and it fails. So a collector meant for a Tier carries every pair in that
-Tier's selector, plus whatever else you want to see.
+Report more pairs than the selector names and matching still succeeds: a
+selector is equality over the pairs it authors, and says nothing about the
+rest. Report fewer and matching fails. So a collector meant for a Tier carries
+every pair in that Tier's selector, plus whatever else you want to see.
 
 Merge the overlay over the rendered file as a deep merge: maps merge key by
 key, and everything else replaces. Keep the two halves in separate files. The
@@ -283,16 +283,17 @@ merges each over that artefact before the Supervisors start.
 
 The pairs the selector names are the same for every collector in the Tier, so
 one file serves the whole workload. The values that are unique per collector
-come from the substrate, and the two substrates hand them over differently.
+come from wherever the collector runs, and Kubernetes and systemd hand them
+over differently.
 
 #### Kubernetes
 
 Nothing upstream deploys a supervised collector. Neither the OpenTelemetry
 Operator nor the collector Helm chart knows the Supervisor exists, and a
-sidecar container does not work either, because the Supervisor forks the
+sidecar container doesn't work either, because the Supervisor forks the
 collector and signals it directly. The Supervisor and the collector go in one
 container, in an image you build, with the Supervisor as the entry point. So
-the workload is yours to write, which is where the values come from:
+the workload is yours to write, and that is where the values come from:
 
 ```yaml
 # The gateway Tier. A StatefulSet rather than a Deployment because the
@@ -335,12 +336,12 @@ spec:
             storage: 1Gi
 ```
 
-`TELECRAFT_NODE_NAME` is read by the collector and not by the Supervisor. It
-lands in the collector artefact's self-telemetry resource as `k8s.node.name`,
-which is a reading rather than an identity, and it takes no part in matching.
-The renderer emits the indirection so that one manifest yields per-node
-identity across a DaemonSet, and feeding the variable from `spec.nodeName` is
-the half you own.
+The collector reads `TELECRAFT_NODE_NAME`, not the Supervisor. It lands in the
+collector artefact's self-telemetry resource as `k8s.node.name`, which is a
+reading rather than an identity, and it takes no part in matching. The
+renderer emits the indirection so that one manifest yields per-node identity
+across a DaemonSet; feeding the variable from `spec.nodeName` is the half you
+own.
 
 The Supervisor reads one file, so a value that differs per collector has to
 differ in that file. Either template the file per replica, or leave
@@ -351,20 +352,20 @@ unique one. Nothing in matching depends on either choice.
 
 On a VM the Supervisor has real packaging. The `opampsupervisor` deb and rpm
 install a unit, a system user, an `EnvironmentFile` at
-`/etc/opampsupervisor/opampsupervisor.conf`, and an example configuration, and
-the unit's `StateDirectory=opampsupervisor` gives you a durable
-`/var/lib/opampsupervisor` for nothing. Three steps turn that into a served
+`/etc/opampsupervisor/opampsupervisor.conf`, and an example configuration. The
+unit's `StateDirectory=opampsupervisor` gives you a durable
+`/var/lib/opampsupervisor` for free. Three steps turn that into a served
 collector:
 
 1. Install the collector and the Supervisor as separate packages, then
-   **disable the collector's own unit**. Under the Supervisor the collector
+   **disable the collector's own unit**. Under the Supervisor, the collector
    runs as a child on a configuration file the Supervisor generates, so
    leaving `otelcol-contrib.service` enabled gets you two collectors racing
-   for the same ports. Nothing upstream disables it and nothing warns you.
+   for the same ports. Nothing upstream disables it, and nothing warns you.
 2. Write the merged configuration to `/etc/opampsupervisor/config.yaml`, with
    `agent.executable` pointing at the collector binary the package installed.
-   The unit asserts that the path exists and does not start until it does, so
-   a fresh install is enabled and inert until you write the file.
+   The unit asserts that the path exists and doesn't start until it does, so a
+   fresh install is enabled and inert until you write the file.
 3. Set `TELECRAFT_NODE_NAME` in the `EnvironmentFile`. There is no Downward
    API here, and the collector inherits the Supervisor's environment, so this
    is where the value the artefact reads comes from.
@@ -372,43 +373,42 @@ collector:
 ### Give the storage directory a durable volume
 
 The Supervisor mints a UUID on first run and keeps it under
-`storage.directory`. That UUID is the collector's identity on the wire and is
-meant to survive restarts. Point the directory at something ephemeral and
+`storage.directory`. That UUID is the collector's identity on the wire, and it
+is meant to survive restarts. Point the directory at something ephemeral and
 every restart mints a new one: the server reads an arrival rather than a
 return, and the Tier's population churns while the collectors under it sit
 still.
 
-The rendered artefact already sets the path. Making the path durable is yours:
+The rendered artefact already sets the path. Making the path durable is your
+job:
 
 - A packaged VM install has it right by default, because systemd owns
   `/var/lib/opampsupervisor`. Either create the rendered path and give it to
   the Supervisor's user, or point `storage.directory` at systemd's directory
   in your overlay.
-- In Kubernetes an `emptyDir` is the wrong answer, and it is the answer you
+- In Kubernetes, an `emptyDir` is the wrong answer, and it is the answer you
   get by not deciding. Use a volume claim per replica, or a `hostPath` where
-  identity should be node-lifetime rather than pod-lifetime.
+  identity should last for the node's lifetime rather than the pod's.
 - Whichever volume it is, the user the Supervisor runs as has to be able to
-  write it. A fresh volume owned by root under an unprivileged container is
-  the same failure wearing a different message.
+  write to it. A fresh volume owned by root under an unprivileged container is
+  the same failure with a different message.
 
 ### Why the renderer does not fill this in
 
-The renderer could write the identifying attributes itself. It knows them:
-they are the Tier's selector, authored a few lines away. **That option is
-rejected.** An artefact that carries the attributes its own selector matches
-is self-matching, so matching would confirm the renderer's output instead of
-reading the collector. Identity would be assigned by the platform rather than
-reported by the collector, and reported identity is what the delivery model
-rests on (ADR-0007, ADR-0013): a collector is never authored, it connects and
-says what it is. A collector could then never be wrong about which Tier it
-belongs to, and being wrong is one of the things the platform exists to show
-you. Rendering them would not even remove the overlay, because
-`agent.executable` and anything unique per collector still come from the
-install.
+The renderer knows the identifying attributes: they are the Tier's selector,
+authored a few lines away. It does not write them into the artefact, because
+an artefact that carries the attributes its own selector matches is
+self-matching. Matching would then confirm the renderer's output instead of
+reading the collector. Telecraft's delivery model rests on reported identity:
+you never author a collector, it connects and says what it is. A collector
+that could never be wrong about which Tier it belongs to would hide one of the
+things Telecraft exists to show you. Rendering the attributes would not remove
+the overlay either, because `agent.executable` and anything unique per
+collector still come from the install.
 
-The artefact does not carry the keys as commented placeholders either.
-`rendered/` is written by the renderer and never edited by a human (ADR-0027),
-and a placeholder is an invitation to edit it there.
+The artefact doesn't carry the keys as commented placeholders either. The
+renderer writes `rendered/`, nobody edits it by hand, and a placeholder is an
+invitation to edit it there.
 
 ## Compare what was sent with what is running
 
@@ -429,18 +429,18 @@ When they agree:
 ```
 path              git
 profile           exact
-remote            known=false cause="a file comparison carries no RemoteConfigStatus reading — the OpAMP server reads it live"
+remote            known=false cause="a file comparison carries no RemoteConfigStatus reading: the OpAMP server reads it live"
 intended_commit   dea1233454af2285b1c7c2f130d396a6046b9293
 effective_commit  dea1233454af2285b1c7c2f130d396a6046b9293
 comparison        in_sync
 ```
 
-When they do not:
+When they don't:
 
 ```
 path              git
 profile           exact
-remote            known=false cause="a file comparison carries no RemoteConfigStatus reading — the OpAMP server reads it live"
+remote            known=false cause="a file comparison carries no RemoteConfigStatus reading: the OpAMP server reads it live"
 intended_commit   dea1233454af2285b1c7c2f130d396a6046b9293
 effective_commit  dea1233454af2285b1c7c2f130d396a6046b9293
 comparison        drifted
@@ -455,12 +455,12 @@ as drifted for doing its job.
 
 A file comparison carries no delivery status, so the `remote` axis prints
 `known=false` with its cause. The server reads that axis live. Like `observe`,
-`delivery` is a printer: it exits 0 for every computed status including
-`drifted`, and exit 2 means the status could not be computed at all.
+`delivery` prints rather than gates: it exits 0 for every computed status,
+including `drifted`, and exit 2 means the status couldn't be computed at all.
 
 ## What next
 
 - [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
   Blueprint version in cohorts.
 - [Check conformance](check-conformance.md) answers the question delivery
-  cannot: whether the configuration that arrived actually worked.
+  can't: whether the configuration that arrived worked.

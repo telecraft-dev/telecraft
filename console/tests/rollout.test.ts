@@ -29,7 +29,7 @@ const estate = JSON.parse(
 ) as FixtureEstate
 
 // A fixed evaluation instant: 26h into the canary's active stage, past its
-// 24h minimum soak — so every verdict below is decided by halts and
+// 24h minimum soak, so every verdict below is decided by halts and
 // running evidence, never by the wall clock.
 const NOW = new Date('2026-08-18T08:00:00Z')
 
@@ -83,7 +83,7 @@ describe('the running reading across both delivery paths (ADR-0029 §7)', () => 
     expect(runningArtefact({ remote: { state: 'applied', configHash: artefacts.from.hash } }, artefacts)).toBe('from')
   })
 
-  it('never reads a FAILED hash as what runs — it names what was refused', () => {
+  it('never reads a FAILED hash as what runs: it names what was refused', () => {
     // gw-1's shape: FAILED for to, self-reverted (ADR-0010); the stamp
     // reading shows it back on from.
     expect(runningArtefact(estate.rolloutReadings['gw-1'], artefacts)).toBe('from')
@@ -140,7 +140,7 @@ describe('the fixture canary: blocked below the abort threshold (ADR-0029 §6)',
     expect(progress.cohorts[0]!.served).toMatchObject({ members: 1, to: 1 })
     expect(progress.cohorts[0]!.foreign.members).toBe(0)
     // The active cohort spans both delivery paths: the foreign member is
-    // on from — displayed as lag, and its counts sit apart, advisory.
+    // on from, displayed as lag, and its counts sit apart, advisory.
     expect(progress.cohorts[1]!.served).toMatchObject({ members: 2, to: 1, from: 1 })
     expect(progress.cohorts[1]!.foreign).toMatchObject({ members: 1, from: 1 })
   })
@@ -211,7 +211,7 @@ describe('advance and hold: foreign lag never blocks (ADR-0029 §5, §7)', () =>
 })
 
 describe('the payload the ledger consumes', () => {
-  it('serves every active Rollout, evaluated fresh — nothing persisted', () => {
+  it('serves every active Rollout, evaluated fresh, nothing persisted', () => {
     const payload = rolloutProgress(estate, NOW)
     expect(payload.map((r) => r.id)).toEqual([
       'data-flow/gateway-canary',

@@ -11,7 +11,7 @@ import (
 )
 
 // The fixture tree: org > platform > payments > checkout, with data as a
-// sibling branch under org — enough depth for narrowing across three levels
+// sibling branch under org: enough depth for narrowing across three levels
 // and a branch a Grant must not leak into.
 const fixtureTeams = `
 teams:
@@ -48,8 +48,8 @@ func fixtureTree(t *testing.T) ownership.Tree {
 
 // fixtureCatalogue builds a small Catalogue through the real artefact
 // round-trip, so lookups and alias resolution behave exactly as they do
-// against a loaded artefact. kafka exists as a receiver and an exporter —
-// the class-collapse case — and span_metrics carries its historical alias.
+// against a loaded artefact. kafka exists as a receiver and an exporter
+// (the class-collapse case), and span_metrics carries its historical alias.
 func fixtureCatalogue(t *testing.T) *catalogue.Catalogue {
 	t.Helper()
 	comp := func(class catalogue.Class, typ, deprecated string) catalogue.Component {
@@ -107,7 +107,7 @@ func loadPolicy(t *testing.T, lists, grants string) (*Policy, error) {
 	}
 	p, err := Load(dir, fixtureTree(t), fixtureCatalogue(t))
 	if err != nil && p != nil {
-		t.Fatal("Load failed but returned a policy — a failed load must fail closed")
+		t.Fatal("Load failed but returned a policy: a failed load must fail closed")
 	}
 	return p, err
 }
@@ -216,10 +216,10 @@ grants:
 
 func TestMalformedEntriesFailLoad(t *testing.T) {
 	cases := map[string]string{
-		"otlp":            "is not class/type-pattern",
-		"widget/otlp":     "is not a pipeline class",
-		"receiver/ot[lp]": "type pattern contains",
-		"receiver/a/b":    "type pattern contains",
+		"otlp":            "is not in the form class/type-pattern",
+		"widget/otlp":     "is not a class",
+		"receiver/ot[lp]": "the type pattern contains",
+		"receiver/a/b":    "the type pattern contains",
 	}
 	for entry, want := range cases {
 		lists := "allow_lists:\n  - team: org\n    owner: org-lead\n    allow: ['" + entry + "']\n"
@@ -345,7 +345,7 @@ grants:
     team: checkout
     adds: [receiver/otlp]
 `
-	wantLoadError(t, "", grants, `grant "g" defined twice`)
+	wantLoadError(t, "", grants, `grant "g" is defined twice`)
 }
 
 func TestGrantAddingNothingFailsLoad(t *testing.T) {
@@ -376,7 +376,7 @@ allow_lists:
 }
 
 func TestEmptyPolicyFileIsRejected(t *testing.T) {
-	wantLoadError(t, "# nothing here\n", "", "empty file")
+	wantLoadError(t, "# nothing here\n", "", "the file is empty")
 }
 
 func TestFileWithNoListsIsRejected(t *testing.T) {
@@ -404,7 +404,7 @@ func TestNilCatalogueIsAnError(t *testing.T) {
 }
 
 // An entry written against the historical alias keeps selecting the
-// component it always did — aliases resolve on every lookup (ADR-0020 §3).
+// component it always did: aliases resolve on every lookup (ADR-0020 §3).
 func TestAliasEntrySelectsTheCanonicalComponent(t *testing.T) {
 	lists := `
 allow_lists:

@@ -10,7 +10,7 @@ import { join } from 'node:path'
 // Tour, already offered. It opens itself once per reader on a bare landing
 // URL (ADR-0051 §7), and every spec but tour.spec.ts is testing the
 // product rather than the Tour. So the suite runs as a reader who has seen
-// it, and tour.spec.ts clears the store to opt back in — the same shape as
+// it, and tour.spec.ts clears the store to opt back in: the same shape as
 // auth.spec.ts opting out of the session.
 const PRESENTATION_KEY = 'telecraft.console.presentation.v1.demo-user'
 

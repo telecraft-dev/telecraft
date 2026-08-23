@@ -1,5 +1,5 @@
 {
-  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population — per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5) — platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams. Collector rows carry the reported identifying attributes Tier selectors match on (ADR-0013); `selectors` holds each Tier's authored selector, the claim flow's proximity and blast-radius material (ADR-0042 §6). Rows without a `tier` are the ungoverned population (ADR-0031): a payments-team edge DaemonSet nobody authored a Tier for (served the Unmatched artefact, ADR-0030) and two foreign host watchers read through the estate provider — unlike governed counts, these few rows are the whole ungoverned population, so preview arithmetic over them is exact. `rollouts` holds the authored Rollout objects (ADR-0029) with the two rendered artefacts' facts — hash and component set — the running reading compares on; the `to` binding names a sibling Blueprint authored as the candidate (ADR-0029 §3). `rolloutReadings` is each target-Tier collector's reading: the served path's acknowledged config hash, the foreign path's telecraft.tier stamp reading (self-telemetry component identity, ADR-0039 §5), and silence past the staleness horizon. Both rollout Tiers' whole populations are in the collectors sample, so cohort arithmetic over them is exact. The gateway Tier's population is deliberately mixed — two served, one git-delivered — so both delivery paths appear in one cohort; the staging trial's one member took the new config and went dark, the abort signature (§6).",
+  "_comment": "The fixture estate the fixture backend serves, mirroring internal/renderer/testdata/estate: the data-flow gateway chain, the C1 checkout Service whose Paths impose the floor, and the infosec-owned shared Component. Card faces follow the ADR-0041 contract, version 1; drawers carry findings with who-acts routing and why-provenance. Matched counts sit at the P3-verdict scale (~22k collectors over a handful of authored Tiers): scale lives in the counts only, never in the authored picture (ADR-0007). The collectors array is a representative sample of that population: per-collector detail is flat-list material (ADR-0042 rule 3.4), and a fixture never enumerates a DaemonSet-scale population. Owners, allowLists and grants are the authored, git-resident Allow-list policy the Governance views read (ADR-0021 §5): platform narrows, data-flow narrows further, and one Grant admits the Kafka pair back for data-flow, so all three palette origins appear across teams. Collector rows carry the reported identifying attributes Tier selectors match on (ADR-0013); `selectors` holds each Tier's authored selector, the claim flow's proximity and blast-radius material (ADR-0042 §6). Rows without a `tier` are the ungoverned population (ADR-0031): a payments-team edge DaemonSet nobody authored a Tier for (served the Unmatched artefact, ADR-0030) and two foreign host watchers read through the estate provider. Unlike governed counts, these few rows are the whole ungoverned population, so preview arithmetic over them is exact. `rollouts` holds the authored Rollout objects (ADR-0029) with the two rendered artefacts' facts (hash and component set) the running reading compares on; the `to` binding names a sibling Blueprint authored as the candidate (ADR-0029 §3). `rolloutReadings` is each target-Tier collector's reading: the served path's acknowledged config hash, the foreign path's telecraft.tier stamp reading (self-telemetry component identity, ADR-0039 §5), and silence past the staleness horizon. Both rollout Tiers' whole populations are in the collectors sample, so cohort arithmetic over them is exact. The gateway Tier's population is deliberately mixed (two served, one git-delivered) so both delivery paths appear in one cohort; the staging trial's one member took the new config and went dark, the abort signature (§6).",
   "me": {
     "id": "demo-user",
     "name": "Demo user",
@@ -923,7 +923,7 @@
       "provenance": [
         {
           "key": "stage",
-          "claim": "stage 2 of 3 is active: the canary widened to the three gateway boxes — advancing is a reviewed edit of this one field (ADR-0029 §5)",
+          "claim": "stage 2 of 3 is active: the canary widened to the three gateway boxes. Advancing is a reviewed edit of this one field",
           "lines": [
             {
               "file": "teams/data-flow/rollouts/gateway-canary.yaml",
@@ -935,7 +935,7 @@
         },
         {
           "key": "bindings",
-          "claim": "the gateway Tier is dual-bound while this Rollout is active: both artefacts render at head, and the Rollout file is the only door — a direct rebind fails render validation (ADR-0029 §2, §3)",
+          "claim": "the gateway Tier is dual-bound while this Rollout is active: both artefacts render at head, and only the Rollout file can change the binding. A direct rebind fails render validation",
           "lines": [
             {
               "file": "teams/data-flow/rollouts/gateway-canary.yaml",
@@ -997,7 +997,7 @@
       "provenance": [
         {
           "key": "stage",
-          "claim": "the one-stage staging trial: prod binds v4 while staging trials the candidate through its own Rollout (ADR-0025 §3, ADR-0029 §2)",
+          "claim": "the one-stage staging trial: prod binds v4 while staging trials the candidate through its own Rollout",
           "lines": [
             {
               "file": "teams/data-flow/rollouts/gateway-staging-trial.yaml",
@@ -1009,7 +1009,7 @@
         },
         {
           "key": "bindings",
-          "claim": "the staging Tier is dual-bound while this Rollout is active; the candidate is authored as a sibling Blueprint (ADR-0029 §3)",
+          "claim": "the staging Tier is dual-bound while this Rollout is active; the candidate is authored as a sibling Blueprint",
           "lines": [
             {
               "file": "teams/data-flow/rollouts/gateway-staging-trial.yaml",

@@ -28,7 +28,7 @@ type Config struct {
 	InstallationID string
 	PrivateKeyPEM  []byte
 
-	// APIBase overrides the forge's API endpoint — self-hosted instances,
+	// APIBase overrides the forge's API endpoint: self-hosted instances,
 	// or a test double. Empty means the host's public API.
 	APIBase string
 
@@ -39,7 +39,7 @@ type Config struct {
 
 // New returns the Forge implementation for the repository's host. GitHub
 // App is the first-party implementation (ADR-0014); further rungs of the
-// ADR-0028 §4 ladder dispatch here as they land — the callers do not
+// ADR-0028 §4 ladder dispatch here as they land; the callers do not
 // change (ADR-0008's seam rule, applied to this seam).
 func New(cfg Config) (seam.Forge, error) {
 	host, owner, repo, err := splitRepo(cfg.Repo)
@@ -47,7 +47,7 @@ func New(cfg Config) (seam.Forge, error) {
 		return nil, err
 	}
 	if host != "github.com" && cfg.APIBase == "" {
-		return nil, fmt.Errorf("forge: no adapter for host %q — the git transport floor (ADR-0028 §5) needs none, and further forge adapters dispatch here as they land", host)
+		return nil, fmt.Errorf("forge: no adapter for host %q. GitHub is the only supported forge; for another host, set the API base URL of a GitHub-compatible endpoint", host)
 	}
 	return NewGitHubApp(GitHubAppConfig{
 		Owner:          owner,
@@ -64,7 +64,7 @@ func New(cfg Config) (seam.Forge, error) {
 // tolerating a trailing .git.
 func splitRepo(raw string) (host, owner, repo string, err error) {
 	if raw == "" {
-		return "", "", "", fmt.Errorf("forge: a repository URL is required (ADR-0028 §5)")
+		return "", "", "", fmt.Errorf("forge: a repository URL is required")
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {

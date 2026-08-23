@@ -21,11 +21,11 @@ const TeamsFile = "teams.yaml"
 // Load reads the ownership model from an estate directory: teams.yaml plus
 // authored-object files (each *.yaml file holds one object or a list).
 //
-// Loading fails closed. A finding that cannot route — an ownerless object,
-// an owner nobody's team contains, an object defined twice — means a real
+// Loading fails closed. A finding that cannot route (an ownerless object,
+// an owner nobody's team contains, an object defined twice) means a real
 // problem pages nobody, and that failure mode is worse than a crash. So each
 // of those is a load error naming the file, and the returned Estate is
-// empty — never partially loaded.
+// empty, never partially loaded.
 func Load(dir string) (Estate, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -51,7 +51,7 @@ func Load(dir string) (Estate, error) {
 		}
 		// Allow-lists, Grants and users live beside teams.yaml in the
 		// estate directory (ADR-0021 §5; ADR-0019), but they are policy
-		// and membership, not ownership — internal/allowlist and
+		// and membership, not ownership: internal/allowlist and
 		// internal/auth load and validate them. Skipped here so one
 		// estate directory carries the whole authored set.
 		if e.Name() == "allow-lists.yaml" || e.Name() == "grants.yaml" || e.Name() == "users.yaml" {
@@ -61,11 +61,11 @@ func Load(dir string) (Estate, error) {
 	}
 	sort.Strings(objectFiles)
 	if teamsPath == "" {
-		return Estate{}, fmt.Errorf("estate directory %s has no %s — the team tree arrives through that seam (ADR-0017)", dir, TeamsFile)
+		return Estate{}, fmt.Errorf("estate directory %s has no %s. The team tree lives in that file", dir, TeamsFile)
 	}
 	if len(objectFiles) == 0 {
 		// An estate with a tree but nothing authored has nothing to route or
-		// roll up — almost always a mistaken directory, so refuse it.
+		// roll up: almost always a mistaken directory, so refuse it.
 		return Estate{}, fmt.Errorf("estate directory %s holds no authored-object files beside %s", dir, TeamsFile)
 	}
 
@@ -105,8 +105,8 @@ func Load(dir string) (Estate, error) {
 }
 
 // LoadTeams reads and validates just the team tree from one teams.yaml. It
-// is the seam for consumers that judge against teams alone — the Allow-list
-// policy and its palette CLI (ADR-0021) — without requiring the estate's
+// is the seam for consumers that judge against teams alone (the Allow-list
+// policy and its palette CLI, ADR-0021) without requiring the estate's
 // authored-object set.
 func LoadTeams(path string) (Tree, error) {
 	return loadTeams(path)
@@ -114,7 +114,7 @@ func LoadTeams(path string) (Tree, error) {
 
 // teamNode is the authored shape of one team in teams.yaml. Nesting is the
 // serialisation of the tree itself: a child appears inside exactly one
-// parent, so multi-parent membership is only writable as a duplicate id —
+// parent, so multi-parent membership is only writable as a duplicate id,
 // which the flattener rejects.
 type teamNode struct {
 	ID     string     `yaml:"id"`
@@ -135,7 +135,7 @@ func loadTeams(path string) (Tree, error) {
 		return Tree{}, fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return Tree{}, fmt.Errorf("%s: empty file — the team tree holds at least one team", path)
+		return Tree{}, fmt.Errorf("%s: empty file. The team tree needs at least one team", path)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
@@ -150,7 +150,7 @@ func loadTeams(path string) (Tree, error) {
 		return Tree{}, fmt.Errorf("%s: more than one YAML document in the file", path)
 	}
 	if len(file.Teams) == 0 {
-		return Tree{}, fmt.Errorf("%s: holds no teams — an estate without a team tree cannot route a single finding", path)
+		return Tree{}, fmt.Errorf("%s: holds no teams. Without a team tree, no finding can reach an owner", path)
 	}
 
 	tree := Tree{Teams: map[TeamID]Team{}, Owners: map[OwnerID]Owner{}}
@@ -169,7 +169,7 @@ func loadTeams(path string) (Tree, error) {
 		}
 		id := TeamID(n.ID)
 		if _, dup := tree.Teams[id]; dup {
-			problems = append(problems, fmt.Sprintf("%s: team %q appears twice — a Team has at most one parent, or every roll-up would double-count (ADR-0017)", path, n.ID))
+			problems = append(problems, fmt.Sprintf("%s: team %q appears twice. A Team has at most one parent, or every roll-up would double-count", path, n.ID))
 			return
 		}
 		team := Team{ID: id, Name: n.Name, Parent: parent}
@@ -180,7 +180,7 @@ func loadTeams(path string) (Tree, error) {
 			}
 			oid := OwnerID(o)
 			if prev, dup := ownerTeam[oid]; dup {
-				problems = append(problems, fmt.Sprintf("%s: owner %q appears under both team %q and team %q — an Owner belongs to exactly one Team (ADR-0017)", path, o, prev, n.ID))
+				problems = append(problems, fmt.Sprintf("%s: owner %q appears under both team %q and team %q. An Owner belongs to exactly one Team", path, o, prev, n.ID))
 				continue
 			}
 			ownerTeam[oid] = id
@@ -223,7 +223,7 @@ func loadObjectFile(path string) ([]Object, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return nil, fmt.Errorf("%s: empty file — an object file holds one authored object or a list of them", path)
+		return nil, fmt.Errorf("%s: empty file. An object file holds one authored object or a list of them", path)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
@@ -246,7 +246,7 @@ func loadObjectFile(path string) ([]Object, error) {
 	}
 
 	if err := dec.Decode(new(yaml.Node)); !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("%s: more than one YAML document in the file — one concern per file", path)
+		return nil, fmt.Errorf("%s: more than one YAML document in the file. Keep one concern per file", path)
 	}
 	return out, nil
 }
@@ -260,9 +260,9 @@ func validateObject(path string, o Object, tree Tree) []string {
 	case o.Kind == "":
 		p = append(p, fmt.Sprintf("%s: an object has no kind", path))
 	case o.Kind == KindCollector:
-		p = append(p, fmt.Sprintf("%s: a collector is not an authored object — it inherits owner and policy from the Tier it matches into; where a subset needs a different owner, split the Tier (ADR-0016)", path))
+		p = append(p, fmt.Sprintf("%s: a collector is not an authored object. It inherits its owner and policy from the Tier it matches into. If a subset needs a different owner, split the Tier", path))
 	case !o.Kind.Authored():
-		p = append(p, fmt.Sprintf("%s: unknown object kind %q — the authored set is component, blueprint, tier, hop, path, service, requirement, exemption (ADR-0016)", path, o.Kind))
+		p = append(p, fmt.Sprintf("%s: unknown object kind %q. Use one of component, blueprint, tier, hop, path, service, requirement, or exemption", path, o.Kind))
 	}
 	if o.ID == "" {
 		p = append(p, fmt.Sprintf("%s: an object has no id", path))
@@ -270,9 +270,9 @@ func validateObject(path string, o Object, tree Tree) []string {
 
 	ctx := fmt.Sprintf("%s: %s %q", path, o.Kind, o.ID)
 	if o.Owner == "" {
-		p = append(p, ctx+" has no owner — every authored object carries one (REQ-015, ADR-0016)")
+		p = append(p, ctx+" has no owner. Every authored object needs one")
 	} else if _, known := tree.Owners[o.Owner]; !known {
-		p = append(p, fmt.Sprintf("%s names owner %q, which is not in the team tree — a finding routed to it would reach nobody", ctx, o.Owner))
+		p = append(p, fmt.Sprintf("%s names owner %q, which is not in the team tree, so a finding routed to it would reach nobody", ctx, o.Owner))
 	}
 
 	return p

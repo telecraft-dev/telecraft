@@ -34,7 +34,7 @@ import (
 // OTLP ingest lands resource attributes differently depending on mapping
 // mode: OTel-native mode (the default here) puts them under
 // resource.attributes.*, while ECS mode promotes service.name to the top
-// level. Guessing wrong yields an estate where every Service looks silent —
+// level. Guessing wrong yields an estate where every Service looks silent,
 // the most alarming and least useful failure this provider could have.
 type Elasticsearch struct {
 	endpoint string
@@ -77,7 +77,7 @@ type ElasticsearchConfig struct {
 
 	// Indices maps each signal to the index (or index pattern) queried for
 	// it. Defaults: logs-*, metrics-*, traces-*. Patterns are resolved
-	// strictly — a pattern matching no index yields Known false, never a
+	// strictly: a pattern matching no index yields Known false, never a
 	// silent empty result (see Observe).
 	Indices map[requirements.SignalKind]string
 
@@ -93,7 +93,7 @@ type ElasticsearchConfig struct {
 
 	// TierField and CommitField are the document fields holding the
 	// telecraft.tier and telecraft.commit resource stamps the renderer
-	// bakes into every artefact's self-telemetry — the (Tier, SHA) reading
+	// bakes into every artefact's self-telemetry, the (Tier, SHA) reading
 	// join (ADR-0039 §5). Defaults:
 	// resource.attributes.telecraft.{tier,commit} (OTel-native mode).
 	TierField   string
@@ -108,7 +108,7 @@ type ElasticsearchConfig struct {
 	// IdentityLimit caps how many distinct component-identity attribute
 	// combinations ObserveSelf reads per signal, and CommitLimit how many
 	// distinct commit stamps; readings beyond a cap are reported Truncated,
-	// never silently dropped. Defaults 500 and 50 — an estate Tier holds
+	// never silently dropped. Defaults 500 and 50: an estate Tier holds
 	// tens of components and a window holds a handful of serving SHAs, so
 	// hitting either cap is itself a signal worth surfacing.
 	IdentityLimit int
@@ -124,7 +124,7 @@ type ElasticsearchConfig struct {
 	// the metric name. Default: metrics. (OTel-native mode).
 	MetricValuePrefix string
 
-	// InstanceIDField is the document field holding service.instance.id —
+	// InstanceIDField is the document field holding service.instance.id,
 	// one collector process incarnation, regenerated on every restart
 	// (R-4 §2c). Metering buckets by it because a cumulative counter's
 	// window delta is only exact within one incarnation. Default:
@@ -132,7 +132,7 @@ type ElasticsearchConfig struct {
 	InstanceIDField string
 
 	// ExporterField is the datapoint attribute holding an exporter's
-	// rendered id — the legacy join key (R-4 §2b) — from which the
+	// rendered id (the legacy join key, R-4 §2b) from which the
 	// per-exporter out-rate a Hop's throughput reads is split. Default:
 	// attributes.exporter.
 	ExporterField string
@@ -140,7 +140,7 @@ type ElasticsearchConfig struct {
 	// InstanceLimit caps how many incarnations a metering delta is summed
 	// over per signal, and ExporterLimit how many exporters are split
 	// out; either cap reached is reported Truncated, never a silently
-	// low throughput. Defaults 1000 and 100 — a Tier holds tens of
+	// low throughput. Defaults 1000 and 100: a Tier holds tens of
 	// exporters, and a window holding more incarnations than the cap is
 	// itself worth surfacing.
 	InstanceLimit int
@@ -240,7 +240,7 @@ var _ seam.Provider = (*Elasticsearch)(nil)
 // does not exist and a pattern matching nothing both come back as errors, and
 // both surface as Known false. Elasticsearch would otherwise resolve an empty
 // pattern to an empty-but-successful result, and this provider cannot tell
-// "nothing has ever landed" from "pointed at the wrong index" — rendering
+// "nothing has ever landed" from "pointed at the wrong index", and rendering
 // that as an observed absence would be a fabricated value.
 //
 // Scaling note, stated rather than hidden: this is one round trip per
@@ -440,11 +440,11 @@ func (e *Elasticsearch) observeBody(service seam.Service, window time.Duration, 
 // signalCause renders one per-signal search error as a reading cause. A
 // missing index is called out by name: it usually means either nothing has
 // ever landed for that signal or the provider is pointed at the wrong index,
-// and the provider cannot tell which — which is exactly why the reading is
+// and the provider cannot tell which, which is exactly why the reading is
 // Known false rather than an observed absence.
 func (e *Elasticsearch) signalCause(kind requirements.SignalKind, esError json.RawMessage) string {
 	if strings.Contains(string(esError), "index_not_found") {
-		return fmt.Sprintf("no index matches %q — nothing has ever landed for %s, or the provider is pointed at the wrong index", e.indices[kind], kind)
+		return fmt.Sprintf("no index matches %q: nothing has ever landed for %s, or the provider is pointed at the wrong index", e.indices[kind], kind)
 	}
 	return fmt.Sprintf("%s query failed: %s", kind, truncate(string(esError), 300))
 }
@@ -491,8 +491,8 @@ func dateMath(d time.Duration) string {
 	}
 }
 
-// epochMillis converts a max-timestamp aggregation's numeric value —
-// epoch milliseconds, the shape a date field aggregates to — into an
+// epochMillis converts a max-timestamp aggregation's numeric value
+// (epoch milliseconds, the shape a date field aggregates to) into an
 // instant. A zero value is no timestamp at all rather than the epoch:
 // nothing landed is a reading, and 1970 would be a fabricated one.
 func epochMillis(v float64) time.Time {

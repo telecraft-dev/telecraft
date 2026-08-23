@@ -5,7 +5,7 @@ import { GovernanceView } from './Governance'
 import { PaletteView } from './Palette'
 
 // The Catalogue & Governance Workspace (ADR-0042 §1): browse-and-request,
-// thin. Three view-switchers over one model — browse the retained
+// thin. Three view-switchers over one model: browse the retained
 // catalogues (ADR-0020 §9), a team's effective palette with total
 // provenance (ADR-0021), and the governance editor whose Allow-list and
 // Grant edits exit as PRs via the forge adapter (ADR-0042 §6). Switching

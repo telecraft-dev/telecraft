@@ -93,8 +93,8 @@ func TestEvaluateAdvancesWithLagNeverBlocking(t *testing.T) {
 	in := evalInputs(t, 3, []estate.Collector{
 		collector("member-0", RunningTo, applied(to.Hash), true, from, to),
 		collector("member-1", RunningTo, applied(to.Hash), true, from, to),
-		// Still on from with no delivery reading: the Foreign leg — lag,
-		// never failure (ADR-0029 §7).
+		// Still on from with no delivery reading: the Foreign leg, which is
+		// lag, never failure (ADR-0029 §7).
 		collector("member-2", RunningFrom, estate.DeliveryStatus{Cause: "the provider cannot report delivery"}, true, from, to),
 		// Outside the cohort entirely.
 		collector("bystander", RunningFrom, applied(from.Hash), true, from, to),
@@ -117,7 +117,7 @@ func TestEvaluateAdvancesWithLagNeverBlocking(t *testing.T) {
 }
 
 // An unelapsed soak holds; so does a cohort nothing has been observed
-// running the to artefact in — evidence is computed over collectors
+// running the to artefact in: evidence is computed over collectors
 // actually running it (ADR-0029 §5, §7). Holding proposes nothing:
 // waiting is the resting state.
 func TestEvaluateHolds(t *testing.T) {
@@ -147,7 +147,7 @@ func TestEvaluateHolds(t *testing.T) {
 }
 
 // One FAILED for the to artefact's hash below the abort threshold blocks
-// the advance — passively: the verdict is the withheld proposal, no active
+// the advance, passively: the verdict is the withheld proposal, no active
 // step exists (ADR-0029 §6). A FAILED for some other hash is not this
 // rollout's signal.
 func TestEvaluateBlocksOnFailedForTo(t *testing.T) {
@@ -180,11 +180,11 @@ func TestEvaluateBlocksOnFailedForTo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if v.Decision != DecisionAdvance {
-		t.Errorf("decision = %s (%s) — a FAILED for another artefact's hash is not this rollout's halt signal", v.Decision, v.Reason)
+		t.Errorf("decision = %s (%s): a FAILED for another artefact's hash is not this rollout's halt signal", v.Decision, v.Reason)
 	}
 }
 
-// Past the threshold — default: 10% of the seen cohort failed or dark —
+// Past the threshold (by default, 10% of the seen cohort failed or dark)
 // the verdict is the abort proposal (ADR-0029 §6). Went-dark-after-apply
 // is the crash-loop signature that never reports FAILED: last seen running
 // the to artefact, silent past the staleness horizon.
@@ -236,7 +236,7 @@ func TestEvaluateAcceptsExtensibleConditions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if v.Decision != DecisionAbort {
-		t.Fatalf("decision = %s, want abort — the added condition halts every member", v.Decision)
+		t.Fatalf("decision = %s, want abort: the added condition halts every member", v.Decision)
 	}
 	if v.Evidence.Halted[0].Condition != "expectation_regression" {
 		t.Errorf("halted = %+v, want the added condition named", v.Evidence.Halted)

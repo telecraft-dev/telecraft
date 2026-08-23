@@ -15,7 +15,7 @@ const (
 	// (ADR-0038 §5): unbacked data claims Service-attached and
 	// advisory-grade, pipeline claims Tier-attached and
 	// violation-capable after dampening. Its own roll-up column, never
-	// blended — Exemptions apply unmodified.
+	// blended. Exemptions apply unmodified.
 	Expectation FindingKind = "expectation"
 )
 
@@ -79,12 +79,12 @@ type Finding struct {
 // OwnerOf resolves the Owner a finding about s routes to: the owner of the
 // object the finding is about, not the owner of anything it renders into
 // (ADR-0016). A collector subject routes through the Tier it matched into.
-// Every failure to resolve is an error — a finding that routes nowhere is
+// Every failure to resolve is an error: a finding that routes nowhere is
 // the silent failure this package exists to refuse.
 func (e Estate) OwnerOf(s Subject) (Owner, error) {
 	if s.Kind == KindCollector {
 		if s.Tier == "" {
-			return Owner{}, fmt.Errorf("collector %q names no tier — a collector inherits its owner from the Tier it matched into, never directly (ADR-0016)", s.ID)
+			return Owner{}, fmt.Errorf("collector %q names no tier. A collector inherits its owner from the Tier it matched into", s.ID)
 		}
 		tier, ok := e.Objects[Ref{Kind: KindTier, ID: s.Tier}]
 		if !ok {
@@ -98,7 +98,7 @@ func (e Estate) OwnerOf(s Subject) (Owner, error) {
 	}
 	obj, ok := e.Objects[Ref{Kind: s.Kind, ID: s.ID}]
 	if !ok {
-		return Owner{}, fmt.Errorf("no authored %s %q in this estate — the finding routes nowhere", s.Kind, s.ID)
+		return Owner{}, fmt.Errorf("no authored %s %q in this estate, so the finding routes nowhere", s.Kind, s.ID)
 	}
 	return e.Tree.Owners[obj.Owner], nil
 }

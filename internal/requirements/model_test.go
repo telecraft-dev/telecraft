@@ -28,7 +28,7 @@ func TestNoQueryLanguageFieldIsRepresentable(t *testing.T) {
 			name := strings.ToLower(f.Name + " " + f.Tag.Get("yaml"))
 			for _, bad := range forbidden {
 				if strings.Contains(name, bad) {
-					t.Errorf("%s.%s: the Requirement model must not carry a %s field (REQ-023)", path, f.Name, bad)
+					t.Errorf("%s.%s: the Requirement model must not carry a %s field", path, f.Name, bad) // REQ-023
 				}
 			}
 			walk(f.Type, path+"."+f.Name, seen)

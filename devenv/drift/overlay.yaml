@@ -3,7 +3,7 @@
 # `telecraft-devenv prepare -drift <collector>` merges this into that
 # collector's Supervisor configuration. config_files is a local
 # configuration the Supervisor merges with whatever the server sends, so the
-# collector ends up running something the estate never described — which is
+# collector ends up running something the estate never described, which is
 # what drift is, rather than a simulation of it.
 agent:
   config_files:

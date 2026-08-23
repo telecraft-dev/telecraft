@@ -30,7 +30,7 @@ service:
 
 // supervisedEffective is what the Supervisor reports back for it: the same
 // config with the injected extensions.opamp at an ephemeral port, `opamp`
-// appended to service.extensions — and cosmetic re-ordering and quoting,
+// appended to service.extensions, plus cosmetic re-ordering and quoting,
 // because reports never come back byte-identical (ADR-0005).
 const supervisedEffective = `service:
   extensions:
@@ -57,7 +57,7 @@ receivers:
 `
 
 // gitEffective is the same running config reported without any Supervisor
-// beside it — the git-delivered path (REQ-041).
+// beside it: the git-delivered path (REQ-041).
 const gitEffective = `service:
   telemetry:
     resource:
@@ -89,7 +89,7 @@ func compute(t *testing.T, path Path, in Intended, eff Effective, remote estate.
 }
 
 // AC: a served collector shows the correct delivery state from its commit
-// stamp plus normalised comparison — the Supervisor's injections and every
+// stamp plus normalised comparison, with the Supervisor's injections and every
 // cosmetic difference neutralised, the RemoteConfigStatus carried verbatim
 // beside it.
 func TestServedCollectorInSync(t *testing.T) {
@@ -100,18 +100,18 @@ func TestServedCollectorInSync(t *testing.T) {
 		t.Fatalf("comparison = %s (cause %q), want in_sync:\n%v", st.Comparison, st.Cause, st.Changes)
 	}
 	if st.Path != PathServed || st.Profile != "supervisor" {
-		t.Errorf("path=%s profile=%s — the path and its profile are visible properties", st.Path, st.Profile)
+		t.Errorf("path=%s profile=%s: the path and its profile are visible properties", st.Path, st.Profile)
 	}
 	if st.Remote.State != estate.DeliveryApplied {
 		t.Errorf("remote = %s, want the verbatim APPLIED", st.Remote.State)
 	}
 	if st.IntendedCommit != st.EffectiveCommit || st.IntendedCommit == "" {
-		t.Errorf("commit stamps %q vs %q — both sides carry the artefact's identity (ADR-0013)", st.IntendedCommit, st.EffectiveCommit)
+		t.Errorf("commit stamps %q vs %q: both sides carry the artefact's identity", st.IntendedCommit, st.EffectiveCommit)
 	}
 }
 
-// AC: a hand-committed (GitOps) collector gets identical treatment — the
-// same computation, parameterised only by path and profile — and its
+// AC: a hand-committed (GitOps) collector gets identical treatment (the
+// same computation, parameterised only by path and profile), and its
 // delivery path is visible. The absent RemoteConfigStatus reading is
 // Known: false, never failure.
 func TestGitCollectorGetsIdenticalTreatment(t *testing.T) {
@@ -128,18 +128,18 @@ func TestGitCollectorGetsIdenticalTreatment(t *testing.T) {
 		t.Error("a path that cannot report RemoteConfigStatus must say Known: false")
 	}
 	if s := st.Summary(); strings.Contains(s, "FAILED") || !strings.Contains(s, "path=git") {
-		t.Errorf("summary %q — can't-report must never look like failing, and the path must be visible", s)
+		t.Errorf("summary %q: can't-report must never look like failing, and the path must be visible", s)
 	}
 }
 
 // The profile is load-bearing per path: the same supervisor-mutated report
 // that is in sync on the served path reads as drift under the git path's
-// exact profile — an injection nobody's allow-list covers is an extension
+// exact profile: an injection nobody's allow-list covers is an extension
 // the artefact never described (ADR-0054 §2).
 func TestProfileIsLoadBearingPerPath(t *testing.T) {
 	st := compute(t, PathGit, intended(intendedArtefact), known(supervisedEffective), estate.DeliveryStatus{})
 	if st.Comparison != ComparisonDrifted {
-		t.Fatalf("comparison = %s, want drifted — the exact profile must flag the injected extension", st.Comparison)
+		t.Fatalf("comparison = %s, want drifted: the exact profile must flag the injected extension", st.Comparison)
 	}
 	if len(st.Undescribed) != 1 || st.Undescribed[0].Path != "extensions.opamp" {
 		t.Errorf("the injected extension is not named: %v", st.Undescribed)
@@ -185,7 +185,7 @@ func TestAnExporterNobodyRenderedIsReportedApartFromKeyDrift(t *testing.T) {
 	}
 }
 
-// A pipeline nobody rendered is the same finding one grain up — the case
+// A pipeline nobody rendered is the same finding one grain up, the case
 // judging only asserted keys would otherwise go blind to entirely.
 func TestAPipelineNobodyRenderedIsReported(t *testing.T) {
 	extra := strings.Replace(supervisedEffective,
@@ -201,7 +201,7 @@ func TestAPipelineNobodyRenderedIsReported(t *testing.T) {
 	}
 }
 
-// AC: a provider that cannot report a reading yields Known: false — and
+// AC: a provider that cannot report a reading yields Known: false, and
 // the comparison is unknown with a cause, never stale, drifted, or any
 // failure look-alike (ADR-0004, ADR-0008).
 func TestUnknownReadingsNeverLookLikeFailure(t *testing.T) {
@@ -227,8 +227,8 @@ func TestUnknownReadingsNeverLookLikeFailure(t *testing.T) {
 	}
 }
 
-// Disagreeing configs with two different commit stamps are stale — the
-// collector runs another commit, a delivery lag — while a disagreement
+// Disagreeing configs with two different commit stamps are stale (the
+// collector runs another commit, a delivery lag), while a disagreement
 // without that explanation is drift, localised by layer 3 (ADR-0004,
 // ADR-0005).
 func TestStaleAndDriftedAreSplitByTheCommitStamps(t *testing.T) {
@@ -249,7 +249,7 @@ func TestStaleAndDriftedAreSplitByTheCommitStamps(t *testing.T) {
 		t.Fatalf("comparison = %s, want drifted for a same-commit disagreement", st.Comparison)
 	}
 	if len(st.Changes) == 0 {
-		t.Fatal("a drifted comparison must localise the drift (ADR-0005 layer 3)")
+		t.Fatal("a drifted comparison must localise the drift at layer 3")
 	}
 	for _, c := range st.Changes {
 		if !strings.HasPrefix(c.Path, "exporters.otlphttp/out.endpoint") {
@@ -258,7 +258,7 @@ func TestStaleAndDriftedAreSplitByTheCommitStamps(t *testing.T) {
 	}
 }
 
-// AC: cosmetic YAML differences never read as divergence — an effective
+// AC: cosmetic YAML differences never read as divergence. An effective
 // config the normaliser refuses (duplicate keys, merge keys) is the other
 // edge: it fails closed to unknown-with-cause, never to a silent in_sync
 // and never to a failure look-alike.

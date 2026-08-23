@@ -19,7 +19,7 @@ func fixtureFindings() []Finding {
 }
 
 // Acceptance: ratio-plus-worst per finding kind is computable at every level
-// of the tree — leaf, mid-level and root — and a parent's view includes the
+// of the tree (leaf, mid-level, and root), and a parent's view includes the
 // kinds its children own, not only service verdicts (ADR-0017).
 func TestRollupIsRatioPlusWorstPerKindAtEveryLevel(t *testing.T) {
 	est := loadFixture(t)
@@ -49,7 +49,7 @@ func TestRollupIsRatioPlusWorstPerKindAtEveryLevel(t *testing.T) {
 			scores:       map[FindingKind]Score{Delivery: {Passing: 1, Counted: 1, Worst: Pass, Waived: 1}},
 			findingCount: 2,
 		},
-		// Root: every kind, scored separately — never combined.
+		// Root: every kind, scored separately, never combined.
 		"engineering": {
 			scores: map[FindingKind]Score{
 				ServiceConformance: {Passing: 1, Counted: 2, Worst: Violation, Waived: 0},
@@ -75,7 +75,7 @@ func TestRollupIsRatioPlusWorstPerKindAtEveryLevel(t *testing.T) {
 	}
 }
 
-// Acceptance: waived findings remain visible in roll-ups — absent from the
+// Acceptance: waived findings remain visible in roll-ups: absent from the
 // counted ratio, present with their diagnosis intact, and counted alongside
 // so an exemption-heavy 100% cannot hide (ADR-0017).
 func TestWaivedFindingsRemainVisibleInRollups(t *testing.T) {

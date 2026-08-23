@@ -4,9 +4,9 @@
 //
 // prepare composes each collector's Supervisor configuration: the rendered
 // supervisor artefact for its Tier, deep-merged with the identity overlay
-// the container runs under. The renderer deliberately emits no identity —
-// matching is on what a collector reports, and the operator supplies that at
-// install — so something has to join the two, and in the devenv it is this.
+// the container runs under. The renderer deliberately emits no identity
+// (matching is on what a collector reports, and the operator supplies that at
+// install), so something has to join the two, and in the devenv it is this.
 // See supervisor.go.
 //
 // run is the environment itself: the platform's own OpAMP server with a tap

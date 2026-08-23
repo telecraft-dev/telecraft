@@ -1,7 +1,7 @@
 # The fixture Blueprint: per-signal lanes in explicit order, local
 # Components inline, shared Components by pinned reference (ADR-0024,
 # ADR-0026). The traces pin on gateway-exporter is deliberately behind the
-# owner's head — that is library_drift territory, not a load-time finding.
+# owner's head: that is library_drift territory, not a load-time finding.
 name: gateway-standard
 version: 4
 owner: gateway-owners

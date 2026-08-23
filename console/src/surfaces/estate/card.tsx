@@ -33,7 +33,7 @@ import { BandMark, Mark, markFor, stateLabel } from '../../ui/Mark'
 import { Panel } from '../../ui/Panel'
 
 // The universal card, face and panel (ADR-0041, ADR-0042 §3.2): one
-// component wherever a Tier appears, summoned in place — inspection never
+// component wherever a Tier appears, summoned in place: inspection never
 // navigates. Glyphs map from band states; hue only reinforces them
 // (mono-red rule, ADR-0041 §2).
 
@@ -61,7 +61,7 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
     // measure 410px, against roughly 250px for the common card. Equal
     // heights at card grain are not negotiable (ADR-0042 §2, P4 rule 3),
     // so the matrix scrolls inside its own bounds rather than pushing the
-    // foot off the card — the foot carries the door to the flat list, and
+    // foot off the card. The foot carries the door to the flat list, and
     // a door that silently disappears is worse than one that scrolls.
     <div className="signal-matrix-scroll">
     <table className="signal-matrix" data-testid={`matrix-${tier}`}>
@@ -72,7 +72,7 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
             // reading of zero and it is not an unknown: there is no
             // pipeline here, so the row says so across the cells the
             // readings would have filled, under the mark ADR-0047 §7
-            // gives the state — a plain rule, nothing to judge.
+            // gives the state: a plain rule, nothing to judge.
             return (
               <tr
                 key={row.signal}
@@ -184,8 +184,8 @@ function severityLabel(severity: Severity): string {
 }
 
 /**
- * The "why?" affordance (ADR-0042 §5): a provenance popover — claim, the
- * implying config lines, the judged SHA — with an optional travel action
+ * The "why?" affordance (ADR-0042 §5): a provenance popover (claim, the
+ * implying config lines, the judged SHA) with an optional travel action
  * that traces the Service's Paths on the canvas via rule 3.3. Shared with
  * every panel that carries provenance (the Rollout panel among them).
  */
@@ -264,7 +264,7 @@ function WhoActsChip({ finding }: { finding: Finding }) {
 }
 
 /**
- * The card panel: face facts plus the on-demand drawer (ADR-0041 §3) —
+ * The card panel: face facts plus the on-demand drawer (ADR-0041 §3):
  * findings with who-acts chips and mandatory remediation, dampening state
  * visible (a waiver waives the count, never the diagnosis), and "why?"
  * provenance for every derived value.
@@ -357,7 +357,7 @@ export function CardPanel({ card }: { card: CardFace }) {
         <SignalMatrix tier={card.tier} signals={card.signals ?? []} />
         {card.churn && (
           <p className="section-summary" title={readingTitle(card.churn)}>
-            {/* The restart-rate reading: presented, never judged — scaling
+            {/* The restart-rate reading: presented, never judged. Scaling
                 out and crash-looping both raise it (ADR-0040 §4). */}
             Restarts: {formatChurn(card.churn)}
           </p>

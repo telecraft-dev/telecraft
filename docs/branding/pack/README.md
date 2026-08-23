@@ -10,14 +10,14 @@ its render. The rules for using them are on this page; the reasoning is in
 Three reading bands, stacked and decreasing, measured against a vertical
 datum in the brand amber. The bands are the card face's three readings
 (ADR-0004, ADR-0041 §2) and were already the favicon's shape; the datum is
-what they are read against — a reading measured against a datum is the
+what they are read against. A reading measured against a datum is the
 product's thesis, drawn literally. Tone falls with length (ink, muted,
 faint), so the single-colour version loses nothing the mark needs.
 
-The wordmark is `telecraft` in Atkinson Hyperlegible Next at weight 600 —
-the interface face, outlined from the vendored file so no reader's machine
-substitutes another — tracked −12/1000, with one drawn intervention: the
-f–t crossbars in "craft" join into a single continuous bar.
+The wordmark is `telecraft` in Atkinson Hyperlegible Next at weight 600
+(the interface face, outlined from the vendored file so no reader's machine
+substitutes another), tracked −12/1000, with one drawn intervention: the
+f-t crossbars in "craft" join into a single continuous bar.
 
 Every colour is a `tokens.css` value. The amber datum and the amber "tele"
 are the mark's use of `--brand`, which never appears on a data surface
@@ -43,15 +43,15 @@ file's own colour. The grounds are `--colour-bg`: `#0f1518` and `#f3f5f4`.
 
 ## Rules
 
-- **Clear space.** Around the mark or icon: two reading bands — three-eighths
-  of the mark's height — on every side. Around the wordmark or a lockup: the
+- **Clear space.** Around the mark or icon: two reading bands (three-eighths
+  of the mark's height) on every side. Around the wordmark or a lockup: the
   wordmark's x-height on every side.
 - **Minimum sizes, checked at these sizes with the pack's own renderer:**
   icon 16px, bare mark 12px tall, wordmark 14px tall, horizontal lockup 20px
   tall. Below these the datum blurs into the bands; use nothing smaller.
 - **Grounds.** Use the `-on-dark` files on `--colour-bg` dark and the
   `-on-light` files on `--colour-bg` light. On any ground the pack does not
-  control — a slide, a sticker, someone else's page — use the icon, which
+  control (a slide, a sticker, someone else's page) use the icon, which
   brings its own plate, or the mono files in one ink.
 - **The amber is the mark's and marketing's only** (`--brand`). It never
   appears on a data surface, where amber already means advisory. The
@@ -73,7 +73,7 @@ sh docs/branding/pack/tools/render.sh       # the three committed PNG renders
 ```
 
 `build.py` also writes `console/public/favicon.svg`, which is the canonical
-icon verbatim — the console and this pack cannot drift apart, because neither
+icon verbatim: the console and this pack cannot drift apart, because neither
 is edited by hand. `telecraft.dev` vendors the mark from here; after a change
 lands, re-vendor there (`node tools/vendor.mjs update`, issue #101).
 

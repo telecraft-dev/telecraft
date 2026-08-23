@@ -67,7 +67,7 @@ func TestElasticsearchMeterReading(t *testing.T) {
 		t.Errorf("per-exporter split = %v, want the out-rate each Hop reads", traces.Exporters)
 	}
 	if traces.Newest.IsZero() {
-		t.Error("no freshness timestamp came back — last-known-plus-age renders from the reading (ADR-0040 §4)")
+		t.Error("no freshness timestamp came back: last-known-plus-age renders from the reading")
 	}
 	if !m.Incarnations.Known || m.Incarnations.Count != 24 {
 		t.Errorf("incarnations = %+v, want 24", m.Incarnations)
@@ -108,7 +108,7 @@ func TestElasticsearchMeterMissingIndexReadsUnknown(t *testing.T) {
 	m := es.Meter(context.Background(), "data-flow/gateway", time.Hour)
 
 	if m.Known() {
-		t.Fatal("a missing index came back Known — metering never invents (ADR-0040 §6)")
+		t.Fatal("a missing index came back Known: metering never invents")
 	}
 	for kind, sig := range m.Signals {
 		if sig.In != 0 || sig.Out != 0 {
@@ -133,7 +133,7 @@ func TestElasticsearchMeterUnreachableBackend(t *testing.T) {
 		t.Fatal("an unreachable backend came back Known")
 	}
 	if !m.AsOf.Equal(fixedAsOf) {
-		t.Errorf("as_of = %v — a degraded reading is still a statement with a timestamp", m.AsOf)
+		t.Errorf("as_of = %v: a degraded reading is still a statement with a timestamp", m.AsOf)
 	}
 	for kind, sig := range m.Signals {
 		if !strings.Contains(sig.Cause, "unreachable") {
@@ -210,7 +210,7 @@ func TestElasticsearchObserveCarriesNewestRecord(t *testing.T) {
 		t.Errorf("newest = %v, want %v", logs.Newest, want)
 	}
 	if !obs.Signals[requirements.Metrics].Newest.IsZero() {
-		t.Error("an empty window produced a timestamp — nothing landed is a reading, 1970 is a fabrication")
+		t.Error("an empty window produced a timestamp: nothing landed is a reading, 1970 is a fabrication")
 	}
 }
 

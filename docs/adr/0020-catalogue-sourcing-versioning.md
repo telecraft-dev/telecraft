@@ -6,7 +6,7 @@
 ## Context
 
 Blueprints compose Components; Allow-lists select from an inventory of what
-exists. That inventory — the Catalogue — needs a substrate, a build process,
+exists. That inventory, the Catalogue, needs a substrate, a build process,
 an update story, and an answer for air-gapped instances (ADR-0019) and for
 estates running mixed collector versions. Research task R-1
 (`docs/research/2026-08-12-r1-metadata-catalogue.md`) established the facts;
@@ -16,10 +16,10 @@ this ADR records the decisions taken on them.
 
 1. **Substrate: upstream `metadata.yaml`** (collector core + contrib), scoped
    to **identity + per-signal stability + lifecycle**. Config field schemas
-   are explicitly out of scope — they do not exist upstream and are not
+   are explicitly out of scope: they do not exist upstream and are not
    expected before mid-2027 (R-1 §5); revisit at G7 for form generation.
-2. **We build the walker ourselves** — recursive discovery by sibling
-   `go.mod`, keep only the five pipeline classes (dropping `class: pkg`) —
+2. **We build the walker ourselves** (recursive discovery by sibling
+   `go.mod`, keep only the five pipeline classes, dropping `class: pkg`)
    and **diff the output against `opentelemetry-ecosystem-explorer` in CI**
    as a drift alarm. The upstream registry is never consumed directly (known
    `class: pkg` false positives, no layout guarantee).
@@ -49,7 +49,7 @@ this ADR records the decisions taken on them.
 8. **Activating a catalogue can never break a running collector.** The
    Catalogue is metadata about components; it is not part of rendered
    configs and is never shipped to collectors. Activation changes
-   judgement — findings, palettes, floors — never pipelines.
+   judgement (findings, palettes, floors), never pipelines.
 9. **Installed catalogues are retained, never replaced.** Authoring and the
    Palette judge against the designated *active* catalogue; **evaluation of
    a collector consults the catalogue for the version it actually runs**.
@@ -61,8 +61,8 @@ this ADR records the decisions taken on them.
    Retained pairs make upgrade-impact diffs ("v0.155 → v0.158 deprecates two
    components you run") a cheap first-class feature.
 10. **Adopter-authored entries** (private/OCB-built components) are
-    first-class: same shape as upstream entries — `(class, type)`, display
-    name, per-signal stability (mandatory, self-declared), lifecycle —
+    first-class: same shape as upstream entries (`(class, type)`, display
+    name, per-signal stability (mandatory, self-declared), lifecycle),
     marked `source: adopter`, imported item-level, and judged identically
     downstream. **Collisions with upstream keys are rejected**: upstream
     keys are reserved; a fork is a different component and carries its own

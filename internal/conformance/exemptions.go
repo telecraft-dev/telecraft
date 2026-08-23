@@ -15,8 +15,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Date is a calendar day authored as "2026-09-01" — the shape expiries and
-// onboarding dates take in authored files — carried as the UTC midnight
+// Date is a calendar day authored as "2026-09-01", the shape expiries and
+// onboarding dates take in authored files. It is carried as the UTC midnight
 // starting that day.
 type Date time.Time
 
@@ -38,7 +38,7 @@ func (d Date) IsZero() bool   { return time.Time(d).IsZero() }
 
 // Exemption is one authored waiver: exactly one Requirement, waived for one
 // Service or one Team subtree, with a mandatory owner and expiry (REQ-014,
-// ADR-0037). It is git-resident like every other authored object — the
+// ADR-0037). It is git-resident like every other authored object. The
 // validity rule (the PR must be approved by the waived Requirement's owner
 // or that owner's ancestor team) is enforced by generated forge
 // code-ownership, not by anything in this package.
@@ -48,7 +48,7 @@ func (d Date) IsZero() bool   { return time.Time(d).IsZero() }
 type Exemption struct {
 	ID string `yaml:"id"`
 
-	// Requirement is the one Requirement this Exemption waives — always
+	// Requirement is the one Requirement this Exemption waives, always
 	// exactly one per Exemption (ADR-0037 §2).
 	Requirement string `yaml:"requirement"`
 
@@ -61,7 +61,7 @@ type Exemption struct {
 	Expires Date `yaml:"expires"`
 
 	// Service and Team are the subject: exactly one is set. Team names a
-	// subtree — the onboarding case, one reviewable file rather than a copy
+	// subtree: the onboarding case, one reviewable file rather than a copy
 	// per service (ADR-0037 §2).
 	Service string `yaml:"service"`
 	Team    string `yaml:"team"`
@@ -71,7 +71,7 @@ type Exemption struct {
 
 // Expired reports whether the Exemption has stopped counting. Expiry is a
 // property of the clock alone, so an expired file reverts to the raw finding
-// with no manual step — and its continued presence in the tree is an
+// with no manual step. Its continued presence in the tree is an
 // authoring finding (see ExemptionFindings).
 func (e Exemption) Expired(now time.Time) bool {
 	return !now.Before(e.Expires.Std())
@@ -81,7 +81,7 @@ func (e Exemption) Expired(now time.Time) bool {
 // exemption or a list of them. Loading is strict and fails closed, matching
 // internal/requirements: an unknown field, a missing owner or expiry, or a
 // subject that is not exactly one Service or one Team is a load error naming
-// the file — a half-authored waiver silently applied would loosen a floor
+// the file: a half-authored waiver silently applied would loosen a floor
 // nobody agreed to loosen.
 //
 // A directory with no exemption files loads as none, unlike the requirements
@@ -155,7 +155,7 @@ func loadExemptionFile(path string) ([]Exemption, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return nil, fmt.Errorf("%s: empty file — an exemption file holds one exemption or a list of them", path)
+		return nil, fmt.Errorf("%s: the file is empty. An exemption file holds one exemption or a list of them", path)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
@@ -189,19 +189,19 @@ func validateExemption(path string, e Exemption) []string {
 	var p []string
 
 	if e.Requirement == "" {
-		p = append(p, ctx+" names no requirement — an Exemption waives exactly one Requirement (ADR-0037)")
+		p = append(p, ctx+" names no requirement. An Exemption waives exactly one Requirement")
 	}
 	if e.Owner == "" {
-		p = append(p, ctx+" has no owner — mandatory (REQ-014): a waiver nobody answers for is not a waiver")
+		p = append(p, ctx+" has no owner. Every Exemption needs someone who answers for it")
 	}
 	if e.Expires.IsZero() {
-		p = append(p, ctx+" has no expiry — mandatory (REQ-014): an open-ended waiver is a deleted requirement")
+		p = append(p, ctx+" has no expiry. Every Exemption needs an expiry date, because an open-ended waiver would delete the Requirement")
 	}
 	switch {
 	case e.Service == "" && e.Team == "":
-		p = append(p, ctx+" has no subject — the scope is one Service or one Team subtree (ADR-0037)")
+		p = append(p, ctx+" has no subject. Name one service or one team")
 	case e.Service != "" && e.Team != "":
-		p = append(p, ctx+" is scoped to both a service and a team — exactly one subject per Exemption (ADR-0037)")
+		p = append(p, ctx+" names both a service and a team. An Exemption has exactly one subject")
 	}
 	return p
 }
@@ -217,8 +217,8 @@ type ExemptionFinding struct {
 }
 
 // ExemptionFindings reports the exemptions that can waive nothing: expired
-// ones still in the tree — dead config, the aged-object smell ADR-0037 §3
-// names — and ones waiving a requirement the library does not hold, which is
+// ones still in the tree (dead config, the aged-object smell ADR-0037 §3
+// names) and ones waiving a requirement the library does not hold, which is
 // almost always a typo whose author believes a waiver is in force.
 func ExemptionFindings(exemptions []Exemption, lib requirements.Library, now time.Time) []ExemptionFinding {
 	var out []ExemptionFinding
@@ -227,14 +227,14 @@ func ExemptionFindings(exemptions []Exemption, lib requirements.Library, now tim
 			out = append(out, ExemptionFinding{
 				ExemptionID:   e.ID,
 				RequirementID: e.Requirement,
-				Message:       fmt.Sprintf("waives requirement %q, which is not in the library — it waives nothing; fix the id or delete the file", e.Requirement),
+				Message:       fmt.Sprintf("waives requirement %q, which is not in the library, so it waives nothing. Fix the id or delete the file", e.Requirement),
 			})
 		}
 		if e.Expired(now) {
 			out = append(out, ExemptionFinding{
 				ExemptionID:   e.ID,
 				RequirementID: e.Requirement,
-				Message:       fmt.Sprintf("expired %s and is still in the tree — dead config (ADR-0037): renewal is a fresh PR, otherwise delete the file", e.Expires.Std().Format("2006-01-02")),
+				Message:       fmt.Sprintf("expired %s and is still in the tree. To renew it, open a new PR. Otherwise delete the file", e.Expires.Std().Format("2006-01-02")),
 			})
 		}
 	}

@@ -10,11 +10,11 @@
 // A selector is authored attribute pairs matched by string equality
 // (ADR-0007, internal/serving): every pair must equal the reported
 // attribute. The one rule this module owns beyond well-formedness is
-// generalise-never-enumerate — a selector key that names one instance is
+// generalise-never-enumerate: a selector key that names one instance is
 // refused however it arrives, so the UI's restraint is enforced, not
 // assumed.
 
-/** Attribute keys that name one instance, never a population — mirrored
+/** Attribute keys that name one instance, never a population. Mirrored
  * in src/estate/claim.ts, where the suggestion already drops them. */
 export const INSTANCE_KEYS = new Set([
   'service.instance.id',
@@ -29,7 +29,7 @@ function matches(selector, attributes) {
   return Object.entries(selector).every(([key, value]) => attributes?.[key] === value)
 }
 
-/** The pairs two selectors agree on — attach's widened selector. */
+/** The pairs two selectors agree on: attach's widened selector. */
 function sharedPairs(a, b) {
   const out = {}
   for (const [key, value] of Object.entries(a)) {
@@ -40,7 +40,7 @@ function sharedPairs(a, b) {
 
 /** Whether a Tier's authored selector contradicts the claim's: some key
  * both carry, with different values. No contradiction means the claim may
- * reach that Tier's population — blast radius, reported, never hidden. */
+ * reach that Tier's population: blast radius, reported, never hidden. */
 function contradicts(tierSelector, selector) {
   return Object.entries(selector).some(
     ([key, value]) => tierSelector[key] !== undefined && tierSelector[key] !== value,
@@ -53,7 +53,7 @@ function teamIds(node, out = new Set()) {
   return out
 }
 
-/** Ungoverned collectors — the fixture's rows without a Tier are the whole
+/** Ungoverned collectors. The fixture's rows without a Tier are the whole
  * ungoverned population, so arithmetic over them is exact (ADR-0031). */
 function ungovernedRows(estate) {
   return estate.collectors.filter((row) => row.tier === undefined)
@@ -72,22 +72,22 @@ export function ungovernedSummary(estate) {
 function selectorProblems(selector) {
   const problems = []
   if (selector === undefined || typeof selector !== 'object' || Array.isArray(selector)) {
-    return ['the claim carries no selector — a Tier binding matches by shared identity attributes (ADR-0007)']
+    return ['the claim carries no selector: a Tier binding matches collectors by the identity attributes they share']
   }
   const entries = Object.entries(selector)
   if (entries.length === 0) {
     problems.push(
-      'the selector is empty — constrain it to at least one shared identity attribute (ADR-0042 §6)',
+      'the selector is empty: keep at least one shared identity attribute',
     )
   }
   for (const [key, value] of entries) {
     if (INSTANCE_KEYS.has(key)) {
       problems.push(
-        `selector key "${key}" names one collector, not a population — a selector generalises over shared identity attributes and never enumerates instance ids (ADR-0042 §6)`,
+        `selector key "${key}" names one collector, not a population: a selector matches on shared identity attributes and never enumerates instance ids`,
       )
     }
     if (typeof value !== 'string' || value === '') {
-      problems.push(`selector key "${key}" carries no value — a selector pair is string equality (ADR-0007)`)
+      problems.push(`selector key "${key}" carries no value: a selector pair needs a string to match`)
     }
   }
   return problems
@@ -101,7 +101,7 @@ function claimProblems(estate, body) {
     problems.push(`owning team "${body.team}" is not in the team tree`)
   }
   if (body.environment !== undefined && !estate.environments.includes(body.environment)) {
-    problems.push(`environment "${body.environment}" is not declared on this estate (ADR-0033)`)
+    problems.push(`environment "${body.environment}" is not declared on this estate`)
   }
   if (body.mode === 'attach') {
     const authored = estate.selectors[body.tier]
@@ -109,7 +109,7 @@ function claimProblems(estate, body) {
       problems.push(`tier "${body.tier ?? ''}" carries no authored selector to widen`)
     } else if (Object.keys(sharedPairs(authored, body.selector ?? {})).length === 0) {
       problems.push(
-        `tier "${body.tier}" shares no selector pair with the claim — attach widens shared pairs, it never enumerates; draft a new Tier instead (ADR-0042 §6)`,
+        `tier "${body.tier}" shares no selector pair with the claim, so there is nothing to widen. Draft a new Tier instead`,
       )
     }
   }
@@ -117,13 +117,13 @@ function claimProblems(estate, body) {
     if (typeof body.tier !== 'string' || !body.tier.includes('/') || body.tier.endsWith('/')) {
       problems.push('a drafted Tier needs a team-qualified id, like data-flow/payments-edge')
     } else if (estate.selectors[body.tier] !== undefined || estate.cards.some((c) => c.tier === body.tier)) {
-      problems.push(`tier "${body.tier}" already exists — attach to it instead`)
+      problems.push(`tier "${body.tier}" already exists. Attach to it instead`)
     }
   }
   return problems
 }
 
-/** The claim context a Compose proposal carries on the draft path — the
+/** The claim context a Compose proposal carries on the draft path: the
  * same rulebook, so /api/v1/proposals refuses what /api/v1/claims would. */
 export function claimContextProblems(estate, claim) {
   return claimProblems(estate, { ...claim, mode: 'draft' })
@@ -136,13 +136,13 @@ function renderSelector(selector) {
     .join('\n')
 }
 
-/** The Tier binding as the PR would carry it — the rendered impact
+/** The Tier binding as the PR would carry it: the rendered impact
  * preview the proposal rides (ADR-0042 §6, ADR-0028). */
 function renderBinding(estate, body) {
   if (body.mode === 'draft' && typeof body.tier === 'string' && body.tier.includes('/')) {
     const name = body.tier.split('/').pop()
     return [
-      `# teams/${body.team}/tiers/${name}.yaml — authored by the claim flow (ADR-0042 §6)`,
+      `# teams/${body.team}/tiers/${name}.yaml: authored by the claim flow`,
       `owner: ${body.team}`,
       `environment: ${body.environment}`,
       `blueprint: ${body.tier}-standard@1`,
@@ -157,7 +157,7 @@ function renderBinding(estate, body) {
     const blueprint = estate.blueprints.find((bp) => bp.tier === body.tier)
     const name = body.tier.split('/').pop()
     return [
-      `# tiers/${name}.yaml — selector widened by the claim (ADR-0042 §6)`,
+      `# tiers/${name}.yaml: selector widened by the claim`,
       `environment: ${card?.environment ?? body.environment}`,
       ...(blueprint ? [`blueprint: ${blueprint.id}@${blueprint.version}`] : []),
       'selector:',
@@ -169,7 +169,7 @@ function renderBinding(estate, body) {
 }
 
 /**
- * POST /api/v1/claims/preview: the impact of the constrained selector —
+ * POST /api/v1/claims/preview: the impact of the constrained selector:
  * matched ungoverned collectors by how they are read, governed populations
  * the selector does not contradict, attach candidates ranked by selector
  * proximity, and the rendered Tier binding once a path is chosen. For
@@ -227,14 +227,14 @@ export function previewClaim(estate, body) {
 let claimCounter = 300
 
 /**
- * POST /api/v1/claims — the attach exit (draft exits ride Compose's
- * proposal): fail closed with the problems named, or the opened proposal —
+ * POST /api/v1/claims, the attach exit (draft exits ride Compose's
+ * proposal): fail closed with the problems named, or the opened proposal,
  * a PR authoring the Tier binding, user-attributed (ADR-0014).
  */
 export function submitClaim(estate, body) {
   const problems = claimProblems(estate, body)
   if (body.mode !== 'attach' && body.mode !== 'draft') {
-    problems.push('the claim answers no path — attach to an existing Tier or draft a new one (ADR-0042 §6)')
+    problems.push('the claim names no path: attach to an existing Tier or draft a new one')
   }
   if (typeof body.title !== 'string' || body.title.trim() === '') {
     problems.push('the proposal carries no title')

@@ -45,7 +45,7 @@ describe('the palette (ADR-0021, ADR-0022 §5)', () => {
     expect(pal.hidden).toBe(5)
   })
 
-  it('admits a Grant-origin entry with its named Grant — the audit chain is total', () => {
+  it('admits a Grant-origin entry with its named Grant: the audit chain is total', () => {
     const kafka = pal.entries.find((e) => e.key === 'type:receiver/kafka')
     expect(kafka?.origin).toBe('grant')
     expect(kafka?.grant).toEqual({
@@ -115,7 +115,7 @@ describe('the save gate (ADR-0022 §3)', () => {
 })
 
 describe('ordering findings (ADR-0024 §6)', () => {
-  it('raises a finding when batch is not the last processor — never a re-sort', () => {
+  it('raises a finding when batch is not the last processor, never a re-sort', () => {
     const draft = doc('data-flow/edge-standard')
     draft.locals['scrub'] = { class: 'processor', type: 'transform' }
     draft.lanes['traces'] = ['otlp-in', 'batcher', 'scrub', 'data-flow/gateway-exporter@2']
@@ -141,7 +141,7 @@ describe('ordering findings (ADR-0024 §6)', () => {
 })
 
 describe('reference and lifecycle findings (ADR-0024, ADR-0023 §6)', () => {
-  it('flags a lane routing a signal the component does not declare — never a block', () => {
+  it('flags a lane routing a signal the component does not declare, never a block', () => {
     const draft = doc('infosec/audit-standard')
     draft.locals['scrub'] = { class: 'processor', type: 'pii_scrub' }
     draft.lanes['metrics'] = ['otlp-in', 'scrub', 'batcher']
@@ -204,7 +204,7 @@ describe('the proposal exit (ADR-0028)', () => {
   it('fails closed on the hard block: no proposal, request a Grant', () => {
     expect(() =>
       propose(estate, entries, doc('data-flow/gateway-standard'), 'production'),
-    ).toThrowError(/no proposal.*request a Grant/)
+    ).toThrowError(/no proposal.*Request a Grant/)
   })
 
   it('opens a branch-per-draft proposal, attributed to the acting human', () => {

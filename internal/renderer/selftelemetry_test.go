@@ -34,7 +34,7 @@ func pushEndpoint(t *testing.T, tel map[string]any, signal string) string {
 	switch signal {
 	case "metrics":
 		if level := block["level"]; level != "normal" {
-			t.Errorf("metrics level = %v, want normal (ADR-0039 §1)", level)
+			t.Errorf("metrics level = %v, want normal", level) // ADR-0039 §1
 		}
 		entries, _ = block["readers"].([]any)
 	case "logs":
@@ -74,10 +74,10 @@ func TestArtefactPushesSelfTelemetry(t *testing.T) {
 
 	resource, _ := tel["resource"].(map[string]any)
 	if got := resource[TierAttribute]; got != "data-flow/gateway" {
-		t.Errorf("%s = %v, want the Tier's team-qualified id data-flow/gateway (ADR-0039 §5)", TierAttribute, got)
+		t.Errorf("%s = %v, want the Tier's team-qualified id data-flow/gateway", TierAttribute, got) // ADR-0039 §5
 	}
 	if got := resource[CommitAttribute]; got != fixtureCommit {
-		t.Errorf("%s = %v, want %s — the reading join is the (Tier, SHA) pair", CommitAttribute, got, fixtureCommit)
+		t.Errorf("%s = %v, want %s: the reading join is the (Tier, SHA) pair", CommitAttribute, got, fixtureCommit)
 	}
 
 	// The production Tier resolves the production override (ADR-0039 §2),
@@ -88,15 +88,15 @@ func TestArtefactPushesSelfTelemetry(t *testing.T) {
 		"logs":    "https://otlp-prod.observability.internal:4318/v1/logs",
 	} {
 		if ep := pushEndpoint(t, tel, signal); ep != want {
-			t.Errorf("%s push endpoint = %q, want %q — the production override with the signal path", signal, ep, want)
+			t.Errorf("%s push endpoint = %q, want %q, the production override with the signal path", signal, ep, want)
 		}
 	}
 	if _, ok := tel["traces"]; ok {
-		t.Error("telemetry wires internal traces — they stay off in v1 (ADR-0039 §1)")
+		t.Error("telemetry wires internal traces, but they stay off in v1") // ADR-0039 §1
 	}
 }
 
-// ADR-0039 §2: the destination is declared once and resolved per Tier — a
+// ADR-0039 §2: the destination is declared once and resolved per Tier: a
 // Tier in an Environment without an override resolves the estate endpoint.
 func TestSelfTelemetryResolvesPerTierEnvironment(t *testing.T) {
 	res, err := Render(fixtureInputs(t))
@@ -109,12 +109,12 @@ func TestSelfTelemetryResolvesPerTierEnvironment(t *testing.T) {
 	}
 	tel := telemetryBlock(t, doc)
 	if ep := pushEndpoint(t, tel, "metrics"); ep != "https://otlp.observability.internal:4318/v1/metrics" {
-		t.Errorf("staging push endpoint = %q, want the estate endpoint — staging declares no override", ep)
+		t.Errorf("staging push endpoint = %q, want the estate endpoint, because staging declares no override", ep)
 	}
 }
 
 // ADR-0030 × ADR-0039: the Unmatched artefact is self-telemetry only, so
-// the push is what makes it visible at all. It carries no Tier stamp —
+// the push is what makes it visible at all. It carries no Tier stamp:
 // governed-by-nobody is the label, not a Tier.
 func TestUnmatchedArtefactPushesSelfTelemetry(t *testing.T) {
 	res, err := Render(fixtureInputs(t))
@@ -127,11 +127,11 @@ func TestUnmatchedArtefactPushesSelfTelemetry(t *testing.T) {
 	}
 	tel := telemetryBlock(t, doc)
 	if ep := pushEndpoint(t, tel, "logs"); ep != "https://otlp.observability.internal:4318/v1/logs" {
-		t.Errorf("unmatched push endpoint = %q, want the estate endpoint — no Tier, no Environment", ep)
+		t.Errorf("unmatched push endpoint = %q, want the estate endpoint (no Tier, no Environment)", ep)
 	}
 	resource, _ := tel["resource"].(map[string]any)
 	if _, ok := resource[TierAttribute]; ok {
-		t.Errorf("the Unmatched artefact stamps %s — it has no Tier, and inventing one would fake a join", TierAttribute)
+		t.Errorf("the Unmatched artefact stamps %s, but it has no Tier, and inventing one would fake a join", TierAttribute)
 	}
 }
 
@@ -140,8 +140,8 @@ func TestUnmatchedArtefactPushesSelfTelemetry(t *testing.T) {
 func TestRenderRefusesWithoutSelfTelemetryDestination(t *testing.T) {
 	in := fixtureInputs(t)
 	in.SelfTelemetry = SelfTelemetry{}
-	if _, err := Render(in); err == nil || !strings.Contains(err.Error(), "ADR-0039") {
-		t.Fatalf("render with no self-telemetry destination = %v, want a refusal citing ADR-0039", err)
+	if _, err := Render(in); err == nil || !strings.Contains(err.Error(), "no endpoint") {
+		t.Fatalf("render with no self-telemetry destination = %v, want a refusal naming the missing endpoint", err) // ADR-0039 §1
 	}
 }
 
@@ -162,7 +162,7 @@ func TestLoadSelfTelemetry(t *testing.T) {
 	// The mirrored upstream gate ships off, exactly as upstream's
 	// telemetry.newPipelineTelemetry is StageAlpha default-off (ADR-0039 §4).
 	if s.NewPipelineTelemetry {
-		t.Error("new_pipeline_telemetry defaults on — it mirrors an upstream alpha gate that ships off")
+		t.Error("new_pipeline_telemetry defaults on, but it mirrors an upstream alpha gate that ships off")
 	}
 }
 
@@ -191,7 +191,7 @@ func TestLoadSelfTelemetryFailsClosed(t *testing.T) {
 				writeFile(t, root, SelfTelemetryFile, body)
 			}
 			if _, err := LoadSelfTelemetry(root); err == nil {
-				t.Fatalf("loaded %q without error — the declaration fails closed", name)
+				t.Fatalf("loaded %q without error, but the declaration fails closed", name)
 			}
 		})
 	}

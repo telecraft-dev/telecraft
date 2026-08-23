@@ -6,7 +6,7 @@ order: 2
 
 # Command line reference
 
-Telecraft ships three binaries: `telecraft`, the platform command line;
+Telecraft ships three binaries: `telecraft`, the main command line;
 `catalogue-import`, the Catalogue import pipeline; and `blueprint-check`, the
 strict Blueprint and Component loader. All three build from this repository
 with the Go toolchain:
@@ -23,7 +23,7 @@ You can also run them without installing:
 go run ./cmd/telecraft render -estate ESTATE_DIR -catalogue ARTEFACT -commit SHA
 ```
 
-Throughout this page, `ESTATE_DIR` is an estate checkout (see
+On this page, `ESTATE_DIR` is an estate checkout (see
 [Estate layout](estate-layout.md)), `ARTEFACT` is the path of a Catalogue
 artefact such as `catalogues/catalogue-v0.158.0.json` (see
 [Catalogue](catalogue.md)), and `SHA` is the commit the estate is read at.
@@ -58,17 +58,17 @@ and exits `2`.
 : Default for `-api-key` on `observe` and `check`. When unset, the default is
   empty.
 
-An explicit flag always beats the environment variable.
+An explicit flag always wins over the environment variable.
 
 ## telecraft observe
 
-Reads one Service's Observed state through the telemetry provider seam and
-prints it: per signal, whether the reading is known, whether the signal is
+Reads one Service's Observed state from the telemetry backend and prints it.
+For each signal, it prints whether the reading is known, whether the signal is
 present, its volume, and the coverage of each attribute you asked about. It
 then prints the attribute names each signal carries, with the sample size.
 
-`observe` is a printer, not a gate. A degraded reading prints with its cause
-and the command still exits `0`. Script against outcomes with `check`.
+`observe` prints; it doesn't gate. A degraded reading prints with its cause
+and the command still exits `0`. To script against outcomes, use `check`.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
@@ -83,7 +83,7 @@ and the command still exits `0`. Script against outcomes with `check`.
 | Exit code | Meaning |
 |---|---|
 | `0` | The readings were printed, degraded readings included. |
-| `2` | Usage error, `-service` missing, or the provider could not be wired. |
+| `2` | Usage error, `-service` missing, or the telemetry provider could not be set up. |
 
 ```sh
 telecraft observe -service checkout -environment production -window 1h
@@ -96,16 +96,16 @@ Observed state once per row and window, judges every row, writes one JSON
 report to stdout, and exits non-zero exactly when counting failures exist.
 
 Every row is judged by default. `-environment` narrows the run to one
-Environment; the report always orders `production` rows first. If the estate
+Environment; the report always lists `production` rows first. If the estate
 has no row in the named Environment, the run fails with exit `2` rather than
-passing vacuously.
+passing with nothing judged.
 
 Waivers loosen the exit code, so their inputs fail closed: an exemptions
 directory or ownership directory that doesn't load is exit `2`. A waived
 finding keeps its outcome and detail in the report and gives up only its
 count.
 
-`-source` and `-catalogue` go together and enable `library_drift` detection
+`-source` and `-catalogue` go together and turn on `library_drift` detection
 over the authored estate. Supplying one without the other is a usage error.
 
 | Flag | Type | Default | Description |
@@ -114,8 +114,8 @@ over the authored estate. Supplying one without the other is a usage error.
 | `-estate` | string | none, required | Estate file: services and their per-environment Effective reading. |
 | `-exemptions` | string | empty | Exemptions directory. Empty means no authored waivers. |
 | `-ownership` | string | empty | Ownership directory holding `teams.yaml` and the authored objects. Needed only to resolve team-scoped exemptions. |
-| `-source` | string | empty | Authored estate root holding `teams/` and `rendered/`. Enables `library_drift` detection; needs `-catalogue`. |
-| `-catalogue` | string | empty | Path to the active Catalogue artefact. Enables `library_drift` detection; needs `-source`. |
+| `-source` | string | empty | Authored estate root holding `teams/` and `rendered/`. Turns on `library_drift` detection; needs `-catalogue`. |
+| `-catalogue` | string | empty | Path to the active Catalogue artefact. Turns on `library_drift` detection; needs `-source`. |
 | `-endpoint` | string | `TELECRAFT_TELEMETRY_ENDPOINT`, else `http://localhost:9200` | Telemetry backend base URL. |
 | `-api-key` | string | `TELECRAFT_TELEMETRY_API_KEY`, else empty | Telemetry backend API key. |
 | `-environment` | string | empty | Narrow the check to one Environment. Empty judges every row. |
@@ -125,7 +125,7 @@ over the authored estate. Supplying one without the other is a usage error.
 |---|---|
 | `0` | Every counting finding passes. |
 | `1` | Counting failures exist. |
-| `2` | The check could not run: usage, load or wiring error. |
+| `2` | The check could not run: usage, load, or wiring error. |
 
 The report is one JSON document on stdout with these top-level fields:
 
@@ -133,13 +133,14 @@ The report is one JSON document on stdout with these top-level fields:
 |---|---|---|
 | `evaluated_at` | string | The instant the run judged at, in UTC. |
 | `provider` | string | Name of the telemetry provider that answered. |
-| `rows` | array | One entry per judged row, each with `service`, `environment`, `worst`, `score` and `findings`. |
+| `rows` | array | One entry per judged row, each with `service`, `environment`, `worst`, `score`, and `findings`. |
 | `authoring_findings` | array | Problems with authored content that can never take effect. Never part of the exit code. |
 | `library_drift` | array | `library_drift` findings, owned by authored config rather than by a row. |
 | `housekeeping` | array | Stale-but-passing claim nudges. Never part of the exit code. |
-| `summary` | object | `rows`, `failing_rows`, `counting_failures`, `waived` and `library_drift` totals. |
+| `summary` | object | `rows`, `failing_rows`, `counting_failures`, `waived`, and `library_drift` totals. |
 
-`summary.counting_failures` greater than zero is exactly the non-zero exit.
+`summary.counting_failures` greater than zero is exactly what makes the exit
+code non-zero.
 
 ```sh
 telecraft check -library requirements/ -estate estate.yaml
@@ -148,9 +149,9 @@ telecraft check -library requirements/ -estate estate.yaml
 ## telecraft palette
 
 Prints one team's effective palette: the components of the active Catalogue
-the team may use, each with the provenance that admitted it. See
+the team can use, each with the provenance that admitted it. See
 [Allow-lists and Grants](allow-lists.md) for the resolution rules and the
-`default-allow`, `allow-list` and `grant` origins.
+`default-allow`, `allow-list`, and `grant` origins.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
@@ -161,7 +162,7 @@ the team may use, each with the provenance that admitted it. See
 | Exit code | Meaning |
 |---|---|
 | `0` | The palette was printed. |
-| `2` | Usage error, or the team tree, Catalogue or policy failed to load. |
+| `2` | Usage error, or the team tree, Catalogue, or policy failed to load. |
 
 ```sh
 telecraft palette -team data-flow -estate ESTATE_DIR -catalogue ARTEFACT
@@ -170,13 +171,13 @@ telecraft palette -team data-flow -estate ESTATE_DIR -catalogue ARTEFACT
 ## telecraft render
 
 Compiles every Tier's bound Blueprint into the rendered artefact tree and the
-generated code-ownership projection, writing them under `-out`. The output is
-a pure function of the estate at `-commit`, which is what lets CI recompute
-`rendered/` and diff it against what's committed.
+generated `CODEOWNERS` file, and writes them under `-out`. The output depends
+only on the estate at `-commit`, so CI can recompute `rendered/` and diff it
+against what's committed.
 
-Findings ride along without blocking: each is printed on stdout after the
-written paths, prefixed `finding`. Exactly one policy rule refuses the render,
-the allow-list hard block, alongside mechanical invalidity such as a reference
+Findings don't block. Each is printed on stdout after the written paths,
+prefixed `finding`. Exactly one policy rule refuses the render: the
+allow-list check. Mechanical problems also refuse it, such as a reference
 that resolves to nothing or a rendered-id collision.
 
 | Flag | Type | Default | Description |
@@ -190,7 +191,7 @@ that resolves to nothing or a rendered-id collision.
 |---|---|
 | `0` | Rendered. Policy findings, if any, are printed and don't block. |
 | `1` | The render refused, or an artefact could not be written. |
-| `2` | Usage error, or the team tree, Catalogue, policy, sources, topology or self-telemetry declaration failed to load. |
+| `2` | Usage error, or the team tree, Catalogue, policy, sources, topology, or self-telemetry declaration failed to load. |
 
 ```sh
 telecraft render -estate ESTATE_DIR -catalogue ARTEFACT -commit SHA
@@ -198,17 +199,17 @@ telecraft render -estate ESTATE_DIR -catalogue ARTEFACT -commit SHA
 
 ## telecraft serve
 
-Runs the stateless OpAMP server: it serves the estate's rendered artefacts
-from git, matching each collector's reported identifying attributes against
+Runs the stateless OpAMP server. It serves the estate's rendered artefacts
+from git, matches each collector's reported identifying attributes against
 the Tier selectors at head, and stores nothing durable. The OpAMP endpoint
 listens at `/v1/opamp` on the `-listen` address.
 
-Exactly one of `-estate` or `-repo` names the source. `-estate` points at a
-local checkout, the standalone and air-gapped shape. `-repo` names a git URL,
-including a `file:///` URL, fetched on the `-fetch-interval` poll.
+Name the source with exactly one of `-estate` or `-repo`. `-estate` points at
+a local checkout, which suits standalone and air-gapped use. `-repo` names a
+git URL, including a `file:///` URL, which the server fetches every
+`-fetch-interval`.
 
-The server stops on `SIGINT` or `SIGTERM` and is given 10 seconds to shut
-down.
+The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
@@ -230,25 +231,25 @@ telecraft serve -estate ESTATE_DIR -listen 0.0.0.0:4320
 
 ## telecraft snapshot
 
-Writes the console API snapshot: the JSON documents the platform API would
-serve, computed by the real evaluators over one estate checkout. It's a pure
-function of the estate at `-commit` and the readings the estate declares.
+Writes the console API snapshot: the JSON documents the Telecraft API would
+serve, computed by the real evaluators over one estate checkout. The output
+depends only on the estate at `-commit` and the readings the estate declares.
 
-`-rows` names the conformance estate file, each Service's Effective reading
-per Environment. It's the same file `check` takes as `-estate`, and
-[Exemptions](exemptions.md) documents its fields. `-readings` names the
-readings file, which declares the runtime readings a repository cannot
-hold: the collector estate, the arrivals, and each Tier's flow.
+`-rows` names the conformance estate file, which holds each Service's
+Effective reading per Environment. It's the same file `check` takes as
+`-estate`, and [Exemptions](exemptions.md) documents its fields. `-readings`
+names the readings file, which declares the runtime readings a repository
+can't hold: the collector estate, the arrivals, and each Tier's flow.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `-estate` | string | none, required | Estate root holding `teams.yaml`, the `teams/` tree and `rendered/`. |
+| `-estate` | string | none, required | Estate root holding `teams.yaml`, the `teams/` tree, and `rendered/`. |
 | `-catalogue` | string | none, required | Path to the active Catalogue artefact. |
 | `-library` | string | none, required | Requirements library directory. |
 | `-rows` | string | none, required | Conformance estate file. |
 | `-readings` | string | none, required | Readings file. |
 | `-commit` | string | none, required | Commit SHA the snapshot is taken at. |
-| `-team` | string | none, required | The presented user's team: the shelf's resting scope. |
+| `-team` | string | none, required | The team of the user the snapshot presents. The console's shelf starts on this team's Tiers. |
 | `-catalogues` | string | the directory holding `-catalogue` | Directory of installed Catalogue artefacts. |
 | `-exemptions` | string | empty | Exemptions directory. |
 | `-repository` | string | empty | Estate repository name, shown as the source link. |
@@ -274,13 +275,14 @@ telecraft snapshot -estate ESTATE_DIR -catalogue ARTEFACT -library requirements/
 ## telecraft delivery
 
 Prints one collector's delivery status from two files: the Intended config,
-which is the rendered artefact in git, and the collector's reported Effective
-config. `-path` names the collector's delivery path and selects the Mutation
+which is the rendered artefact in git, and the Effective config the collector
+reports. `-path` names the collector's delivery path and selects the Mutation
 profile the comparison runs under.
 
-A file comparison carries no `RemoteConfigStatus` reading, so the remote axis
-always prints `known=false` with its cause. Like `observe`, this is a printer:
-it exits `0` for every computed status, drift included.
+A file comparison has no `RemoteConfigStatus` reading, so the remote axis
+always prints `known=false` with its cause. Like `observe`, this command
+prints rather than gates: it exits `0` for every computed status, drift
+included.
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
@@ -301,11 +303,12 @@ telecraft delivery -intended rendered/data-flow/gateway.yaml \
 ## telecraft passwd
 
 Hashes one basic-auth secret for the `password` field of a `users.yaml` entry.
-The secret is read from stdin, never from an argument, so it doesn't land in
-shell history. `passwd` takes no flags and rejects positional arguments.
+It reads the secret from stdin, never from an argument, so the secret doesn't
+land in shell history. `passwd` takes no flags and rejects positional
+arguments.
 
-The printed hash has four `$`-separated parts: the algorithm, the iteration
-count, the base64 salt and the base64 derived key.
+The printed hash has four parts separated by `$`: the algorithm, the
+iteration count, the base64 salt, and the base64 derived key.
 
 | Exit code | Meaning |
 |---|---|
@@ -323,10 +326,10 @@ pbkdf2-sha256$600000$9WjDMLabnekbxwNlJaUxlg$qmNB8MhgWk4UiXZt1v13di5Ko4W8ElkBic/S
 
 ## catalogue-import
 
-Runs the Catalogue import pipeline: it fetches
+Runs the Catalogue import pipeline. It fetches
 `opentelemetry-collector-contrib` at a pinned release tag, walks every
 `metadata.yaml`, and writes one atomic, versioned Catalogue artefact plus a
-coverage report of what was found, excluded and missing.
+coverage report of what it found, excluded, and missed.
 
 The fetch is a sparse, depth-1 checkout of only `metadata.yaml` and `go.mod`
 into a temporary directory, removed afterwards. Re-running against the same
@@ -346,7 +349,7 @@ its `.git` still imports; the artefact then records no source commit.
 | Exit code | Meaning |
 |---|---|
 | `0` | The artefact was written, or already held this import byte for byte. |
-| `1` | `-tag` was missing, or the fetch, import or write failed. |
+| `1` | `-tag` was missing, or the fetch, import, or write failed. |
 | `2` | An unknown flag was given. |
 
 ```sh
@@ -357,15 +360,15 @@ catalogue-import -tag v0.158.0
 
 Strict-loads every Blueprint and shared Component in an estate's source roots
 and prints the findings: references to missing or retracted Components or
-versions, misplaced extensions, and lane orderings that contradict the shipped
+versions, misplaced extensions, and lane orders that contradict the shipped
 ordering rules.
 
-Each root holds the `teams/<team>/{components,blueprints}` layout. Several
-roots are the primary-plus-satellites source set. With no argument the current
-directory is checked.
+Each root holds the `teams/<team>/{components,blueprints}` layout. Pass
+several roots for a primary repository plus its satellite repositories. With
+no argument, it checks the current directory.
 
-Mechanical invalidity refuses the load and exits `1`. Findings are printed and
-exit `0`: they route to owners and advise, and never block.
+A load problem refuses the load and exits `1`. Findings print and exit `0`:
+they go to owners as advice and never block.
 
 ```sh
 blueprint-check ESTATE_DIR

@@ -15,7 +15,7 @@ A rendered artefact carries two kinds of OTLP exporter, and they read
 `endpoint` differently. The data pipelines' `otlp_http` exporter is the
 collector's own, and it treats `endpoint` as a base: it appends `/v1/metrics`,
 `/v1/logs` or `/v1/traces` per signal. The exporters under
-`service::telemetry` are not the collector's — they are the OTel SDK's
+`service::telemetry` are not the collector's: they are the OTel SDK's
 declarative-configuration exporters, and there `endpoint` is the complete URL.
 They append nothing.
 
@@ -62,8 +62,8 @@ so `https://x/otlp/` and `https://x/otlp` render identically.
 
 Encoding the convention in the renderer is what the renderer is for. Its
 entire job is turning a domain document into otelcol conventions the author
-should not have to hold — pipeline wiring, component ids, the identity
-stamps of ADR-0013 and ADR-0039 §5 — and the SDK's path semantics are one
+should not have to hold (pipeline wiring, component ids, the identity
+stamps of ADR-0013 and ADR-0039 §5), and the SDK's path semantics are one
 more of those. The alternative asks every adopter to know which of two
 exporters in one file completes a URL and which does not.
 
@@ -101,7 +101,7 @@ endpoint carrying a signal path is authored wrong whichever way it is read.
 
 ## Consequences
 
-- ADR-0039 §1–2 stand unamended in substance. What changes is that the
+- ADR-0039 §1 and §2 stand unamended in substance. What changes is that the
   destination they declare is now reachable, and the renderer owns one more
   otelcol convention.
 - Every rendered artefact in the repository changes on this commit: two
@@ -123,7 +123,7 @@ endpoint carrying a signal path is authored wrong whichever way it is read.
 ## Sources
 
 - Issue #109, and the collector 0.159.0 log it quotes.
-- ADR-0039 §1–2, §5 (self-telemetry ingestion, the destination declaration
+- ADR-0039 §1 and §2, §5 (self-telemetry ingestion, the destination declaration
   and the reading join); ADR-0052 (the devenv, where this was reproducible in
   one command); ADR-0028 §2 (the recompute invariant); ADR-0013 (the artefact
   carries its own identity); ADR-0038 §4 (the settle window that never

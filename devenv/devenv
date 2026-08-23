@@ -114,7 +114,7 @@ cmd_status() {
     awk '/^collectors:/{c=1;next} /^rows:/{c=0} c' "$here/run/readings.yaml" |
       grep -E '^\s+(- id|telecraft\.tier|state):' || echo "  none connected yet"
   else
-    echo "  no reading yet — is \`devenv/devenv up\` running?"
+    echo "  no reading yet. Is \`devenv/devenv up\` running?"
   fi
 
   say "what has arrived in the last 5 minutes"
@@ -176,7 +176,7 @@ cmd_scenario() {
       # delivers to this one, so an edit on the box survives: the estate
       # has no argument to win (ADR-0005).
       say "editing the git-delivered collector's local file on the box"
-      [ -d "$here/run/appliance-1" ] || die "no run directory for appliance-1 — is \`devenv/devenv up\` running?"
+      [ -d "$here/run/appliance-1" ] || die "no run directory for appliance-1. Is \`devenv/devenv up\` running?"
       cp "$here/drift/appliance-local.yaml" "$here/run/appliance-1/local.yaml"
       compose restart collector-appliance-1
       say "it now runs a batch size the artefact does describe and a maximum"
@@ -199,7 +199,7 @@ cmd_scenario() {
       compose --profile unmatched up -d collector-unmatched-1
       say "its attributes satisfy no Tier selector, so the server sends it the"
       say "Unmatched artefact: self-telemetry on, no data pipelines, never an"
-      say "empty config map (ADR-0030)."
+      say "empty config map."
       ;;
 
     ""|*)

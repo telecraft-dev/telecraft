@@ -46,7 +46,7 @@ func corpusDirs(t *testing.T) []string {
 }
 
 // Every variant-* file must agree with its base at layer 2 under every
-// profile, while layer 1 (raw bytes) disagrees — cosmetic difference is
+// profile, while layer 1 (raw bytes) disagrees: cosmetic difference is
 // exactly the gap between those two layers.
 func TestCosmeticVariantsAgreeAtLayer2(t *testing.T) {
 	profiles := []Profile{ProfileExact, ProfileSupervisor, ProfileElasticFleet}
@@ -59,7 +59,7 @@ func TestCosmeticVariantsAgreeAtLayer2(t *testing.T) {
 		for _, v := range variants {
 			raw := load(t, v)
 			if Layer1(base) == Layer1(raw) {
-				t.Errorf("%s: layer 1 equal to base — fixture is not a variant", v)
+				t.Errorf("%s: layer 1 equal to base: fixture is not a variant", v)
 			}
 			for _, p := range profiles {
 				if got, want := layer2(t, raw, p), layer2(t, base, p); got != want {
@@ -72,8 +72,8 @@ func TestCosmeticVariantsAgreeAtLayer2(t *testing.T) {
 	}
 }
 
-// The Supervisor's effective.yaml — injected extensions.opamp at an
-// ephemeral port, `opamp` appended to service.extensions — must agree with
+// The Supervisor's effective.yaml (injected extensions.opamp at an
+// ephemeral port, `opamp` appended to service.extensions) must agree with
 // the rendered config under the supervisor profile, and must NOT agree under
 // the exact profile (the allow-list is load-bearing, not decorative).
 func TestSupervisorReportAgrees(t *testing.T) {
@@ -86,12 +86,12 @@ func TestSupervisorReportAgrees(t *testing.T) {
 		t.Fatalf("supervisor profile: rendered vs reported disagree:\n%v", Layer3(a, b))
 	}
 	if layer2(t, base, ProfileExact) == layer2(t, rep, ProfileExact) {
-		t.Fatal("exact profile agreed — the supervisor mutations vanished, fixture broken")
+		t.Fatal("exact profile agreed: the supervisor mutations vanished, fixture broken")
 	}
 }
 
-// Elastic Fleet's reported copy — key-substring redaction, opamp extension
-// body stripped, re-marshalled to JSON — must agree with the rendered config
+// Elastic Fleet's reported copy (key-substring redaction, opamp extension
+// body stripped, re-marshalled to JSON) must agree with the rendered config
 // under the elastic-fleet profile, and must NOT agree under exact.
 func TestElasticFleetReportAgrees(t *testing.T) {
 	base := load(t, "corpus/edge-k8s/base.yaml")
@@ -103,7 +103,7 @@ func TestElasticFleetReportAgrees(t *testing.T) {
 		t.Fatalf("elastic-fleet profile: rendered vs reported disagree:\n%v", Layer3(a, b))
 	}
 	if layer2(t, base, ProfileExact) == layer2(t, rep, ProfileExact) {
-		t.Fatal("exact profile agreed — the fleet mutations vanished, fixture broken")
+		t.Fatal("exact profile agreed: the fleet mutations vanished, fixture broken")
 	}
 }
 
@@ -174,7 +174,7 @@ func TestExplicitDefaultsDoNotAgree(t *testing.T) {
 	base := load(t, "corpus/edge-k8s/base.yaml")
 	def := load(t, "corpus/edge-k8s/ambiguous-explicit-default.yaml")
 	if layer2(t, base, ProfileExact) == layer2(t, def, ProfileExact) {
-		t.Fatal("explicit defaults agreed at layer 2 — F-2's premise is wrong, revisit VERDICT.md")
+		t.Fatal("explicit defaults agreed at layer 2: F-2's premise is wrong, revisit VERDICT.md")
 	}
 	a, _ := Normalised(base, ProfileExact)
 	b, _ := Normalised(def, ProfileExact)
@@ -204,9 +204,9 @@ func TestElasticFleetProfileIsBlindToRedactedValues(t *testing.T) {
 	}
 
 	if layer2(t, base, ProfileElasticFleet) != layer2(t, mutated, ProfileElasticFleet) {
-		t.Fatal("fleet profile saw through redaction — either the redaction rule changed or the fixture is wrong")
+		t.Fatal("fleet profile saw through redaction: either the redaction rule changed or the fixture is wrong")
 	}
 	if layer2(t, base, ProfileExact) == layer2(t, mutated, ProfileExact) {
-		t.Fatal("exact profile missed a real value change — canonical encoding is broken")
+		t.Fatal("exact profile missed a real value change: canonical encoding is broken")
 	}
 }

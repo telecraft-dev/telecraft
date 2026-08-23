@@ -40,7 +40,7 @@ function subtree(root: TeamNode, id: string): TeamNode | undefined {
  * with aligned Environment rows, cards ordered worst-severity-first from
  * face summary fields alone. Scope rests on the signed-in user's team
  * subtree; one click widens to the estate. The lens leads and emphasises
- * its row — emphasis, never a filter: every row stays visible (§4).
+ * its row: emphasis, never a filter, so every row stays visible (§4).
  */
 export function Shelf({
   payload,
@@ -68,7 +68,7 @@ export function Shelf({
   const visible = sections(root, payload.cards)
 
   // Environment rows: production leads by default; the lens leads when it
-  // names another Environment — emphasis, never a filter (ADR-0042 §4).
+  // names another Environment: emphasis, never a filter (ADR-0042 §4).
   const environments = [lens, ...payload.environments.filter((env) => env !== lens)]
 
   return (
@@ -94,7 +94,7 @@ export function Shelf({
         </Link>
       </div>
       {/* Ungoverned collectors sit in the dedicated band above governed
-          Tiers (ADR-0031 §2): concern, never failure — an explicit
+          Tiers (ADR-0031 §2): concern, never failure. An explicit
           onboard-me CTA, and no compliance denominator counts them. The
           count is a door to the flat list (rule 3.4), where the claim
           flow starts herd-first (ADR-0042 §6). Collectors have no owning
@@ -104,10 +104,10 @@ export function Shelf({
           <p>
             <strong>
               {payload.ungoverned.served + payload.ungoverned.foreign} ungoverned collectors
-            </strong>{' '}
-            — {payload.ungoverned.served} served the Unmatched artefact,{' '}
-            {payload.ungoverned.foreign} foreign. Governed by nobody, counted against
-            nobody: they appear in no compliance denominator.
+            </strong>
+            : {payload.ungoverned.served} served the Unmatched artefact,{' '}
+            {payload.ungoverned.foreign} foreign. No Tier matches them, so no team owns them
+            and no compliance ratio counts them.
           </p>
           <Link
             from="/estate"

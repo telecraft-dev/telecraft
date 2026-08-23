@@ -71,7 +71,7 @@ func bandFor(findings []Finding, kind string, empty Band) Band {
 }
 
 // deliveryBand reads the population and divergence findings. A Tier with no
-// selector is served by nobody by design — not applicable, never a failure
+// selector is served by nobody by design: not applicable, never a failure
 // (REQ-041).
 func (b *builder) deliveryBand(v *tierView) Band {
 	empty := Band{State: BandOK, WorstSeverity: SeverityNone}
@@ -83,8 +83,8 @@ func (b *builder) deliveryBand(v *tierView) Band {
 	return bandFor(v.findings, "delivery", empty)
 }
 
-// expectationBand reads the claim statuses first — the honest neutrals are
-// the claims' own states (ADR-0038 §4b, ADR-0041 §2) — then the findings.
+// expectationBand reads the claim statuses first (the honest neutrals are
+// the claims' own states, ADR-0038 §4b, ADR-0041 §2), then the findings.
 func (b *builder) expectationBand(v *tierView) Band {
 	if len(v.expect.Claims) == 0 {
 		return Band{State: BandNotApplicable, WorstSeverity: SeverityNone}
@@ -109,7 +109,7 @@ func (b *builder) expectationBand(v *tierView) Band {
 }
 
 // conformanceBand reads the verdict cross, the render's policy findings and
-// library_drift — everything judged about what this Tier's Services are
+// library_drift: everything judged about what this Tier's Services are
 // supposed to be doing.
 func (b *builder) conformanceBand(v *tierView) Band {
 	empty := Band{State: BandOK, WorstSeverity: SeverityNone}
@@ -123,7 +123,7 @@ func (b *builder) conformanceBand(v *tierView) Band {
 
 // populationLine is ADR-0035's output verbatim: the matched count, the
 // resolved floor, where the floor came from, and which of the two sibling
-// states holds — never_seen and under_populated are different situations
+// states holds. never_seen and under_populated are different situations
 // with different fixes, so the line names one rather than ranking them.
 func (b *builder) populationLine(v *tierView) Population {
 	floor := inventory.ResolveFloor(v.population.Derived, v.population.Declared)
@@ -163,7 +163,7 @@ func (b *builder) populationLine(v *tierView) Population {
 // reading the seam returned for this Tier (ADR-0040). Knowledge is per
 // signal and per reading all the way down: a lane the meter could not read
 // carries Known false and the cause said out loud beside lanes that carry
-// figures — never a zero standing in for "we cannot see" (ADR-0008).
+// figures, never a zero standing in for "we cannot see" (ADR-0008).
 //
 // The lane state comes first, off the Tier's bound Blueprint rather than
 // off the meter: a signal the artefact wires no pipeline for has nothing
@@ -211,8 +211,8 @@ func (b *builder) signalRows(v *tierView) []SignalRow {
 // meterReported is whether the seam came back with a figure at all for a
 // lane: any non-zero count it could only have got from a pipeline that
 // exists and ran. A pipeline that was never instantiated emits no
-// counters, so the zeros that come back for it are the sum of nothing —
-// which is why they may be dropped, and why a non-zero may not be.
+// counters, so the zeros that come back for it are the sum of nothing.
+// That is why they may be dropped, and why a non-zero may not be.
 func meterReported(sig telemetry.MeteredSignal) bool {
 	if !sig.Known {
 		return false
@@ -221,7 +221,7 @@ func meterReported(sig telemetry.MeteredSignal) bool {
 }
 
 // tierLanes reads which signals the Tier's Blueprint instantiates a
-// pipeline for — the same lane lookup an edge's carried signals come from,
+// pipeline for, the same lane lookup an edge's carried signals come from,
 // so a card and the canvas can never disagree about which lanes exist. A
 // Tier bound to a Blueprint nobody can resolve leaves every lane unknown:
 // the lanes were never looked at, which is not the same as absent.
@@ -244,7 +244,7 @@ func (b *builder) tierLanes(v *tierView) map[requirements.SignalKind]LaneState {
 // volumeRow is one lane's flow through the Tier (ADR-0040 §2, §3). The
 // reduction is a figure and never a grade: a filter processor dropping
 // nine tenths of what it accepted is doing the job it was authored to do.
-// It is signed rather than clamped — a lane fanned out to two exporters
+// It is signed rather than clamped: a lane fanned out to two exporters
 // sends each item twice, and reporting that as a reduction of zero would
 // hide a real property of the pipeline. The only reds the meter itself
 // sources are the error-rate readings, which travel beside it untouched.
@@ -266,7 +266,7 @@ func volumeRow(sig telemetry.MeteredSignal, asOf string) VolumeReading {
 
 // freshnessRow is one lane's pipeline-grain freshness: the age of the
 // newest self-telemetry datapoint the counters were read from (ADR-0040
-// §4). A lane whose counters reported nothing in the window is silent — a
+// §4). A lane whose counters reported nothing in the window is silent: a
 // known-empty window, which the contract keeps distinct from not knowing.
 func freshnessRow(sig telemetry.MeteredSignal, asOf string, at time.Time) FreshnessReading {
 	if !sig.Known {
@@ -292,7 +292,7 @@ func freshnessRow(sig telemetry.MeteredSignal, asOf string, at time.Time) Freshn
 // churn is the Tier's restart rate: distinct collector process
 // incarnations in the window (ADR-0040 §4). It is Tier-wide because a
 // restart takes the whole process with it, and it is known independently
-// of the volume rows — an estate can meter its flow and still not be able
+// of the volume rows: an estate can meter its flow and still not be able
 // to count process starts.
 func (b *builder) churn(m telemetry.Metered) ChurnReading {
 	asOf := m.AsOf.UTC().Format(time.RFC3339)
@@ -310,9 +310,8 @@ func (b *builder) churn(m telemetry.Metered) ChurnReading {
 // estate declares no flow: they are derived on read from a telemetry
 // backend, and an estate that declares only its arrivals has said nothing
 // about its flow (ADR-0040).
-const flowCause = "the estate's readings file declares no flow readings — " +
-	"volume, freshness and shape are derived on read from a telemetry backend (ADR-0040), " +
-	"which a snapshot has none of"
+const flowCause = "the estate's readings file declares no flow readings: " +
+	"volume, freshness, and shape come from a telemetry backend, and a snapshot has none"
 
 // shapeCause is why the shape column stays unknown even beside a fully
 // declared flow. Shape is a count of required attributes and missing ones
@@ -322,18 +321,17 @@ const flowCause = "the estate's readings file declares no flow readings — " +
 // counters count items and know nothing about what is inside them.
 //
 // The one place the answer might be borrowed from is the conformance
-// verdicts of the Services whose Paths traverse the Tier — and that is
+// verdicts of the Services whose Paths traverse the Tier, and that is
 // exactly the blend ADR-0040 §1 refuses. Service-grain and pipeline-grain
 // are never mixed, and a shape figure assembled that way would attribute
 // one Service's instrumentation to every lane of a Tier that merely
 // carried it. Unknown with a stated cause is the true answer here, and a
 // true unknown is worth more than a plausible number.
-const shapeCause = "no shape reading exists at pipeline grain — self-telemetry counts items and " +
-	"not what is inside them, and borrowing the traversing Services' conformance would blend " +
-	"service-grain into pipeline-grain, which metering never does (ADR-0034, ADR-0040 §1)"
+const shapeCause = "no shape reading exists at pipeline grain: self-telemetry counts items, " +
+	"not what is inside them, and service-grain conformance is never blended into pipeline grain"
 
 // provenance feeds the "why?" popover: claim, the config lines that implied
-// it, and the SHA judged against — fed, never reconstructed (ADR-0041 §3).
+// it, and the SHA judged against. All fed, never reconstructed (ADR-0041 §3).
 func (b *builder) provenance(v *tierView) []Provenance {
 	sha := b.in.Commit
 	out := []Provenance{}
@@ -373,7 +371,7 @@ func (b *builder) provenance(v *tierView) []Provenance {
 	case inventory.FloorDeclared:
 		out = append(out, Provenance{
 			Key:   "floor",
-			Claim: fmt.Sprintf("population floor %d, declared on the Tier — a floor, never an equality (ADR-0035 §2)", floor.Min),
+			Claim: fmt.Sprintf("population floor %d, declared on the Tier as min_expected: a minimum, not an exact count", floor.Min),
 			Lines: b.locate(tierFile, "min_expected"),
 			SHA:   sha,
 		})
@@ -387,7 +385,7 @@ func (b *builder) provenance(v *tierView) []Provenance {
 	default:
 		out = append(out, Provenance{
 			Key:   "floor",
-			Claim: "no population floor: no substrate count and no declared min_expected, so never_seen keeps its neutrality (ADR-0035 §2)",
+			Claim: "no population floor: the substrate reports no count and the Tier declares no min_expected, so never_seen stays neutral",
 			Lines: b.locate(tierFile, "selector"),
 			SHA:   sha,
 		})
@@ -424,7 +422,7 @@ func (b *builder) provenance(v *tierView) []Provenance {
 }
 
 // environments lists every Environment the estate declares, production
-// first — the default lens (ADR-0033).
+// first, the default lens (ADR-0033).
 func (b *builder) environments() []string {
 	seen := map[string]bool{}
 	var out []string
@@ -507,7 +505,7 @@ func (b *builder) hops() []TopologyHop {
 
 // hopSignals lists the lanes a source Tier actually routes, so an edge
 // carries what travels it. An ungoverned source carries every signal the
-// receiving side can accept — nobody has declared otherwise.
+// receiving side can accept, because nobody has declared otherwise.
 func (b *builder) hopSignals(from string) []string {
 	tier, ok := b.topo.Tiers[from]
 	if !ok {
@@ -732,7 +730,7 @@ func (b *builder) floorTable() map[string]map[string]string {
 // requirements projects the library for the Requirement-first surface: what
 // a draft can be judged to satisfy, and what one click would add. A
 // Requirement asserting only on Observed state has nothing a draft could
-// satisfy, so it carries no suggestion — claimed and met stay side by side,
+// satisfy, so it carries no suggestion: claimed and met stay side by side,
 // never blended (REQ-031).
 func (b *builder) requirements() []RequirementDoc {
 	var out []RequirementDoc
@@ -770,8 +768,8 @@ func (b *builder) blueprintsUnder(r requirements.Requirement) []string {
 }
 
 // verifiedBy renders the Requirement's config assertion as the component a
-// composer could add. The assertion lists alternatives — "collect logs
-// somehow" — so the first entry is what a one-click suggestion inserts.
+// composer could add. The assertion lists alternatives ("collect logs
+// somehow"), so the first entry is what a one-click suggestion inserts.
 func verifiedBy(r requirements.Requirement) VerifiedBy {
 	v := VerifiedBy{Signals: []string{}}
 	if r.Signal != nil {

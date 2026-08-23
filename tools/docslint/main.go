@@ -5,12 +5,12 @@
 // decoration: `docs/nav.yaml` and the front matter together are the whole
 // contract between this repository and whatever builds telecraft.dev, and
 // the site is built in a different repository (issue #74). So a page whose
-// front matter does not parse does not fail here — it fails over there,
+// front matter does not parse does not fail here. It fails over there,
 // after the change has merged, in a build nobody watching this repository
 // is looking at.
 //
 // That is exactly what happened to docs/reference/estate-layout.md, whose
-// description read `The estate repository layout: root files, …` — an
+// description read `The estate repository layout: root files, …`, an
 // unquoted value with a colon in it, which YAML reads as a nested mapping.
 // It took the whole documentation build down and was invisible here.
 //
@@ -50,7 +50,7 @@ type nav struct {
 	// Pages declares the handful of documents that sit outside a section
 	// directory. The manifest carries their title and order itself, so
 	// those pages are published without front matter and are correct that
-	// way — `docs/glossary.md` is one. Checking them against the page
+	// way; `docs/glossary.md` is one. Checking them against the page
 	// schema would report a page that works.
 	Pages []struct {
 		Path string `yaml:"path"`
@@ -88,8 +88,8 @@ func main() {
 		}
 		scanned++
 		// A page the manifest describes is still checked when it carries
-		// front matter — a block that does not parse is a defect wherever
-		// the title comes from — but its absence is not a finding.
+		// front matter (a block that does not parse is a defect wherever
+		// the title comes from), but its absence is not a finding.
 		if problem := check(path, manifest[filepath.ToSlash(rel)]); problem != "" {
 			problems = append(problems, problem)
 		}
@@ -156,7 +156,7 @@ func check(path string, describedByManifest bool) string {
 		if describedByManifest {
 			return ""
 		}
-		return fmt.Sprintf("%s: no front matter — every published page opens with title, description and order (docs/contributing/documentation.md)", path)
+		return fmt.Sprintf("%s: no front matter. Every published page opens with title, description and order (docs/contributing/documentation.md)", path)
 	}
 	end := strings.Index(text[4:], "\n---")
 	if end < 0 {
@@ -165,7 +165,7 @@ func check(path string, describedByManifest bool) string {
 
 	var m matter
 	if err := yaml.Unmarshal([]byte(text[4:4+end]), &m); err != nil {
-		return fmt.Sprintf("%s: front matter is not valid YAML — %v\n    a value containing a colon must be quoted: description: \"Layout: root files\"", path, err)
+		return fmt.Sprintf("%s: front matter is not valid YAML: %v\n    a value containing a colon must be quoted: description: \"Layout: root files\"", path, err)
 	}
 
 	var missing []string

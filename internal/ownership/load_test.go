@@ -24,7 +24,7 @@ func loadErr(t *testing.T, dir string) error {
 	t.Helper()
 	est, err := Load(dir)
 	if err != nil && (len(est.Objects) != 0 || len(est.Tree.Teams) != 0) {
-		t.Fatalf("Load failed but returned a non-empty estate — a failed load must fail closed")
+		t.Fatalf("Load failed but returned a non-empty estate: a failed load must fail closed")
 	}
 	return err
 }
@@ -54,7 +54,7 @@ func loadFixture(t *testing.T) Estate {
 }
 
 // Acceptance: an estate fixture with a nested team tree loads, and the tree
-// reads back exactly as authored — parents, children, owner membership.
+// reads back exactly as authored: parents, children, owner membership.
 func TestEstateFixtureWithNestedTeamTreeLoads(t *testing.T) {
 	est := loadFixture(t)
 
@@ -107,7 +107,7 @@ func TestEstateFixtureWithNestedTeamTreeLoads(t *testing.T) {
 	}
 }
 
-// Acceptance: an ownerless authored object fails validation at load —
+// Acceptance: an ownerless authored object fails validation at load:
 // fail closed, never a finding that routes to nobody (REQ-015, ADR-0016).
 func TestOwnerlessAuthoredObjectFailsValidation(t *testing.T) {
 	dir := t.TempDir()
@@ -217,7 +217,7 @@ func TestUnknownOwnerOnObjectIsRejected(t *testing.T) {
 }
 
 // Collectors are not ownable (ADR-0016): one authored as an object must be
-// rejected with the remedy — split the Tier — in the message.
+// rejected with the remedy (split the Tier) in the message.
 func TestCollectorAsAuthoredObjectIsRejected(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "teams.yaml", goodTeams)
@@ -273,7 +273,7 @@ func TestEstateWithoutObjectsIsAnError(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "teams.yaml", goodTeams)
 	if err := loadErr(t, dir); err == nil {
-		t.Fatal("an estate with no authored objects must not load — there is nothing to route or roll up")
+		t.Fatal("an estate with no authored objects must not load: there is nothing to route or roll up")
 	}
 }
 
@@ -329,7 +329,7 @@ func TestPolicyFilesBesideTeamsAreSkipped(t *testing.T) {
 		t.Fatalf("an estate with policy files beside teams.yaml must load: %v", err)
 	}
 	if len(est.Objects) != 1 {
-		t.Errorf("got %d objects, want just the tier — policy files are not authored objects", len(est.Objects))
+		t.Errorf("got %d objects, want just the tier: policy files are not authored objects", len(est.Objects))
 	}
 }
 

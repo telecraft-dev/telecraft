@@ -15,12 +15,12 @@ type AuthoringFinding struct {
 }
 
 // EnvironmentFindings checks every requirement's Environments list against
-// the set of Environments known to the estate — those seen in telemetry or
+// the set of Environments known to the estate, those seen in telemetry or
 // declared on a Tier. The environment vocabulary is adopter-defined and open
 // (ADR-0033), so an unknown name cannot be a load error: the loader has no
 // authority over what environments exist. But a list entry that matches
 // nothing is almost always a typo, and a requirement that silently never
-// applies is the lenient-verdict failure mode this package exists to refuse —
+// applies is the lenient-verdict failure mode this package exists to refuse,
 // so it surfaces as an authoring finding instead.
 func (l Library) EnvironmentFindings(known []string) []AuthoringFinding {
 	knownSet := map[string]bool{}
@@ -44,14 +44,14 @@ func (l Library) EnvironmentFindings(known []string) []AuthoringFinding {
 		case len(unknown) == len(r.Environments):
 			out = append(out, AuthoringFinding{
 				RequirementID: r.ID,
-				Message: fmt.Sprintf("applies only to environments %s, none of which is known to the estate — it will never apply; fix the list or declare the environment",
+				Message: fmt.Sprintf("applies only to environments %s, none of which is known to the estate, so it will never apply. Fix the list or declare the environment.",
 					strings.Join(unknown, ", ")),
 			})
 		default:
 			for _, env := range unknown {
 				out = append(out, AuthoringFinding{
 					RequirementID: r.ID,
-					Message:       fmt.Sprintf("names environment %s, which is not known to the estate — that entry never matches", env),
+					Message:       fmt.Sprintf("names environment %s, which is not known to the estate, so that entry never matches", env),
 				})
 			}
 		}

@@ -10,8 +10,8 @@
 #
 # The extension reports effective config and health and cannot accept
 # remote config: the collector's own OpAMP support has no remote-config
-# side. That is exactly the Foreign shape — the platform sees what is
-# running and does not deliver it — and it is what the delivery reading
+# side. That is exactly the Foreign shape (the platform sees what is
+# running and does not deliver it), and it is what the delivery reading
 # reads a git-delivered collector by.
 #
 # Whether "no serving means an authored opamp extension" is an authoring

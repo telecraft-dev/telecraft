@@ -45,8 +45,8 @@ const LANDING = '/estate'
 /**
  * Whether this URL is somebody's own arrival rather than somebody else's
  * link, which is the only place the welcome Tour opens itself (ADR-0051
- * §7). A shared URL carries the sender's context — a selected object, a
- * filtered list, a claim in progress — and a Tour that opened on top of it
+ * §7). A shared URL carries the sender's context (a selected object, a
+ * filtered list, a claim in progress), and a Tour that opened on top of it
  * would bury the thing the link was sent for.
  *
  * The lens is the one param that does not count as context: it is a

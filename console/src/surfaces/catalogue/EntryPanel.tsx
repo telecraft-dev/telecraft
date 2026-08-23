@@ -9,7 +9,7 @@ import { chipClass } from '../../ui/Chip'
 /**
  * One Catalogue entry, summoned in place (ADR-0042 §3.2): identity with
  * the resolving alias, per-signal stability, and the upstream deprecation
- * notices — ready-made remediation text (ADR-0020). The governed
+ * notices, ready-made remediation text (ADR-0020). The governed
  * Components instantiating this type link back, and the palette door
  * answers "may my team use it?".
  */

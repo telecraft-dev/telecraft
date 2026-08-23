@@ -17,7 +17,7 @@ test('the rollout ledger renders per-cohort progress across both paths', async (
   await expect(page.getByTestId(`rollout-${CANARY}`)).toBeVisible()
   await expect(page.getByTestId(`rollout-${TRIAL}`)).toBeVisible()
 
-  // The canary's three cohorts: entered, active, pending — cumulative
+  // The canary's three cohorts: entered, active, pending: cumulative
   // membership, the union that only ever widens (§4).
   await expect(page.getByTestId(`cohort-${CANARY}-0`)).toContainText('1 member')
   await expect(page.getByTestId(`cohort-${CANARY}-1`)).toContainText('3 members')
@@ -25,7 +25,7 @@ test('the rollout ledger renders per-cohort progress across both paths', async (
   await expect(page.getByTestId(`cohort-${CANARY}-2`)).toContainText('pending')
 
   // Both delivery paths in one view: the active cohort splits 2 served,
-  // 1 foreign — the foreign member marked advisory, lag never failure (§7).
+  // 1 foreign, the foreign member marked advisory, lag never failure (§7).
   await expect(page.getByTestId(`cohort-served-${CANARY}-1`)).toContainText('1 of 2 on to')
   await expect(page.getByTestId(`cohort-foreign-${CANARY}-1`)).toContainText('0 of 1 on to')
   await expect(page.getByTestId(`cohort-foreign-${CANARY}-1`)).toContainText('1 from')
@@ -35,14 +35,14 @@ test('the rollout ledger renders per-cohort progress across both paths', async (
 test('halt and abort states are visible and deep-link to the Rollout panel', async ({ page }) => {
   await page.goto('/topology?view=rollout')
 
-  // The halt state: blocked below the abort threshold — the advance is
-  // simply never proposed (§6).
+  // The halt state: blocked below the abort threshold, so the advance is
+  // never proposed (§6).
   await expect(page.getByTestId(`rollout-decision-${CANARY}`)).toContainText('halted')
   // The abort state: the staging trial's whole cohort went dark.
   await expect(page.getByTestId(`rollout-decision-${TRIAL}`)).toContainText('abort proposed')
 
   // The halted member deep-links to the Rollout panel, where the reason
-  // and provenance live — and the state lands in the URL (ADR-0042 §3.5).
+  // and provenance live, and the state lands in the URL (ADR-0042 §3.5).
   await page.getByTestId(`rollout-halt-${CANARY}-gw-1`).click()
   await expect(page).toHaveURL(/object=rollout%3Adata-flow%2Fgateway-canary/)
   await expect(page.getByTestId('rollout-panel')).toBeVisible()
@@ -92,13 +92,13 @@ test('every ledger state is URL-addressable and restores fresh', async ({ page }
 test('the ledger links into the one model: Tier card and flat-list doors', async ({ page }) => {
   await page.goto('/topology?view=rollout')
 
-  // The target Tier summons the universal card panel in place — the same
+  // The target Tier summons the universal card panel in place: the same
   // component as everywhere a Tier appears (ADR-0042 §3.2).
   await page.getByTestId(`rollout-tier-${CANARY}`).click()
   await expect(page.getByTestId('card-panel')).toBeVisible()
   await expect(page.getByTestId('panel-title')).toHaveText('gateway')
 
-  // A member count is a door to the flat list, pre-filtered — per-collector
+  // A member count is a door to the flat list, pre-filtered: per-collector
   // detail lives there only (ADR-0042 §3.4).
   await page.getByTestId(`cohort-members-${CANARY}-1`).click()
   await expect(page).toHaveURL(/\/estate\?.*view=list/)

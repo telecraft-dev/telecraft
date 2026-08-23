@@ -7,7 +7,7 @@ import (
 )
 
 // fromYAML and toYAML are two rendered artefacts with distinct pipeline
-// wiring — the to adds a batch processor.
+// wiring: the to adds a batch processor.
 const fromYAML = `
 receivers:
   otlp/in: {}

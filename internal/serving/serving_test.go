@@ -9,7 +9,7 @@ import (
 )
 
 // Artefact choice is most-specific-wins over satisfied selectors, with an
-// equal-specificity tie resolving to the first Tier in id order — any
+// equal-specificity tie resolving to the first Tier in id order. Any
 // deterministic rule keeps replicas agreeing (ADR-0032 §2); this one is
 // also stable under re-ordering of the authored files.
 func TestMatchPicksMostSpecificSelectorDeterministically(t *testing.T) {
@@ -42,7 +42,7 @@ func TestMatchPicksMostSpecificSelectorDeterministically(t *testing.T) {
 			t.Errorf("%s: an unmatched collector must receive the Unmatched artefact, got %q", c.name, m.Artefact)
 		}
 		if len(m.Artefact) == 0 {
-			t.Errorf("%s: a Match carried no artefact — no decision may end empty (ADR-0010 rule 6)", c.name)
+			t.Errorf("%s: a Match carried no artefact. No decision may end empty", c.name) // ADR-0010 rule 6
 		}
 	}
 }
@@ -57,7 +57,7 @@ func TestSnapshotIndexesOnlySelectorCarryingTiers(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(snap.entries) != 2 {
-		t.Fatalf("index holds %d entries, want 2 — the selectorless batch Tier must not appear", len(snap.entries))
+		t.Fatalf("index holds %d entries, want 2: the selectorless batch Tier must not appear", len(snap.entries))
 	}
 	if snap.Commit != fixtureCommit {
 		t.Errorf("snapshot head = %q, want %q", snap.Commit, fixtureCommit)
@@ -65,7 +65,7 @@ func TestSnapshotIndexesOnlySelectorCarryingTiers(t *testing.T) {
 }
 
 // A snapshot with no Unmatched artefact cannot honour ADR-0030, so it
-// refuses to load — the server keeps serving the previous head instead of
+// refuses to load: the server keeps serving the previous head instead of
 // inventing behaviour for unmatched collectors.
 func TestSnapshotFailsClosedWithoutUnmatchedArtefact(t *testing.T) {
 	root, _ := fixtureEstate(t)
@@ -90,7 +90,7 @@ func TestSnapshotFailsClosedOnEmptyArtefact(t *testing.T) {
 }
 
 // DirSource is the standalone rung (ADR-0032 §3): a plain directory with
-// no git history around it still serves — the head is simply unnamed, and
+// no git history around it still serves: the head is simply unnamed, and
 // identity travels in the artefacts (ADR-0013).
 func TestDirSourceServesAPlainDirectory(t *testing.T) {
 	root, _ := fixtureEstate(t)

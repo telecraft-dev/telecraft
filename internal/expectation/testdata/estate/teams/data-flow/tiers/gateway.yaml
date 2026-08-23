@@ -1,5 +1,5 @@
 # The production gateway the fixture Service's Path traverses: one
-# Environment, one bound Blueprint version — the artefact the claims
+# Environment, one bound Blueprint version, the artefact the claims
 # derive from (ADR-0025, ADR-0038).
 owner: gateway-owners
 environment: production

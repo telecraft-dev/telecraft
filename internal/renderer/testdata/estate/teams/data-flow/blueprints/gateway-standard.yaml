@@ -1,7 +1,7 @@
 # The gateway Blueprint: per-signal lanes in explicit order, local
 # Components inline, shared Components by pinned reference at head
 # (ADR-0024, ADR-0026). The local `reporting` extension is of catalogue
-# type opamp — the renderer must emit it as opamp/reporting, never bare
+# type opamp, so the renderer must emit it as opamp/reporting, never bare
 # opamp (REQ-034, ADR-0010).
 name: gateway-standard
 version: 4

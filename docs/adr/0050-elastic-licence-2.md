@@ -11,7 +11,7 @@ added the day after the first commit; GitHub reported no licence for the
 repository, no `LICENSE` existed in any commit, there were no SPDX headers,
 and `console/package.json` carried no `license` field. The assertion was
 therefore a claim about a licence rather than a grant of one, and the two
-sibling repositories — `estate-demo` and `telecraft.dev` — carried no
+sibling repositories (`estate-demo` and `telecraft.dev`) carried no
 licence file either.
 
 That is a decision that had not been made, sitting in a repository that
@@ -19,8 +19,8 @@ reads as though it had been.
 
 Telecraft is intended to be a product as well as a codebase. The failure
 mode a permissive licence carries for a platform of this shape is specific
-and known: the differentiator here is the evaluator — deriving an
-expectation from configuration and checking it — and that is precisely what
+and known: the differentiator here is the evaluator (deriving an
+expectation from configuration and checking it), and that is precisely what
 is cheapest for a third party to run as a managed service without
 contributing anything back.
 
@@ -72,14 +72,14 @@ contributing anything back.
 
    The default matters more than the individual cases. A repository added
    later inherits ELv2 by being part of the project, so the question at
-   creation is whether to depart from it — not whether to have a licence at
+   creation is whether to depart from it, not whether to have a licence at
    all, which is how three of the four came to have none.
 
 ## Consequences
 
 - ELv2 does not conflict with ADR-0001. That ADR governs vendor words in
-  code and normative documentation — seam names, implementation names, the
-  neutral core — and a licence is neither. The `docs` scope of
+  code and normative documentation (seam names, implementation names, the
+  neutral core), and a licence is neither. The `docs` scope of
   `vendorlint.yaml` carries no rule matching the licence's name, and
   `LICENSE` at the root sits outside every scope, so the lint is unaffected.
   It is worth saying plainly that the licence's author is also the vendor
@@ -91,7 +91,7 @@ contributing anything back.
   anyone's consent; a second contributor makes a CLA a question worth
   asking, and it is not one yet.
 - The sibling repositories carried no licence at all, which meant no rights
-  granted — not what any of them is for. `estate-demo` is authored YAML,
+  granted, not what any of them is for. `estate-demo` is authored YAML,
   `telecraft.dev` is a static page and `estate-fixture` is a private CI
   fixture, so none is product code; §6 licenses them anyway, because the
   question a reader asks of a public repository is answered by a file at its

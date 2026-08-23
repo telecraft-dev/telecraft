@@ -8,7 +8,7 @@
 //	go run ./cmd/catalogue-import -tag v0.158.0
 //
 // writes catalogues/catalogue-v0.158.0.json and prints the coverage report.
-// Re-running against the same tag is idempotent — the artefact is
+// Re-running against the same tag is idempotent: the artefact is
 // byte-identical and left untouched. A different tag writes a new artefact
 // beside the old one; existing Catalogue versions are retained, never
 // replaced (ADR-0020 §9).
@@ -16,7 +16,7 @@
 // The fetch is a sparse, depth-1 checkout of only metadata.yaml and go.mod
 // (a few MB) into a temporary directory that is removed afterwards; the
 // upstream tree is never vendored into this repository. An already-fetched
-// tree — for example one carried across an air gap — can be imported
+// tree, for example one carried across an air gap, can be imported
 // offline with -source:
 //
 //	go run ./cmd/catalogue-import -tag v0.158.0 -source /path/to/contrib
@@ -41,14 +41,14 @@ func main() {
 }
 
 func run() error {
-	tag := flag.String("tag", "", "collector release tag to import (required), e.g. v0.158.0")
+	tag := flag.String("tag", "", "collector release tag to import, for example v0.158.0 (required)")
 	out := flag.String("out", "catalogues", "directory the versioned artefact is written to")
 	repo := flag.String("repo", defaultRepo, "source repository URL")
 	source := flag.String("source", "", "import an existing checkout instead of fetching (offline path)")
 	flag.Parse()
 
 	if *tag == "" {
-		return fmt.Errorf("-tag is required: a Catalogue is versioned atomically against one collector release tag")
+		return fmt.Errorf("-tag is required: each Catalogue is versioned against one collector release tag")
 	}
 
 	root := *source
@@ -95,7 +95,7 @@ func run() error {
 	if changed {
 		fmt.Printf("wrote %s (%d components)\n", path, cat.Len())
 	} else {
-		fmt.Printf("%s already holds this import byte-for-byte — nothing to do\n", path)
+		fmt.Printf("%s already holds this import, so there is nothing to do\n", path)
 	}
 	return nil
 }

@@ -22,7 +22,7 @@ import (
 // that failure mode is worse than a crash. So an unknown field, a malformed
 // document, a duplicate ID or a missing mandatory field is a load error
 // naming the file (and, for field errors, the field), and the returned
-// Library is empty — never partially loaded.
+// Library is empty, never partially loaded.
 func Load(dir string) (Library, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -44,7 +44,7 @@ func Load(dir string) (Library, error) {
 	}
 	sort.Strings(files)
 	if len(files) == 0 {
-		// An empty library would judge everything compliant vacuously —
+		// An empty library would judge everything compliant vacuously,
 		// exactly the silent leniency this loader exists to refuse.
 		return Library{}, fmt.Errorf("requirements library directory %s holds no requirement files (*.yaml)", dir)
 	}
@@ -98,7 +98,7 @@ func loadFile(path string) ([]Requirement, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return nil, fmt.Errorf("%s: empty file — a library file holds one requirement or a list of them", path)
+		return nil, fmt.Errorf("%s: the file is empty; a library file holds one requirement or a list of them", path)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))
@@ -121,7 +121,7 @@ func loadFile(path string) ([]Requirement, error) {
 	}
 
 	if err := dec.Decode(new(yaml.Node)); !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("%s: more than one YAML document in the file — one concern per file (REQ-021)", path)
+		return nil, fmt.Errorf("%s: the file holds more than one YAML document, but the library keeps one concern per file", path)
 	}
 	return out, nil
 }
@@ -133,7 +133,7 @@ func validate(path string, r Requirement) []string {
 	var p []string
 
 	if r.Owner == "" {
-		p = append(p, ctx+" has no owner — every authored object carries one (ADR-0016)")
+		p = append(p, ctx+" has no owner: every authored object needs one")
 	}
 	if r.Remediation == "" {
 		// A finding with no suggested fix is a complaint. The platform's
@@ -141,10 +141,10 @@ func validate(path string, r Requirement) []string {
 		p = append(p, ctx+" has no remediation")
 	}
 	if r.Version < 1 {
-		p = append(p, ctx+" needs a version of 1 or higher — raising the bar is a dated, visible event")
+		p = append(p, ctx+" needs a version of 1 or higher")
 	}
 	if !r.Level.Valid() {
-		p = append(p, fmt.Sprintf("%s: unknown requirement_level %q — one of required, conditionally_required, recommended, opt_in (ADR-0009)", ctx, r.Level))
+		p = append(p, fmt.Sprintf("%s: unknown requirement_level %q, want one of required, conditionally_required, recommended, or opt_in", ctx, r.Level))
 	}
 
 	if r.Config == nil && r.Signal == nil {
@@ -155,7 +155,7 @@ func validate(path string, r Requirement) []string {
 	}
 	if r.Signal != nil {
 		if !r.Signal.Kind.Valid() {
-			p = append(p, fmt.Sprintf("%s: unknown signal kind %q — one of logs, metrics, traces", ctx, r.Signal.Kind))
+			p = append(p, fmt.Sprintf("%s: unknown signal kind %q, want one of logs, metrics, or traces", ctx, r.Signal.Kind))
 		}
 		if r.Signal.Window <= 0 {
 			p = append(p, ctx+" needs a positive signal window")

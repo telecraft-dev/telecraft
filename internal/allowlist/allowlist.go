@@ -7,11 +7,11 @@
 // The policy composes down the team tree by narrowing-only inheritance: a
 // Team's effective list is its parent's effective list intersected with its
 // own declared list, and descendants can only subtract (ADR-0021 §2). The
-// one widening mechanism is the Grant — an ancestor-authored, owned
+// one widening mechanism is the Grant: an ancestor-authored, owned
 // exception adding named Catalogue entries to a specific descendant Team's
 // effective list, applying to that Team's subtree and narrowable below like
 // anything else (§3). Absent any authored list, the effective list is the
-// whole active Catalogue — governance pressure comes from floors and
+// whole active Catalogue. Governance pressure comes from floors and
 // findings, not an empty-by-default shop (§4).
 //
 // Allow-lists and Grants are authored files in the estate repo beside
@@ -19,7 +19,7 @@
 // never rows edited live in the instance database. Loading is strict and
 // fails closed, matching internal/ownership: an unknown field, an unknown
 // team or owner, a grant without ancestor authority, or an entry matching
-// nothing in the active Catalogue is a load error naming the file — a
+// nothing in the active Catalogue is a load error naming the file, because a
 // silently dropped entry would widen or narrow a palette nobody reviewed.
 //
 // Entries are shapes, never literals (the normaliser spike verdict on issue
@@ -39,9 +39,9 @@ import (
 )
 
 // Entry is one Allow-list or Grant entry: a shape selecting Catalogue
-// components, authored as "class/type-pattern". The class side is exact —
-// the unit of allowing is the component key (class, type), ADR-0021 §1 —
-// and the type side is a pattern: `*` matches any run of characters, `?`
+// components, authored as "class/type-pattern". The class side is exact,
+// because the unit of allowing is the component key (class, type) per
+// ADR-0021 §1, and the type side is a pattern: `*` matches any run of characters, `?`
 // exactly one, anything else itself. `receiver/otlp` names one component;
 // `exporter/kafka*` a family; `processor/*` a class.
 type Entry struct {
@@ -50,20 +50,20 @@ type Entry struct {
 }
 
 // parseEntry reads the authored "class/type-pattern" form. The pattern
-// vocabulary is deliberately small — literals plus `*` and `?`. Character
+// vocabulary is deliberately small: literals plus `*` and `?`. Character
 // classes and escapes are rejected so that no authored entry can be a
 // malformed pattern at match time: what loads, matches.
 func parseEntry(s string) (Entry, error) {
 	class, pattern, ok := strings.Cut(s, "/")
 	if !ok || class == "" || pattern == "" {
-		return Entry{}, fmt.Errorf("entry %q is not class/type-pattern — like receiver/otlp, exporter/kafka* or processor/*", s)
+		return Entry{}, fmt.Errorf("entry %q is not in the form class/type-pattern, for example receiver/otlp, exporter/kafka* or processor/*", s)
 	}
 	c := catalogue.Class(class)
 	if !c.Pipeline() {
-		return Entry{}, fmt.Errorf("entry %q: %q is not a pipeline class — one of receiver, processor, exporter, connector, extension", s, class)
+		return Entry{}, fmt.Errorf("entry %q: %q is not a class. Use one of receiver, processor, exporter, connector, or extension", s, class)
 	}
 	if i := strings.IndexAny(pattern, `[]\/`); i >= 0 {
-		return Entry{}, fmt.Errorf("entry %q: type pattern contains %q — a pattern is literal characters plus * and ? only", s, string(pattern[i]))
+		return Entry{}, fmt.Errorf("entry %q: the type pattern contains %q. A pattern holds only literal characters, * and ?", s, string(pattern[i]))
 	}
 	return Entry{Class: c, Type: pattern}, nil
 }
@@ -74,8 +74,8 @@ func (e Entry) String() string {
 }
 
 // Matches reports whether the entry selects this Catalogue component. The
-// pattern is tried against the canonical type and the deprecated_type alias
-// — aliases resolve on every lookup (ADR-0020 §3), so an entry written
+// pattern is tried against the canonical type and the deprecated_type alias.
+// Aliases resolve on every lookup (ADR-0020 §3), so an entry written
 // against the historical name keeps selecting the component it always did.
 func (e Entry) Matches(c catalogue.Component) bool {
 	if c.Class != e.Class {
@@ -114,14 +114,14 @@ func (l AllowList) matches(c catalogue.Component) bool {
 }
 
 // GrantID names one Grant. Everything a team may use traces to either the
-// root list surviving intersection or a named Grant (ADR-0021 §3) — the id
+// root list surviving intersection or a named Grant (ADR-0021 §3). The id
 // is that name, carried through to the effective palette's provenance.
 type GrantID string
 
 // Grant is an ancestor-authored scoped exception: it adds the components its
 // entries select to the target Team's effective list, applies to that Team's
 // subtree, and can be narrowed back out below like anything else (ADR-0021
-// §3). A Grant is an authored object — owned, versioned, reviewable — and
+// §3). A Grant is an authored object (owned, versioned, reviewable), and
 // its authority is its owner's team, which must be a proper ancestor of the
 // target: additions are the ancestor's call, by design.
 type Grant struct {

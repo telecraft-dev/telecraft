@@ -1,13 +1,13 @@
 // The fixture rollout reading (ADR-0029): cohort membership as a pure
 // function, the advisory running-artefact reading across both delivery
-// paths, and the halt/advance evaluation — the same semantics as
+// paths, and the halt/advance evaluation: the same semantics as
 // internal/rollout, run over the fixture estate. Membership is never
 // stored (§4): this module computes it per request from the authored
 // Rollout and the reported identifying attributes, exactly as the server
 // computes it per connect. The Foreign population reads everything and
 // blocks nothing (§7): the served path answers by acknowledged config
-// hash; the foreign path by the telecraft.tier stamp readings —
-// self-telemetry component identity under the Tier stamp (ADR-0039 §5) —
+// hash; the foreign path by the telecraft.tier stamp readings,
+// self-telemetry component identity under the Tier stamp (ADR-0039 §5),
 // and a member still on the *from* artefact is lag, never failure.
 
 import { createHash } from 'node:crypto'
@@ -42,7 +42,7 @@ export function bucket(keys, attrs) {
   return Number(sum.readBigUInt64BE(0) % BigInt(BUCKETS))
 }
 
-/** Equality over every asked pair — the Tier selector's semantics (ADR-0007). */
+/** Equality over every asked pair: the Tier selector's semantics (ADR-0007). */
 function satisfies(selector, attrs) {
   return Object.entries(selector).every(([key, value]) => attrs[key] === value)
 }
@@ -67,7 +67,7 @@ function specMember(cohort, hashAttributes, attrs) {
  * Reports whether reported identifying attributes fall in the cohort of
  * stages 0..stage: the union, so advancing only ever widens and no
  * collector flaps backwards (§4). Identical inputs yield identical
- * membership anywhere — server, CI, and this preview alike.
+ * membership anywhere: server, CI, and this preview alike.
  */
 export function member(rollout, stage, attrs) {
   for (let i = 0; i <= stage && i < rollout.stages.length; i++) {
@@ -80,7 +80,7 @@ export function member(rollout, stage, attrs) {
 
 /**
  * Decides which artefact one member runs. The served path answers by
- * acknowledged config hash — only an APPLIED acknowledgement names what
+ * acknowledged config hash; only an APPLIED acknowledgement names what
  * runs; a FAILED reading's hash names what was refused, the collector has
  * self-reverted (ADR-0010). The foreign path answers by the stamp
  * readings: the component identities observed in self-telemetry under the
@@ -93,7 +93,7 @@ export function runningArtefact(reading, artefacts) {
     if (reading.remote.configHash === artefacts.to.hash) return 'to'
     if (reading.remote.configHash === artefacts.from.hash) return 'from'
     // An unrecognised hash is another artefact, but fresher stamp
-    // readings may have arrived since — fall through.
+    // readings may have arrived since, so fall through.
   }
   const observed = reading?.stamp?.components
   if (!observed) return 'unknown'
@@ -114,7 +114,7 @@ function setEqual(seen, components) {
 
 const CONDITIONS = [
   {
-    // v1 signal (a): FAILED for the *to* artefact's hash — the apply
+    // v1 signal (a): FAILED for the *to* artefact's hash. The apply
     // failed and the Supervisor has already self-reverted (ADR-0010). A
     // FAILED for any other hash is some other delivery's problem.
     name: 'failed',
@@ -127,7 +127,7 @@ const CONDITIONS = [
     },
   },
   {
-    // v1 signal (b): went dark after apply — took the new config, then
+    // v1 signal (b): went dark after apply. It took the new config, then
     // silent past the staleness horizon: the crash-loop signature that
     // never reports FAILED.
     name: 'went_dark',
@@ -158,7 +158,7 @@ function formatDuration(ms) {
   return `${Math.round(ms / UNIT_MS.h)}h`
 }
 
-/** Renders one cohort spec for reading — the ledger's spec column. */
+/** Renders one cohort spec for reading: the ledger's spec column. */
 export function cohortLabel(cohort) {
   const parts = []
   if (cohort.hosts) parts.push(`${cohort.hosts.attribute} ∈ {${cohort.hosts.values.join(', ')}}`)
@@ -178,7 +178,7 @@ export function cohortLabel(cohort) {
 /**
  * The target Tier's population: the collectors satisfying its authored
  * selector, each with its rollout reading (`rolloutReadings`, keyed by
- * collector id — path, acknowledged hash, stamp reading, silence).
+ * collector id: path, acknowledged hash, stamp reading, silence).
  */
 function population(estate, rollout) {
   const selector = estate.selectors[rollout.tier] ?? {}
@@ -196,7 +196,7 @@ function emptySplit() {
 
 /**
  * Evaluates one Rollout over the fixture estate: a pure function of its
- * inputs, mirroring internal/rollout Evaluate — the decision order is
+ * inputs, mirroring internal/rollout Evaluate. The decision order is
  * abort, blocked, soak, no-evidence, advance. It proposes nothing itself:
  * hold and blocked are the passive states, a withheld proposal with no
  * control loop.
@@ -207,7 +207,7 @@ export function evaluateRollout(estate, rollout, now) {
   const soakedMs = Math.max(0, now.getTime() - Date.parse(rollout.stageStarted))
 
   // Per-cohort progress: each stage's cumulative membership (stages
-  // 0..index — entered cohorts accumulate, §4), split by delivery path.
+  // 0..index, since entered cohorts accumulate, §4), split by delivery path.
   // Pending stages are the membership preview: information for the
   // reviewer, never the authoritative decision.
   const cohorts = rollout.stages.map((stage, index) => {
@@ -236,7 +236,7 @@ export function evaluateRollout(estate, rollout, now) {
     cohorts[i].widens = total - previous
   }
 
-  // The evidence, computed over the active cohort — collectors actually
+  // The evidence, computed over the active cohort: collectors actually
   // running the *to* artefact on either path count toward the advance;
   // members still on *from* are lag, displayed, never blocking (§7).
   const evidence = {
@@ -276,17 +276,17 @@ export function evaluateRollout(estate, rollout, now) {
   let reason
   if (evidence.membersSeen > 0 && haltedMembers / evidence.membersSeen >= abortFraction) {
     decision = 'abort'
-    reason = `${haltedMembers} of ${evidence.membersSeen} cohort members halted, at or past the abort threshold — propose reverting the Tier to single-bound from (ADR-0029 §6)`
+    reason = `${haltedMembers} of ${evidence.membersSeen} cohort members halted, at or past the abort threshold. Propose reverting the Tier to the from artefact alone`
   } else if (haltedMembers > 0) {
     decision = 'blocked'
-    reason = `${haltedMembers} cohort member(s) halted below the abort threshold — the advance is simply never proposed (ADR-0029 §6)`
+    reason = `${haltedMembers} cohort member(s) halted below the abort threshold, so the advance is not proposed`
   } else if (soakedMs < minSoakMs) {
     decision = 'hold'
     reason = `soaked ${evidence.soaked} of the stage's minimum ${evidence.minSoak}`
   } else if (evidence.runningTo === 0) {
     decision = 'hold'
     reason =
-      'no cohort member observed running the to artefact yet — advance evidence is computed over collectors actually running it (ADR-0029 §7)'
+      'no cohort member observed running the to artefact yet. Advance evidence counts only collectors actually running it'
   } else {
     decision = 'advance'
     reason = `exit criteria met: ${evidence.runningTo} of ${evidence.membersSeen} cohort members running the to artefact, ${haltedMembers} halted, soaked ${evidence.soaked} of the minimum ${evidence.minSoak}`

@@ -5,7 +5,7 @@ import type { Box } from './position'
  * Finding, measuring and re-measuring the element a Step points at.
  *
  * An anchor is a `data-tour` attribute a surface declares (ADR-0051 §5).
- * It may not be there yet — the surface may still be fetching — it may
+ * It may not be there yet (the surface may still be fetching), it may
  * move when a panel opens beside it, and it may never appear at all. All
  * three are the same case here: measure what is there now, watch for it to
  * change, and answer `null` when there is nothing, which the runner
@@ -33,7 +33,7 @@ export function findAnchor(anchor: string | undefined): HTMLElement | null {
 function boxOf(element: HTMLElement | null): Box | null {
   if (element === null) return null
   const rect = element.getBoundingClientRect()
-  // A zero-area element is present but not laid out — a collapsed section,
+  // A zero-area element is present but not laid out: a collapsed section,
   // or a surface mid-render. Pointing at it would draw a spotlight around
   // nothing, so it counts as absent until it has a size.
   if (rect.width === 0 && rect.height === 0) return null

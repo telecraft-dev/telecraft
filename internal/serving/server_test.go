@@ -42,7 +42,7 @@ func startedServer(t *testing.T, root string) *Server {
 	return s
 }
 
-// connect runs an OpAMP client — the same library the Supervisor embeds —
+// connect runs an OpAMP client (the same library the Supervisor embeds)
 // against the server, reporting attrs, and returns a channel of offered
 // remote configs.
 func connect(t *testing.T, s *Server, attrs map[string]string) chan *protobufs.AgentRemoteConfig {
@@ -114,11 +114,11 @@ func TestServedCollectorReceivesTierArtefactWithCommitStamp(t *testing.T) {
 		t.Fatalf("served config is not valid YAML: %v", err)
 	}
 	if got := doc.Service.Telemetry.Resource[renderer.CommitAttribute]; got != fixtureCommit {
-		t.Errorf("commit stamp = %v, want %v — the artefact carries its own identity (ADR-0013)", got, fixtureCommit)
+		t.Errorf("commit stamp = %v, want %v: the artefact carries its own identity", got, fixtureCommit) // ADR-0013
 	}
 }
 
-// AC: an unmatched collector receives the Unmatched artefact — never an
+// AC: an unmatched collector receives the Unmatched artefact, never an
 // empty config map (REQ-042, ADR-0030): stamped, labelled
 // governed-by-nobody, no data pipelines.
 func TestUnmatchedCollectorReceivesUnmatchedArtefact(t *testing.T) {
@@ -131,7 +131,7 @@ func TestUnmatchedCollectorReceivesUnmatchedArtefact(t *testing.T) {
 	}))
 	files := rc.GetConfig().GetConfigMap()
 	if len(files) == 0 {
-		t.Fatal("an unmatched collector received an empty config map (ADR-0010 rule 6)")
+		t.Fatal("an unmatched collector received an empty config map") // ADR-0010 rule 6
 	}
 	body := files[""].GetBody()
 	if want := res.Artefacts[renderer.UnmatchedArtefactPath]; !bytes.Equal(body, want) {
@@ -144,12 +144,12 @@ func TestUnmatchedCollectorReceivesUnmatchedArtefact(t *testing.T) {
 
 // The guard in its unit shape: nothing empty crosses remoteConfig, however
 // a broken artefact might arrive there (ADR-0010 rule 6). The wire path
-// then serves no RemoteConfig at all — visible failure over silent
+// then serves no RemoteConfig at all: visible failure over silent
 // success.
 func TestServerNeverServesAnEmptyConfigMap(t *testing.T) {
 	for _, artefact := range [][]byte{nil, {}, []byte("   \n\t")} {
 		if _, err := remoteConfig(artefact); err == nil {
-			t.Errorf("remoteConfig(%q) built a config — the server must never serve an empty config map", artefact)
+			t.Errorf("remoteConfig(%q) built a config: the server must never serve an empty config map", artefact)
 		}
 	}
 
@@ -164,12 +164,12 @@ func TestServerNeverServesAnEmptyConfigMap(t *testing.T) {
 		AgentDescription: description(attrsFor(snap.entries[0].selector)),
 	})
 	if resp.GetRemoteConfig() != nil {
-		t.Fatal("an empty artefact was served as remote config (ADR-0010 rule 6)")
+		t.Fatal("an empty artefact was served as remote config") // ADR-0010 rule 6
 	}
 }
 
 // A message without the description cannot be matched, and the server
-// keeps no per-connection attribute memory (ADR-0032) — so it asks for
+// keeps no per-connection attribute memory (ADR-0032), so it asks for
 // full state rather than guessing or remembering.
 func TestMessageWithoutDescriptionRequestsFullState(t *testing.T) {
 	root, _ := fixtureEstate(t)
@@ -177,7 +177,7 @@ func TestMessageWithoutDescriptionRequestsFullState(t *testing.T) {
 
 	resp := s.onMessage(context.Background(), fakeConn{1}, &protobufs.AgentToServer{})
 	if resp.Flags&uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState) == 0 {
-		t.Error("no ReportFullState flag — a stateless server must ask, not remember")
+		t.Error("no ReportFullState flag: a stateless server must ask, not remember")
 	}
 	if resp.GetRemoteConfig() != nil {
 		t.Error("a config was served with nothing to match on")
@@ -185,7 +185,7 @@ func TestMessageWithoutDescriptionRequestsFullState(t *testing.T) {
 }
 
 // A collector already running this head's artefact reports its hash back
-// and gets no re-offer — the steady state is quiet.
+// and gets no re-offer: the steady state is quiet.
 func TestCollectorAlreadyOnHeadGetsNoReOffer(t *testing.T) {
 	root, _ := fixtureEstate(t)
 	s := testServer(t, root)
@@ -206,8 +206,8 @@ func TestCollectorAlreadyOnHeadGetsNoReOffer(t *testing.T) {
 }
 
 // AC: restart loses only the digest, proven here (ADR-0032 §1): a fresh
-// instance over the same repo serves byte-identically — artefact choice is
-// a pure function of (head, reported attributes) — and the digest rebuilds
+// instance over the same repo serves byte-identically, as artefact choice is
+// a pure function of (head, reported attributes), and the digest rebuilds
 // from the collector's own next report, the ordinary cold-start cost of
 // one extra parse.
 func TestRestartLosesOnlyTheDigest(t *testing.T) {
@@ -230,14 +230,14 @@ func TestRestartLosesOnlyTheDigest(t *testing.T) {
 	// "Restart": a new process holds nothing the old one held.
 	after := testServer(t, root)
 	if n := digestCount(after); n != 0 {
-		t.Fatalf("digest count = %d on a fresh instance, want 0 — only the digest may die (ADR-0032)", n)
+		t.Fatalf("digest count = %d on a fresh instance, want 0: only the digest may die", n) // ADR-0032
 	}
 	respAfter := after.onMessage(context.Background(), fakeConn{7}, msg)
 	if !bytes.Equal(servedBody(respBefore), servedBody(respAfter)) {
 		t.Error("a restarted server served different bytes for the same head and attributes")
 	}
 	if n := digestCount(after); n != 1 {
-		t.Errorf("digest count = %d after the collector re-reported, want 1 — the cost of restart is one extra parse", n)
+		t.Errorf("digest count = %d after the collector re-reported, want 1: the cost of restart is one extra parse", n)
 	}
 }
 
@@ -281,7 +281,7 @@ func TestDigestDiesWithTheConnection(t *testing.T) {
 	}
 	s.onConnectionClose(conn)
 	if n := digestCount(s); n != 0 {
-		t.Errorf("digest count = %d after close, want 0 — the digest dies with the connection", n)
+		t.Errorf("digest count = %d after close, want 0: the digest dies with the connection", n)
 	}
 }
 
@@ -289,7 +289,7 @@ func TestDigestDiesWithTheConnection(t *testing.T) {
 // invariant: the serving path may hold the repo snapshot and the
 // per-connection digest, nothing else. Every Server field is enumerated
 // here as wiring or storage; adding one fails this test until it is
-// classified — and a new storage field requires an ADR-0032 amendment.
+// classified, and a new storage field requires an ADR-0032 amendment.
 func TestStorageInventoryIsTheClosedList(t *testing.T) {
 	wiring := map[string]bool{
 		"source":      true, // where snapshots come from
@@ -310,16 +310,16 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 	for i := range typ.NumField() {
 		name := typ.Field(i).Name
 		if !wiring[name] && !storage[name] {
-			t.Errorf("Server holds unclassified field %q — server-side storage is a closed list; classify it here, and if it stores collector data, ADR-0032 needs an amendment", name)
+			t.Errorf("Server holds unclassified field %q: server-side storage is a closed list; classify it here, and if it stores collector data, amend the storage decision first", name) // ADR-0032
 		}
 	}
 	if typ.NumField() != len(wiring)+len(storage) {
-		t.Errorf("Server has %d fields, %d classified — keep the audit exhaustive", typ.NumField(), len(wiring)+len(storage))
+		t.Errorf("Server has %d fields, %d classified: keep the audit exhaustive", typ.NumField(), len(wiring)+len(storage))
 	}
 }
 
-// A configured tap observes every message with the flattened identity —
-// including one with no description, where identity is nil — and learns of
+// A configured tap observes every message with the flattened identity
+// (including one with no description, where identity is nil) and learns of
 // the connection's close. The serving decision is unaffected by it.
 func TestTapObservesReportsAndCloses(t *testing.T) {
 	root, _ := fixtureEstate(t)
@@ -332,7 +332,7 @@ func TestTapObservesReportsAndCloses(t *testing.T) {
 		AgentDescription: description(gatewayAttrs()),
 	})
 	if withDesc.GetRemoteConfig() == nil {
-		t.Error("the serving decision changed under a tap — no config was offered")
+		t.Error("the serving decision changed under a tap: no config was offered")
 	}
 	s.onMessage(context.Background(), conn, &protobufs.AgentToServer{})
 	s.onConnectionClose(conn)
@@ -369,7 +369,7 @@ func (r *recordingTap) Report(conn any, identity map[string]string, _ *protobufs
 func (r *recordingTap) Closed(conn any) { r.closed = append(r.closed, conn) }
 
 // testServer builds a Server over root and loads its snapshot without
-// opening the listener — the serving decision under test is onMessage.
+// opening the listener: the serving decision under test is onMessage.
 func testServer(t *testing.T, root string) *Server {
 	t.Helper()
 	s, err := New(Config{

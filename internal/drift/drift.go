@@ -1,16 +1,16 @@
 // Package drift detects library_drift: config in git that passes the
-// version it claims or pins while failing the current one — "the goalposts
+// version it claims or pins while failing the current one: "the goalposts
 // moved and you haven't caught up" (ADR-0026 §6, REQ-025). It is one
-// finding kind with two facets carried as data (ADR-0026 §7): Requirement —
-// the bar moved, whether a versioned Requirement or a raised Service Class
-// floor — and Component — a pinned reference behind the owning team's head.
+// finding kind with two facets carried as data (ADR-0026 §7): Requirement (the bar moved, whether a versioned Requirement
+// or a raised Service Class floor) and Component (a pinned reference behind
+// the owning team's head).
 // Every finding is repo-owned: the subject is authored config, the
 // accountable party is the consuming object's owner, and the remedy is a
 // version-diff review and a PR, never re-instrumentation (ADR-0004).
 //
 // library_drift is deliberately distinct from the two divergences it must
-// never be conflated with. Delivery divergence — Intended × Declared, a
-// collector running something other than what git holds — is a delivery
+// never be conflated with. Delivery divergence (Intended × Declared, a
+// collector running something other than what git holds) is a delivery
 // status (ADR-0004), judged per collector, not here. And a rendered/ tree
 // inconsistent with the authored sources is the CI recompute's mismatch
 // (ADR-0028 §2), a mechanical invariant, not a diagnosis. This package
@@ -25,7 +25,7 @@
 // already carries:
 //
 //   - A pinned Component reference behind the owning team's head is drift
-//     by definition — "you reference version N; the world is at M" is the
+//     by definition: "you reference version N; the world is at M" is the
 //     whole diagnosis (ADR-0026 §7); no content is needed to make it.
 //   - A satisfies claim is stamped by the composer at save against the
 //     version it was judged on (ADR-0026 §4). When the Intended config
@@ -35,7 +35,7 @@
 //     plugs in: an implementation backed by the estate's git history (the
 //     server's local clone cache, ADR-0032) resolves the requirement as it
 //     stood at the claimed version, and a subject that fails that too is
-//     demoted to the ordinary failure it is (ADR-0026 §6) — the
+//     demoted to the ordinary failure it is (ADR-0026 §6), the
 //     evaluator's business, silent here. No git-backed implementation
 //     ships yet; the seam exists so growing one never reshapes the
 //     detection.
@@ -43,7 +43,7 @@
 //     is always consistent (ADR-0028 §2), so an artefact under rendered/
 //     was reviewed and merged under the floor policy then in force.
 //     Breaching the current policy reads as the floor having been raised
-//     over standing config — exactly the case REQ-025 names. A Tier with
+//     over standing config, exactly the case REQ-025 names. A Tier with
 //     no committed artefact has claimed nothing and raises nothing here;
 //     its breach surfaces at render (ADR-0023 §5).
 package drift
@@ -70,14 +70,14 @@ const (
 	FacetRequirement Facet = "requirement"
 
 	// FacetComponent marks a pinned shared-Component reference behind the
-	// owning team's head — "component update available" (ADR-0026 §2).
+	// owning team's head: "component update available" (ADR-0026 §2).
 	FacetComponent Facet = "component"
 )
 
 // Finding is one library_drift diagnosis. Every finding routes to the team
 // that owns the consuming object (ADR-0016): drift is the consumer's to
 // resolve, because only the consumer can review the version diff and adopt
-// it — an owning team cannot force propagation (ADR-0026 §3).
+// it; an owning team cannot force propagation (ADR-0026 §3).
 type Finding struct {
 	Facet Facet
 
@@ -103,7 +103,7 @@ type Finding struct {
 
 // Nudge is the housekeeping case (ADR-0026 §6): a stale claim on a subject
 // that passes both the claimed and the current version. Not an outcome,
-// never counted — visible so the stamp gets bumped, nothing more.
+// never counted: visible so the stamp gets bumped, nothing more.
 type Nudge struct {
 	Blueprint string
 	Team      string
@@ -111,7 +111,7 @@ type Nudge struct {
 	Message   string
 }
 
-// History resolves what a Requirement looked like at a claimed version —
+// History resolves what a Requirement looked like at a claimed version:
 // content that lives in git history, which the working tree does not hold
 // (ADR-0003). A nil History trusts the composer's stamp (ADR-0026 §4) as
 // the passed-at-claim-time record; see the package comment for the
@@ -119,7 +119,7 @@ type Nudge struct {
 type History interface {
 	// RequirementAt returns the requirement as it stood at the given
 	// version, and whether history can resolve it. An unresolvable version
-	// falls back to trusting the stamp — the seam degrades toward
+	// falls back to trusting the stamp; the seam degrades toward
 	// reporting drift, never toward silence.
 	RequirementAt(id string, version int) (requirements.Requirement, bool)
 }
@@ -146,14 +146,14 @@ type Report struct {
 	Nudges   []Nudge
 }
 
-// Detect runs the three detections — pinned references behind head,
+// Detect runs the three detections (pinned references behind head,
 // satisfies claims behind a moved Requirement, committed artefacts under a
-// raised floor — over one estate. It fails closed on inputs it cannot
+// raised floor) over one estate. It fails closed on inputs it cannot
 // judge: a detection that guessed would report an estate cleaner or dirtier
 // than anyone knows it to be.
 func Detect(in Inputs) (Report, error) {
 	if in.Catalogue == nil {
-		return Report{}, fmt.Errorf("no catalogue — floors judge per (component, signal) against the active Catalogue (ADR-0023)")
+		return Report{}, fmt.Errorf("no catalogue: floor checks need the active Catalogue")
 	}
 	if err := in.Floors.Validate(); err != nil {
 		return Report{}, err
@@ -177,7 +177,7 @@ func Detect(in Inputs) (Report, error) {
 
 // pinDrift finds shared-Component references pinned behind the owning
 // team's head: the Component facet, structural by definition (ADR-0026
-// §7). One finding per (Blueprint, pinned reference) — the fix is one pin
+// §7). One finding per (Blueprint, pinned reference); the fix is one pin
 // bump, however many lanes reference it.
 func pinDrift(est blueprint.Estate, bp blueprint.Blueprint) []Finding {
 	type behind struct {
@@ -222,9 +222,9 @@ func pinDrift(est blueprint.Estate, bp blueprint.Blueprint) []Finding {
 			Owner:     bp.Owner,
 			Blueprint: bp.ID(),
 			Lane:      strings.Join(b.lanes, ", "),
-			Message: fmt.Sprintf("pins %s, but the owning team's head is version %d — the reference passes the version it pins while the world has moved; a component update is available (ADR-0026 §2, §7)",
+			Message: fmt.Sprintf("pins %s, but the owning team's head is version %d. A component update is available",
 				b.ref, b.head),
-			Remediation: fmt.Sprintf("review the %s v%d→v%d config diff and bump the pin in a PR — git is the source of truth, there is no live mutation (ADR-0026 §2)",
+			Remediation: fmt.Sprintf("review the %s v%d→v%d config diff and bump the pin in a PR",
 				b.ref.ID(), b.ref.Pin, b.head),
 		})
 	}
@@ -233,7 +233,7 @@ func pinDrift(est blueprint.Estate, bp blueprint.Blueprint) []Finding {
 
 // claimDrift judges one Blueprint's version-stamped satisfies claims
 // against the requirements at head: the Requirement facet. The Intended
-// reading — the lanes compiled exactly as they would render — meets the
+// reading (the lanes compiled exactly as they would render) meets the
 // same config-assertion checker the conformance cross uses (ADR-0004).
 func claimDrift(in Inputs, bp blueprint.Blueprint) ([]Finding, []Nudge) {
 	var findings []Finding
@@ -243,21 +243,21 @@ func claimDrift(in Inputs, bp blueprint.Blueprint) ([]Finding, []Nudge) {
 	for _, claim := range bp.Satisfies {
 		req, ok := in.Library.Requirements[claim.Requirement]
 		if !ok {
-			// A claim naming no requirement in the library cannot drift —
+			// A claim naming no requirement in the library cannot drift:
 			// there is no current version to fail. Dangling claims are an
 			// authoring concern, not a drift diagnosis.
 			continue
 		}
 		if claim.Version >= req.Version {
-			// At head, failing is the ordinary failure — "you never
-			// complied" — which is the evaluator's diagnosis, never drift
+			// At head, failing is the ordinary failure ("you never
+			// complied"), which is the evaluator's diagnosis, never drift
 			// (ADR-0026 §6). Ahead of head is a stamp on a version that
 			// does not exist; nothing can drift against it.
 			continue
 		}
 		if req.Config == nil {
 			// A signal-only requirement asserts nothing about config, so
-			// intent alone cannot be judged against it — drift on such a
+			// intent alone cannot be judged against it, so drift on such a
 			// claim is undetectable from the repo (ADR-0004: the Intended
 			// reading judges config assertions).
 			continue
@@ -273,14 +273,14 @@ func claimDrift(in Inputs, bp blueprint.Blueprint) ([]Finding, []Nudge) {
 				Blueprint: bp.ID(),
 				Team:      bp.Team,
 				Owner:     bp.Owner,
-				Message: fmt.Sprintf("claims %s but the requirement is at version %d and the config passes it — housekeeping, not drift: re-stamp the claim (ADR-0026 §6)",
+				Message: fmt.Sprintf("claims %s, but the requirement is at version %d and the config already passes it. Re-stamp the claim",
 					claim, req.Version),
 			})
 			continue
 		}
 		if !passedClaimed(in.History, intended, claim) {
 			// Fails the claimed version too: the ordinary failure outcome,
-			// the evaluator's business — reporting it as drift would tell
+			// the evaluator's business. Reporting it as drift would tell
 			// the owner the goalposts moved when they never cleared them.
 			continue
 		}
@@ -290,9 +290,9 @@ func claimDrift(in Inputs, bp blueprint.Blueprint) ([]Finding, []Nudge) {
 			Team:      bp.Team,
 			Owner:     bp.Owner,
 			Blueprint: bp.ID(),
-			Message: fmt.Sprintf("claims %s, but the requirement is at version %d and the config in git fails it (%s) — the bar moved and the config has not caught up (ADR-0026 §6)",
+			Message: fmt.Sprintf("claims %s, but the requirement is now at version %d and the config in git fails it (%s). The Requirement moved and the config has not caught up",
 				claim, req.Version, strings.Join(detail, "; ")),
-			Remediation: fmt.Sprintf("review what changed between %s v%d and v%d, close the gap, and re-stamp the claim in the same PR — %s",
+			Remediation: fmt.Sprintf("review what changed between %s v%d and v%d, close the gap, and re-stamp the claim in the same PR. %s",
 				claim.Requirement, claim.Version, req.Version, req.Remediation),
 		})
 	}
@@ -301,8 +301,8 @@ func claimDrift(in Inputs, bp blueprint.Blueprint) ([]Finding, []Nudge) {
 
 // passedClaimed reports whether the subject passed the requirement at the
 // claimed version. With history, the claimed version is replayed through
-// the same checker; without it — or where history cannot resolve the
-// version — the composer's stamp is trusted as the record (ADR-0026 §4).
+// the same checker; without it (or where history cannot resolve the
+// version) the composer's stamp is trusted as the record (ADR-0026 §4).
 func passedClaimed(h History, intended *conformance.Effective, claim blueprint.Claim) bool {
 	if h == nil {
 		return true
@@ -350,9 +350,9 @@ func floorDrift(in Inputs) ([]Finding, error) {
 				Environment: tier.Environment,
 				Blueprint:   bp.ID(),
 				Lane:        string(b.Signal),
-				Message: fmt.Sprintf("%s routes %s through %s (%s/%s), which is %s for %s — below the current %s floor for Service Class %s in %s, imposed by %s; it met the floor in force when it merged, and the floor has since been raised (REQ-025, ADR-0026 §6)",
-					rendered, b.Signal, b.Component.ID(), b.Component.Class, b.Component.Type, b.Level, b.Signal, b.Floor, b.Class, tier.Environment, strings.Join(b.Imposers, ", ")),
-				Remediation: fmt.Sprintf("route %s through a component at %s-or-better in a PR, or take an owner-reviewed Exemption (ADR-0023 §3, ADR-0037) — the re-render rides the same PR",
+				Message: fmt.Sprintf("%s routes %s through %s (%s/%s), which is %s for %s. The current floor for Service Class %s in %s is %s, imposed by %s. The artefact met the floor in force when it merged, and the floor has since been raised",
+					rendered, b.Signal, b.Component.ID(), b.Component.Class, b.Component.Type, b.Level, b.Signal, b.Class, tier.Environment, b.Floor, strings.Join(b.Imposers, ", ")),
+				Remediation: fmt.Sprintf("route %s through a component at %s or better and re-render in the same PR, or take an owner-reviewed Exemption",
 					b.Signal, b.Floor),
 			})
 		}
@@ -362,7 +362,7 @@ func floorDrift(in Inputs) ([]Finding, error) {
 
 // intendedEffective wraps the renderer's Intended projection in the shape
 // the config-assertion checker judges. Known is true by construction: the
-// authored tree is never a blind spot — an empty Blueprint is a config that
+// authored tree is never a blind spot: an empty Blueprint is a config that
 // wires nothing, not an unavailable reading (ADR-0008).
 func intendedEffective(est blueprint.Estate, bp blueprint.Blueprint) conformance.Effective {
 	eff := conformance.Effective{Known: true}

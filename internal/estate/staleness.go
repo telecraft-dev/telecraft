@@ -8,7 +8,7 @@ import (
 // StaleTolerance is the multiplier over the declared refresh cadence that
 // sets the staleness horizon (ADR-0036 §3): a reading older than
 // cadence × StaleTolerance is demoted to Known false at evaluation. Three
-// missed refreshes is decisively quiet, while one slow poll is not — the
+// missed refreshes is decisively quiet, while one slow poll is not: the
 // same posture as the serving path's bounded staleness (ADR-0032).
 const StaleTolerance = 3
 
@@ -24,24 +24,24 @@ func (d Declaration) horizon() (time.Duration, bool) {
 // staleCause decides whether a reading taken at asOf is past the horizon
 // at now, and words the demotion. A declaration without a cadence demotes
 // unconditionally: freshness that cannot be established must not feed a
-// verdict — the fault is the declaration's, and the cause says so.
+// verdict. The fault is the declaration's, and the cause says so.
 func staleCause(d Declaration, now, asOf time.Time) (string, bool) {
 	horizon, ok := d.horizon()
 	if !ok {
-		return "the provider declares no refresh cadence, so freshness cannot be established — a reading of unverifiable age never feeds a verdict (ADR-0036 §3)", true
+		return "the provider declares no refresh cadence, so the age of this reading cannot be checked and it cannot feed a verdict", true
 	}
 	age := now.Sub(asOf)
 	if age <= horizon {
 		return "", false
 	}
-	return fmt.Sprintf("stale: read %s ago, past the %s staleness horizon (declared cadence %s × tolerance %d) — stale data may inform a human, never a verdict (ADR-0036 §3)",
+	return fmt.Sprintf("stale: read %s ago, past the %s staleness horizon (declared cadence %s × tolerance %d), so it cannot feed a verdict",
 		age.Round(time.Second), horizon, d.RefreshCadence, StaleTolerance), true
 }
 
 // ForEvaluation returns the collector as evaluation must see it (ADR-0036
 // §3): every capable reading past the staleness horizon at now is demoted
 // to Known false with its payload cleared, so a stale Effective config can
-// never feed a fresh-looking verdict. AsOf survives the demotion — "we
+// never feed a fresh-looking verdict. AsOf survives the demotion: "we
 // stopped seeing, as of when" stays a statement with a timestamp. The
 // receiver is untouched: surfaces keep the original reading and may show
 // last-known-plus-age ("as of 3h ago").

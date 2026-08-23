@@ -18,7 +18,7 @@ import (
 
 // AllowListsFile and GrantsFile are the two policy files an estate directory
 // may hold beside teams.yaml (ADR-0021 §5). Both are optional: an absent
-// file is the default posture — the whole active Catalogue (§4). internal/
+// file is the default posture: the whole active Catalogue (§4). internal/
 // ownership skips these names when it loads the same directory.
 const (
 	AllowListsFile = "allow-lists.yaml"
@@ -46,12 +46,12 @@ type grantNode struct {
 //
 // Loading fails closed. An entry that selects nothing in the Catalogue, a
 // team or owner the tree does not know, or a Grant whose author lacks
-// ancestor authority means a palette wider or narrower than anyone reviewed
-// — so each is a load error naming the file, and the returned Policy is nil,
+// ancestor authority means a palette wider or narrower than anyone reviewed,
+// so each is a load error naming the file, and the returned Policy is nil,
 // never partially loaded.
 func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, error) {
 	if cat == nil {
-		return nil, fmt.Errorf("no catalogue — Allow-list entries validate against the active Catalogue version (REQ-011)")
+		return nil, fmt.Errorf("no catalogue: Allow-list entries are checked against the active Catalogue version")
 	}
 	if _, err := os.Stat(dir); err != nil {
 		if os.IsNotExist(err) {
@@ -77,7 +77,7 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 		return nil, err
 	} else if present {
 		if len(listsDoc.AllowLists) == 0 {
-			problems = append(problems, fmt.Sprintf("%s: holds no allow_lists — declare one or delete the file; an absent file is the default posture (ADR-0021 §4)", listsPath))
+			problems = append(problems, fmt.Sprintf("%s: holds no allow_lists. Declare one or delete the file: without the file, every team may use the whole Catalogue", listsPath))
 		}
 		for _, n := range listsDoc.AllowLists {
 			ctx := fmt.Sprintf("%s: allow-list for team %q", listsPath, n.Team)
@@ -85,7 +85,7 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 
 			list := AllowList{Team: ownership.TeamID(n.Team), Owner: ownership.OwnerID(n.Owner)}
 			if len(n.Allow) == 0 {
-				problems = append(problems, ctx+" declares no entries — to inherit the parent's effective list unchanged, declare no list at all; an empty list would ban everything, and default-deny is deliberately not built in v1 (ADR-0021 §4)")
+				problems = append(problems, ctx+" declares no entries, which would ban everything. To inherit the parent team's list unchanged, declare no list at all")
 			}
 			entries, entryProblems := parseEntries(ctx, n.Allow, cat)
 			list.Allow = entries
@@ -93,7 +93,7 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 
 			if n.Team != "" {
 				if _, dup := p.Lists[list.Team]; dup {
-					problems = append(problems, fmt.Sprintf("%s: team %q declares two allow-lists — a Team's declared list is one intersection term (ADR-0021 §2)", listsPath, n.Team))
+					problems = append(problems, fmt.Sprintf("%s: team %q declares two allow-lists. A Team declares at most one", listsPath, n.Team))
 					continue
 				}
 				p.Lists[list.Team] = list
@@ -109,28 +109,28 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 		return nil, err
 	} else if present {
 		if len(grantsDoc.Grants) == 0 {
-			problems = append(problems, fmt.Sprintf("%s: holds no grants — declare one or delete the file", grantsPath))
+			problems = append(problems, fmt.Sprintf("%s: holds no grants. Declare one or delete the file", grantsPath))
 		}
 		for _, n := range grantsDoc.Grants {
 			ctx := fmt.Sprintf("%s: grant %q", grantsPath, n.ID)
 			if n.ID == "" {
-				problems = append(problems, fmt.Sprintf("%s: a grant has no id — everything a team may use traces to the root list or a named Grant, and the id is that name (ADR-0021 §3)", grantsPath))
+				problems = append(problems, fmt.Sprintf("%s: a grant has no id. Every Grant needs an id, because the id is how a team's palette traces back to it", grantsPath))
 			}
 			problems = append(problems, validateParty(ctx, n.Team, n.Owner, tree)...)
 
 			// Authority: a Grant is parent-authored (ADR-0021 §3). The
 			// author is the owner's team, and it must sit strictly above the
-			// target — a team granting to itself would be self-widening,
+			// target. A team granting to itself would be self-widening,
 			// which is exactly what narrowing-only inheritance forbids.
 			owner, ownerKnown := tree.Owners[ownership.OwnerID(n.Owner)]
 			_, teamKnown := tree.Teams[ownership.TeamID(n.Team)]
 			if ownerKnown && teamKnown && !properAncestor(tree, owner.Team, ownership.TeamID(n.Team)) {
-				problems = append(problems, fmt.Sprintf("%s is authored by owner %q of team %q, which is not an ancestor of target team %q — a Grant is a parent-authored exception (ADR-0021 §3)", ctx, n.Owner, owner.Team, n.Team))
+				problems = append(problems, fmt.Sprintf("%s is authored by owner %q of team %q, which is not an ancestor of target team %q. Only an ancestor team can author a Grant", ctx, n.Owner, owner.Team, n.Team))
 			}
 
 			g := Grant{ID: GrantID(n.ID), Owner: ownership.OwnerID(n.Owner), Team: ownership.TeamID(n.Team)}
 			if len(n.Adds) == 0 {
-				problems = append(problems, ctx+" adds no entries — a Grant exists to widen a palette (ADR-0021 §3)")
+				problems = append(problems, ctx+" adds no entries. A Grant has to add at least one")
 			}
 			entries, entryProblems := parseEntries(ctx, n.Adds, cat)
 			g.Adds = entries
@@ -138,7 +138,7 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 
 			if n.ID != "" {
 				if _, dup := p.Grants[g.ID]; dup {
-					problems = append(problems, fmt.Sprintf("%s: grant %q defined twice — the id is the audit chain's name for it", grantsPath, n.ID))
+					problems = append(problems, fmt.Sprintf("%s: grant %q is defined twice. Each Grant needs its own id", grantsPath, n.ID))
 					continue
 				}
 				p.Grants[g.ID] = g
@@ -157,7 +157,7 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 }
 
 // validateParty collects the problems with an authored object's team and
-// owner references: both mandatory, both known to the tree — an unknown
+// owner references: both mandatory, both known to the tree. An unknown
 // owner would leave the object unroutable (ADR-0016).
 func validateParty(ctx, team, owner string, tree ownership.Tree) []string {
 	var p []string
@@ -167,7 +167,7 @@ func validateParty(ctx, team, owner string, tree ownership.Tree) []string {
 		p = append(p, fmt.Sprintf("%s names team %q, which is not in the team tree", ctx, team))
 	}
 	if owner == "" {
-		p = append(p, ctx+" has no owner — every authored object carries one (REQ-015, ADR-0016)")
+		p = append(p, ctx+" has no owner. Every authored object needs one")
 	} else if _, ok := tree.Owners[ownership.OwnerID(owner)]; !ok {
 		p = append(p, fmt.Sprintf("%s names owner %q, which is not in the team tree", ctx, owner))
 	}
@@ -201,7 +201,7 @@ func parseEntries(ctx string, raw []string, cat *catalogue.Catalogue) ([]Entry, 
 			}
 		}
 		if !matched {
-			problems = append(problems, fmt.Sprintf("%s: entry %q selects nothing in catalogue %s — unknown component types fail load (REQ-011)", ctx, s, cat.Version()))
+			problems = append(problems, fmt.Sprintf("%s: entry %q selects nothing in catalogue %s. Check the class and type against the Catalogue", ctx, s, cat.Version()))
 			continue
 		}
 		entries = append(entries, e)
@@ -222,8 +222,8 @@ func properAncestor(tree ownership.Tree, a, b ownership.TeamID) bool {
 
 // decodeStrict reads one optional single-document YAML policy file with
 // unknown fields rejected, so a misspelled key fails with the file and the
-// field named rather than being dropped. An absent file is fine — the
-// default posture — and reports present=false.
+// field named rather than being dropped. An absent file is fine (the
+// default posture) and reports present=false.
 func decodeStrict(path string, out any) (present bool, err error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -238,7 +238,7 @@ func decodeStrict(path string, out any) (present bool, err error) {
 		return true, fmt.Errorf("%s: %w", path, err)
 	}
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
-		return true, fmt.Errorf("%s: empty file — declare the policy or delete the file; an absent file is the default posture (ADR-0021 §4)", path)
+		return true, fmt.Errorf("%s: the file is empty. Declare the policy or delete the file: without the file, every team may use the whole Catalogue", path)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))

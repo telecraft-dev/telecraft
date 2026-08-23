@@ -1,11 +1,11 @@
 // The validation engine behind POST /api/v1/validate and /api/v1/proposals:
 // one evaluator, exposed as an API on the instance (ADR-0022 §1). The
 // composer calls it continuously (advisory) and the proposal exit calls the
-// same rulebook with enforcement on — the console never carries a copy,
+// same rulebook with enforcement on. The console never carries a copy,
 // because policy state (catalogue, Allow-lists, Grants, floors) lives with
 // the instance. This module is the fixture stand-in for that instance
-// evaluator — the Go evaluator (internal/allowlist, internal/blueprint) is
-// the judgement of record at render — judging with the same authored
+// evaluator (the Go evaluator in internal/allowlist and internal/blueprint
+// is the judgement of record at render), judging with the same authored
 // governance policy /api/v1/governance serves and the active catalogue's
 // entries; the platform binary replaces it when the endpoint lands there
 // (ADR-0045 §6).
@@ -17,8 +17,8 @@
 //   with the reason, non-allowed hidden with an admitted count
 //   (ADR-0022 §5).
 // - Findings: reference, allow-list, floor (per component and signal
-//   actually routed, ADR-0023 §4), lifecycle, and ordering — ordering
-//   wisdom keyed on catalogue types, never a re-sort (ADR-0024 §6).
+//   actually routed, ADR-0023 §4), lifecycle, and ordering. Ordering
+//   wisdom is keyed on catalogue types, never a re-sort (ADR-0024 §6).
 // - Exactly one rule hard-blocks: an allow-list violation (ADR-0022 §3).
 //   Floors, lifecycle and ordering are findings with remediation, never
 //   blocks.
@@ -77,7 +77,7 @@ function globToRegExp(pattern) {
 
 /**
  * Whether one authored `class/type-pattern` entry selects the catalogue
- * entry — the class side exact, the pattern tried against the canonical
+ * entry: the class side exact, the pattern tried against the canonical
  * type and the `deprecated_type` alias (ADR-0020 §3).
  */
 function entrySelects(pattern, entry) {
@@ -92,8 +92,8 @@ function entrySelects(pattern, entry) {
 /**
  * The effective Allow-list decision for one catalogue entry: walking the
  * chain root→team, each declared list intersects, then each Grant targeting
- * that team unions back in — so a Grant widens from its target's subtree
- * downward and a descendant's list narrows it back out (ADR-0021 §2–3).
+ * that team unions back in, so a Grant widens from its target's subtree
+ * downward and a descendant's list narrows it back out (ADR-0021 §2 to §3).
  * A `(class, type)` the Catalogue does not know is not allowed.
  */
 function judgeMembership(estate, team, catEntry) {
@@ -102,7 +102,7 @@ function judgeMembership(estate, team, catEntry) {
   const lists = new Map(estate.allowLists.map((list) => [list.team, list]))
   const ownerTeams = new Map(estate.owners.map((owner) => [owner.id, owner.team]))
   const anyList = teamChain.some((t) => lists.has(t))
-  // Grants apply in id order — the id is the audit chain's name for them.
+  // Grants apply in id order: the id is the audit chain's name for them.
   const grants = [...estate.grants].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 
   let allowed = true
@@ -213,7 +213,7 @@ function palette(estate, entries, draft, environment) {
       )
       if (breaching.length > 0) {
         state = 'greyed'
-        reason = `${stability[breaching[0]]} on ${breaching.join(', ')} — below this Service's ${serviceClass} floor in ${environment} (${floor.level})`
+        reason = `${stability[breaching[0]]} on ${breaching.join(', ')}: below this Service's ${serviceClass} floor in ${environment} (${floor.level})`
       }
     }
     const deprecated = deprecationOf(catType)
@@ -268,8 +268,8 @@ function findings(estate, entries, draft, environment) {
           severity: 'violation',
           lane: signal,
           ref,
-          summary: `${ref} resolves to nothing — no local or shared Component provides it`,
-          remediation: 'Fix the reference, or restore the Component it names (ADR-0016).',
+          summary: `${ref} resolves to nothing: no local or shared Component provides it`,
+          remediation: 'Fix the reference, or restore the Component it names.',
         })
         continue
       }
@@ -285,7 +285,7 @@ function findings(estate, entries, draft, environment) {
           ref,
           summary: `${ref} (${key}) is outside this team's effective Allow-list`,
           remediation:
-            'Request a Grant from the ancestor owning the wider list, or remove the Component — the allow-list violation is the one rule that blocks the render (ADR-0022 §3).',
+            'Request a Grant from the parent team that owns the wider list, or remove the Component. An allow-list violation is the only finding that blocks the render.',
         })
       }
       const level = catType?.stability?.[signal]
@@ -301,7 +301,7 @@ function findings(estate, entries, draft, environment) {
         })
       }
       // Floors judge each (component, signal) the lane actually routes
-      // (ADR-0023 §4) — a finding, never a block (§5). Lifecycle end-states
+      // (ADR-0023 §4): a finding, never a block (§5). Lifecycle end-states
       // are the lifecycle rule's, not a floor rung (ADR-0023 §6).
       if (floor && level in STABILITY_RANK && STABILITY_RANK[level] < floor.rank) {
         out.push({
@@ -310,8 +310,8 @@ function findings(estate, entries, draft, environment) {
           severity: 'violation',
           lane: signal,
           ref,
-          summary: `${ref} is ${level} on ${signal} — below the ${serviceClass} floor in ${environment} (${floor.level})`,
-          remediation: `Use a ${floor.level}-or-better component on ${signal}, or take an Exemption (ADR-0023).`,
+          summary: `${ref} is ${level} on ${signal}: below the ${serviceClass} floor in ${environment} (${floor.level})`,
+          remediation: `Use a component at ${floor.level} or better on ${signal}, or take an Exemption.`,
         })
       }
       const notice = catType?.deprecation?.[signal]
@@ -329,7 +329,7 @@ function findings(estate, entries, draft, environment) {
     }
 
     // Ordering wisdom judges same-class entries in authored order and only
-    // raises findings — the renderer never re-sorts a lane (ADR-0024 §6).
+    // raises findings; the renderer never re-sorts a lane (ADR-0024 §6).
     for (const rule of ORDERING_RULES) {
       const classed = lane
         .map((ref) => ({ ref, c: resolve(estate, draft, ref) }))
@@ -343,8 +343,8 @@ function findings(estate, entries, draft, environment) {
             severity: 'advisory',
             lane: signal,
             ref: e.ref,
-            summary: `orders ${e.ref} at ${rule.class} position ${pos + 1} of ${classed.length} — ${rule.type} belongs ${rule.slot}`,
-            remediation: `Reorder the ${signal} lane: ${rule.reason} (ADR-0024 §6).`,
+            summary: `orders ${e.ref} at ${rule.class} position ${pos + 1} of ${classed.length}, but ${rule.type} belongs ${rule.slot}`,
+            remediation: `Reorder the ${signal} lane: ${rule.reason}.`,
           })
         }
       }
@@ -355,7 +355,7 @@ function findings(estate, entries, draft, environment) {
 
 /**
  * Requirement verdicts for surface B: what the Blueprint owes, whether the
- * draft claims it (`satisfies` — intent), and whether the engine judges it
+ * draft claims it (`satisfies`, the intent), and whether the engine judges it
  * met (fact). The two never blend (REQ-031); claims are judged against the
  * requirement's current version whatever version they stamp (ADR-0026 §5).
  */
@@ -395,7 +395,7 @@ function requirements(estate, draft) {
 /**
  * The rendered-artefact preview for the YAML flyout (REQ-035): the draft
  * compiled to otelcol shape with provenance-carrying ids (ADR-0024 §5).
- * Advisory — the authoritative render is the one the PR carries (ADR-0028).
+ * Advisory: the authoritative render is the one the PR carries (ADR-0028).
  */
 function renderYAML(estate, draft, environment) {
   const sections = { receiver: new Map(), processor: new Map(), exporter: new Map() }
@@ -407,10 +407,10 @@ function renderYAML(estate, draft, environment) {
     }
   }
   const lines = [
-    '# Rendered preview — the validation API compiles the open Blueprint (ADR-0022);',
-    '# read-only here, hand edits belong in git (REQ-035). The authoritative render',
-    '# lands in the change proposal (ADR-0028).',
-    `# Tier ${draft.tier ?? '(unbound)'} (${environment}), Blueprint ${draft.id}@${draft.version} — draft, unstamped (ADR-0013).`,
+    '# Rendered preview: the validation API compiles the open Blueprint.',
+    '# Read-only here. To edit by hand, change the file in git. The authoritative',
+    '# render lands in the change proposal.',
+    `# Tier ${draft.tier ?? '(unbound)'} (${environment}), Blueprint ${draft.id}@${draft.version}: draft, unstamped.`,
   ]
   const section = (title, ids) => {
     if (ids.size === 0) return
@@ -450,7 +450,7 @@ function renderYAML(estate, draft, environment) {
 
 /**
  * The one evaluator call (ADR-0022 §2): draft Blueprint plus context in,
- * verdicts out — findings, palette states, requirement verdicts, the save
+ * verdicts out: findings, palette states, requirement verdicts, the save
  * gate, and the rendered preview. Stateless; the composer calls it on every
  * interaction and the proposal exit calls it with enforcement on.
  * `entries` is the active catalogue's entry list.
@@ -482,18 +482,18 @@ let proposalCounter = 200
 
 /**
  * The composer exit (ADR-0043 §6): the draft becomes a change proposal
- * through the forge adapter, user-attributed, render-in-PR (ADR-0028) —
+ * through the forge adapter, user-attributed, render-in-PR (ADR-0028):
  * the console proposes, the PR decides. Enforcement is on: an allow-list
  * violation refuses the proposal, fail closed (ADR-0022 §3, ADR-0028 §3).
- * A claim context (the claim flow's draft-new-Tier path, ADR-0042 §6) —
- * already judged by the claim rulebook at the endpoint — makes this the
+ * A claim context (the claim flow's draft-new-Tier path, ADR-0042 §6),
+ * already judged by the claim rulebook at the endpoint, makes this the
  * PR authoring the Tier binding beside the Blueprint, named accordingly.
  */
 export function propose(estate, entries, draft, environment, claim) {
   const verdict = validate(estate, entries, draft, environment)
   if (verdict.save.blocked) {
     const failure = new Error(
-      `render refused, no proposal (ADR-0028 §3): ${verdict.save.reasons.join('; ')} — request a Grant (ADR-0022 §3)`,
+      `render refused, no proposal: ${verdict.save.reasons.join('; ')}. Request a Grant.`,
     )
     failure.status = 409
     throw failure

@@ -1,6 +1,6 @@
 # Components in one collector may belong to different teams (ADR-0016): a
 # broken PII processor pages the security team, a dead exporter pages the
-# data-flow team — never the owner of the file either renders into.
+# data-flow team, never the owner of the file either renders into.
 - kind: component
   id: infosec/pii-redaction
   owner: pii-guardians

@@ -7,7 +7,7 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 
 | REQ | ADR / session | Build phase |
 |---|---|---|
-| REQ-001 three rungs, separately adoptable | ADR-0002, ADR-0003, ADR-0013 | P1–P5 |
+| REQ-001 three rungs, separately adoptable | ADR-0002, ADR-0003, ADR-0013 | P1 to P5 |
 | REQ-002 nothing in the telemetry path | ADR-0002 | all |
 | REQ-003 configs never binaries | ADR-0002 | P2 |
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
@@ -54,4 +54,4 @@ Resolved tickets are absorbed by seeded ADRs: 01/06/21/23 → ADR-0010; 02/03/13
 
 Open tickets map to the register: 08 → OQ-2/OQ-3/OQ-5; 10 → positioning
 (absorbed into REQ-001's ladder and NG-5); 12 → OQ-6; 14/15 → OQ-14 and
-prototypes P1–P4; 16 → OQ-4; 19 → OQ-15; 22 → OQ-1.
+prototypes P1 to P4; 16 → OQ-4; 19 → OQ-15; 22 → OQ-1.

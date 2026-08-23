@@ -4,7 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { startTheme } from './chrome/theme'
 import { router } from './router'
-// Faces, then values, then elements, then structure — the order the sheets
+// Faces, then values, then elements, then structure: the order the sheets
 // depend on each other in (ADR-0047 §1, design-system.md "Distribution").
 import './fonts/fonts.css'
 import './tokens.css'

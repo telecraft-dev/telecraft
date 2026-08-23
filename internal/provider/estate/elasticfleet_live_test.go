@@ -9,7 +9,7 @@ package estate
 //
 // The tests are gated on TELECRAFT_ELASTICFLEET_LIVE_ENDPOINT (the Kibana
 // base URL) and TELECRAFT_ELASTICFLEET_LIVE_APIKEY, and skip loudly when
-// either is unset — the same pattern as the TelemetryProvider live suite —
+// either is unset (the same pattern as the TelemetryProvider live suite),
 // so a plain `go test ./...` stays green with no live stack. Reading needs
 // only the fleet-agents-read privilege:
 //
@@ -20,7 +20,7 @@ package estate
 // Record-content checks need at least one collector enrolled (an otelcol
 // with the opamp extension pointed at the project's OpAMP endpoint with a
 // valid enrolment key); with none enrolled the suite verifies the API
-// contract it can — routes registered, kuery accepted — and skips the
+// contract it can (routes registered, kuery accepted) and skips the
 // rest, saying so.
 
 import (
@@ -54,7 +54,7 @@ func liveElasticFleet(t *testing.T) *ElasticFleet {
 }
 
 // The read contract: the agent list route is registered, accepts the
-// type:OPAMP filter, and the estate reading built from it conforms —
+// type:OPAMP filter, and the estate reading built from it conforms:
 // identity on every collector, timestamps on every reading carried,
 // delivery status untouched (Estate itself can never say "the console was
 // unreachable", so the raw probe here is what keeps this test from
@@ -67,7 +67,7 @@ func TestElasticFleetLiveEstate(t *testing.T) {
 		Total int `json:"total"`
 	}
 	if err := p.getJSON(ctx, "/api/fleet/agents?kuery=type%3AOPAMP&perPage=1&page=1", &probe); err != nil {
-		t.Fatalf("the agent list route did not answer: %v — the read contract is broken, not merely empty", err)
+		t.Fatalf("the agent list route did not answer: %v: the read contract is broken, not merely empty", err)
 	}
 
 	est := p.Estate(ctx)
@@ -89,18 +89,18 @@ func TestElasticFleetLiveEstate(t *testing.T) {
 			t.Errorf("collector %s: health is a silent gap", name)
 		}
 		if !reflect.DeepEqual(c.DeliveryStatus, seam.DeliveryStatus{}) {
-			t.Errorf("collector %s carries a delivery-status reading — Elastic Fleet can never supply one", name)
+			t.Errorf("collector %s carries a delivery-status reading: Elastic Fleet can never supply one", name)
 		}
 	}
 	if len(est.Collectors) == 0 {
-		t.Skipf("the live project has no collectors enrolled (total %d for type:OPAMP) — the read contract held, record content could not be exercised; enrol a collector to complete the check", probe.Total)
+		t.Skipf("the live project has no collectors enrolled (total %d for type:OPAMP): the read contract held, record content could not be exercised; enrol a collector to complete the check", probe.Total)
 	}
 }
 
 // The redaction pin (ADR-0046 §3), held against the live API: every
 // string scalar whose key the pinned rules say is redacted must come back
 // as the placeholder, and every placeholder must sit under a key the
-// pinned rules predict — either direction failing means an Elastic Fleet
+// pinned rules predict; either direction failing means an Elastic Fleet
 // release changed the list and the pin must be re-observed and re-versioned.
 func TestElasticFleetLiveRedactionContract(t *testing.T) {
 	p := liveElasticFleet(t)
@@ -126,15 +126,15 @@ func TestElasticFleetLiveRedactionContract(t *testing.T) {
 		checked++
 		walkScalars(body.EffectiveConfig, func(key, value string) {
 			if ElasticFleetRedacts(key) && value != ElasticFleetRedactedValue {
-				t.Errorf("collector %s: key %q holds %q in the clear — the pinned rules say Elastic Fleet redacts it, so the upstream list has narrowed; re-observe and re-version the pin (ADR-0046 §3)", r.ID, key, value)
+				t.Errorf("collector %s: key %q holds %q in the clear: the pinned rules say Elastic Fleet redacts it, so the upstream list has narrowed; re-observe and re-version the pin", r.ID, key, value)
 			}
 			if value == ElasticFleetRedactedValue && !ElasticFleetRedacts(key) {
-				t.Errorf("collector %s: key %q was redacted but the pinned rules do not predict it — the upstream list has widened; re-observe and re-version the pin (ADR-0046 §3)", r.ID, key)
+				t.Errorf("collector %s: key %q was redacted but the pinned rules do not predict it: the upstream list has widened; re-observe and re-version the pin", r.ID, key)
 			}
 		})
 	}
 	if checked == 0 {
-		t.Skip("no live collector has reported an effective config — the redaction pin could not be exercised; enrol a collector whose config carries a secret-named key to complete the check")
+		t.Skip("no live collector has reported an effective config: the redaction pin could not be exercised; enrol a collector whose config carries a secret-named key to complete the check")
 	}
 }
 

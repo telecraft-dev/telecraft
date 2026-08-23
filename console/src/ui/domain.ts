@@ -7,7 +7,7 @@ import type { ObjectKind } from '../api/types'
  * Kept apart from the drawing for the reason the state mapping is
  * (`marks.ts`): this half is the product's words and the other half is how
  * a reader sees them. Five objects, named by the ADR and defined by the
- * glossary — a Collector is a running otelcol process, a Tier is a position
+ * glossary: a Collector is a running otelcol process, a Tier is a position
  * in the collection topology, a Blueprint is a versioned composition of
  * Components, a Component is one configured instance of a catalogue type,
  * and a Service is the governed unit. Those five meanings are what the

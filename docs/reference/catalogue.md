@@ -6,25 +6,23 @@ order: 9
 
 # Catalogue
 
-The Catalogue is the versioned inventory of otelcol component types:
-identity, per-signal stability and lifecycle. It's machine-generated from the
-`metadata.yaml` files of `opentelemetry-collector-contrib` at a pinned release
-tag.
+The Catalogue is the versioned inventory of otelcol component types: each
+component's identity, per-signal stability, and lifecycle. Telecraft
+generates it from the `metadata.yaml` files of
+`opentelemetry-collector-contrib` at a pinned release tag.
 
-Hand-curation of the component list isn't supported, by design: it's the
-maintenance burden that kills config libraries. The only way a component
-enters a Catalogue is the import pipeline walking an upstream source tree.
+You can't curate the component list by hand. The only way a component enters
+a Catalogue is through the import pipeline, which walks an upstream source
+tree.
 
-A Catalogue states what exists. What a Team may use is the
+A Catalogue states what exists. What a Team can use is the
 [Allow-list](allow-lists.md).
-
-The decision behind the format is ADR-0020.
 
 ## The (class, type) key
 
-The primary key is the pair `(class, type)`. `type` alone collapses real
-components, because the same type string is reused across classes: `kafka` is
-both a receiver and an exporter.
+The primary key is the pair `(class, type)`. `type` alone isn't unique,
+because the same type string appears in more than one class: `kafka` is both
+a receiver and an exporter.
 
 `class` is one of five pipeline classes:
 
@@ -36,16 +34,17 @@ both a receiver and an exporter.
 | `connector` |
 | `extension` |
 
-Upstream's helper classes, such as `pkg`, `cmd`, `scraper`, `converter` and
-`provider`, are excluded by the import and recorded in its coverage report.
+The import excludes upstream's helper classes, such as `pkg`, `cmd`,
+`scraper`, `converter`, and `provider`, and records them in its coverage
+report.
 
-`deprecated_type` aliases resolve on every lookup, so a config saying
+`deprecated_type` aliases resolve on every lookup, so a config that says
 `spanmetrics` still finds `span_metrics`.
 
 ## Stability
 
 Stability is per signal: one component can be beta for logs and alpha for
-profiles, so a floor is judged per (component, signal), never per component.
+profiles. A floor is judged per (component, signal), never per component.
 
 | Level | Kind |
 |---|---|
@@ -57,21 +56,21 @@ profiles, so a floor is judged per (component, signal), never per component.
 | `unmaintained` | lifecycle end-state |
 
 The maturity ladder is `development` < `alpha` < `beta` < `stable`. A
-[stability floor](tiers.md#how-paths-set-a-tiers-floor) compares that ladder;
-lifecycle end-states carry no rung and are judged apart, by lifecycle
-findings.
+[stability floor](tiers.md#how-paths-set-a-tiers-floor) compares against
+that ladder. Lifecycle end-states have no rung; lifecycle findings judge them
+separately.
 
-The six-level vocabulary is closed: an unknown level fails the load, because a
-new upstream level should be a loud event rather than a silent pass-through.
-The signal vocabulary, by contrast, is open: unknown signal names pass
-through, because upstream's signal set grew twice in two years.
+The six-level vocabulary is closed: an unknown level fails the load, so a new
+upstream level is noticed rather than passed through. The signal vocabulary is
+open: unknown signal names pass through, because upstream adds signals over
+time.
 
 ## Artefact format
 
 One Catalogue version is one JSON file. The encoding is deterministic:
-components in `(class, type)` order, object keys sorted, no timestamps. That's
-what makes importing the same tag twice byte-identical, and artefacts diffable
-across an air gap.
+components in `(class, type)` order, object keys sorted, no timestamps.
+Importing the same tag twice produces byte-identical artefacts, and you can
+diff artefacts across an air gap.
 
 | Field | Type | Description |
 |---|---|---|
@@ -124,16 +123,16 @@ An artefact is written as `catalogue-<ref>.json`, so versions sit side by
 side. A release tag containing `/` or `\` can't name an artefact file and is
 rejected.
 
-Writes are atomic: the bytes land in a temporary file and are renamed into
-place, so a reader never sees a half-written Catalogue. If the file already
-holds exactly those bytes, the write is skipped.
+Writes are atomic: the bytes land in a temporary file, which is then renamed
+into place, so a reader never sees a half-written Catalogue. If the file
+already holds exactly those bytes, the write is skipped.
 
 ### Load errors
 
-Loading fails closed and returns nothing. An artefact travels, bundled in a
-release, downloaded or carried across an air gap, and a tampered or truncated
-one silently accepted would corrupt every judgement made against it. The load
-refuses on:
+Loading fails closed and returns nothing. An artefact travels: bundled in a
+release, downloaded, or carried across an air gap. A tampered or truncated
+artefact would corrupt every judgement made against it, so the load refuses
+on:
 
 - an unknown field, or trailing data after the document
 - a `format_version` other than `1`
@@ -158,12 +157,11 @@ writes `catalogues/catalogue-v0.158.0.json` and prints the coverage report.
 See the [command line reference](cli.md#catalogue-import) for every flag and
 exit code.
 
-The fetch is a sparse, depth-1 git checkout of only `metadata.yaml` and
+The fetch is a sparse, depth-1 git checkout of only the `metadata.yaml` and
 `go.mod` files, a few megabytes rather than the whole repository, into a
 temporary directory that's removed afterwards. The upstream tree is never
-vendored. Fetching happens at import time only, on an operator's machine, with
-the result carried onward as the artefact; the platform never fetches at
-runtime.
+vendored. Fetching happens at import time only, on your machine, and the
+artefact is what travels onward. Telecraft never fetches at runtime.
 
 Import an already-fetched tree offline with `-source`:
 
@@ -177,20 +175,19 @@ source commit.
 
 ### Discovery
 
-Discovery is by sibling `go.mod`, recursively, never by directory depth:
-depth-based discovery silently misses the contrib extensions nested a level
+Discovery is by sibling `go.mod`, recursively, never by directory depth.
+Depth-based discovery would miss the contrib extensions nested a level
 deeper, such as `extension/storage/filestorage`.
 
 A directory is a component candidate when it holds a `go.mod`. It enters the
 Catalogue when it also holds a `metadata.yaml` whose `status.class` is one of
 the five pipeline classes.
 
-Upstream's `metadata.yaml` is decoded leniently for the fields the pipeline
-doesn't read, because that schema isn't Telecraft's to enforce. The fields it
-does read are `type`, `deprecated_type`, `display_name`, `description`, and
-the `status` block's `class`, `stability` and `deprecation`. Upstream's
-stability map is level to signals; the import inverts it to signal to level,
-and a signal listed under two levels fails the import.
+The import reads only the fields of upstream's `metadata.yaml` it needs and
+ignores the rest: `type`, `deprecated_type`, `display_name`, `description`,
+and the `status` block's `class`, `stability`, and `deprecation`. Upstream's
+stability map runs from level to signals; the import inverts it to signal to
+level. A signal listed under two levels fails the import.
 
 ### Coverage report
 
@@ -206,18 +203,18 @@ unrecorded:
 A directory outside the component roots with no `metadata.yaml` is ordinary Go
 layout, not a gap, and isn't listed.
 
-Import fails closed on anything malformed: a `metadata.yaml` that doesn't
+The import fails closed on anything malformed: a `metadata.yaml` that doesn't
 parse, a pipeline component without stability, or a duplicate `(class, type)`
 key. A gap is reported, never silently dropped.
 
 ## Versions and activation
 
-A Catalogue is versioned atomically against one collector release tag. There's
-no partial upgrade: a Catalogue is the tag, whole.
+A Catalogue is versioned against one collector release tag. There's no
+partial upgrade: a Catalogue is the whole tag.
 
-Installed catalogues are retained, never replaced. Re-importing the same tag
-is idempotent and leaves the existing artefact untouched. A different tag
-writes a new artefact beside the old one.
+Installed catalogues are kept, never replaced. Re-importing the same tag is
+idempotent and leaves the existing artefact untouched. A different tag writes
+a new artefact beside the old one.
 
 The active Catalogue is the artefact you pass as `-catalogue`. Every command
 that judges authoring against the Catalogue takes it explicitly:
@@ -225,15 +222,15 @@ that judges authoring against the Catalogue takes it explicitly:
 | Command | Flag | Used for |
 |---|---|---|
 | `telecraft palette` | `-catalogue` | Validating entries and materialising the palette. |
-| `telecraft render` | `-catalogue` | The allow-list hard block and stability floors. |
+| `telecraft render` | `-catalogue` | The allow-list block and stability floors. |
 | `telecraft check` | `-catalogue` | `library_drift` detection, with `-source`. |
-| `telecraft snapshot` | `-catalogue` | The active version, designated among the installed set. |
+| `telecraft snapshot` | `-catalogue` | The active version, marked as such among the installed set. |
 
 `telecraft snapshot` also takes `-catalogues`, a directory of installed
-artefacts. It reads every `catalogue-*.json` in that directory, designates the
-one given by `-catalogue` as active, and includes the active artefact even
-when it lives elsewhere. The default is the directory holding `-catalogue`.
+artefacts. It reads every `catalogue-*.json` in that directory, marks the one
+given by `-catalogue` as active, and includes the active artefact even when it
+lives elsewhere. The default is the directory holding `-catalogue`.
 
 An Allow-list policy is bound to the Catalogue version it was validated
 against, because every entry must select at least one component in it.
-Activating a different Catalogue therefore revalidates the policy.
+Activating a different Catalogue validates the policy again.

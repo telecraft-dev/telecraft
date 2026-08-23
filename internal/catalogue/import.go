@@ -12,19 +12,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Import walks a source tree — a checkout of opentelemetry-collector-contrib
-// at a pinned release tag — and builds the Catalogue for that tag, together
+// Import walks a source tree (a checkout of opentelemetry-collector-contrib
+// at a pinned release tag) and builds the Catalogue for that tag, together
 // with the coverage report saying what was found, what was excluded and why,
 // and what looked like a component but carried no metadata.yaml.
 //
-// Discovery is by sibling go.mod, recursively — never by directory depth,
+// Discovery is by sibling go.mod, recursively, never by directory depth,
 // which silently misses the twenty-odd contrib extensions nested a level
 // deeper (`extension/storage/filestorage`, `extension/observer/k8sobserver`;
 // R-1 §2). A directory is a component candidate iff it holds a go.mod; it
 // enters the Catalogue iff it also holds a metadata.yaml whose status.class
 // is one of the five pipeline classes.
 //
-// Import fails closed on anything malformed — a metadata.yaml that does not
+// Import fails closed on anything malformed: a metadata.yaml that does not
 // parse, a pipeline component without stability, a duplicate (class, type)
 // key. A gap, by contrast, is reported, never silently dropped: a module
 // under a component root with no metadata.yaml lands in Coverage.Missing,
@@ -36,7 +36,7 @@ func Import(root string, src Source) (*Catalogue, *Coverage, error) {
 		return nil, nil, err
 	}
 	if len(modDirs) == 0 {
-		return nil, nil, fmt.Errorf("no Go modules found under %s — is this a collector source tree?", root)
+		return nil, nil, fmt.Errorf("no Go modules found under %s. Is this a collector source tree?", root)
 	}
 
 	cov := &Coverage{Found: map[Class]int{}}
@@ -97,7 +97,7 @@ func Import(root string, src Source) (*Catalogue, *Coverage, error) {
 // moduleDirs returns every directory under root holding a go.mod, as sorted
 // root-relative paths. Directories named internal or testdata are skipped
 // wholesale: by Go convention they never hold a published component, only
-// scrapers, fixtures and test scaffolding — the over-broad-walk trap of
+// scrapers, fixtures and test scaffolding: the over-broad-walk trap of
 // R-1 §2c.
 func moduleDirs(root string) ([]string, error) {
 	var dirs []string
@@ -141,7 +141,7 @@ func underComponentRoot(rel string) bool {
 
 // metadataFile is the subset of upstream metadata.yaml this pipeline reads:
 // identity plus the status block. Everything else (attributes, metrics,
-// telemetry, tests) is upstream's business — decoding is deliberately
+// telemetry, tests) is upstream's business, so decoding is deliberately
 // lenient about fields we do not read, because their schema is not ours to
 // enforce. Our own artefact contract, by contrast, is loaded strictly.
 type metadataFile struct {
@@ -171,8 +171,8 @@ func parseMetadata(path string) (metadataFile, error) {
 // buildComponent turns one parsed metadata.yaml into a Catalogue entry,
 // inverting upstream's level→signals stability map to per-signal levels.
 // Structural problems that only upstream could cause (a signal listed under
-// two levels) are reported against the file so the fix — or the upstream bug
-// report — is findable.
+// two levels) are reported against the file so the fix (or the upstream bug
+// report) is findable.
 func buildComponent(path string, meta metadataFile, class Class, module string) (Component, []string) {
 	var problems []string
 
@@ -185,7 +185,7 @@ func buildComponent(path string, meta metadataFile, class Class, module string) 
 	for _, level := range levels {
 		for _, signal := range meta.Status.Stability[level] {
 			if prev, dup := stability[signal]; dup {
-				problems = append(problems, fmt.Sprintf("%s: signal %q listed under both %q and %q — stability per signal must be single-valued", path, signal, prev, level))
+				problems = append(problems, fmt.Sprintf("%s: signal %q is listed under both %q and %q, but stability per signal must be single-valued", path, signal, prev, level))
 				continue
 			}
 			stability[signal] = Level(level)
@@ -231,7 +231,7 @@ func modulePath(path string) (string, error) {
 }
 
 // Exclusion is one parsed metadata.yaml left out of the Catalogue because
-// its class is not a pipeline class — recorded, never silent, so a future
+// its class is not a pipeline class: recorded, never silent, so a future
 // upstream class (the enum grew twice in two years) surfaces in the report
 // instead of vanishing.
 type Exclusion struct {
@@ -248,7 +248,7 @@ type Coverage struct {
 	Found map[Class]int
 
 	// Missing lists directories under a component root that hold a Go
-	// module but no metadata.yaml — the gaps criterion 2 exists for.
+	// module but no metadata.yaml: the gaps criterion 2 exists for.
 	Missing []string
 
 	// Excluded lists parsed components whose class keeps them out of the
@@ -265,7 +265,7 @@ func (c Coverage) Total() int {
 	return n
 }
 
-// String renders the coverage report the import command prints — the
+// String renders the coverage report the import command prints: the
 // found-versus-missing account demanded by REQ-010's no-silent-gaps rule.
 func (c Coverage) String() string {
 	var b strings.Builder

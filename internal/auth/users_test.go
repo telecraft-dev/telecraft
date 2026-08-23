@@ -10,7 +10,7 @@ func TestUsersLoadAndJoinByEmailCaseInsensitively(t *testing.T) {
 
 	user, ok := users.ByEmail("JO@Example.COM")
 	if !ok {
-		t.Fatalf("ByEmail missed a known user — the join is case-insensitive")
+		t.Fatalf("ByEmail missed a known user: the join is case-insensitive")
 	}
 	if user.Name != "Jo Author" || user.Owner != "gateway-owners" {
 		t.Fatalf("ByEmail returned %+v", user)

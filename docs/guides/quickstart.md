@@ -6,8 +6,8 @@ order: 2
 
 # Quickstart
 
-This takes you from nothing to a real conformance verdict over a real estate,
-in about five minutes. You need Go 1.26 or later and `git`.
+This guide takes you from nothing to a real conformance verdict over a real
+estate, in about five minutes. You need Go 1.26 or later and `git`.
 
 ## 1. Build the CLI
 
@@ -30,8 +30,8 @@ usage: telecraft observe -service <service.name> [-environment env] [-window 15m
        telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)
 ```
 
-The command exits 2 on a usage error, so an empty invocation in a script fails
-rather than doing nothing quietly.
+The command exits 2 on a usage error, so a script that runs it with no
+arguments fails instead of doing nothing.
 
 ## 2. Get an estate
 
@@ -46,14 +46,14 @@ cd telecraft
 
 It holds a synthetic retailer's observability estate: four Services, six
 Tiers, a requirements library, one Exemption, and the two declared readings a
-repository cannot hold for you (the collectors that reported, and the running
-config each one reports).
+repository can't hold for you (which collectors reported, and the running
+configuration each one reports).
 
 ## 3. Get a verdict
 
-`telecraft check` loads the requirements library, judges every row of the
-estate, writes one JSON report to stdout, and sets its exit code from the
-result:
+To get a verdict, run `telecraft check`. It loads the requirements library,
+judges every row of the estate, writes one JSON report to stdout, and sets its
+exit code from the result:
 
 ```sh
 ./telecraft check \
@@ -63,8 +63,8 @@ result:
   > report.json
 ```
 
-With no telemetry backend reachable, the run is honest about what it could
-not see. The summary at the end of `report.json`:
+No telemetry backend is reachable yet, so the report says what the check
+could not see. The summary at the end of `report.json`:
 
 ```json
 {
@@ -76,8 +76,8 @@ not see. The summary at the end of `report.json`:
 }
 ```
 
-Four production rows come back `unknown` rather than green, each carrying the
-reason:
+Four production rows come back `unknown` rather than green, and each one
+carries the reason:
 
 ```json
 {
@@ -90,15 +90,15 @@ reason:
 }
 ```
 
-Not knowing is a normal state, and it is reported as itself. It is never
-rounded to a pass. The command exits 1, so a CI job that cannot see the
-backend goes red instead of green.
+Not knowing is a normal state, and the report shows it as itself. It never
+rounds `unknown` up to a pass. The command exits 1, so a CI job that can't see
+the backend goes red instead of green.
 
 ## 4. Add a backend and get the real cross
 
 A verdict built on configuration alone can only tell you what somebody
 intended. Point the check at a telemetry backend and it crosses that intent
-against what actually landed.
+against what arrived.
 
 Start a throwaway single-node Elasticsearch:
 
@@ -111,8 +111,8 @@ docker run -d --name telecraft-quickstart \
   docker.elastic.co/elasticsearch/elasticsearch:9.1.0
 ```
 
-Wait for it, then seed telemetry for the demo estate's Services. Every
-document carries the Service name, the Environment, and the two identity
+Wait for it to start, then seed telemetry for the demo estate's Services.
+Every document carries the Service name, the Environment, and the two identity
 attributes the demo's `trace-identity` requirement asks about:
 
 ```sh
@@ -163,7 +163,7 @@ doc() {
 ```
 
 Run the same check again. `-endpoint` defaults to `http://localhost:9200`, so
-the command does not change:
+the command doesn't change:
 
 ```sh
 ./telecraft check \
@@ -191,9 +191,9 @@ checkout/payments         staging     compliant
 }
 ```
 
-That is the result the platform exists to produce. `storefront/catalogue-web`
-has an OTLP receiver wired into a traces pipeline and no spans arrived, so the
-finding is `broken_pipeline`, not `not_configured`:
+This is the result Telecraft exists to produce. `storefront/catalogue-web`
+has an OTLP receiver wired into a traces pipeline, and no spans arrived, so
+the finding is `broken_pipeline`, not `not_configured`:
 
 ```json
 {
@@ -210,15 +210,15 @@ finding is `broken_pipeline`, not `not_configured`:
 }
 ```
 
-Somebody configured that pipeline with intent and it is silently not working.
-No tool that reads configuration alone can see it.
+Somebody configured that pipeline on purpose, and it is silently not working.
+No tool that reads configuration alone can see that.
 
-`storefront/search` scores `compliant` while carrying one waived finding: its
-missing metrics are covered by an authored Exemption, and the summary keeps
-`"waived": 1` visible so a green built on waivers cannot pass for a clean
+`storefront/search` scores `compliant` while carrying one waived finding. An
+authored Exemption covers its missing metrics, and the summary keeps
+`"waived": 1` visible, so a green built on waivers never passes for a clean
 green.
 
-Remove the container when you are done:
+When you are done, remove the container:
 
 ```sh
 docker rm -f telecraft-quickstart
@@ -226,8 +226,8 @@ docker rm -f telecraft-quickstart
 
 ## What next
 
-- [Check conformance](check-conformance.md) reads the report properly and puts
-  the check in CI.
+- [Check conformance](check-conformance.md) explains how to read the report
+  and puts the check in CI.
 - [Author and render](author-and-render.md) starts the Authoring rung: compose
   a Blueprint and render otelcol YAML into git.
 - [Explore the demo](explore-the-demo.md) shows the same estate through the

@@ -3,7 +3,7 @@
 // is a console, never a source of enforcement (NG-2): its OpAMP support is
 // monitoring-only, remote config is unimplemented upstream, and enrolment
 // pins the policy revision so none is ever delivered. That permanence is
-// structural here — delivery status is declared incapable (ADR-0036 §1),
+// structural here: delivery status is declared incapable (ADR-0036 §1),
 // so the reading Elastic Fleet can never supply renders "not applicable",
 // never as failure; and the provider is read-only by construction, its
 // transport refusing anything but GET.
@@ -14,7 +14,7 @@
 // The effective config comes per collector
 // (GET /api/fleet/agents/{id}/effective_config): the list response's
 // compact pipeline_config fingerprint re-sorts receivers and exporters, so
-// it cannot carry the ADR-0004 reading — order must survive verbatim — and
+// it cannot carry the ADR-0004 reading (order must survive verbatim), and
 // only the per-collector route preserves it. The roll-up status field is
 // never read: Elastic Fleet flattens it from top-level health only, so a
 // collector with a dead receiver reads as online there; the tree is the
@@ -51,13 +51,13 @@ type ElasticFleetConfig struct {
 	Endpoint string
 
 	// APIKey is a Kibana API key, sent as an ApiKey authorization header.
-	// Reading needs only the fleet-agents-read privilege — no write
+	// Reading needs only the fleet-agents-read privilege; no write
 	// privilege exists on any path this provider takes. Optional, for
 	// test fixtures with no security.
 	APIKey string
 
 	// RefreshCadence is the cadence the provider declares (ADR-0036 §3):
-	// how often a collector re-affirms its record — the OpAMP check-in
+	// how often a collector re-affirms its record, the OpAMP check-in
 	// interval the estate's collectors run with, not how often this
 	// provider is asked. Zero means DefaultRefreshCadence.
 	RefreshCadence time.Duration
@@ -116,7 +116,7 @@ func NewElasticFleet(cfg ElasticFleetConfig) (*ElasticFleet, error) {
 var _ seam.Provider = (*ElasticFleet)(nil)
 
 // readOnlyTransport refuses every request that is not a GET, so no
-// enforcement path through Elastic Fleet can exist even by accident —
+// enforcement path through Elastic Fleet can exist even by accident:
 // enforcement via Elastic Fleet is permanently unavailable, not deferred
 // (ADR-0008, NG-2).
 type readOnlyTransport struct {
@@ -125,7 +125,7 @@ type readOnlyTransport struct {
 
 func (t readOnlyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.Method != http.MethodGet {
-		return nil, fmt.Errorf("the ElasticFleet provider is read-only by construction: refused %s %s — Elastic Fleet is a console, never a source (ADR-0008)", req.Method, req.URL.Path)
+		return nil, fmt.Errorf("the ElasticFleet provider is read-only and refused %s %s: Telecraft only reads from Elastic Fleet, never writes to it", req.Method, req.URL.Path)
 	}
 	return t.base.RoundTrip(req)
 }
@@ -144,7 +144,7 @@ func (p *ElasticFleet) Declaration() seam.Declaration {
 
 			// Elastic Fleet can never report delivery status: it is
 			// monitoring-only, with no GA commitment and no "enforcement
-			// later" (ADR-0008). Incapable is a declaration — the reading
+			// later" (ADR-0008). Incapable is a declaration: the reading
 			// renders "not applicable", never as failure (ADR-0036 §1).
 			seam.DeliveryStatusKind: false,
 		},
@@ -154,7 +154,7 @@ func (p *ElasticFleet) Declaration() seam.Declaration {
 
 // Estate reads the whole estate in one call (ADR-0008): every collector
 // Elastic Fleet can currently see. Collectors must opt in to Elastic Fleet
-// with an enrolment key — it has no discovery, so a genuinely unconnected
+// with an enrolment key; it has no discovery, so a genuinely unconnected
 // collector is invisible here, absent from the reading rather than
 // misreported in it. An unreadable console yields an empty estate: still a
 // statement with a timestamp, and every lookup against it is honestly
@@ -167,7 +167,7 @@ func (p *ElasticFleet) Estate(ctx context.Context) seam.Estate {
 	}
 
 	// One entry per identity: re-enrolment leaves the old record behind
-	// with the same identifying attributes, and the newest check-in wins —
+	// with the same identifying attributes, and the newest check-in wins,
 	// the same discipline as a reconnect on the OpAMP-direct wire.
 	newest := map[string]agentRecord{}
 	for _, r := range records {
@@ -203,7 +203,7 @@ func (p *ElasticFleet) collectorOf(ctx context.Context, identity map[string]stri
 
 	asOf := r.checkin()
 	if asOf.IsZero() {
-		cause := fmt.Sprintf("the Elastic Fleet record carries no readable last_checkin (%q), so the reading's age cannot be established — a reading of unverifiable age never feeds a verdict (ADR-0036 §2)", r.LastCheckin)
+		cause := fmt.Sprintf("the Elastic Fleet record carries no readable last_checkin (%q), so the age of this reading cannot be checked and it cannot feed a verdict", r.LastCheckin)
 		now := p.now()
 		c.Effective = seam.Effective{Known: false, Cause: cause, AsOf: now}
 		c.Health = seam.Health{Known: false, Cause: cause, AsOf: now}
@@ -215,7 +215,7 @@ func (p *ElasticFleet) collectorOf(ctx context.Context, identity map[string]stri
 		c.Effective = seam.Effective{Known: false, Cause: cause, AsOf: asOf}
 	} else {
 		// An empty pipeline list is a collector reporting a config that
-		// runs no pipelines — a reading, not a blind spot (ADR-0008).
+		// runs no pipelines: a reading, not a blind spot (ADR-0008).
 		c.Effective = seam.Effective{Known: true, AsOf: asOf, Pipelines: pipelines}
 	}
 
@@ -227,13 +227,13 @@ func (p *ElasticFleet) collectorOf(ctx context.Context, identity map[string]stri
 	}
 
 	// DeliveryStatus stays zero: declared incapable, absent-with-
-	// declaration — never a silent gap, never a failure (ADR-0036 §1).
+	// declaration, never a silent gap, never a failure (ADR-0036 §1).
 	return c
 }
 
 // effective fetches and parses one collector's reported effective config.
 // A non-empty cause means the reading is Known false: not delivered, not
-// readable, or not reachable — degradation is data, never an error.
+// readable, or not reachable. Degradation is data, never an error.
 func (p *ElasticFleet) effective(ctx context.Context, agentID string) ([]seam.Pipeline, string) {
 	var body struct {
 		EffectiveConfig json.RawMessage `json:"effective_config"`
@@ -249,7 +249,7 @@ func (p *ElasticFleet) effective(ctx context.Context, agentID string) ([]seam.Pi
 	// Elastic Fleet re-marshals the collector's YAML as JSON, structure
 	// intact: redaction masks secret scalars but recurses into maps rather
 	// than replacing them, so the pipeline wiring survives. JSON is a YAML
-	// subset, so the wire-shared walk applies unchanged — component order
+	// subset, so the wire-shared walk applies unchanged, with component order
 	// carried verbatim, never resorted (ADR-0004).
 	pipelines, err := servicePipelines(raw)
 	if err != nil {
@@ -279,7 +279,7 @@ func (r agentRecord) checkin() time.Time {
 }
 
 // healthRecord is the recursive OpAMP ComponentHealth tree as the
-// Elastic Fleet API returns it — arbitrarily deep, per pipeline and per
+// Elastic Fleet API returns it: arbitrarily deep, per pipeline and per
 // component.
 type healthRecord struct {
 	Healthy    bool                    `json:"healthy"`
@@ -288,7 +288,7 @@ type healthRecord struct {
 	Components map[string]healthRecord `json:"component_health_map"`
 }
 
-// healthRecordOf converts the reported tree recursively — the full shape,
+// healthRecordOf converts the reported tree recursively: the full shape,
 // never the flattened roll-up (ADR-0008).
 func healthRecordOf(h healthRecord) seam.ComponentHealth {
 	out := seam.ComponentHealth{
@@ -315,7 +315,7 @@ type agentPage struct {
 // agents lists every collector record, walking pages until the reported
 // total is in hand. showInactive is deliberate: hiding a quiet collector
 // is the console's freshness claim, and freshness is the platform's
-// arithmetic, never the provider's claim (ADR-0036 §3) — the record comes
+// arithmetic, never the provider's claim (ADR-0036 §3). The record comes
 // back and its last_checkin lets staleness demote it honestly.
 func (p *ElasticFleet) agents(ctx context.Context) ([]agentRecord, error) {
 	var out []agentRecord

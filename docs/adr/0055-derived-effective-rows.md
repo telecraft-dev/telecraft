@@ -12,8 +12,8 @@ Every other reading in the product is read from something. The collector
 estate arrives through the EstateProvider seam (ADR-0008, ADR-0036), the
 arrivals and the flow through the TelemetryProvider seam (ADR-0039,
 ADR-0040), delivery status off the OpAMP wire (ADR-0004). The Effective leg
-of the verdict cross — the pipelines the collector serving a Service is
-running — is typed into a file and kept in step with `rendered/` by hand. The
+of the verdict cross (the pipelines the collector serving a Service is
+running) is typed into a file and kept in step with `rendered/` by hand. The
 demo estate authors it (ADR-0049), the devenv authors it (ADR-0052 §2), and
 `telecraft check` takes it as `-estate`.
 
@@ -58,8 +58,8 @@ this decision.
 
 A failure further down the Path does not appear in the Service's row.
 
-`checkout` traverses edge then gateway. If the gateway drops traces — a
-receiver missing, an exporter wired into the wrong pipeline — the Effective
+`checkout` traverses edge then gateway. If the gateway drops traces (a
+receiver missing, an exporter wired into the wrong pipeline), the Effective
 leg of `checkout`'s row still reads exactly as before, because the gateway is
 not the collector the row is derived from. The row is silent about a real
 failure that affects the Service.
@@ -68,7 +68,7 @@ This is accepted rather than solved, for two reasons. The failure is not
 invisible: the arrivals stop, so the cross lands on `broken_pipeline` on the
 Observed leg, which is the diagnosis this product exists to produce
 (ADR-0004). And the gateway's own misconfiguration is the gateway team's
-finding, routed to its owner (ADR-0016, ADR-0022) — relocating it into every
+finding, routed to its owner (ADR-0016, ADR-0022): relocating it into every
 traversing Service's row would report one fault many times, to people who
 cannot fix it.
 
@@ -87,7 +87,7 @@ rollout's leading edge speak for the whole population. Majority hides one
 failed applier until half the fleet has failed. Worst has no definition for a
 config: there is no ordering on pipeline sets that means anything. Each one
 converts "we do not have a single answer" into an answer, which is precisely
-the fabrication `internal/estate` was shaped to make impossible — `Known
+the fabrication `internal/estate` was shaped to make impossible: `Known
 bool` plus `Cause string` exists so degradation can be data (ADR-0008).
 
 So: the row is Known only when every matched collector's Effective reading is
@@ -158,7 +158,7 @@ stated" rather than as nothing at all.
 The reasons that survive this decision are:
 
 - **A Service the platform cannot see.** Git-delivered collectors, a foreign
-  population, a Tier with no selector — ungoverned-in-view (ADR-0031). The
+  population, a Tier with no selector: ungoverned-in-view (ADR-0031). The
   override is how a human supplies what no seam reaches.
 - **An estate with no live reading at all.** The demo (ADR-0049) is a
   repository and a browser, with no collectors anywhere. Its rows are
@@ -177,7 +177,7 @@ CI is not in reach of a live OpAMP server, and the derivation must not grow a
 second way of getting collectors. So the estate reading `check` derives from
 comes through the EstateProvider seam like every other one, from a third
 implementation: `Recorded` in `internal/provider/estate`, reading a file that
-holds one estate reading — identity and Effective config per collector, an
+holds one estate reading: identity and Effective config per collector, an
 `as_of`, and a declared refresh cadence. It is certified by the shipped
 conformance kit (ADR-0036 §4) exactly as the other two are.
 

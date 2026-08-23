@@ -23,7 +23,7 @@ func TestFixtureEstateLoads(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := len(estate.Rows); got != 3 {
-		t.Fatalf("estate has %d rows, want 3 — one per (Service, Environment)", got)
+		t.Fatalf("estate has %d rows, want 3, one per (Service, Environment)", got)
 	}
 
 	byRow := map[Row]EstateRow{}
@@ -63,7 +63,7 @@ func TestEstateLoadFailsClosed(t *testing.T) {
 		{
 			name: "duplicate row",
 			body: "services:\n  - name: checkout\n    environments:\n      - name: production\n      - name: production\n",
-			want: "one row per (Service, Environment)",
+			want: "appears twice in environment",
 		},
 		{
 			name: "nameless service",
@@ -83,7 +83,7 @@ func TestEstateLoadFailsClosed(t *testing.T) {
 		{
 			name: "empty estate",
 			body: "services: []\n",
-			want: "vacuously",
+			want: "declares no services",
 		},
 	}
 	for _, tc := range cases {
@@ -93,7 +93,7 @@ func TestEstateLoadFailsClosed(t *testing.T) {
 				t.Fatal("load succeeded, want a failure that names the problem")
 			}
 			if len(estate.Rows) != 0 {
-				t.Error("a failed load must fail closed — no rows returned")
+				t.Error("a failed load must fail closed: no rows returned")
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error %q does not mention %q", err, tc.want)
@@ -147,7 +147,7 @@ func TestEstateGraceFailsClosed(t *testing.T) {
 		{
 			name: "grace grows as class rises",
 			body: "grace:\n  - class: C1\n    window: 720h\n  - class: C2\n    window: 24h\nservices:\n  - name: checkout\n" + deployed,
-			want: "grace shrinks as class rises",
+			want: "is shorter than class",
 		},
 		{
 			name: "duplicate class",
@@ -177,7 +177,7 @@ func TestEstateGraceFailsClosed(t *testing.T) {
 		{
 			name: "onboarded without class",
 			body: "services:\n  - name: checkout\n    onboarded: 2026-08-10\n" + deployed,
-			want: "Service-Class-scoped",
+			want: "onboarded date but no class",
 		},
 		{
 			name: "malformed onboarded date",
@@ -192,7 +192,7 @@ func TestEstateGraceFailsClosed(t *testing.T) {
 				t.Fatal("load succeeded, want a failure that names the problem")
 			}
 			if len(estate.Rows) != 0 || len(estate.Grace) != 0 {
-				t.Error("a failed load must fail closed — nothing returned")
+				t.Error("a failed load must fail closed: nothing returned")
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error %q does not mention %q", err, tc.want)

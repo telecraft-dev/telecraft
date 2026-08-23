@@ -14,8 +14,8 @@ import {
 } from '../src/estate/readings'
 
 // The card contract, from the console's side (ADR-0041 §4). The fixture
-// this reads is written by the engine's own test —
-// `go test ./internal/card -update` — so one artefact holds both sides:
+// this reads is written by the engine's own test,
+// `go test ./internal/card -update`, so one artefact holds both sides:
 // a field added or renamed in Go without the console following is a
 // failing test here, and the version number is what makes the change a
 // reviewable event rather than silent drift.
@@ -75,7 +75,7 @@ describe('the card data contract', () => {
   })
 
   // #98: a lane the artefact never wired carries no readings, because its
-  // counters would read `in 0 / out 0` — the same shape a broken pipeline
+  // counters would read `in 0 / out 0`, the same shape a broken pipeline
   // reads, and the opposite meaning.
   it('drops the readings of a lane the artefact does not instantiate', () => {
     for (const row of face.signals) {
@@ -97,7 +97,7 @@ describe('the card data contract', () => {
       expect(() => formatShape(row.shape)).not.toThrow()
       if (!row.volume.known) {
         // An unreadable lane is last-known-plus-age, never a zero.
-        expect(formatVolume(row.volume)).toBe('—')
+        expect(formatVolume(row.volume)).toBe('no reading')
         expect(readingTitle(row.volume)).toContain(row.volume.cause ?? '')
       }
     }
@@ -157,7 +157,7 @@ describe('the fixture estate', () => {
   })
 
   // The pair the estate exists to keep apart (#98). `data-flow/edge` runs
-  // edge-standard, which wires traces and logs and no metrics lane — which
+  // edge-standard, which wires traces and logs and no metrics lane, which
   // is why its Hop to the gateway carries only two signals. `data-flow/gateway`
   // wires all three and its logs pipeline is silent. Both would meter
   // `in 0 / out 0`, and they mean opposite things.

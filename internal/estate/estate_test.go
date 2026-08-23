@@ -21,7 +21,7 @@ func declaration() Declaration {
 }
 
 // AC: an unknown collector comes back Known false with a cause, never an
-// error (ADR-0008); incapable readings stay zero — absent-with-declaration
+// error (ADR-0008); incapable readings stay zero, absent-with-declaration
 // (ADR-0036 §1).
 func TestLookupOfUnknownCollectorIsKnownFalseNeverAnError(t *testing.T) {
 	decl := declaration()
@@ -37,16 +37,16 @@ func TestLookupOfUnknownCollectorIsKnownFalseNeverAnError(t *testing.T) {
 
 	got := est.Lookup(map[string]string{"service.instance.id": "nobody"})
 	if got.Effective.Known || got.Health.Known {
-		t.Error("an unknown collector came back Known — not knowing must be honest")
+		t.Error("an unknown collector came back Known: not knowing must be honest")
 	}
 	if got.Effective.Cause == "" || got.Health.Cause == "" {
 		t.Error("an unknown collector's capable readings carry no cause")
 	}
 	if got.Effective.AsOf.IsZero() || got.Health.AsOf.IsZero() {
-		t.Error("an unknown collector's readings carry no as_of — even 'we cannot see' is a statement with a timestamp (ADR-0036 §2)")
+		t.Error("an unknown collector's readings carry no as_of: even 'we cannot see' is a statement with a timestamp")
 	}
 	if ds := got.DeliveryStatus; ds.Known || ds.Cause != "" || !ds.AsOf.IsZero() {
-		t.Errorf("the incapable delivery-status reading is not zero: %+v — incapable is absent-with-declaration, never a gap dressed as unknown", ds)
+		t.Errorf("the incapable delivery-status reading is not zero: %+v: incapable is absent-with-declaration, never a gap dressed as unknown", ds)
 	}
 }
 
@@ -63,7 +63,7 @@ func TestLookupMatchesOnIdentitySubset(t *testing.T) {
 		t.Error("a subset ask did not find the collector carrying it")
 	}
 	if got := est.Lookup(nil); got.Effective.Known {
-		t.Error("an empty ask matched a collector — nothing was asked, so nothing can be found")
+		t.Error("an empty ask matched a collector: nothing was asked, so nothing can be found")
 	}
 }
 
@@ -87,24 +87,24 @@ func TestForEvaluationDemotesStaleReadings(t *testing.T) {
 
 	stale := c.ForEvaluation(decl, t0.Add(horizon+time.Second))
 	if stale.Effective.Known || stale.Health.Known || stale.DeliveryStatus.Known {
-		t.Error("a reading past the horizon stayed Known — a stale reading never feeds a fresh-looking verdict")
+		t.Error("a reading past the horizon stayed Known: a stale reading never feeds a fresh-looking verdict")
 	}
 	if !strings.Contains(stale.Effective.Cause, "stale") {
 		t.Errorf("demotion cause %q does not say the reading is stale", stale.Effective.Cause)
 	}
 	if stale.Effective.Pipelines != nil {
-		t.Error("a demoted Effective reading still carries pipelines — the payload must not survive into evaluation")
+		t.Error("a demoted Effective reading still carries pipelines: the payload must not survive into evaluation")
 	}
 	if !stale.Effective.AsOf.Equal(t0) {
-		t.Error("demotion lost as_of — surfaces need last-known-plus-age")
+		t.Error("demotion lost as_of: surfaces need last-known-plus-age")
 	}
 	if !c.Effective.Known || c.Effective.Pipelines == nil {
-		t.Error("ForEvaluation mutated the original reading — surfaces keep last-known")
+		t.Error("ForEvaluation mutated the original reading: surfaces keep last-known")
 	}
 }
 
 // A declaration without a cadence can establish no freshness, so every
-// reading demotes — fail closed, with the cause naming the declaration as
+// reading demotes, failing closed, with the cause naming the declaration as
 // the fault (ADR-0036 §3).
 func TestForEvaluationWithoutCadenceDemotesEverything(t *testing.T) {
 	decl := declaration()

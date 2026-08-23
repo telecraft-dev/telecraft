@@ -11,7 +11,7 @@ import (
 
 var t0 = time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 
-// memory is a minimal in-memory Provider — the "any implementation" the
+// memory is a minimal in-memory Provider, the "any implementation" the
 // kit must run against, and the third-implementation stand-in ADR-0008
 // asks the seam to be verified with.
 type memory struct {
@@ -55,7 +55,7 @@ func conforming() (memory, []Seed) {
 		},
 		{
 			// A collector whose config the provider cannot currently
-			// see: capable-but-unknown, loud with a cause — conforming.
+			// see: capable-but-unknown, loud with a cause: conforming.
 			Identity: map[string]string{"service.instance.id": "b"},
 		},
 	}
@@ -78,8 +78,8 @@ func conforming() (memory, []Seed) {
 	return memory{decl: decl, est: est}, seeds
 }
 
-// AC: the kit runs against any implementation — here a pure in-memory one
-// — and a conforming provider yields no violations.
+// AC: the kit runs against any implementation (here a pure in-memory one)
+// and a conforming provider yields no violations.
 func TestKitPassesAConformingProvider(t *testing.T) {
 	p, seeds := conforming()
 	if got := Violations(context.Background(), Kit{Provider: p, Seeded: seeds}); len(got) > 0 {
@@ -89,7 +89,7 @@ func TestKitPassesAConformingProvider(t *testing.T) {
 }
 
 // AC: the kit fails a deliberately broken provider with actionable output
-// — one recognisable line per broken rule.
+// with one recognisable line per broken rule.
 func TestKitFailsABrokenProviderWithActionableOutput(t *testing.T) {
 	p, seeds := conforming()
 
@@ -116,7 +116,7 @@ func TestKitFailsABrokenProviderWithActionableOutput(t *testing.T) {
 		"no identity attributes",
 	} {
 		if !containsViolation(got, want) {
-			t.Errorf("no violation mentions %q — the kit must catch this break and say so actionably\ngot:\n  %s", want, strings.Join(got, "\n  "))
+			t.Errorf("no violation mentions %q: the kit must catch this break and say so actionably\ngot:\n  %s", want, strings.Join(got, "\n  "))
 		}
 	}
 }
@@ -125,7 +125,7 @@ func TestKitFailsABrokenProviderWithActionableOutput(t *testing.T) {
 func TestKitRefusesAnEmptySeedList(t *testing.T) {
 	p, _ := conforming()
 	got := Violations(context.Background(), Kit{Provider: p})
-	if !containsViolation(got, "vacuously") {
+	if !containsViolation(got, "no seeded collectors") {
 		t.Errorf("an unseeded run was not refused: %v", got)
 	}
 }
