@@ -34,6 +34,11 @@ export function buildTopologyModel(
         from: hop.from,
         to: hop.to,
         signal,
+        // The Hop's own reading for this lane, or undefined where the
+        // payload carried none. A missing reading stays missing here: it
+        // is not a zero, and the shell must be able to tell them apart
+        // (ADR-0008).
+        throughput: hop.throughput?.[signal],
       })),
     ),
     arrangement,

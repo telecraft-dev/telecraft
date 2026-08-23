@@ -47,7 +47,7 @@ import (
 // v4 gives the snapshot's topology Hops their per-signal throughput: the
 // out-rate of the exporter feeding each one (ADR-0040 §1). No field on the
 // face or the drawer moved, and the version still bumps, because the
-// integer is one contract's and not one struct's — the payloads that
+// integer is one contract's and not one struct's: the payloads that
 // travel together version together, or the two sides of the seam stop
 // agreeing without anybody noticing (§4).
 const Version = 4

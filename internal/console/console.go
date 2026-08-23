@@ -378,7 +378,7 @@ type TopologyHop struct {
 	Signals []string `json:"signals"`
 
 	// Throughput is the Hop's per-signal throughput, keyed by signal name
-	// over the same signals Signals lists — one entry per edge the canvas
+	// over the same signals Signals lists, one entry per edge the canvas
 	// draws for this Hop (ADR-0044 §1). Every entry is present, including
 	// the unknown ones: a Hop the meter could not read is drawn as
 	// unlabelled, never as idle.

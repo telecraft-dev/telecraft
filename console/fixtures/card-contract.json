@@ -1,6 +1,6 @@
 {
   "face": {
-    "contractVersion": 3,
+    "contractVersion": 4,
     "tier": "data-flow/gateway",
     "name": "gateway",
     "team": "data-flow",
@@ -128,7 +128,7 @@
     }
   },
   "drawer": {
-    "contractVersion": 3,
+    "contractVersion": 4,
     "tier": "data-flow/gateway",
     "findings": [
       {
