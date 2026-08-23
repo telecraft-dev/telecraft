@@ -77,7 +77,7 @@ Two details worth knowing before you rely on this:
 | Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests — with no Docker and no network |
 | TelemetryProvider live | the `Live` suite against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only a test double |
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
-| Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, and the built bundle reaches no external host |
+| Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling |
 | Demo snapshot and bundle | `build:demo`, `check:zero-cdn`, `telecraft snapshot`, the entry-document check | The public demo's two halves keep working: the snapshot the real evaluators produce, and the console bundle that reads it |
 
 Five of those guard rules that are otherwise unenforceable in review.
@@ -115,6 +115,16 @@ method and the expected values — and the documented palette turned out not
 to clear its own floors, which is precisely the failure a document cannot
 catch.
 
+**`check:bundle-budget`** exists because a code split is easy to undo by
+accident. The console loads each Workspace's code on navigation (issue
+#125), and an ordinary-looking import in the wrong file pulls a Workspace
+back into the chunk every reader downloads first. The check measures the
+gzipped entry chunk against a stated ceiling, prints every chunk's size as
+it goes, and says in its failure message what to do: move the weight behind
+a route, or raise the ceiling in the same commit and say why. The
+[console page](console.md#the-bundle-budget) carries the ceiling and the
+reasoning for it.
+
 ## The live suites, and why they can be green without credentials
 
 Both live jobs follow the conformance-kit discipline of ADR-0036: **absent
@@ -146,7 +156,7 @@ go run ./tools/binlint
 cd console
 npm ci
 npm run typecheck && npm test && npm run check:palette
-npm run build && npm run check:zero-cdn
+npm run build && npm run check:zero-cdn && npm run check:bundle-budget
 npm run e2e
 ```
 

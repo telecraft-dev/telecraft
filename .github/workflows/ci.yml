@@ -177,11 +177,14 @@ jobs:
           FORGE_APP_PRIVATE_KEY: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
 
   # The console (issue #25, ADR-0045): typecheck, unit tests, the palette
-  # check over the design tokens, build, the zero-CDN check over the built
-  # bundle, and the Playwright suite against the fixture backend. The
-  # air-gap check lives here beside the vendor-word lint, not in a doc
-  # (ADR-0045 §5), and ADR-0047 put the accessibility floors beside it for
-  # the same reason: they are numbers, so they can be regressed.
+  # check over the design tokens, build, the zero-CDN check and the bundle
+  # budget over the built bundle, and the Playwright suite against the
+  # fixture backend. The air-gap check lives here beside the vendor-word
+  # lint, not in a doc (ADR-0045 §5), and ADR-0047 put the accessibility
+  # floors beside it for the same reason: they are numbers, so they can be
+  # regressed. The entry chunk's gzipped size is the third such number
+  # (issue #125): route-level code splitting is worth nothing if it can
+  # come undone in a review nobody measures.
   console:
     name: Console (ADR-0045)
     needs: changes
@@ -203,6 +206,7 @@ jobs:
       - run: npm run check:palette
       - run: npm run build
       - run: npm run check:zero-cdn
+      - run: npm run check:bundle-budget
       # Playwright's browser, cached on the lockfile so a run that has not
       # changed its dependencies downloads nothing.
       #
