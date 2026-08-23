@@ -254,13 +254,20 @@ arrived from it. The demo does not invent either: it *declares* them, and
 reads (`demo/readings.yaml` in the estate repository). Everything judged
 from them is judged by the product's own evaluators.
 
-Two things are still rendered as not knowing, and both are worth looking at
-because they are the point:
+Three things are still rendered as something other than a figure, and all
+three are worth looking at because they are the point:
 
 - **`edge-ops/edge-arm` reads unknown on every lane.** Nothing has ever
   matched that Tier, so no counters exist to read. A zero would be a claim
   about a Tier we cannot see, and the contract keeps "we cannot see" and
   "nothing arrived" apart (ADR-0008).
+- **Some lanes read "no lane on this Tier".** `data-flow/kafka-bridge` wires
+  no metrics pipeline and `storefront/mobile-edge` wires no traces one, so
+  there is nothing on those lanes to have metered. Their counters would read
+  `in 0 / out 0` truthfully — and identically to
+  `storefront/catalogue-web`'s traces lane, which is wired, is broken, and
+  is a genuine finding. Two opposite meanings cannot share one rendering, so
+  a lane with no pipeline behind it carries no numbers at all.
 - **Shape reads unknown on every card**, and the drawer says why:
 
   > no shape reading exists at pipeline grain — self-telemetry counts items

@@ -14,7 +14,7 @@ function card(
   findingCounts: Record<string, number> = {},
 ): CardFace {
   return {
-    contractVersion: 2,
+    contractVersion: 3,
     tier,
     name: tier,
     team: 'data-flow',

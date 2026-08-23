@@ -740,6 +740,33 @@
   color: var(--severity-violation);
 }
 
+/* A lane the Tier's artefact never wired (#98). It reads as one quiet
+   statement across the cells the readings would have filled, rather than
+   as three of them: the shape of the row is what tells a reader scanning
+   the matrix that this lane is absent, not stopped. The mark is
+   ADR-0047 §7's not_applicable rule — a plain datum, nothing judged — and
+   the row is dimmed and italic so it recedes behind the lanes that carry
+   readings without ever being invisible. */
+.signal-matrix .cell-lane {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-style: italic;
+  color: var(--colour-text-muted);
+  opacity: 0.75;
+}
+
+.signal-matrix .cell-lane .mark {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.signal-matrix tr.lane-absent th {
+  font-style: italic;
+  opacity: 0.75;
+}
+
 .panel-flow .signal-matrix {
   font-size: var(--text-xs);
 }

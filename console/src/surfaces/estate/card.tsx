@@ -21,6 +21,9 @@ import {
   formatReduction,
   formatShape,
   formatVolume,
+  laneReads,
+  NO_LANE,
+  NO_LANE_TITLE,
   readingTitle,
 } from '../../estate/readings'
 import { deepLinkFor } from '../../objectref'
@@ -64,10 +67,31 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
     <table className="signal-matrix" data-testid={`matrix-${tier}`}>
       <tbody>
         {signals.map((row) => {
+          if (!laneReads(row)) {
+            // A lane the Tier's artefact never wired (#98). It is not a
+            // reading of zero and it is not an unknown: there is no
+            // pipeline here, so the row says so across the cells the
+            // readings would have filled, under the mark ADR-0047 §7
+            // gives the state — a plain rule, nothing to judge.
+            return (
+              <tr
+                key={row.signal}
+                className="lane-absent"
+                data-lane={row.lane}
+                data-testid={`matrix-${tier}-${row.signal}`}
+              >
+                <th scope="row">{row.signal}</th>
+                <td className="cell-lane" colSpan={3} title={NO_LANE_TITLE}>
+                  <Mark name="not_applicable" />
+                  {NO_LANE}
+                </td>
+              </tr>
+            )
+          }
           const reduction = formatReduction(row.volume)
           const errors = errorReadings(row.volume)
           return (
-            <tr key={row.signal} data-testid={`matrix-${tier}-${row.signal}`}>
+            <tr key={row.signal} data-lane={row.lane} data-testid={`matrix-${tier}-${row.signal}`}>
               <th scope="row">{row.signal}</th>
               <td className="cell-volume" title={readingTitle(row.volume)}>
                 {formatVolume(row.volume)}

@@ -149,12 +149,34 @@ export interface ShapeReading extends Reading {
 
 export type SignalName = 'logs' | 'metrics' | 'traces'
 
-/** One lane of the per-signal matrix: the skeleton under the reading bands (P4 variant D). */
+/**
+ * Whether the Tier's rendered artefact instantiates a pipeline for a
+ * signal — what the config in git wires, not what the meter saw. It is
+ * the fact the readings beside it hang off (ADR-0041 §2, ADR-0008):
+ *
+ * - `present` — there is a pipeline, so the readings are readings of it.
+ * - `not_applicable` — there is none, so the row carries no readings.
+ * - `unknown` — no artefact was available to read the lanes off.
+ */
+export type LaneState = 'present' | 'not_applicable' | 'unknown'
+
+/**
+ * One lane of the per-signal matrix: the skeleton under the reading bands
+ * (P4 variant D).
+ *
+ * The three readings are absent when `lane` is `not_applicable`. Their
+ * counters would all read zero and would do so truthfully, but `in 0 /
+ * out 0` is also exactly how a broken pipeline reads — and a reader
+ * scanning the matrix cannot tell "there is no metrics lane here" from
+ * "the metrics lane has stopped". A row with no lane behind it carries no
+ * numbers, so there is no zero left to misread.
+ */
 export interface SignalRow {
   signal: SignalName
-  volume: VolumeReading
-  freshness: FreshnessReading
-  shape: ShapeReading
+  lane: LaneState
+  volume?: VolumeReading
+  freshness?: FreshnessReading
+  shape?: ShapeReading
 }
 
 /** The Tier's restart-rate reading: incarnations in the window (ADR-0040 §4). */
@@ -180,19 +202,21 @@ export interface Population {
 
 /**
  * The card contract's integer version (ADR-0041 §4). v2 added the
- * per-signal matrix rows, the population state and the churn reading; the
- * bump is the visible, reviewable event the ADR asks for, and both sides
- * are held to console/fixtures/card-contract.json, which the engine
- * writes and `tests/card-contract.test.ts` reads.
+ * per-signal matrix rows, the population state and the churn reading; v3
+ * gave each of those rows a lane state and dropped its readings when that
+ * state is `not_applicable`. The bump is the visible, reviewable event
+ * the ADR asks for, and both sides are held to
+ * console/fixtures/card-contract.json, which the engine writes and
+ * `tests/card-contract.test.ts` reads.
  */
-export const CARD_CONTRACT_VERSION = 2
+export const CARD_CONTRACT_VERSION = 3
 
 /**
- * The card face, contract version 2: the card unit is the Tier, and the
+ * The card face, contract version 3: the card unit is the Tier, and the
  * shelf groups and sorts from these fields alone (ADR-0041, ADR-0042 §2).
  */
 export interface CardFace {
-  contractVersion: 2
+  contractVersion: 3
   /** Tier id — the contract keys on Tier id, never on a pair. */
   tier: string
   name: string
@@ -270,7 +294,7 @@ export interface Provenance {
 
 /** GET /api/v1/drawer?tier= — the on-demand drawer payload (ADR-0041 §3). */
 export interface CardDrawer {
-  contractVersion: 2
+  contractVersion: 3
   tier: string
   findings: Finding[]
   provenance: Provenance[]

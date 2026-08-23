@@ -45,7 +45,7 @@ func (b *builder) face(v *tierView) CardFace {
 		},
 		FindingCounts: counts,
 		Population:    b.populationLine(v),
-		Signals:       b.signalRows(v.metered),
+		Signals:       b.signalRows(v),
 		Churn:         b.churn(v.metered),
 	}
 	if len(waived) > 0 {
@@ -164,22 +164,79 @@ func (b *builder) populationLine(v *tierView) Population {
 // signal and per reading all the way down: a lane the meter could not read
 // carries Known false and the cause said out loud beside lanes that carry
 // figures — never a zero standing in for "we cannot see" (ADR-0008).
-func (b *builder) signalRows(m telemetry.Metered) []SignalRow {
+//
+// The lane state comes first, off the Tier's bound Blueprint rather than
+// off the meter: a signal the artefact wires no pipeline for has nothing
+// to have metered, and its counters read zero for a reason that has
+// nothing to do with flow. Such a row carries no readings at all, because
+// `in 0 / out 0` is also what a broken pipeline reads and the two mean
+// opposite things.
+func (b *builder) signalRows(v *tierView) []SignalRow {
+	m := v.metered
+	lanes := b.tierLanes(v)
 	asOf := m.AsOf.UTC().Format(time.RFC3339)
 	out := make([]SignalRow, 0, len(telemetry.Signals()))
 	for _, kind := range telemetry.Signals() {
+		row := SignalRow{Signal: string(kind), Lane: lanes[kind]}
+
 		sig, read := m.Signals[kind]
 		if !read {
 			// A seam that returned no entry for a signal has said
 			// nothing about it, which is not the same as a zero.
 			sig = telemetry.MeteredSignal{Known: false, Cause: flowCause}
 		}
-		out = append(out, SignalRow{
-			Signal:    string(kind),
-			Volume:    volumeRow(sig, asOf),
-			Freshness: freshnessRow(sig, asOf, m.AsOf),
-			Shape:     ShapeReading{Reading: Reading{Known: false, AsOf: asOf, Cause: shapeCause}},
-		})
+
+		if row.Lane == LaneNotApplicable {
+			if !meterReported(sig) {
+				out = append(out, row)
+				continue
+			}
+			// The Blueprint wires no such lane and the meter has figures
+			// for it anyway: a collector still serving an older artefact
+			// than the one in git. Intended and Observed are separate
+			// readings and neither overrules the other (ADR-0004), so the
+			// row keeps both rather than hiding the disagreement.
+			row.Lane = LanePresent
+		}
+
+		volume := volumeRow(sig, asOf)
+		freshness := freshnessRow(sig, asOf, m.AsOf)
+		shape := ShapeReading{Reading: Reading{Known: false, AsOf: asOf, Cause: shapeCause}}
+		row.Volume, row.Freshness, row.Shape = &volume, &freshness, &shape
+		out = append(out, row)
+	}
+	return out
+}
+
+// meterReported is whether the seam came back with a figure at all for a
+// lane: any non-zero count it could only have got from a pipeline that
+// exists and ran. A pipeline that was never instantiated emits no
+// counters, so the zeros that come back for it are the sum of nothing —
+// which is why they may be dropped, and why a non-zero may not be.
+func meterReported(sig telemetry.MeteredSignal) bool {
+	if !sig.Known {
+		return false
+	}
+	return sig.In != 0 || sig.Out != 0 || sig.Refused != 0 || sig.SendFailed != 0 || sig.EnqueueFailed != 0
+}
+
+// tierLanes reads which signals the Tier's Blueprint instantiates a
+// pipeline for — the same lane lookup an edge's carried signals come from,
+// so a card and the canvas can never disagree about which lanes exist. A
+// Tier bound to a Blueprint nobody can resolve leaves every lane unknown:
+// the lanes were never looked at, which is not the same as absent.
+func (b *builder) tierLanes(v *tierView) map[requirements.SignalKind]LaneState {
+	out := make(map[requirements.SignalKind]LaneState, len(telemetry.Signals()))
+	bp, ok := b.bp.Blueprint(v.tier.Binding().ID())
+	for _, kind := range telemetry.Signals() {
+		switch {
+		case !ok:
+			out[kind] = LaneUnknown
+		case len(bp.Lane(blueprint.Signal(kind))) > 0:
+			out[kind] = LanePresent
+		default:
+			out[kind] = LaneNotApplicable
+		}
 	}
 	return out
 }

@@ -24,8 +24,10 @@ test('the P3-scale topology renders counts and zero per-collector nodes', async 
 test('edges derive from the model; no gesture draws or redraws one', async ({ page }) => {
   await page.goto('/topology')
   const canvas = page.getByTestId(CANVAS)
-  // Every drawn edge is a Hop signal lane: 3 Hops carrying 3+3+2 signals.
-  await expect(canvas.locator('.canvas-edge')).toHaveCount(8)
+  // Every drawn edge is a Hop signal lane: 3 Hops carrying 3+2+2 signals.
+  // A Hop carries the lanes its source Tier wires and no others, so the
+  // two governed sources carry two each — neither wires a metrics lane.
+  await expect(canvas.locator('.canvas-edge')).toHaveCount(7)
   // Nothing is connectable: there is no handle a drag could start an
   // edge from (ADR-0044 §3).
   await expect(canvas.locator('.react-flow__handle.connectable')).toHaveCount(0)
@@ -37,7 +39,7 @@ test('edges derive from the model; no gesture draws or redraws one', async ({ pa
   await page.mouse.down()
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + 10, { steps: 6 })
   await page.mouse.up()
-  await expect(canvas.locator('.canvas-edge')).toHaveCount(8)
+  await expect(canvas.locator('.canvas-edge')).toHaveCount(7)
 })
 
 test('drag is row-constrained and persists in the per-user store', async ({ page }) => {

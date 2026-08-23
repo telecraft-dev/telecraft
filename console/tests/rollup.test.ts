@@ -16,7 +16,7 @@ function card(
   extras: Partial<Pick<CardFace, 'findingCounts' | 'waivedCounts'>> = {},
 ): CardFace {
   return {
-    contractVersion: 2,
+    contractVersion: 3,
     tier,
     name: tier,
     team,
