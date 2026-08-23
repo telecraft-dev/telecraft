@@ -354,6 +354,21 @@ Each exports a class helper (`buttonClass`, `chipClass`) beside the
 component, because roughly half of these are links rather than buttons and a
 link must stay an anchor.
 
+**A control's name does not choose its primitive.** ADR-0042 §3.3 calls the
+deep link that travels to the surface which can fix a finding a "who-acts
+chip", and that vocabulary predates this layer. It is drawn with the
+secondary `Button` on a router `Link`, not with `Chip`. A chip states what
+something is: muted ink, one or two words, set never to wrap. A who-acts
+control is a door, its words are an instruction that runs to a line or more,
+and a reader has to be able to tell it from the labels sitting beside it in
+the same drawer. Read the primitive off what a control does, not off what
+the corpus calls it.
+
+A link that only inspects is not that control and takes no class at all.
+Inspection stays and action travels (ADR-0042 §3.3), so an identifier in a
+table cell or a list that opens the object beside it is a bare anchor, which
+`base.css` already dresses.
+
 **Never name a shared modifier `active`.** The router stamps `active` on any
 `Link` whose route matches, so a shared `.active` silently fills any
 who-acts link that happens to point at the surface the reader is already on.

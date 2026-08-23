@@ -212,6 +212,9 @@ export function Browse() {
                 <td>{component.type}</td>
                 <td>{component.team}</td>
                 <td>
+                  {/* The entry this Component instantiates. Inspection, not
+                      action: it carries no class, because a bare anchor is
+                      dressed by `base.css` and reads as the link it is. */}
                   <Link
                     from="/catalogue"
                     to="/catalogue"
@@ -222,7 +225,6 @@ export function Browse() {
                         id: `${component.class}/${component.type}`,
                       }),
                     })}
-                    className="who-acts"
                     data-testid={`component-entry-${component.id}`}
                     onClick={(event) => event.stopPropagation()}
                   >

@@ -85,6 +85,53 @@ test('the lens preference persists per user; an explicit URL lens beats it', asy
   }
 })
 
+// Issue #97: a who-acts control is one primitive wherever it appears, the
+// secondary Button, worn by a router Link, so the plate says "a door" and
+// the element stays an anchor (ADR-0048 §1).
+test('every who-acts control is the same primitive, and still an anchor', async ({ page }) => {
+  const controls: { url: string; testId: string }[] = [
+    // A finding's routing target (ADR-0042 §3.3).
+    {
+      url: '/estate?object=tier%3Adata-flow%2Fgateway',
+      testId: 'who-acts-gateway-expectation-logs',
+    },
+    // The way out of the one hard block (ADR-0022 §3).
+    { url: '/compose?object=blueprint%3Adata-flow%2Fgateway-standard', testId: 'request-grant' },
+    // A narrowed-out palette row's door to the request flow.
+    { url: '/catalogue?view=palette', testId: 'request-grant-exporter/debug' },
+    // The entry panel's question, answered on another view.
+    { url: '/catalogue?object=entry%3Aexporter%2Fotlphttp', testId: 'entry-see-palette' },
+  ]
+  for (const control of controls) {
+    await page.goto(control.url)
+    const element = page.getByTestId(control.testId)
+    await expect(element).toHaveClass(/\bbutton\b/)
+    await expect(element).toHaveClass(/\bbutton-secondary\b/)
+    await expect(element).toHaveClass(/\bwho-acts\b/)
+    await expect(element).toHaveJSProperty('tagName', 'A')
+  }
+
+  // The "why?" popover's travel action is the fifth, and reached by asking
+  // (ADR-0042 §5).
+  await page.goto('/estate?object=tier%3Adata-flow%2Fgateway')
+  await page.getByTestId('why-band:conformance').click()
+  const trace = page.getByTestId('why-trace-band:conformance')
+  await expect(trace).toHaveClass(/\bbutton-secondary\b/)
+  await expect(trace).toHaveJSProperty('tagName', 'A')
+
+  // Two links carried the class and were never who-acts controls: a
+  // Component's entry in a data cell, and an entry's instances in a list.
+  // Both inspect rather than act, so both stay bare anchors.
+  await page.goto('/catalogue')
+  const entry = page.getByTestId('component-entry-data-flow/gateway-exporter')
+  await expect(entry).not.toHaveClass(/\bbutton\b/)
+  await expect(entry).not.toHaveClass(/\bwho-acts\b/)
+  await entry.click()
+  const instance = page.getByTestId('entry-instance-data-flow/gateway-exporter')
+  await expect(instance).not.toHaveClass(/\bbutton\b/)
+  await expect(instance).not.toHaveClass(/\bwho-acts\b/)
+})
+
 test('the console never fetches from outside its origin', async ({ page }) => {
   const external: string[] = []
   await page.route('**/*', async (route) => {

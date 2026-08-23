@@ -98,6 +98,9 @@ export function EntryPanel({
           <ul className="entry-instance-list">
             {instances.map((component) => (
               <li key={component.id}>
+                {/* Each governed Component links back to its own row in the
+                    browse table. Inspection, not action: a bare anchor,
+                    dressed by `base.css`. */}
                 <Link
                   from="/catalogue"
                   to="/catalogue"
@@ -105,7 +108,6 @@ export function EntryPanel({
                     ...prev,
                     object: formatObjectRef({ kind: 'component', id: component.id }),
                   })}
-                  className="who-acts"
                   data-testid={`entry-instance-${component.id}`}
                 >
                   {component.id}@{component.version}
