@@ -27,7 +27,7 @@ Read the page that matches what you are doing:
   conformance kit.
 - [Console](console.md) covers the four Workspaces, the card data contract,
   the canvas engine, and the zero-CDN rule.
-- [Decisions](decisions.md) explains the ADR process and maps the 52 ADRs by
+- [Decisions](decisions.md) explains the ADR process and maps the ADRs by
   theme.
 - [Documentation](documentation.md) explains how this documentation system
   works and how to add a page.
