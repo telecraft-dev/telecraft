@@ -42,14 +42,25 @@ Held from the naming decision, unchanged:
 
 ## The mark
 
-`console/public/favicon.svg` already carries the right idea: the card face's
-three reading bands, stacked and decreasing. It is the product's own shape,
-and it survives.
+Three reading bands, stacked and decreasing, measured against a vertical
+datum in the brand amber. The bands are the favicon's original idea — the
+card face's three readings (ADR-0041 §2) — and they survive; the datum is
+what they are read against, which is the product's thesis drawn literally.
+Tone falls with length, so the single-colour version loses nothing it needs.
 
-What it still needs, in rough order: a wordmark lockup, horizontal and stacked
-variants, a single-colour version for stamps and terminals, a clear-space
-rule, sizes above 32px, and a ground colour drawn from the current palette
-rather than the retired navy `#1e2b3a` it uses today.
+The wordmark is `telecraft` in Atkinson Hyperlegible Next at weight 600,
+outlined from the vendored face, tracked −12/1000, with one drawn
+intervention: the f–t crossbars in "craft" join into a single bar, on the
+syllable that says craft.
+
+The pack lives in [`pack/`](pack/): icons, bare marks, wordmarks, and
+horizontal and stacked lockups, each drawn for both grounds plus a
+single-colour version, written by `pack/tools/build.py` from the `tokens.css`
+values and never edited by hand. Clear space, minimum sizes and the usage
+rules are in [`pack/README.md`](pack/README.md). `console/public/favicon.svg`
+is the canonical icon, written by the same script, and the retired navy
+`#1e2b3a` is gone (issue #101) — every colour in the mark is now one the
+palette check can see.
 
 ## Voice
 

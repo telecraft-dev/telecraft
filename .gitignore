@@ -16,3 +16,6 @@
 # configs, the live snapshot, and container state. Everything in it is
 # rebuilt by `devenv/devenv up`.
 devenv/run/
+
+# Python bytecode from the pack generator (docs/branding/pack/tools/).
+__pycache__/
