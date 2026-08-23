@@ -4,12 +4,31 @@
 # The Supervisor applies the served configuration over its local files, so a
 # local value for a key the artefact also sets is simply overwritten: on the
 # served path the estate wins every argument it chooses to have. What
-# survives is a setting the estate never described, and that is the honest
-# drift here — the running collector doing something no reviewed artefact
-# asked for.
+# survives is a key the estate never described, and that is the honest drift
+# here — the running collector doing something no reviewed artefact asked
+# for.
 #
-# The gateway artefact sets this component's batch size and timeout, and
-# says nothing about a maximum. This does.
+# There are two grains of that, and this file carries one of each, because
+# the cross judges them differently (ADR-0054).
+#
+# The first is a whole pipeline. Nothing in the gateway artefact describes
+# it, it fans this collector's arrivals out a second time, and it is what
+# the structural check exists to catch: a component or a pipeline present in
+# the Effective reading that the Intended artefact does not describe.
+service:
+  pipelines:
+    logs/local:
+      receivers:
+        - otlp/otlp-in
+      exporters:
+        - otlp_http/platform.backend-exporter
+
+# The second is a setting. The gateway artefact sets this component's batch
+# size and timeout, and says nothing about a maximum. This does — and it is
+# deliberately NOT drift after ADR-0054: the cross judges the keys the
+# artefact asserts, so a key it never mentions is excused whether the
+# collector defaulted it or a local file set it. Both halves are here so the
+# scenario shows the trade rather than only its good side.
 processors:
   batch/batcher:
     send_batch_max_size: 512
