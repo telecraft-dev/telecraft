@@ -1,0 +1,52 @@
+version: 2
+
+# Dependabot watches all three ecosystems: the Go module, the console's npm
+# dependencies, and the actions pinned in .github/workflows. The tree is lean
+# — two direct Go requirements beyond the standard library, seven runtime npm
+# packages, and a handful of pinned actions — so the PR traffic stays low even
+# without grouping. Grouping is on anyway: a week of patch bumps landing as
+# one PR per ecosystem is easier to review than one PR per package, and CI
+# already runs the full suite on every change, so a grouped update either goes
+# green or names exactly what it broke.
+#
+# Weekly rather than daily: the dependencies are not moving fast enough to
+# justify daily noise, and a longer window gives upstream authors time to cut a
+# clean release before we pull it.
+updates:
+  # The Go module. gopkg.in/yaml.v3 and open-telemetry/opamp-go are the only
+  # direct requirements beyond the standard library, so a grouped weekly run
+  # produces at most one PR regardless of how many transitive packages move.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+
+  # The console's npm dependencies, rooted at console/ rather than the
+  # repository root. Seven runtime packages; grouping keeps the PR count
+  # predictable as that number grows.
+  - package-ecosystem: npm
+    directory: /console
+    schedule:
+      interval: weekly
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
+  # The GitHub Actions pinned across .github/workflows. Actions are pinned by
+  # major version (e.g. actions/checkout@v4), so Dependabot's job here is to
+  # surface major-version bumps before the pins go stale. Grouped weekly for
+  # the same reason as the other ecosystems: one PR for the batch, CI decides
+  # whether it is safe.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
