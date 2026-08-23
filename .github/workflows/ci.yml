@@ -8,9 +8,11 @@ on:
 jobs:
   # What changed decides what runs. A documentation-only pull request has no
   # business installing a browser or standing up Elasticsearch, and when the
-  # runners are slow that wait is the whole review latency. The vendor-word
-  # lint is the deliberate exception: it scans docs/** as well as code
-  # (vendorlint.yaml), so it runs on everything, always.
+  # runners are slow that wait is the whole review latency. The three checks
+  # below this job are the deliberate exceptions: each reads the whole tree
+  # rather than the code in it, so a documentation-only change is exactly
+  # the change that can break them. They carry no `if:` and run on
+  # everything, always.
   changes:
     name: What changed
     runs-on: ubuntu-latest
@@ -81,6 +83,31 @@ jobs:
         with:
           go-version: stable
       - run: go run ./tools/docslint
+
+  # The tracked-executable check (issue #122). Ungated for a third reason:
+  # it reads the index rather than a language, so every change is a change
+  # that can introduce what it looks for. A stray build artefact arrives
+  # through a documentation branch as easily as through a Go one, and
+  # gating it on `code` would leave the one commit that adds a binary
+  # beside a guide unguarded.
+  #
+  # It exists because a 3.4 MB `vendorlint` executable sat at the
+  # repository root from the first scaffolding commit and reached every
+  # clone and every generated source tarball. Nothing rebuilt it and
+  # nothing verified it: a reviewer reading a diff sees a path rather than
+  # a file type, which is the failure no amount of care in review catches.
+  #
+  # `git ls-files` needs only the index, so the default shallow checkout is
+  # enough.
+  binary-lint:
+    name: No tracked binaries (issue #122)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go run ./tools/binlint
 
   test:
     name: Build and test
