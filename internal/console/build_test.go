@@ -1,6 +1,7 @@
 package console_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -306,5 +307,66 @@ func TestThePopulationStateNamesWhichSiblingHolds(t *testing.T) {
 	}
 	if card.Population.StaleConfig {
 		t.Error("a populated Tier is flagged as stale config")
+	}
+}
+
+// Every list in a drawer is a list, including when it is empty.
+//
+// A nil slice marshals to `null`, and the console reads `findings.length`
+// without first asking whether the list is there — correctly, because the
+// card contract promises a list (ADR-0041). A Tier with nothing to report
+// crashed the drawer it opened into, which is a state every healthy estate
+// reaches and which no fixture whose Tiers all have findings can catch. So
+// this asserts on the type's own guarantee rather than on the fixture.
+func TestADrawerWithNothingToReportStillMarshalsLists(t *testing.T) {
+	encoded, err := json.Marshal(console.CardDrawer{
+		ContractVersion: console.ContractVersion,
+		Tier:            "team/quiet",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var back map[string]any
+	if err := json.Unmarshal(encoded, &back); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := back["findings"].([]any); !ok {
+		t.Errorf("findings marshalled as %T, and a reader taking its length gets a TypeError", back["findings"])
+	}
+	if _, ok := back["provenance"].([]any); !ok {
+		t.Errorf("provenance marshalled as %T, and a reader taking its length gets a TypeError", back["provenance"])
+	}
+}
+
+// And the whole snapshot the console actually fetches carries no null list
+// in any drawer.
+func TestNoDrawerInASnapshotMarshalsANullList(t *testing.T) {
+	encoded, err := json.Marshal(build(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var back struct {
+		Estate struct {
+			Drawers map[string]struct {
+				Findings   *[]any `json:"findings"`
+				Provenance *[]any `json:"provenance"`
+			} `json:"drawers"`
+		} `json:"estate"`
+	}
+	if err := json.Unmarshal(encoded, &back); err != nil {
+		t.Fatal(err)
+	}
+	if len(back.Estate.Drawers) == 0 {
+		t.Fatal("no drawers in the snapshot, so this proves nothing")
+	}
+	for id, drawer := range back.Estate.Drawers {
+		if drawer.Findings == nil {
+			t.Errorf("%s marshalled findings as null, and a reader taking its length gets a TypeError", id)
+		}
+		if drawer.Provenance == nil {
+			t.Errorf("%s marshalled provenance as null, and a reader taking its length gets a TypeError", id)
+		}
 	}
 }

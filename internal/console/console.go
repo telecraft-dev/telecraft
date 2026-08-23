@@ -24,6 +24,7 @@
 package console
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -460,4 +461,27 @@ type CatalogueVersion struct {
 type Catalogues struct {
 	Active   string             `json:"active"`
 	Versions []CatalogueVersion `json:"versions"`
+}
+
+// MarshalJSON writes a drawer's lists as lists, including when they are
+// empty.
+//
+// A nil slice marshals to `null`, and the card contract promises a list
+// (ADR-0041): a reader takes its length without first asking whether the
+// list is there, which is the right way to read a contract that promises
+// one. A Tier with nothing to report is the state every healthy estate
+// reaches, and it broke the drawer it opened into.
+//
+// The guarantee lives on the type rather than at the one place that built
+// a drawer, so a second place that builds one cannot reintroduce it.
+func (d CardDrawer) MarshalJSON() ([]byte, error) {
+	type drawer CardDrawer // shed this method, keep the field tags
+	out := drawer(d)
+	if out.Findings == nil {
+		out.Findings = []Finding{}
+	}
+	if out.Provenance == nil {
+		out.Provenance = []Provenance{}
+	}
+	return json.Marshal(out)
 }
