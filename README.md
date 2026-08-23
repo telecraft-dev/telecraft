@@ -51,9 +51,10 @@ end to end, with a console over all four workspaces. Interfaces are still
 free to change, so treat it as early software rather than a stable release.
 
 The decision corpus behind the product lives in
-[`docs/adr/`](docs/adr/) (48 architecture decision records), with
-[requirements](docs/requirements/), [research](docs/research/), and
-[prototype verdicts](docs/prototypes/) beside it.
+[`docs/adr/`](docs/adr/), one numbered architecture decision record per
+decision, with [requirements](docs/requirements/),
+[research](docs/research/), and [prototype verdicts](docs/prototypes/)
+beside it.
 
 ## Repository layout
 
