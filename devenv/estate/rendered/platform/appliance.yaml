@@ -26,7 +26,6 @@ exporters:
       enabled: true
       max_elapsed_time: 60s
     sending_queue:
-      enabled: true
       queue_size: 1000
 extensions:
   health_check/health:
