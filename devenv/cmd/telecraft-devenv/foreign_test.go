@@ -56,3 +56,33 @@ func TestTheLocalFileNamesWhatTheComposeFileMounts(t *testing.T) {
 		t.Errorf("wrote %s, which is not the file devenv/compose.yaml mounts", filepath.Base(path))
 	}
 }
+
+// Both halves of the copy fail closed. A collector given no local file, or
+// given half of one, starts against a configuration nobody authored.
+func TestTheLocalFileFailsClosed(t *testing.T) {
+	authored := filepath.Join(t.TempDir(), "appliance-1.yaml")
+	if err := os.WriteFile(authored, []byte("service: {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	blocked := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(blocked, []byte("in the way\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, tc := range map[string]struct{ local, dir string }{
+		"an authored file that is not there": {
+			local: filepath.Join(t.TempDir(), "nowhere.yaml"),
+			dir:   t.TempDir(),
+		},
+		"a run directory it cannot create": {
+			local: authored,
+			dir:   filepath.Join(blocked, "appliance-1"),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if path, err := writeLocalFile(tc.local, tc.dir); err == nil {
+				t.Fatalf("wrote %s where nothing should have been written", path)
+			}
+		})
+	}
+}

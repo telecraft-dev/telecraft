@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -669,3 +670,257 @@ service:
 		t.Errorf("production lens: exit %d with drift %+v, want the finding kept", code, report.LibraryDrift)
 	}
 }
+
+// Every combination check refuses, with the message it refuses in. A gate
+// that guessed at a half-stated invocation would judge something other
+// than what the operator asked for, so each of these is exit 2 with the
+// flags named.
+func TestCheckFlagCombinationsItRefuses(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
+
+	for name, tc := range map[string]struct {
+		args []string
+		want string
+	}{
+		"no library": {
+			args: nil,
+			want: "check: -library is required",
+		},
+		"no estate and no derivation": {
+			args: []string{"-library", libDir},
+			want: "check: -estate is required, unless -collectors derives each row's Effective reading instead (ADR-0055)",
+		},
+		"a derivation with no topology to read": {
+			args: []string{"-library", libDir, "-collectors", "collectors.yaml"},
+			want: "check: -collectors needs -source — the topology says which Tier answers for each row (ADR-0055 §1)",
+		},
+		"a Catalogue with no authored estate to judge": {
+			args: []string{"-library", libDir, "-estate", estate, "-catalogue", "catalogue-v1.json"},
+			want: "check: -catalogue needs -source — floors judge per (component, signal) against the active Catalogue (ADR-0023)",
+		},
+		"an authored estate with no Catalogue to judge it against": {
+			args: []string{"-library", libDir, "-estate", estate, "-source", dir},
+			want: "check: -source and -catalogue go together — floors judge per (component, signal) against the active Catalogue (ADR-0023)",
+		},
+		"a flag that does not exist": {
+			args: []string{"-libraries", libDir},
+			want: "flag provided but not defined: -libraries",
+		},
+		"a timeout that is not a duration": {
+			args: []string{"-library", libDir, "-estate", estate, "-timeout", "a while"},
+			want: `invalid value "a while" for flag -timeout`,
+		},
+		// A lens matching no row would pass vacuously, which is the one
+		// way a gate can be green without having judged anything.
+		"a lens no row is in": {
+			args: []string{"-library", libDir, "-estate", estate, "-environment", "nowhere"},
+			want: `check: the estate has no row in environment "nowhere" — a gate judging nothing would pass vacuously`,
+		},
+		// The backend is wired last, so an endpoint the provider refuses
+		// stops the run after the estate loaded and before anything is
+		// read.
+		"an empty endpoint": {
+			args: []string{"-library", libDir, "-estate", estate, "-endpoint", ""},
+			want: "endpoint is required",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			code, _, msg := runCheckCmd(t, tc.args...)
+			if code != 2 {
+				t.Fatalf("exit %d, want 2\nstderr: %s", code, msg)
+			}
+			if !strings.Contains(msg, tc.want) {
+				t.Errorf("stderr lacks %q:\n%s", tc.want, msg)
+			}
+		})
+	}
+}
+
+// Every input the gate loads fails closed at exit 2. A load error is never
+// a lenient 0: a run that could not read its inputs has judged nothing,
+// and a waiver source that failed to load would loosen the exit code on a
+// belief nobody checked.
+func TestCheckFailsClosedOnEachInputItLoads(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", twoEnvEstate)
+	missing := filepath.Join(dir, "nowhere")
+
+	for name, args := range map[string][]string{
+		"an estate file that is not there": {"-library", libDir, "-estate", missing},
+		"an exemptions directory that is not there": {
+			"-library", libDir, "-estate", estate, "-exemptions", missing,
+		},
+		"an ownership directory that is not there": {
+			"-library", libDir, "-estate", estate, "-ownership", missing,
+		},
+		// The drift detection is pure repo judgement and runs before any
+		// backend is touched, so an authored tree it cannot read stops the
+		// run there.
+		"an authored estate whose Blueprint does not parse": {
+			"-library", libDir, "-estate", estate, "-catalogue", "catalogue-v1.json",
+			"-source", driftSource(t, t.TempDir(), map[string]string{
+				"teams/pipelines/blueprints/flow.yaml": "name: flow\nversion: not-a-number\n",
+			}),
+		},
+		"an authored estate whose Tier does not parse": {
+			"-library", libDir, "-estate", estate, "-catalogue", renderCatalogue(t),
+			"-source", driftSource(t, t.TempDir(), map[string]string{
+				"teams/pipelines/blueprints/flow.yaml": renderBlueprint,
+				"teams/pipelines/tiers/gateway.yaml":   "environment: [not, a, string]\n",
+			}),
+		},
+		"a Catalogue artefact that is not there": {
+			"-library", libDir, "-estate", estate,
+			"-catalogue", filepath.Join(dir, "catalogue-v0.0.0.json"),
+			"-source", driftSource(t, t.TempDir(), map[string]string{
+				"teams/pipelines/blueprints/flow.yaml": renderBlueprint,
+			}),
+		},
+		"a rendered tree that does not parse": {
+			"-library", libDir, "-estate", estate, "-catalogue", renderCatalogue(t),
+			"-source", driftSource(t, t.TempDir(), map[string]string{
+				"teams/pipelines/blueprints/flow.yaml": renderBlueprint,
+				"rendered/pipelines/gateway.yaml":      "receivers: [otlp\n",
+			}),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			code, _, msg := runCheckCmd(t, args...)
+			if code != 2 {
+				t.Fatalf("exit %d, want 2\nstderr: %s", code, msg)
+			}
+			if !strings.HasPrefix(msg, "check: ") {
+				t.Errorf("stderr does not name the subcommand that failed:\n%s", msg)
+			}
+		})
+	}
+}
+
+// The derived leg fails closed the same way the authored one does: an
+// estate the run cannot derive is exit 2, never a run judging fewer rows
+// than the operator believes (ADR-0055).
+func TestCheckDerivationFailsClosed(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	collectors := writeLibraryFile(t, dir, "collectors.yaml", `
+as_of: 2026-08-21T09:00:00Z
+refresh_cadence: 30s
+collectors: []
+`)
+	source := driftSource(t, dir, nil)
+
+	for name, tc := range map[string]struct {
+		args []string
+		want string
+	}{
+		"a recorded reading that is not there": {
+			args: []string{"-library", libDir, "-collectors", filepath.Join(dir, "nowhere.yaml"), "-source", source},
+			want: "recorded estate reading",
+		},
+		// The topology names the Services and their Paths. With none, the
+		// derivation produces no rows, and a gate judging no rows would
+		// pass vacuously.
+		"a topology with no Service on a Path": {
+			args: []string{"-library", libDir, "-collectors", collectors, "-source", source},
+			want: "has no Service with a Path, so the derivation produced no rows",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			code, _, msg := runCheckCmd(t, tc.args...)
+			if code != 2 {
+				t.Fatalf("exit %d, want 2\nstderr: %s", code, msg)
+			}
+			if !strings.Contains(msg, tc.want) {
+				t.Errorf("stderr lacks %q:\n%s", tc.want, msg)
+			}
+		})
+	}
+}
+
+// The attribute names the library asks about are collected once and
+// measured in the same round trips. An unreachable backend leaves them
+// unknown, which is a counting failure rather than a pass on blindness.
+func TestCheckMeasuresTheAttributesTheLibraryAsksAbout(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "signal.yaml", `
+- id: logs-carry-their-service
+  title: Log records carry service and version attributes
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  signal:
+    kind: logs
+    present: true
+    window: 1h
+    required_attributes: [service.version, service.name]
+  remediation: set the resource attributes on the logs pipeline
+`)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines: []
+`)
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-endpoint", unreachableBackend, "-timeout", "10s")
+
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 — an unknown outcome counts as a failure\nstderr: %s", code, msg)
+	}
+	if len(report.Rows) != 1 || len(report.Rows[0].Findings) != 1 {
+		t.Fatalf("report = %+v, want one row carrying one finding", report.Rows)
+	}
+	if got := report.Rows[0].Findings[0].Outcome; got != "unknown" {
+		t.Errorf("outcome = %q, want unknown", got)
+	}
+}
+
+// brokenWriter is a stdout that refuses everything, which is what a closed
+// pipe looks like from here.
+type brokenWriter struct{}
+
+func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("the pipe closed") }
+
+// The report is the machine-readable contract, so a report that could not
+// be written is exit 2 rather than a green run nobody can read.
+func TestCheckReportsAStdoutItCannotWriteTo(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "config.yaml", configOnlyLibrary)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines:
+          - name: logs
+            receivers: [filelog]
+            exporters: [otlphttp]
+`)
+	var stderr bytes.Buffer
+
+	code := run([]string{"check", "-library", libDir, "-estate", estate}, brokenWriter{}, &stderr)
+
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "check: writing report: the pipe closed") {
+		t.Errorf("stderr does not carry the write error:\n%s", stderr.String())
+	}
+}
+
+// Deliberately uncovered in check: the overrides section, which needs a
+// derived run whose topology, recorded reading and authored estate all
+// answer for the same row; and two edges of the team-subtree waiver test —
+// a team id the tree rejects, and a Service the ownership model has never
+// heard of. Both edges belong to internal/ownership, which asserts on them
+// directly rather than through a report this command renders.
