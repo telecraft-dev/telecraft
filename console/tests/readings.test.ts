@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { FreshnessReading, ShapeReading, VolumeReading } from '../src/api/types'
+import type { FreshnessReading, ShapeReading, SignalRow, VolumeReading } from '../src/api/types'
 import {
   errorReadings,
   formatAge,
@@ -8,6 +8,7 @@ import {
   formatReduction,
   formatShape,
   formatVolume,
+  laneReads,
   readingState,
   readingTitle,
 } from '../src/estate/readings'
@@ -105,5 +106,36 @@ describe('reading formatting', () => {
     expect(formatShape(missing)).toBe('1 of 4 missing')
     expect(formatShape(unasked)).toBe('none required')
     expect(formatShape(unread)).toBe('—')
+  })
+})
+
+// #98: the three situations that all meter `in 0 / out 0` and mean
+// different things. Which one a row is in is not derivable from the
+// numbers, which is why the lane state carries it.
+describe('the lane state', () => {
+  const row = (over: Partial<SignalRow>): SignalRow => ({
+    signal: 'metrics',
+    lane: 'present',
+    volume: volume(),
+    freshness: { known: true, asOf, silent: true },
+    shape: { known: true, asOf, required: 0, missing: 0 },
+    ...over,
+  })
+
+  it('keeps the readings of a lane that exists and carried nothing', () => {
+    const stopped = row({ lane: 'present' })
+    expect(laneReads(stopped)).toBe(true)
+    // The zero is a reading, and on a wired lane it is a finding.
+    expect(formatVolume(stopped.volume!)).toBe('0 → 0')
+  })
+
+  it('drops the readings of a lane the artefact never wired', () => {
+    expect(laneReads(row({ lane: 'not_applicable', volume: undefined }))).toBe(false)
+  })
+
+  // Not knowing whether a lane exists is not knowing that it does not
+  // (ADR-0008): the readings still render, as whatever they are.
+  it('keeps the readings of a lane nobody could look for', () => {
+    expect(laneReads(row({ lane: 'unknown' }))).toBe(true)
   })
 })

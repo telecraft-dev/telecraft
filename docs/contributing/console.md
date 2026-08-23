@@ -72,10 +72,24 @@ anything else.
   an *enum state* plus an optional worst-finding label. The states include
   the honest neutrals, each distinct: `not_applicable`, `unknown`,
   `pending_settle`, and `stale_demoted`.
-- **Per-signal matrix rows**: volume in and out with the reduction between
-  them, freshness, and a shape summary, every reading carrying its own
-  `known`, `cause` and `asOf`, so last-known-plus-age renders from the
-  contract rather than from the console guessing.
+- **Per-signal matrix rows**: a lane state, then volume in and out with the
+  reduction between them, freshness, and a shape summary, every reading
+  carrying its own `known`, `cause` and `asOf`, so last-known-plus-age
+  renders from the contract rather than from the console guessing.
+  - The lane state says whether the Tier's rendered artefact instantiates a
+    pipeline for the signal: `present`, `not_applicable`, or `unknown` when
+    no artefact was available to read the lanes off. It is what the config
+    in git wires, not what the meter saw.
+  - **A `not_applicable` row carries no readings at all.** Its counters
+    would all read `in 0 / out 0`, truthfully — but that is also exactly
+    how a pipeline that has broken reads, and the two mean opposite
+    things. A row with no lane behind it carries no numbers, so there is
+    no zero for a reader to mistake for a fault.
+  - The exception is a lane the artefact does not wire that the meter has
+    figures for anyway: a collector still serving an older artefact than
+    the one in git. Intended and Observed are separate readings and
+    neither overrules the other (ADR-0004), so that row reads `present`
+    and keeps its figures rather than hiding the disagreement.
 - **The population line**: matched count, floor, floor source, and the
   population state with its neutral age.
 - **Shelf summary fields**: owning team, Environment, per-band worst

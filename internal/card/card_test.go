@@ -162,6 +162,118 @@ func TestUnknownLanesCarryCauseAndNoArithmetic(t *testing.T) {
 	}
 }
 
+// #98: a lane the Tier's artefact never wired metered `in 0 / out 0`,
+// which is the same shape a broken pipeline reads. The zero was true and
+// the rendering was a lie, so the row now carries the lane state and no
+// readings at all — there is no number left to mistake for a stopped lane.
+//
+// The contrast is the whole point, so both cases are asserted together:
+// an unwired lane and a wired lane moving nothing meter identically, and
+// must not read identically.
+func TestAnUnwiredLaneAndAStoppedLaneDoNotReadAlike(t *testing.T) {
+	in := zeroedInput()
+	in.Lanes = LaneSet{requirements.Logs: true, requirements.Traces: true}
+
+	rows := map[requirements.SignalKind]SignalRow{}
+	for _, row := range Assemble(in).Signals {
+		rows[row.Signal] = row
+	}
+
+	metrics := rows[requirements.Metrics]
+	if metrics.Lane != LaneNotApplicable {
+		t.Errorf("an unwired lane = %q, want not_applicable", metrics.Lane)
+	}
+	if metrics.Volume != nil || metrics.Freshness != nil || metrics.Shape != nil {
+		t.Errorf("an unwired lane carries readings: %+v — a metered zero on a lane that does not exist reads as a fault", metrics)
+	}
+
+	// The same meter reading on a lane the artefact does wire: a
+	// pipeline that has stopped, and a real finding. It keeps its zero.
+	logs := rows[requirements.Logs]
+	if logs.Lane != LanePresent {
+		t.Errorf("a wired lane = %q, want present", logs.Lane)
+	}
+	if logs.Volume == nil || !logs.Volume.Known || logs.Volume.In != 0 || logs.Volume.Out != 0 {
+		t.Errorf("a stopped lane = %+v, want its metered zero kept — it is a reading, and a finding", logs.Volume)
+	}
+
+	traces := rows[requirements.Traces]
+	if traces.Lane != LanePresent || traces.Volume == nil || traces.Volume.In != 41_020 {
+		t.Errorf("a moving lane = %+v, want its reading carried through", traces)
+	}
+}
+
+// A collector still serving an older artefact reports flow on a lane the
+// current one dropped. Intended and Observed are separate readings and
+// neither overrules the other (ADR-0004): suppressing the figures would
+// hide the disagreement, which is the interesting part.
+func TestAnUnwiredLaneTheMeterHasFiguresForKeepsThem(t *testing.T) {
+	in := zeroedInput()
+	in.Lanes = LaneSet{requirements.Logs: true}
+
+	for _, row := range Assemble(in).Signals {
+		if row.Signal != requirements.Traces {
+			continue
+		}
+		if row.Lane != LanePresent {
+			t.Errorf("a lane the meter has 41,020 items for = %q, want present — the pipeline evidently exists", row.Lane)
+		}
+		if row.Volume == nil || row.Volume.In != 41_020 {
+			t.Errorf("a reading was dropped because the config disagreed with it: %+v", row)
+		}
+	}
+}
+
+// ADR-0008 through the lane state: a caller with no artefact to read has
+// not established that a lane is absent, and says so.
+func TestLanesGoUnknownWhenNoArtefactWasRead(t *testing.T) {
+	in := zeroedInput()
+	in.Lanes = nil
+
+	for _, row := range Assemble(in).Signals {
+		if row.Lane != LaneUnknown {
+			t.Errorf("%s lane = %q with no artefact read, want unknown — a lane nobody looked for is not a lane that is not there", row.Signal, row.Lane)
+		}
+		if row.Volume == nil {
+			t.Errorf("%s dropped its readings on an unknown lane — only not_applicable does that", row.Signal)
+		}
+	}
+
+	// The empty set is the other answer: an artefact was read and it
+	// wires nothing. Only the lanes the meter reported nothing for lose
+	// their readings.
+	in.Lanes = LaneSet{}
+	states := map[requirements.SignalKind]LaneState{}
+	for _, row := range Assemble(in).Signals {
+		states[row.Signal] = row.Lane
+	}
+	if states[requirements.Metrics] != LaneNotApplicable || states[requirements.Logs] != LaneNotApplicable {
+		t.Errorf("lanes = %v, want the unreported ones not_applicable under an artefact that wires none", states)
+	}
+}
+
+// zeroedInput is richInput with the flow reading the issue describes: a
+// lane metering a true zero, and a lane moving items. Which of the zeros
+// is a fault and which is an absent lane is not a question the meter can
+// answer, and that is why the artefact is asked.
+func zeroedInput() Input {
+	in := richInput()
+	in.Flow = metering.ForTier("data-flow/gateway", telemetry.Metered{
+		AsOf:   readAt,
+		Window: time.Hour,
+		Signals: map[requirements.SignalKind]telemetry.MeteredSignal{
+			requirements.Logs:    {Known: true},
+			requirements.Metrics: {Known: true},
+			requirements.Traces: {
+				Known: true, In: 41_020, Out: 41_020,
+				Newest: readAt.Add(-30 * time.Second),
+			},
+		},
+		Incarnations: telemetry.Incarnations{Known: true, Count: 2},
+	}, derivedAt)
+	return in
+}
+
 func TestPopulationCarriesTheInventoryOutputsVerbatim(t *testing.T) {
 	face := Assemble(richInput())
 
@@ -359,6 +471,11 @@ func richInput() Input {
 		Conformance: BandInput{Known: true, Findings: []ownership.Finding{waivedConformance}},
 
 		Flow: metering.ForTier("data-flow/gateway", metered, derivedAt),
+
+		// gateway-standard wires all three lanes, so every row on this
+		// face has a pipeline behind its readings.
+		Lanes: LaneSet{requirements.Logs: true, requirements.Metrics: true, requirements.Traces: true},
+
 		Shape: map[requirements.SignalKind]ShapeReading{
 			requirements.Traces: {
 				Reading:  Reading{Known: true, AsOf: readAt},

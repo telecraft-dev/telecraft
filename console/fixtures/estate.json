@@ -36,7 +36,7 @@
   },
   "cards": [
     {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "tier": "data-flow/edge",
       "name": "edge",
       "team": "data-flow",
@@ -66,6 +66,7 @@
       "signals": [
         {
           "signal": "logs",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -92,31 +93,11 @@
         },
         {
           "signal": "metrics",
-          "volume": {
-            "known": true,
-            "asOf": "2026-08-18T11:59:00Z",
-            "in": 900000,
-            "out": 900000,
-            "reduction": 0,
-            "refused": 0,
-            "sendFailed": 0,
-            "enqueueFailed": 0
-          },
-          "freshness": {
-            "known": true,
-            "asOf": "2026-08-18T11:59:00Z",
-            "newest": "2026-08-18T11:58:45Z",
-            "ageSeconds": 15
-          },
-          "shape": {
-            "known": true,
-            "asOf": "2026-08-18T11:59:00Z",
-            "required": 0,
-            "missing": 0
-          }
+          "lane": "not_applicable"
         },
         {
           "signal": "traces",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -149,7 +130,7 @@
       }
     },
     {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "tier": "data-flow/gateway",
       "name": "gateway",
       "team": "data-flow",
@@ -187,6 +168,7 @@
       "signals": [
         {
           "signal": "logs",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -212,6 +194,7 @@
         },
         {
           "signal": "metrics",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -238,6 +221,7 @@
         },
         {
           "signal": "traces",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -270,7 +254,7 @@
       }
     },
     {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "tier": "data-flow/gateway-staging",
       "name": "gateway-staging",
       "team": "data-flow",
@@ -299,6 +283,7 @@
       "signals": [
         {
           "signal": "logs",
+          "lane": "present",
           "volume": {
             "known": false,
             "cause": "no self-telemetry has reported at the serving SHA yet",
@@ -325,6 +310,7 @@
         },
         {
           "signal": "metrics",
+          "lane": "present",
           "volume": {
             "known": false,
             "cause": "no self-telemetry has reported at the serving SHA yet",
@@ -351,6 +337,7 @@
         },
         {
           "signal": "traces",
+          "lane": "present",
           "volume": {
             "known": false,
             "cause": "no self-telemetry has reported at the serving SHA yet",
@@ -384,7 +371,7 @@
       }
     },
     {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "tier": "product/storefront-edge",
       "name": "storefront-edge",
       "team": "product",
@@ -413,6 +400,7 @@
       "signals": [
         {
           "signal": "logs",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -439,31 +427,11 @@
         },
         {
           "signal": "metrics",
-          "volume": {
-            "known": true,
-            "asOf": "2026-08-18T11:59:00Z",
-            "in": 40000,
-            "out": 40000,
-            "reduction": 0,
-            "refused": 0,
-            "sendFailed": 0,
-            "enqueueFailed": 0
-          },
-          "freshness": {
-            "known": true,
-            "asOf": "2026-08-18T11:59:00Z",
-            "newest": "2026-08-18T11:58:30Z",
-            "ageSeconds": 30
-          },
-          "shape": {
-            "known": true,
-            "asOf": "2026-08-18T11:59:00Z",
-            "required": 0,
-            "missing": 0
-          }
+          "lane": "not_applicable"
         },
         {
           "signal": "traces",
+          "lane": "present",
           "volume": {
             "known": true,
             "asOf": "2026-08-18T11:59:00Z",
@@ -498,7 +466,7 @@
   ],
   "drawers": {
     "data-flow/gateway": {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "tier": "data-flow/gateway",
       "findings": [
         {
@@ -616,7 +584,7 @@
       ]
     },
     "data-flow/edge": {
-      "contractVersion": 2,
+      "contractVersion": 3,
       "tier": "data-flow/edge",
       "findings": [],
       "provenance": [
@@ -1161,8 +1129,7 @@
         "trusted": true,
         "signals": [
           "traces",
-          "logs",
-          "metrics"
+          "logs"
         ]
       },
       {

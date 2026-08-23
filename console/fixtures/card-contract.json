@@ -1,6 +1,6 @@
 {
   "face": {
-    "contractVersion": 2,
+    "contractVersion": 3,
     "tier": "data-flow/gateway",
     "name": "gateway",
     "team": "data-flow",
@@ -26,6 +26,7 @@
     "signals": [
       {
         "signal": "logs",
+        "lane": "present",
         "volume": {
           "known": false,
           "cause": "no index matches \"metrics-*\"",
@@ -52,6 +53,7 @@
       },
       {
         "signal": "metrics",
+        "lane": "present",
         "volume": {
           "known": true,
           "asOf": "2026-08-18T11:59:00Z",
@@ -78,6 +80,7 @@
       },
       {
         "signal": "traces",
+        "lane": "present",
         "volume": {
           "known": true,
           "asOf": "2026-08-18T11:59:00Z",
@@ -125,7 +128,7 @@
     }
   },
   "drawer": {
-    "contractVersion": 2,
+    "contractVersion": 3,
     "tier": "data-flow/gateway",
     "findings": [
       {

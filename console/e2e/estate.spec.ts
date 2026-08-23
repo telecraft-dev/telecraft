@@ -168,6 +168,34 @@ test('an unread lane is last-known-plus-age, never a metered zero', async ({ pag
   await expect(silent.locator('.cell-freshness')).toHaveText('silent')
 })
 
+// #98: three lanes that all meter `in 0 / out 0`, and mean three
+// different things. The zeros are true; the rendering has to be too.
+test('a lane the artefact never wired does not read as a stopped one', async ({ page }) => {
+  await page.goto('/estate?scope=estate')
+
+  // edge-standard wires traces and logs and no metrics lane, so the edge
+  // Tier's metrics row has no pipeline behind it. No numbers, and the
+  // not_applicable mark ADR-0047 §7 gives the state.
+  const absent = page.getByTestId('matrix-data-flow/edge-metrics')
+  await expect(absent).toHaveClass(/lane-absent/)
+  await expect(absent.locator('.cell-lane')).toContainText('no lane on this Tier')
+  await expect(absent.locator('.cell-lane [data-mark="not_applicable"]')).toBeVisible()
+  await expect(absent.locator('.cell-volume')).toHaveCount(0)
+
+  // The gateway's logs lane is wired and moving nothing: the same meter
+  // reading, and a real finding. It keeps its zero.
+  const stopped = page.getByTestId('matrix-data-flow/gateway-logs')
+  await expect(stopped).not.toHaveClass(/lane-absent/)
+  await expect(stopped.locator('.cell-volume')).toContainText('0 → 0')
+  await expect(stopped.locator('.cell-lane')).toHaveCount(0)
+
+  // And a lane nobody could read is the third: last-known-plus-age, with
+  // the numbers withheld rather than the lane denied.
+  const unread = page.getByTestId('matrix-data-flow/gateway-staging-metrics')
+  await expect(unread).not.toHaveClass(/lane-absent/)
+  await expect(unread.locator('.cell-volume')).toHaveText('—')
+})
+
 test('the three reds stay distinct by band position and mark, not by hue', async ({ page }) => {
   await page.goto(`/estate?${GATEWAY}`)
 

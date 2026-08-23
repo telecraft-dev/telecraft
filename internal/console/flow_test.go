@@ -147,6 +147,11 @@ func TestAnEstateThatDeclaresNoFlowSaysSoOnEveryLane(t *testing.T) {
 	card := cardFor(t, build(t), "data-flow/gateway")
 
 	for _, row := range card.Signals {
+		if row.Lane == console.LaneNotApplicable {
+			// gateway-standard wires no metrics lane, so there is no
+			// pipeline for the estate to have declared flow on (#98).
+			continue
+		}
 		for name, reading := range map[string]console.Reading{
 			"volume":    row.Volume.Reading,
 			"freshness": row.Freshness.Reading,
@@ -208,7 +213,7 @@ func TestAPartialFlowDeclarationDegradesOnlyTheLanesItLeavesOut(t *testing.T) {
 func TestALaneDeclaredUnknownKeepsItsOwnCause(t *testing.T) {
 	card := cardFor(t, buildWithFlow(t, `    flow:
       signals:
-        metrics:
+        traces:
           known: false
           cause: the collectors on this Tier have never reported their own counters
         logs:
@@ -220,12 +225,12 @@ func TestALaneDeclaredUnknownKeepsItsOwnCause(t *testing.T) {
         cause: the instance identity is missing from this backend's index
 `), "data-flow/gateway")
 
-	metrics := rowFor(t, card, "metrics")
-	if metrics.Volume.Known {
+	traces := rowFor(t, card, "traces")
+	if traces.Volume.Known {
 		t.Fatal("a lane the estate declared unknown reads as known")
 	}
-	if !strings.Contains(metrics.Volume.Cause, "never reported their own counters") {
-		t.Errorf("metrics cause = %q, want the declared one — the reading says why it cannot see, in its own words", metrics.Volume.Cause)
+	if !strings.Contains(traces.Volume.Cause, "never reported their own counters") {
+		t.Errorf("traces cause = %q, want the declared one — the reading says why it cannot see, in its own words", traces.Volume.Cause)
 	}
 	if logs := rowFor(t, card, "logs"); !logs.Volume.Known {
 		t.Error("the known lane beside an unknown one lost its figures")
@@ -236,27 +241,34 @@ func TestALaneDeclaredUnknownKeepsItsOwnCause(t *testing.T) {
 }
 
 func TestALaneWithNoDatapointInTheWindowIsSilentAndNotUnknown(t *testing.T) {
+	// The lane is one gateway-standard wires: a stopped pipeline. Its
+	// metered zero is a reading and stays one — the row that drops its
+	// zero is the lane with no pipeline behind it (#98), and these two
+	// are the pair that must never read alike.
 	card := cardFor(t, buildWithFlow(t, `    flow:
       signals:
-        metrics:
+        traces:
           in: 0
           out: 0
       incarnations:
         count: 3
 `), "data-flow/gateway")
 
-	metrics := rowFor(t, card, "metrics")
-	if !metrics.Freshness.Known {
-		t.Fatalf("a known-empty window reads as unknown: %s", metrics.Freshness.Cause)
+	traces := rowFor(t, card, "traces")
+	if traces.Lane != console.LanePresent {
+		t.Fatalf("a wired lane = %q, want present", traces.Lane)
 	}
-	if !metrics.Freshness.Silent {
+	if !traces.Freshness.Known {
+		t.Fatalf("a known-empty window reads as unknown: %s", traces.Freshness.Cause)
+	}
+	if !traces.Freshness.Silent {
 		t.Error("a lane whose counters reported nothing in the window is not marked silent")
 	}
-	if metrics.Freshness.AgeSeconds != nil || metrics.Freshness.Newest != "" {
+	if traces.Freshness.AgeSeconds != nil || traces.Freshness.Newest != "" {
 		t.Errorf("a silent lane carries an age of %v and a newest of %q — there is nothing to date",
-			metrics.Freshness.AgeSeconds, metrics.Freshness.Newest)
+			traces.Freshness.AgeSeconds, traces.Freshness.Newest)
 	}
-	if !metrics.Volume.Known || metrics.Volume.In != 0 {
+	if !traces.Volume.Known || traces.Volume.In != 0 {
 		t.Error("a metered zero lost its knownness — a read zero is a reading (ADR-0008)")
 	}
 }

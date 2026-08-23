@@ -38,7 +38,13 @@ import (
 // Tier's restart-rate reading. The bump is the visible event the ADR
 // asks for: the rows are not optional decoration, they are the skeleton
 // P4's verdict put under the bands.
-const Version = 2
+// v3 gives every matrix row a LaneState and makes its three readings
+// absent when that state is not_applicable. Until v3 a signal the Tier's
+// artefact wires no pipeline for metered as `in 0 / out 0`, which is the
+// same rendering a broken pipeline gets: two opposite meanings sharing
+// one shape. The lane state is the fact the readings hang off, and a row
+// with no lane behind it now carries no numbers to misread.
+const Version = 3
 
 // BandName is one of the three reading bands. The order is fixed and the
 // same on every card, so band position is load-bearing where hue is not.
@@ -160,13 +166,65 @@ type ShapeReading struct {
 	Summary string `json:"summary,omitempty"`
 }
 
+// LaneState says whether the Tier's rendered artefact instantiates a
+// pipeline for a signal. It is neither a reading nor a verdict: it is
+// what the config in git wires, and it is what decides whether the
+// readings beside it are readings of anything at all.
+//
+// The vocabulary is ADR-0041 §2's honest neutrals, used for the same
+// reason they exist there: "there is no such lane here" and "we could not
+// see this lane" are different situations, and neither is "this lane
+// carried nothing".
+type LaneState string
+
+const (
+	// LanePresent: the artefact wires a pipeline for the signal, so
+	// every reading on the row is a reading of something real.
+	LanePresent LaneState = "present"
+
+	// LaneNotApplicable: the artefact wires no pipeline for the signal.
+	// Nothing was metered because there is nothing here to meter.
+	LaneNotApplicable LaneState = "not_applicable"
+
+	// LaneUnknown: no rendered artefact was available to look at, so
+	// whether the lane exists was never established. A lane nobody looked
+	// for is not a lane that is not there (ADR-0008).
+	LaneUnknown LaneState = "unknown"
+)
+
+// LaneSet is the set of signals a Tier's rendered artefact instantiates a
+// pipeline for. A nil LaneSet is not an empty one: nil means no artefact
+// was available to read, and every lane under it reads unknown. An empty
+// non-nil set is the real answer that the artefact wires no lanes at all.
+type LaneSet map[requirements.SignalKind]bool
+
+// State is one signal's lane state under this set.
+func (l LaneSet) State(kind requirements.SignalKind) LaneState {
+	if l == nil {
+		return LaneUnknown
+	}
+	if l[kind] {
+		return LanePresent
+	}
+	return LaneNotApplicable
+}
+
 // SignalRow is one lane of the per-signal matrix: the skeleton P4's
 // verdict put under the reading bands.
+//
+// The three readings are absent when Lane is not_applicable. The counters
+// behind them would all read zero, and truthfully — but `in 0 / out 0` is
+// exactly how a broken pipeline reads too, and a reader scanning the
+// matrix cannot tell "there is no metrics lane on this Tier" from "the
+// metrics lane has stopped". A row with no lane behind it carries no
+// numbers, so there is no zero left to misread (ADR-0041 §2).
 type SignalRow struct {
-	Signal    requirements.SignalKind `json:"signal"`
-	Volume    VolumeReading           `json:"volume"`
-	Freshness FreshnessReading        `json:"freshness"`
-	Shape     ShapeReading            `json:"shape"`
+	Signal requirements.SignalKind `json:"signal"`
+	Lane   LaneState               `json:"lane"`
+
+	Volume    *VolumeReading    `json:"volume,omitempty"`
+	Freshness *FreshnessReading `json:"freshness,omitempty"`
+	Shape     *ShapeReading     `json:"shape,omitempty"`
 }
 
 // ChurnReading is the Tier's restart-rate reading: collector process
@@ -328,6 +386,13 @@ type Input struct {
 	// the card unit is the Tier, and the two grains do not blend.
 	Flow metering.Pipeline
 
+	// Lanes is the set of signals the Tier's rendered artefact
+	// instantiates a pipeline for (ADR-0004's Intended reading). Nil when
+	// no artefact was available to read, which leaves every row's Lane
+	// unknown and its readings as taken — the caller that cannot see the
+	// config says so rather than declaring lanes absent.
+	Lanes LaneSet
+
 	// Shape carries each lane's schema-conformance summary, keyed by
 	// signal. A lane with no entry reads as an unknown shape, never a
 	// clean one.
@@ -380,18 +445,39 @@ func Assemble(in Input) Face {
 // signalRows projects the metering reading and the shape summaries into
 // the matrix rows, in stable signal order so two assemblies of the same
 // Tier are byte-identical.
+//
+// The lane state is decided first, because it decides whether there is
+// anything to project. A lane the artefact does not instantiate has no
+// pipeline, so it has no flow, no freshness and no landed telemetry to
+// have a shape — and the row says exactly that by carrying none of them.
 func signalRows(in Input) []SignalRow {
 	rows := make([]SignalRow, 0, len(telemetry.Signals()))
 	for _, kind := range telemetry.Signals() {
-		row := SignalRow{Signal: kind}
-
+		row := SignalRow{Signal: kind, Lane: in.Lanes.State(kind)}
 		flow, covered := in.Flow.Signal(kind)
+		if row.Lane == LaneNotApplicable {
+			if !reported(flow.Volume, flow.Errors) {
+				rows = append(rows, row)
+				continue
+			}
+			// The artefact wires no such lane and the meter has figures
+			// for it anyway: a collector still serving an older artefact
+			// than the one in git. Suppressing the reading would hide the
+			// disagreement, so the row keeps both — Intended and Observed
+			// are separate readings and neither overrules the other
+			// (ADR-0004). The lane exists, whatever the config says.
+			row.Lane = LanePresent
+		}
+
+		volume := VolumeReading{}
+		freshness := FreshnessReading{}
+
 		if !covered {
 			cause := "the metering reading does not cover this signal"
-			row.Volume = VolumeReading{Reading: Reading{Cause: cause, AsOf: in.Flow.AsOf}}
-			row.Freshness = FreshnessReading{Reading: Reading{Cause: cause, AsOf: in.Flow.AsOf}}
+			volume = VolumeReading{Reading: Reading{Cause: cause, AsOf: in.Flow.AsOf}}
+			freshness = FreshnessReading{Reading: Reading{Cause: cause, AsOf: in.Flow.AsOf}}
 		} else {
-			row.Volume = VolumeReading{
+			volume = VolumeReading{
 				Reading:       Reading{Known: flow.Volume.Known, Cause: flow.Volume.Cause, AsOf: in.Flow.AsOf},
 				In:            flow.Volume.In,
 				Out:           flow.Volume.Out,
@@ -405,16 +491,16 @@ func signalRows(in Input) []SignalRow {
 				// An unknown volume carries no arithmetic: a reduction
 				// derived from numbers nobody read would be the most
 				// confident lie on the card.
-				row.Volume.Reduction = 0
+				volume.Reduction = 0
 			}
-			row.Freshness = FreshnessReading{
+			freshness = FreshnessReading{
 				Reading: Reading{Known: flow.Freshness.Known, Cause: flow.Freshness.Cause, AsOf: in.Flow.AsOf},
 				Silent:  flow.Freshness.Silent,
 			}
 			if flow.Freshness.Known && !flow.Freshness.Silent {
 				newest := flow.Freshness.Newest
-				row.Freshness.Newest = &newest
-				row.Freshness.AgeSeconds = int64(flow.Freshness.Age / time.Second)
+				freshness.Newest = &newest
+				freshness.AgeSeconds = int64(flow.Freshness.Age / time.Second)
 			}
 		}
 
@@ -425,10 +511,20 @@ func signalRows(in Input) []SignalRow {
 				AsOf:  in.Flow.AsOf,
 			}}
 		}
-		row.Shape = shape
+
+		row.Volume, row.Freshness, row.Shape = &volume, &freshness, &shape
 		rows = append(rows, row)
 	}
 	return rows
+}
+
+// reported is whether the meter came back with a figure at all for a
+// lane: any non-zero count it could only have got from a pipeline that
+// exists and ran. A pipeline that was never instantiated emits no
+// counters, so the zeros that come back for it are the sum of nothing —
+// which is why they may be dropped, and why a non-zero may not be.
+func reported(v metering.Volume, e metering.Errors) bool {
+	return v.Known && (v.In != 0 || v.Out != 0 || e.Any())
 }
 
 func churn(flow metering.Pipeline) ChurnReading {

@@ -32,7 +32,9 @@ import (
 // satisfy. It travels with every face and drawer, and a bump is a visible,
 // reviewable event rather than silent field drift (ADR-0041 §4). v2 added
 // the per-signal matrix rows, the population state and the churn reading.
-const ContractVersion = 2
+// v3 gave each of those rows a lane state, and dropped its readings when
+// that state is not_applicable.
+const ContractVersion = 3
 
 // Meta stamps a snapshot with what it was built from, so a stale demo is
 // visibly stale rather than quietly wrong (ADR-0013's discipline applied
@@ -195,13 +197,38 @@ type ShapeReading struct {
 	Summary  string `json:"summary,omitempty"`
 }
 
+// LaneState says whether the Tier's rendered artefact instantiates a
+// pipeline for a signal — what the config in git wires, not what the
+// meter saw. It is the fact the readings beside it hang off: with no
+// pipeline there is nothing to have metered, and a lane nobody could look
+// for is not a lane that is not there (ADR-0041 §2, ADR-0008).
+type LaneState string
+
+const (
+	// LanePresent: the artefact wires a pipeline for this signal.
+	LanePresent LaneState = "present"
+
+	// LaneNotApplicable: it wires none, so there is nothing here to meter.
+	LaneNotApplicable LaneState = "not_applicable"
+
+	// LaneUnknown: no artefact was available to read the lanes off.
+	LaneUnknown LaneState = "unknown"
+)
+
 // SignalRow is one lane of the per-signal matrix — the skeleton under the
 // reading bands.
+//
+// The readings are absent when Lane is not_applicable. Their counters
+// would all read zero and would do so honestly, but `in 0 / out 0` is
+// also how a broken pipeline reads, and the two mean opposite things. A
+// row with no lane behind it carries no numbers to confuse.
 type SignalRow struct {
-	Signal    string           `json:"signal"`
-	Volume    VolumeReading    `json:"volume"`
-	Freshness FreshnessReading `json:"freshness"`
-	Shape     ShapeReading     `json:"shape"`
+	Signal string    `json:"signal"`
+	Lane   LaneState `json:"lane"`
+
+	Volume    *VolumeReading    `json:"volume,omitempty"`
+	Freshness *FreshnessReading `json:"freshness,omitempty"`
+	Shape     *ShapeReading     `json:"shape,omitempty"`
 }
 
 // ChurnReading is the Tier's restart rate: incarnations in the window

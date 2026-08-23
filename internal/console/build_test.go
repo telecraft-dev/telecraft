@@ -274,16 +274,19 @@ func TestABuildWithoutACommitIsRefused(t *testing.T) {
 	}
 }
 
-func TestTheFaceCarriesTheVersionTwoContract(t *testing.T) {
+func TestTheFaceCarriesTheVersionThreeContract(t *testing.T) {
 	card := cardFor(t, build(t), "data-flow/gateway")
 
-	if card.ContractVersion != 2 {
-		t.Errorf("contract version = %d, want 2 — the per-signal matrix, population state and churn (ADR-0041 §4)", card.ContractVersion)
+	if card.ContractVersion != 3 {
+		t.Errorf("contract version = %d, want 3 — the per-signal matrix with its lane states (ADR-0041 §4)", card.ContractVersion)
 	}
 	if len(card.Signals) != 3 {
 		t.Fatalf("signal rows = %d, want one per signal the seam covers", len(card.Signals))
 	}
 	for _, row := range card.Signals {
+		if row.Lane == console.LaneNotApplicable {
+			continue
+		}
 		// The estate declares arrivals, not flow: the metering readings are
 		// derived on read from a backend a snapshot has none of, so they
 		// must say "cannot see" rather than stand a zero in for it.
@@ -296,6 +299,40 @@ func TestTheFaceCarriesTheVersionTwoContract(t *testing.T) {
 	}
 	if card.Churn.Known {
 		t.Error("the churn reading claims to be known without a backend to derive it from")
+	}
+}
+
+// #98: gateway-standard wires logs and traces and no metrics lane, so the
+// Tier's metrics row has no pipeline behind it. Before the lane state it
+// metered `in 0 / out 0` — indistinguishable from a pipeline that has
+// broken, which is the opposite finding.
+func TestALaneTheBlueprintDoesNotWireReadsNotApplicable(t *testing.T) {
+	card := cardFor(t, build(t), "data-flow/gateway")
+
+	rows := map[string]console.SignalRow{}
+	for _, row := range card.Signals {
+		rows[row.Signal] = row
+	}
+
+	metrics, ok := rows["metrics"]
+	if !ok {
+		t.Fatal("the metrics row vanished — a lane with no pipeline is still a row on the matrix")
+	}
+	if metrics.Lane != console.LaneNotApplicable {
+		t.Errorf("the metrics lane = %q, want not_applicable — gateway-standard wires no metrics pipeline", metrics.Lane)
+	}
+	if metrics.Volume != nil || metrics.Freshness != nil || metrics.Shape != nil {
+		t.Errorf("the metrics row carries readings: %+v — there is no pipeline to have read", metrics)
+	}
+
+	for _, signal := range []string{"traces", "logs"} {
+		row := rows[signal]
+		if row.Lane != console.LanePresent {
+			t.Errorf("the %s lane = %q, want present — gateway-standard wires it", signal, row.Lane)
+		}
+		if row.Volume == nil {
+			t.Errorf("the %s row dropped its reading — only an unwired lane does that", signal)
+		}
 	}
 }
 

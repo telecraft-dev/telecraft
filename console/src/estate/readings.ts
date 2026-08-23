@@ -4,6 +4,7 @@ import type {
   Reading,
   ShapeReading,
   SignalName,
+  SignalRow,
   VolumeReading,
 } from '../api/types'
 
@@ -23,6 +24,28 @@ export function readingState(reading: Reading & { silent?: boolean }): ReadingSt
   if (!reading.known) return 'unknown'
   return reading.silent ? 'silent' : 'known'
 }
+
+/**
+ * Whether a row has readings to render. A lane the Tier's artefact never
+ * wired has none (#98): the counters behind them would read `in 0 / out
+ * 0`, which is the same shape a pipeline that has broken reads, and the
+ * two mean opposite things. An unknown lane still renders its readings —
+ * not knowing whether a lane exists is not knowing that it does not.
+ */
+export function laneReads(row: SignalRow): row is SignalRow & {
+  volume: VolumeReading
+  freshness: FreshnessReading
+  shape: ShapeReading
+} {
+  return row.lane !== 'not_applicable'
+}
+
+/** What a row says in place of the readings it has no lane to take. */
+export const NO_LANE = 'no lane on this Tier'
+
+/** Why, at length, for the cell's own title. */
+export const NO_LANE_TITLE =
+  "the Tier's artefact instantiates no pipeline for this signal, so there is nothing here to meter"
 
 /** The em dash a card shows where a number would be a fabrication. */
 export const NO_READING = '—'

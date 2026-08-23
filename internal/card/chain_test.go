@@ -80,7 +80,7 @@ func TestSelfTelemetryReachesTheCardFaceThroughTheSeam(t *testing.T) {
 	// Reading the same reading again yields the same face: the chain has
 	// no memory, so there is nothing for a second call to have changed.
 	again := Assemble(in)
-	if len(again.Signals) != len(face.Signals) || again.Signals[0].Volume != face.Signals[0].Volume {
+	if len(again.Signals) != len(face.Signals) || *again.Signals[0].Volume != *face.Signals[0].Volume {
 		t.Error("two assemblies of one reading disagree — the chain is meant to be a pure projection")
 	}
 }
