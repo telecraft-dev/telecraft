@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
@@ -23,6 +24,14 @@ import (
 type Evidence struct {
 	Effective Effective
 	Observed  map[time.Duration]telemetry.Observed
+
+	// Schema is what a schema-conformance requirement is judged against
+	// (ADR-0034): the resolved Schema Registry versions its references
+	// name, and the attribute-name readings for the signals and windows it
+	// covers. Zero-valued when the row has no schema requirement to judge,
+	// and a schema requirement judged against a zero value is unknown with
+	// a cause, never a pass.
+	Schema SchemaEvidence
 }
 
 // ObservedIn returns the reading covering a window, and whether one exists.
@@ -42,14 +51,32 @@ func Evaluate(row Row, lib requirements.Library, ev Evidence, now time.Time) Ver
 		if !req.AppliesTo(row.Environment) {
 			continue
 		}
-		v.Findings = append(v.Findings, judge(req, ev))
+		v.Findings = append(v.Findings, judge(req, ev)...)
 	}
 	return v
 }
 
-// judge evaluates one requirement and performs the cross.
-func judge(req requirements.Requirement, ev Evidence) Finding {
-	f := Finding{Requirement: req}
+// judge evaluates one requirement. Schema conformance is its own arm rather
+// than a third leg of the cross: the Effective half is not applicable to it,
+// because instrumentation is invisible to collector config (ADR-0034 §3), and
+// the cross's own arms already spend the two verdicts a schema requirement
+// needs on other meanings. A signal-only failure is not_delivered there
+// because absence cannot name a cause, and misconfigured is reserved for a
+// config assertion with nothing to cross it against. Schema conformance needs
+// both, and needs them to mean different things: nothing arrived is
+// not_delivered, and arrived in the wrong shape is misconfigured. Reusing
+// either arm would have made one of those read as the other.
+//
+// The cross's arms return one finding; the schema arm returns one per grade
+// in scope, because a schema requirement's improvement and information
+// findings ride alongside its violation verdict rather than being folded
+// into it (ADR-0034 §3).
+func judge(req requirements.Requirement, ev Evidence) []Finding {
+	if req.Kind() == requirements.KindSchemaConformance {
+		return judgeSchema(req, ev)
+	}
+
+	f := Finding{Requirement: req, Grade: ownership.Violation}
 
 	cfgOK, cfgKnown, cfgDetail := checkConfig(req.Config, ev.Effective)
 	sigOK, sigKnown, sigDetail := checkSignal(req.Signal, ev)
@@ -93,7 +120,7 @@ func judge(req requirements.Requirement, ev Evidence) Finding {
 			f.Outcome = Misconfigured
 		}
 	}
-	return f
+	return []Finding{f}
 }
 
 // checkConfig returns (satisfied, evaluable, detail). A nil assertion and an
