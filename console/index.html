@@ -3,10 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Self-hosted, like every other asset (ADR-0045 §5). Naming it here
-         also stops the browser's default /favicon.ico request, which a
-         static host answers with a 404. -->
+    <!-- Self-hosted, like every other asset (ADR-0045 §5), and offered in
+         every format a browser in support will take. The SVG alone was not
+         enough: Safari has not reliably drawn one, and anything that probes
+         `/favicon.ico` gets a 404 from a static host, so the reader saw the
+         browser's default instead of the mark. Order matters only in that a
+         browser picks the first type it understands; the .ico is last
+         because it is the fallback, and it is also what answers the bare
+         probe. All of it is rendered from one SVG by
+         docs/branding/pack/tools/render.sh. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <title>Telecraft console</title>
     <!-- The theme, resolved before the first paint. `tokens.css` carries
          dark on the bare :root so an unstamped document is still complete,

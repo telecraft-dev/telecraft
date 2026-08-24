@@ -37,6 +37,7 @@ are the mark's use of `--brand`, which never appears on a data surface
 | `telecraft-lockup-brand-on-dark.svg` / `-on-light.svg` | The horizontal lockup with the amber "tele": marketing surfaces only |
 | `telecraft-lockup-stacked-on-dark.svg` / `-on-light.svg` | Mark centred over the word, for square-ish spaces |
 | `png/telecraft-icon-{180,192,512}.png` | Renders at the sizes other services demand; regenerate with [`tools/render.sh`](tools/render.sh) |
+| `console/public/favicon.{svg,ico}`, `icon-{192,512}.png`, `apple-touch-icon.png` | The browser icon set the console ships, written by the same script. Not in this directory, because it is shipped rather than published |
 
 `-on-dark` and `-on-light` name the ground the file is drawn for, not the
 file's own colour. The grounds are `--colour-bg`: `#0f1518` and `#f3f5f4`.
@@ -69,13 +70,19 @@ from the repository root:
 
 ```sh
 python3 docs/branding/pack/tools/build.py   # every SVG, and the console favicon
-sh docs/branding/pack/tools/render.sh       # the three committed PNG renders
+sh docs/branding/pack/tools/render.sh       # the PNG renders and the console's icon set
 ```
 
 `build.py` also writes `console/public/favicon.svg`, which is the canonical
 icon verbatim: the console and this pack cannot drift apart, because neither
-is edited by hand. `telecraft.dev` vendors the mark from here; after a change
-lands, re-vendor there (`node tools/vendor.mjs update`, issue #101).
+is edited by hand. `render.sh` writes the rest of what a browser is offered
+into the same directory, an `.ico` and three PNGs, because an SVG favicon on
+its own leaves Safari and any bare `/favicon.ico` probe with the browser's
+default rather than the mark. Both scripts rasterise or copy the one SVG, so
+no format is a second drawing of the artwork.
+
+`telecraft.dev` vendors the mark from here; after a change lands, re-vendor
+there (`node tools/vendor.mjs update`, issue #101).
 
 The letterforms derive from Atkinson Hyperlegible Next, OFL 1.1; the licence
 is beside the face in [`console/src/fonts/`](../../../console/src/fonts/).
