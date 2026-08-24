@@ -1,0 +1,9 @@
+# Repository tooling that lives beside the registry. It is YAML and it is
+# not a model file, so the import ignores it and says that it did.
+name: check
+on: [push]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: registry check

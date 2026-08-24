@@ -1,0 +1,40 @@
+groups:
+  - id: registry.db
+    type: attribute_group
+    display_name: Database attributes
+    brief: The attributes the estate demands of database telemetry.
+    attributes:
+      - id: db.namespace
+        type: string
+        stability: stable
+        brief: The name of the database being accessed.
+        examples: ["customers", "ledger"]
+      - id: db.operation.name
+        type: string
+        stability: stable
+        brief: The name of the operation being executed.
+      - id: db.system.name
+        stability: stable
+        brief: The database management system the client connects to.
+        type:
+          members:
+            - id: postgresql
+              value: postgresql
+              stability: stable
+              brief: PostgreSQL
+            - id: mariadb
+              value: mariadb
+              stability: stable
+              brief: MariaDB
+            - id: other_sql
+              value: other_sql
+              stability: development
+              brief: Some other SQL database.
+      - id: db.connection_string
+        type: string
+        stability: stable
+        brief: The connection string used to connect to the database.
+        deprecated:
+          reason: obsoleted
+          renamed_to: db.namespace
+          note: Carries credentials, so it is never collected.

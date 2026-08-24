@@ -1,0 +1,28 @@
+groups:
+  - id: registry.enterprise
+    type: attribute_group
+    brief: The estate's own namespaced attributes.
+    attributes:
+      - id: enterprise.criticality_tier
+        stability: stable
+        brief: How much the estate cares if this service stops.
+        type:
+          members:
+            - id: platinum
+              value: platinum
+              stability: stable
+            - id: gold
+              value: gold
+              stability: stable
+            - id: bronze
+              value: bronze
+              stability: stable
+      - id: enterprise.cost_centre
+        type: string
+        stability: development
+        brief: The cost centre the service bills to.
+      - id: enterprise.owner_email
+        type: string
+        stability: stable
+        brief: Superseded by the team tree.
+        deprecated: Replaced by the ownership tree, which is authored in git.
