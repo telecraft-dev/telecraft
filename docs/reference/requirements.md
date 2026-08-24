@@ -1,13 +1,14 @@
 ---
 title: Requirement file format
-description: Every field of a Requirement, with levels, environments, assertion kinds and version-stamped satisfies claims.
+description: Every field of a Requirement, with levels, environments, assertion kinds, schema conformance and version-stamped satisfies claims.
 order: 6
 ---
 
 # Requirement file format
 
 A Requirement is one named, versioned rule with required remediation text. It
-can assert on Effective state, on Observed state, or on both.
+can assert on Effective state, on Observed state, or on both. It can instead
+assert schema conformance, which is judged against the Schema Registry alone.
 
 Requirements live in a library directory: a flat directory of `*.yaml` or
 `*.yml` files, one concern per file, so a change to one Requirement is a
@@ -28,9 +29,13 @@ directory. Subdirectories are not read.
 | `environments` | list of strings | no | empty | Narrows where the Requirement applies. Empty applies everywhere. |
 | `config` | mapping | no | absent | The Effective-state assertion. |
 | `signal` | mapping | no | absent | The Observed-state assertion. |
+| `schema_conformance` | mapping | no | absent | The Schema Registry reference. See [Schema conformance assertions](#schema-conformance-assertions). |
+| `placement` | string | no | `landed` | Which reading a schema assertion is judged against. Only on a `schema_conformance` Requirement. |
 | `remediation` | string | yes | none | The concrete change that closes the gap. |
 
-At least one of `config` and `signal` must be present.
+At least one of `config`, `signal` and `schema_conformance` must be present.
+`schema_conformance` doesn't combine with the other two: see
+[Schema conformance assertions](#schema-conformance-assertions).
 
 ```yaml
 # requirements/delivery.yaml
@@ -94,6 +99,7 @@ write it, so it can never disagree with them.
 | `config` | `config` only. |
 | `signal` | `signal` only. |
 | `config_and_signal` | Both. |
+| `schema_conformance` | `schema_conformance`, and neither of the other two. |
 
 Asserting on both readings lets the evaluator cross them. A config-only
 Requirement can pass for a collector that delivers nothing, and a signal-only
@@ -143,6 +149,102 @@ which a presence check alone would call healthy. `attribute_coverage` tells a
 partially instrumented estate from an uninstrumented one. The default
 requires total coverage unless you relax it.
 
+## Schema conformance assertions
+
+`schema_conformance` asks whether the telemetry that arrived is the shape the
+Schema Registry says it should be. It's a reference into a registry version,
+never a copy of one: you name a version and a scope within it, and the
+registry says which attributes that scope demands, at which requirement level,
+with which types and which enum members.
+
+There's no attribute list here, and adding one is a load error. A list in a
+requirement file is a second copy of something the registry already states,
+and the copy drifts the first time somebody edits one and not the other.
+
+Evaluating schema conformance isn't built yet. The format loads and validates,
+and `telecraft check` doesn't yet take the Schema Registry directory a
+reference resolves against, so a Requirement of this kind isn't ready to run
+against an estate. Where one does reach the evaluator, it's reported
+`unknown`: no reading, so no verdict, and never a silent pass.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `registry_version` | string | yes, unless tracking | none | The Schema Registry version, by the ref it was imported at. |
+| `track` | string | no | empty | `head` opts this reference into judging against whichever version is active. The only value is `head`. |
+| `scope` | mapping | yes | none | What conformance is demanded of. |
+| `scope.groups` | list of strings | no | empty | Registry group ids, such as `span.db.client`. |
+| `scope.namespaces` | list of strings | no | empty | Attribute-name prefixes, such as `db`: every attribute under the prefix is demanded. |
+| `signals` | list of strings | yes | none | The signals the scope is judged on: `logs`, `metrics`, `traces`. |
+| `window` | duration string | yes | none | The trailing window, such as `24h`. Must be positive. |
+
+At least one of `scope.groups` and `scope.namespaces` must be present. An
+empty scope would demand the whole registry of every Service by omission.
+
+```yaml
+# requirements/schema.yaml
+- id: db-spans-conform
+  title: Database spans carry what the registry demands
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  schema_conformance:
+    registry_version: v1.4.0
+    scope:
+      groups: [span.db.client]
+    signals: [traces]
+    window: 24h
+  remediation: >
+    Add the missing attributes to the database instrumentation, or upgrade
+    the instrumentation library to a version that sets them.
+```
+
+A `schema_conformance` Requirement doesn't also carry `config` or `signal`.
+Collector config can't see instrumentation, so there's no Effective reading to
+cross a schema verdict against, and no outcome for the combination. Two
+Requirements say the two things honestly.
+
+### Pinned and tracking references
+
+A reference pins a version by default. An adopter's registry tightening a
+requirement level is a change every Service's score feels, so it's adopted
+deliberately rather than overnight.
+
+`track: head` is the opt-in for a scope that should follow the registry as it
+moves, which is usually your own namespaced attributes rather than upstream's.
+A reference either pins or tracks. Doing both is a load error, and doing
+neither is too.
+
+### Resolving the reference
+
+The reference is resolved when the library loads, against the Schema Registry
+versions the platform has imported. A pinned version that isn't installed is a
+load error, as is a group id or a namespace the pinned version carries
+nothing under. A reference that resolved to nothing would demand nothing, and
+a Requirement that demands nothing passes every Service silently, which is the
+one failure this loader exists to prevent.
+
+A tracking reference names no version, so there's nothing to resolve a scope
+against; what must exist is an imported registry for there to be a head at
+all.
+
+### Placement
+
+`placement` says which reading a schema assertion is judged against.
+
+| Value | Meaning |
+|---|---|
+| `landed` | Telemetry that has already landed in a backend. The default. |
+| `live` | Findings a collection-time tap emitted. |
+
+`placement: live` is a load error today: the tap it reads findings from isn't
+built, so a `live` Requirement would evaluate nothing and every Service would
+read clean against it. The field is carried now so that the Requirement shape
+doesn't change again when the tap lands.
+
+`placement` on a Requirement with no `schema_conformance` block is a load
+error. Nothing else has a placement.
+
 ## Load errors
 
 The load fails closed and returns nothing. Every message names the file, and
@@ -158,10 +260,27 @@ for field errors the field. The load refuses on:
 - a missing `id`, or an `id` defined in two files
 - a missing `owner`, a missing `remediation`, or a `version` below 1
 - a `requirement_level` outside the four values
-- no `config` and no `signal`, or a `config` block with no entries
+- no `config`, no `signal` and no `schema_conformance`, or a `config` block
+  with no entries
 - a `signal` block with an unknown `kind`, a non-positive `window`, a negative
   `min_volume`, an `attribute_coverage` outside `(0, 1]`, or an empty required
   attribute name
+- a `schema_conformance` block alongside a `config` or `signal` block
+- an `attributes` or `required_attributes` list inside a `schema_conformance`
+  block: the registry says which attributes a scope carries, and a copy drifts
+- a `schema_conformance` block that both pins a `registry_version` and sets
+  `track: head`, or that does neither, or that sets a `track` other than `head`
+- a `schema_conformance` block with an empty `scope`, no `signals`, an unknown
+  signal kind, a signal listed twice, or a non-positive `window`
+- a `registry_version` that isn't installed, or that doesn't load
+- a `scope.groups` entry the pinned registry version doesn't declare, or a
+  `scope.namespaces` entry it carries no attribute under
+- a `track: head` reference when no Schema Registry version is installed
+- a `schema_conformance` block when the load was given no Schema Registry
+  directory to resolve it against
+- `placement: live`, which isn't implemented; a `placement` outside `landed`
+  and `live`; or a `placement` on a Requirement with no `schema_conformance`
+  block
 - an empty or duplicated entry in `environments`
 
 ## Authoring findings
