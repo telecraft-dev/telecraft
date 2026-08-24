@@ -190,6 +190,20 @@ type Finding struct {
 
 	// Detail explains the verdict in terms a human can act on.
 	Detail []string
+
+	// Remediation is the fix, where the evaluator can write a better one
+	// than the requirement's author could. It is empty on every finding
+	// the Effective × Observed cross produces, because there the authored
+	// remediation on the Requirement is the whole answer: the requirement
+	// asserts one fixed thing, so its author can say what closes it.
+	//
+	// A schema-conformance finding fills it (ADR-0034 §7). That
+	// requirement is a reference to a scope rather than an assertion about
+	// one attribute, so what is missing is only known at evaluation, and
+	// the fix names the group, the attribute, its declared type and level,
+	// and upstream's migration note where the registry carries one. A
+	// surface reads this first and falls back to the authored line.
+	Remediation string
 }
 
 // Weight is the finding's grade with the zero value resolved: an ungraded
