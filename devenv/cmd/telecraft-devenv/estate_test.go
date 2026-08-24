@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/console"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
+	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 )
 
 // The devenv estate held to the same build the console does, with no
@@ -48,6 +51,14 @@ func TestDevenvEstateBuilds(t *testing.T) {
 	}
 	if len(in.tiers) == 0 {
 		t.Error("the estate declares no Tiers, so no collector could ever be matched")
+	}
+	// The Schema Registry artefacts sit beside the Catalogue ones: both are
+	// instance-side artefacts of the one import pipeline (ADR-0020 §5,
+	// ADR-0034 §1). The directory travels whether or not one has been
+	// imported, because the alternative is a library that references a
+	// registry failing to load in the environment built to run it.
+	if want := filepath.Join(root, "schema-registries"); in.console.SchemaRegistries != want {
+		t.Errorf("schema registries = %q, want %q", in.console.SchemaRegistries, want)
 	}
 }
 
@@ -283,4 +294,79 @@ func emptyReadings(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+// A library holding a schema-conformance requirement loads in the
+// environment, which is the whole point of the directory travelling: a
+// reference the loader cannot resolve is a load error, so before this
+// wiring the environment refused to start over a requirement it was built
+// to run.
+func TestDevenvLoadsALibraryHoldingASchemaRequirement(t *testing.T) {
+	root := t.TempDir()
+	copyTree(t, filepath.Join("..", "..", "estate"), root)
+
+	reg, _, err := schemaregistry.Import(
+		filepath.Join("..", "..", "..", "internal", "schemaregistry", "testdata", "registry-v1.4.0"),
+		schemaregistry.Source{
+			Repository: "git.example.test/estate/registry",
+			Ref:        "v1.4.0",
+			Commit:     "3f2a1c8d5b7e9046a1c2d3e4f5061728394a5b6c",
+		})
+	if err != nil {
+		t.Fatalf("importing the fixture Schema Registry: %v", err)
+	}
+	if _, _, err := reg.Write(filepath.Join(root, "schema-registries")); err != nil {
+		t.Fatalf("installing the fixture Schema Registry: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "requirements", "schema.yaml"), []byte(`
+- id: db-spans-conform
+  title: Database spans carry what the registry demands
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  schema_conformance:
+    registry_version: v1.4.0
+    scope:
+      groups: [span.db.client]
+    signals: [traces]
+    window: 24h
+  remediation: Add the missing attributes to the database instrumentation.
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	in, err := loadInputs(root, "engineering")
+	if err != nil {
+		t.Fatalf("a library holding a schema reference does not load: %v", err)
+	}
+	if len(in.schemaSignals) != 1 || in.schemaSignals[0] != requirements.Traces {
+		t.Errorf("schema signals = %v, want [traces]: the attribute-name reading is taken for what the library judges", in.schemaSignals)
+	}
+}
+
+// copyTree copies a tree so a scenario can add to an estate without editing
+// the one every other test reads.
+func copyTree(t *testing.T, src, dst string) {
+	t.Helper()
+	err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, body, 0o644)
+	})
+	if err != nil {
+		t.Fatalf("copying the estate: %v", err)
+	}
 }

@@ -105,14 +105,15 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "OpAMP on %s\n", srv.Addr())
 
 	comp := &composer{
-		Collectors: direct,
-		Delivery:   delivery,
-		Telemetry:  tel,
-		Rows:       inputs.rows,
-		Tiers:      inputs.tiers,
-		Attributes: inputs.attributes,
-		Window:     *window,
-		Now:        time.Now,
+		Collectors:    direct,
+		Delivery:      delivery,
+		Telemetry:     tel,
+		Rows:          inputs.rows,
+		Tiers:         inputs.tiers,
+		Attributes:    inputs.attributes,
+		SchemaSignals: inputs.schemaSignals,
+		Window:        *window,
+		Now:           time.Now,
 	}
 
 	snapshot := &snapshotFile{}
@@ -155,6 +156,11 @@ type inputs struct {
 	rows       []row
 	tiers      []string
 	attributes []string
+
+	// schemaSignals are the signals a schema-conformance requirement in
+	// the library is judged on, and so the signals the attribute-name
+	// reading is taken for (ADR-0034 §4).
+	schemaSignals []requirements.SignalKind
 }
 
 // loadInputs reads the estate once: the rows and Tiers to take readings
@@ -185,22 +191,32 @@ func loadInputs(root, team string) (inputs, error) {
 		in.tiers = append(in.tiers, t.ID())
 	}
 
-	lib, err := requirements.Load(filepath.Join(root, "requirements"))
+	// The Schema Registry artefacts sit beside the Catalogue ones, because
+	// they are the same kind of thing: instance-side artefacts of the one
+	// import pipeline, retained version by version (ADR-0020 §9, ADR-0034
+	// §1). A directory that does not exist is no directory, which a
+	// library referencing no registry never notices.
+	registries := filepath.Join(root, "schema-registries")
+
+	library := filepath.Join(root, "requirements")
+	lib, err := requirements.Load(library, requirements.WithSchemaRegistries(registries))
 	if err != nil {
 		return in, err
 	}
 	in.attributes = attributeNames(lib)
+	in.schemaSignals = schemaSignals(lib)
 
 	in.console = console.Inputs{
-		Root:         root,
-		Active:       catalogues[len(catalogues)-1],
-		Catalogues:   catalogues,
-		Library:      filepath.Join(root, "requirements"),
-		Exemptions:   filepath.Join(root, "exemptions"),
-		EstateFile:   rowsPath,
-		ReadingsFile: "", // written by each refresh
-		Commit:       devCommit,
-		Repository:   "telecraft-dev/telecraft (devenv/estate)",
+		Root:             root,
+		Active:           catalogues[len(catalogues)-1],
+		Catalogues:       catalogues,
+		Library:          library,
+		SchemaRegistries: registries,
+		Exemptions:       filepath.Join(root, "exemptions"),
+		EstateFile:       rowsPath,
+		ReadingsFile:     "", // written by each refresh
+		Commit:           devCommit,
+		Repository:       "telecraft-dev/telecraft (devenv/estate)",
 		User: console.User{
 			ID:    "devenv",
 			Name:  "Local developer",
