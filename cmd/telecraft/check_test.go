@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 )
 
 // writeLibraryFile drops one file into dir, creating parents, and returns
@@ -924,3 +925,108 @@ services:
 // a team id the tree rejects, and a Service the ownership model has never
 // heard of. Both edges belong to internal/ownership, which asserts on them
 // directly rather than through a report this command renders.
+
+// schemaLibrary is a reference into the Schema Registry: a pinned version
+// and a scope within it, with no attribute list anywhere in it.
+const schemaLibrary = `
+- id: db-spans-conform
+  title: Database spans carry what the registry demands
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  schema_conformance:
+    registry_version: v1.4.0
+    scope:
+      groups: [span.db.client]
+    signals: [traces]
+    window: 24h
+  remediation: add the missing attributes to the database instrumentation
+`
+
+// installedRegistries writes the fixture Schema Registry version out as an
+// installed artefact, the way an import run would.
+func installedRegistries(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	reg, _, err := schemaregistry.Import(
+		filepath.Join("..", "..", "internal", "schemaregistry", "testdata", "registry-v1.4.0"),
+		schemaregistry.Source{
+			Repository: "git.example.test/estate/registry",
+			Ref:        "v1.4.0",
+			Commit:     "3f2a1c8d5b7e9046a1c2d3e4f5061728394a5b6c",
+		})
+	if err != nil {
+		t.Fatalf("importing the fixture Schema Registry: %v", err)
+	}
+	if _, _, err := reg.Write(dir); err != nil {
+		t.Fatalf("installing the fixture Schema Registry: %v", err)
+	}
+	return dir
+}
+
+// schemaCheckEstate writes a library holding one schema-conformance
+// requirement and the estate to judge it over.
+func schemaCheckEstate(t *testing.T) (libDir, estate string) {
+	t.Helper()
+	dir := t.TempDir()
+	libDir = filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "schema.yaml", schemaLibrary)
+	estate = writeLibraryFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines: []
+`)
+	return libDir, estate
+}
+
+// A reference the run cannot resolve is a load error, and the run is exit 2
+// rather than a lenient 0: a library that fails to load has judged nothing.
+// The message names the file and the flag's absence, because that is the fix.
+func TestCheckRefusesASchemaLibraryWithNoRegistryDirectory(t *testing.T) {
+	libDir, estate := schemaCheckEstate(t)
+
+	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate)
+
+	if code != 2 {
+		t.Fatalf("exit %d, want 2: a library that does not load has judged nothing", code)
+	}
+	if !strings.Contains(msg, "no Schema Registry directory") {
+		t.Errorf("stderr does not say what is missing:\n%s", msg)
+	}
+	if !strings.Contains(msg, "schema.yaml") {
+		t.Errorf("stderr does not name the file:\n%s", msg)
+	}
+}
+
+// With the directory named, the reference resolves, the library loads, and
+// the requirement is judged. The backend is unreachable here, so the verdict
+// is unknown with the provider's cause: the point is that it is the
+// reading's cause and not the registry's, which is what proves the evidence
+// was gathered rather than left zero.
+func TestCheckJudgesASchemaRequirementWithTheRegistryDirectory(t *testing.T) {
+	libDir, estate := schemaCheckEstate(t)
+
+	code, report, _ := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-schema-registries", installedRegistries(t),
+		"-endpoint", "http://127.0.0.1:1", "-timeout", "5s")
+
+	if code != 1 {
+		t.Fatalf("exit %d, want 1: an unknown outcome counts as a failure", code)
+	}
+	if len(report.Rows) != 1 || len(report.Rows[0].Findings) == 0 {
+		t.Fatalf("report judged nothing: %+v", report.Rows)
+	}
+	f := report.Rows[0].Findings[0]
+	if f.Requirement != "db-spans-conform" || f.Outcome != "unknown" {
+		t.Fatalf("finding = %+v, want db-spans-conform unknown", f)
+	}
+	detail := strings.Join(f.Detail, "\n")
+	if strings.Contains(detail, "no Schema Registry version") {
+		t.Errorf("the pinned version did not reach the evaluation:\n%s", detail)
+	}
+	if !strings.Contains(detail, "attribute-name reading unavailable") {
+		t.Errorf("detail does not carry the reading's own cause, so no reading was asked for:\n%s", detail)
+	}
+}

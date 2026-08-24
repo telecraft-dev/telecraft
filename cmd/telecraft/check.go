@@ -56,6 +56,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	library := fs.String("library", "", "requirements library directory (required)")
+	schemaRegistries := fs.String("schema-registries", "", "directory of installed Schema Registry artefacts, which a schema_conformance requirement's reference resolves against (needed only by a library that holds one)")
 	estatePath := fs.String("estate", "", "estate file listing each Service's Effective config per Environment (required unless -collectors derives them)")
 	collectors := fs.String("collectors", "", "recorded collector estate reading: derives each row's Effective reading from the collectors that report it, with -estate as the override (needs -source)")
 	exemptionsDir := fs.String("exemptions", "", "exemptions directory holding authored waivers (optional)")
@@ -90,7 +91,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	lib, err := requirements.Load(*library)
+	lib, err := requirements.Load(*library, requirements.WithSchemaRegistries(*schemaRegistries))
 	if err != nil {
 		fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
@@ -327,22 +328,24 @@ func resolveEstate(estatePath, collectors, source string, now time.Time) (confor
 }
 
 // gatherEvidence reads the Observed evidence for one row: each distinct
-// window any applicable signal requirement asks for, read once, scoped to
-// the row's Service and Environment so evidence for two environments never
-// meets (ADR-0033).
+// window any applicable requirement asks for, read once, scoped to the row's
+// Service and Environment so evidence for two environments never meets
+// (ADR-0033).
+//
+// A library holding a schema-conformance requirement needs the second
+// reading too (ADR-0034 §4): the attribute names in use for each signal and
+// window its references cover, taken through the same seam and scoped to the
+// same Service. The registry versions come with the library, resolved when
+// its references were validated.
 func gatherEvidence(ctx context.Context, tel telemetry.Provider, row conformance.EstateRow, lib requirements.Library, attrs []string) conformance.Evidence {
-	windows := map[time.Duration]bool{}
-	for _, r := range lib.Sorted() {
-		if r.Signal != nil && r.AppliesTo(row.Environment) {
-			windows[r.Signal.Window.Std()] = true
-		}
-	}
-
 	ev := conformance.Evidence{Effective: row.Effective, Observed: map[time.Duration]telemetry.Observed{}}
 	svc := telemetry.Service{Name: row.Service, Environment: row.Environment}
-	for w := range windows {
+	for _, w := range conformance.Windows(lib, row.Environment) {
 		ev.Observed[w] = tel.Observe(ctx, svc, w, attrs)
 	}
+	ev.Schema = conformance.GatherSchema(lib, row.Environment, func(r conformance.SchemaReading) telemetry.AttributeNames {
+		return tel.AttributeNames(ctx, svc, r.Kind, r.Window)
+	})
 	return ev
 }
 
