@@ -423,7 +423,7 @@ func TestNeverSeenEscalatesThroughProviderFloor(t *testing.T) {
 			neverSeen = &res.Population[i]
 		}
 	}
-	if neverSeen == nil || neverSeen.Grade != inventory.Violation {
+	if neverSeen == nil || neverSeen.Grade != ownership.Violation {
 		t.Fatalf("population findings = %+v, want never_seen escalated to violation through the derived floor", res.Population)
 	}
 	if neverSeen.Floor.Source != inventory.FloorDerived || neverSeen.Floor.Min != 3 {
@@ -478,7 +478,7 @@ func TestUnderPopulatedEscalatesThroughProviderFloor(t *testing.T) {
 			under = &res.Population[i]
 		}
 	}
-	if under == nil || under.Grade != inventory.Violation {
+	if under == nil || under.Grade != ownership.Violation {
 		t.Fatalf("population findings = %+v, want under_populated escalated to violation", res.Population)
 	}
 	if under.Floor.Source != inventory.FloorDerived || under.Floor.Min != 3 {

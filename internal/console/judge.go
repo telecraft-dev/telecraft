@@ -11,6 +11,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/conformance"
 	"github.com/telecraft-dev/telecraft/internal/expectation"
 	"github.com/telecraft-dev/telecraft/internal/inventory"
+	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/selftelemetry"
@@ -107,7 +108,7 @@ func (b *builder) judgeTiers(views map[string]*tierView, set expectation.Set) er
 		v.popFinds = result.Population
 
 		for _, f := range result.Population {
-			if f.Grade == inventory.Neutral && !f.StaleConfig {
+			if f.Grade == ownership.Neutral && !f.StaleConfig {
 				continue
 			}
 			v.findings = append(v.findings, Finding{
@@ -640,11 +641,11 @@ func outcomeSeverity(o conformance.Outcome) string {
 
 // populationSeverity maps a population grade. Neutral is not a pass: it is
 // excluded from every denominator (ADR-0035 §6).
-func populationSeverity(g inventory.Grade) string {
+func populationSeverity(g ownership.Grade) string {
 	switch g {
-	case inventory.Violation:
+	case ownership.Violation:
 		return SeverityViolation
-	case inventory.Advisory:
+	case ownership.Advisory:
 		return SeverityAdvisory
 	default:
 		return SeverityNone
