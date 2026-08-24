@@ -63,7 +63,7 @@ jobs:
     steps:
       # Every tag, and the history behind them, because the decision below
       # asks whether this is the newest stable version.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -137,7 +137,7 @@ jobs:
       - name: Mint an App token for estate-demo
         if: steps.decide.outputs.notify == 'true'
         id: token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.FORGE_APP_ID }}
           private-key: ${{ secrets.FORGE_APP_PRIVATE_KEY }}

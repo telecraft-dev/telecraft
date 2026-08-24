@@ -28,7 +28,7 @@ jobs:
       # visible, not silent.
       - name: Mint an App token for telecraft.dev
         id: token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.FORGE_APP_ID }}
           private-key: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
