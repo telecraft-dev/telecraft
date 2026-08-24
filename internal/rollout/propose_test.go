@@ -120,7 +120,7 @@ func TestProposeAdvanceBumpsTheStage(t *testing.T) {
 	if _, rendered := change.Files["rendered/pipelines/gateway.yaml"]; !rendered {
 		t.Error("the proposal carries no refreshed rendered tree: it must go through the render-in-PR flow") // ADR-0028 §1
 	}
-	if !strings.Contains(change.Body, "3 running the to artefact") {
+	if !strings.Contains(change.Body, "3 running the new version") {
 		t.Errorf("the body carries no evidence: %s", change.Body)
 	}
 }

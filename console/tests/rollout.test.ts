@@ -117,7 +117,7 @@ describe('the fixture canary: blocked below the abort threshold (ADR-0029 §6)',
         collector: 'gw-1',
         path: 'served',
         condition: 'failed',
-        reason: expect.stringContaining('FAILED for the to artefact') as unknown as string,
+        reason: expect.stringContaining('FAILED for the new version') as unknown as string,
       },
     ])
   })
@@ -194,7 +194,7 @@ describe('advance and hold: foreign lag never blocks (ADR-0029 §5, §7)', () =>
     const early = new Date('2026-08-17T07:00:00Z')
     const progress = evaluateRollout(healed, healed.rollouts[0]!, early)
     expect(progress.decision).toBe('hold')
-    expect(progress.reason).toContain('minimum 24h')
+    expect(progress.reason).toContain('of its 24h minimum')
   })
 
   it('holds until a member is observed actually running the to artefact', () => {
@@ -206,7 +206,7 @@ describe('advance and hold: foreign lag never blocks (ADR-0029 §5, §7)', () =>
     unstarted.rolloutReadings['gw-1'] = unstarted.rolloutReadings['gw-0']!
     const progress = evaluateRollout(unstarted, unstarted.rollouts[0]!, NOW)
     expect(progress.decision).toBe('hold')
-    expect(progress.reason).toContain('actually running it')
+    expect(progress.reason).toContain('running the new version yet')
   })
 })
 

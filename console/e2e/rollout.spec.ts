@@ -48,7 +48,7 @@ test('halt and abort states are visible and deep-link to the Rollout panel', asy
   await expect(page.getByTestId('rollout-panel')).toBeVisible()
   await expect(page.getByTestId('rollout-panel-decision')).toContainText('halted')
   await expect(page.getByTestId(`halt-${CANARY}-gw-1`)).toContainText(
-    'reported FAILED for the to artefact',
+    'reported FAILED for the new version',
   )
 
   // The "why?" provenance popover: the authored rollout file lines and the

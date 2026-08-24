@@ -121,7 +121,7 @@ const CONDITIONS = [
     halt: (observation, artefacts) => {
       const remote = observation.reading?.remote
       if (remote?.state === 'failed' && remote.configHash === artefacts.to.hash) {
-        return `reported FAILED for the to artefact: ${remote.error ?? '(no error detail reported)'}`
+        return `reported FAILED for the new version: ${remote.error ?? '(no error detail reported)'}`
       }
       return undefined
     },
@@ -133,7 +133,7 @@ const CONDITIONS = [
     name: 'went_dark',
     halt: (observation) => {
       if (observation.reading?.silent && observation.running === 'to') {
-        return 'took the to artefact, then went silent past the staleness horizon'
+        return 'took the new version, then went silent past the staleness horizon'
       }
       return undefined
     },
@@ -192,6 +192,24 @@ function population(estate, rollout) {
 
 function emptySplit() {
   return { members: 0, to: 0, from: 0, other: 0, unknown: 0 }
+}
+
+/** One member is never "1 member(s)". */
+function members(count) {
+  return count === 1 ? '1 cohort member' : `${count} cohort members`
+}
+
+/**
+ * The evidence as one line, word for word what internal/rollout's
+ * Evidence.Summary composes: one verdict reads the same against a real
+ * estate and against the fixtures.
+ */
+function summary(rollout, evidence, haltedMembers) {
+  let line = `stage ${rollout.stage + 1} of ${rollout.stages.length} soaked ${evidence.soaked} of the ${evidence.minSoak} minimum: ${members(evidence.membersSeen)} seen, ${evidence.runningTo} running the new version, ${haltedMembers} halted`
+  if (evidence.runningFrom > 0) line += `; ${evidence.runningFrom} still on the previous version`
+  if (evidence.runningOther > 0) line += `; ${evidence.runningOther} on another configuration`
+  if (evidence.unknown > 0) line += `; ${evidence.unknown} unknown`
+  return line
 }
 
 /**
@@ -276,20 +294,20 @@ export function evaluateRollout(estate, rollout, now) {
   let reason
   if (evidence.membersSeen > 0 && haltedMembers / evidence.membersSeen >= abortFraction) {
     decision = 'abort'
-    reason = `${haltedMembers} of ${evidence.membersSeen} cohort members halted, at or past the abort threshold. Propose reverting the Tier to the from artefact alone`
+    reason = `${haltedMembers} of ${members(evidence.membersSeen)} halted, at or past the abort threshold. Telecraft proposes returning the Tier to the previous version.`
   } else if (haltedMembers > 0) {
     decision = 'blocked'
-    reason = `${haltedMembers} cohort member(s) halted below the abort threshold, so the advance is not proposed`
+    reason = `${members(haltedMembers)} halted, below the abort threshold. Telecraft holds the advance.`
   } else if (soakedMs < minSoakMs) {
     decision = 'hold'
-    reason = `soaked ${evidence.soaked} of the stage's minimum ${evidence.minSoak}`
+    reason = `The stage has soaked ${evidence.soaked} of its ${evidence.minSoak} minimum.`
   } else if (evidence.runningTo === 0) {
     decision = 'hold'
     reason =
-      'no cohort member observed running the to artefact yet. Advance evidence counts only collectors actually running it'
+      'No cohort member is running the new version yet. Telecraft holds the advance until one does.'
   } else {
     decision = 'advance'
-    reason = `exit criteria met: ${evidence.runningTo} of ${evidence.membersSeen} cohort members running the to artefact, ${haltedMembers} halted, soaked ${evidence.soaked} of the minimum ${evidence.minSoak}`
+    reason = `Every condition is met: ${summary(rollout, evidence, haltedMembers)}`
   }
 
   const card = estate.cards.find((c) => c.tier === rollout.tier)

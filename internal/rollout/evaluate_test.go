@@ -111,7 +111,7 @@ func TestEvaluateAdvancesWithLagNeverBlocking(t *testing.T) {
 	if e.MembersSeen != 3 || e.RunningTo != 2 || e.RunningFrom != 1 {
 		t.Errorf("evidence = %+v, want 3 members, 2 on to, 1 lagging on from", e)
 	}
-	if !strings.Contains(e.Summary(), "lag, never failure") {
+	if !strings.Contains(e.Summary(), "1 still on the previous version") {
 		t.Errorf("the evidence does not display the lag: %s", e.Summary())
 	}
 }
@@ -141,7 +141,7 @@ func TestEvaluateHolds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v.Decision != DecisionHold || !strings.Contains(v.Reason, "actually running") {
+	if v.Decision != DecisionHold || !strings.Contains(v.Reason, "running the new version yet") {
 		t.Errorf("decision = %s (%s), want a no-evidence hold", v.Decision, v.Reason)
 	}
 }

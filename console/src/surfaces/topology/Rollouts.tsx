@@ -189,7 +189,7 @@ function RolloutSection({
           {rollout.tier}
         </Link>{' '}
         ({rollout.environment}), stage {rollout.stage + 1} of {rollout.cohorts.length}:{' '}
-        {rollout.evidence.runningTo} of {rollout.evidence.membersSeen} running the to artefact
+        {rollout.evidence.runningTo} of {rollout.evidence.membersSeen} running the new version
       </p>
       <table className="catalogue-table rollout-table">
         <thead>
@@ -314,9 +314,10 @@ function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
         </span>
         <p className="rollout-reason">{rollout.reason}</p>
         <p className="rollout-evidence">
-          {rollout.evidence.membersSeen} cohort members seen: {rollout.evidence.runningTo} on to,{' '}
-          {rollout.evidence.runningFrom} on from, {rollout.evidence.runningOther} on another
-          config, {rollout.evidence.unknown} unknown.
+          {rollout.evidence.membersSeen} cohort members seen: {rollout.evidence.runningTo} on the
+          new version, {rollout.evidence.runningFrom} on the previous version,{' '}
+          {rollout.evidence.runningOther} on another configuration, {rollout.evidence.unknown}{' '}
+          unknown.
         </p>
       </section>
       <section className="panel-findings" data-testid="rollout-panel-halts">

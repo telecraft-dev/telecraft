@@ -103,7 +103,7 @@ func AbortChange(root string, r renderer.Rollout, v Verdict, author forge.Identi
 	return forge.Change{
 		Branch: AbortBranch(r),
 		Title:  fmt.Sprintf("Abort rollout %s: revert tier %s to single-bound %s", r.ID(), r.Tier, r.From),
-		Body: fmt.Sprintf("%s\n\nEvidence: %s.\n\nDeleting the Rollout file returns the Tier to its from binding and retires the @next artefact.",
+		Body: fmt.Sprintf("%s\n\nEvidence: %s.\n\nDeleting the Rollout file returns the Tier to the previous version and retires the @next artefact.",
 			v.Reason, v.Evidence.Summary()),
 		Author: author,
 		Files:  map[string][]byte{RolloutFilePath(r): nil},

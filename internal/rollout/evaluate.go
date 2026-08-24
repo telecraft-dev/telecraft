@@ -52,7 +52,7 @@ func FailedForTo(toHash []byte) Condition {
 		Halt: func(o Observation) (string, bool) {
 			r := o.Remote
 			if r.Known && r.State == estate.DeliveryFailed && bytes.Equal(r.ConfigHash, toHash) {
-				return "reported FAILED for the to artefact: " + orNone(r.Error), true
+				return "reported FAILED for the new version: " + orNone(r.Error), true
 			}
 			return "", false
 		},
@@ -67,7 +67,7 @@ func WentDarkAfterApply() Condition {
 		Name: "went_dark",
 		Halt: func(o Observation) (string, bool) {
 			if o.Silent && o.Running == RunningTo {
-				return "took the to artefact, then went silent past the staleness horizon", true
+				return "took the new version, then went silent past the staleness horizon", true
 			}
 			return "", false
 		},
@@ -153,13 +153,13 @@ type Evidence struct {
 // Summary renders the evidence as one line for proposal bodies and logs.
 func (e Evidence) Summary() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "stage %d of %d soaked %s (minimum %s): %d cohort members seen, %d running the to artefact, %d halted",
-		e.Stage+1, e.Stages, e.Soaked.Round(time.Minute), e.MinSoak, e.MembersSeen, e.RunningTo, len(e.Halted))
+	fmt.Fprintf(&b, "stage %d of %d soaked %s of the %s minimum: %s seen, %d running the new version, %d halted",
+		e.Stage+1, e.Stages, e.Soaked.Round(time.Minute), e.MinSoak, members(e.MembersSeen), e.RunningTo, len(e.Halted))
 	if e.RunningFrom > 0 {
-		fmt.Fprintf(&b, "; %d still on from (lag, never failure)", e.RunningFrom)
+		fmt.Fprintf(&b, "; %d still on the previous version", e.RunningFrom)
 	}
 	if e.RunningOther > 0 {
-		fmt.Fprintf(&b, "; %d on another config", e.RunningOther)
+		fmt.Fprintf(&b, "; %d on another configuration", e.RunningOther)
 	}
 	if e.Unknown > 0 {
 		fmt.Fprintf(&b, "; %d unknown", e.Unknown)
@@ -262,31 +262,31 @@ func Evaluate(in Inputs) (Verdict, error) {
 	case ev.MembersSeen > 0 && float64(len(halted))/float64(ev.MembersSeen) >= in.Thresholds.abortFraction():
 		return Verdict{
 			Decision: DecisionAbort,
-			Reason:   fmt.Sprintf("%d of %d cohort members halted, at or past the abort threshold. Telecraft proposes returning the Tier to its from binding.", len(halted), ev.MembersSeen),
+			Reason:   fmt.Sprintf("%d of %s halted, at or past the abort threshold. Telecraft proposes returning the Tier to the previous version.", len(halted), members(ev.MembersSeen)),
 			Evidence: ev,
 		}, nil
 	case len(halted) > 0:
 		return Verdict{
 			Decision: DecisionBlocked,
-			Reason:   fmt.Sprintf("%d cohort member(s) halted, below the abort threshold. Telecraft does not propose the advance while any member is halted.", len(halted)),
+			Reason:   fmt.Sprintf("%s halted, below the abort threshold. Telecraft holds the advance.", members(len(halted))),
 			Evidence: ev,
 		}, nil
 	case ev.Soaked < ev.MinSoak:
 		return Verdict{
 			Decision: DecisionHold,
-			Reason:   fmt.Sprintf("soaked %s of the stage's minimum %s", ev.Soaked.Round(time.Minute), ev.MinSoak),
+			Reason:   fmt.Sprintf("The stage has soaked %s of its %s minimum.", ev.Soaked.Round(time.Minute), ev.MinSoak),
 			Evidence: ev,
 		}, nil
 	case ev.RunningTo == 0:
 		return Verdict{
 			Decision: DecisionHold,
-			Reason:   "no cohort member is running the to artefact yet: the advance needs evidence from collectors actually running it",
+			Reason:   "No cohort member is running the new version yet. Telecraft holds the advance until one does.",
 			Evidence: ev,
 		}, nil
 	}
 	return Verdict{
 		Decision: DecisionAdvance,
-		Reason:   "exit criteria met: " + ev.Summary(),
+		Reason:   "Every condition is met: " + ev.Summary(),
 		Evidence: ev,
 	}, nil
 }
@@ -302,6 +302,15 @@ func silent(c estate.Collector, decl estate.Declaration, now time.Time) bool {
 	}
 	demoted := c.ForEvaluation(decl, now)
 	return !demoted.Effective.Known && !demoted.Health.Known && !demoted.DeliveryStatus.Known
+}
+
+// members renders a cohort-member count for a reader: one member is
+// never "1 member(s)".
+func members(n int) string {
+	if n == 1 {
+		return "1 cohort member"
+	}
+	return fmt.Sprintf("%d cohort members", n)
 }
 
 func orNone(s string) string {
