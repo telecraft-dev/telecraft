@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -251,4 +252,68 @@ func copyTree(t *testing.T, from, to string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// A Schema Registry version is imported out of a git repository at a pinned
+// ref, which is what ADR-0034 §1 means by the adopter keeping the registry
+// as ordinary git content: the fetch takes the model files at that ref, the
+// artefact records the commit the ref resolved to, and the run needs no
+// registry toolchain to read any of it.
+func TestAVersionIsImportedFromAGitRepositoryAtAPinnedRef(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git binary: the fetch is exercised where git-the-tool exists")
+	}
+	origin := t.TempDir()
+	copyTree(t, snapshotDir, origin)
+	write(t, origin, "docs/generated.md", "# generated from the model, and not part of it\n")
+	rungit(t, origin, "init", "--quiet")
+	rungit(t, origin, "add", ".")
+	rungit(t, origin, "commit", "--quiet", "-m", "the registry at v1.4.0")
+	rungit(t, origin, "tag", "-a", "v1.4.0", "-m", "v1.4.0")
+	head := rungit(t, origin, "rev-parse", "HEAD")
+
+	var stdout, stderr bytes.Buffer
+	res, err := substrate.Run(Substrate{}, substrate.Options{
+		Repo:   origin,
+		Ref:    "v1.4.0",
+		Out:    t.TempDir(),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Source.Commit != head {
+		t.Errorf("the artefact records commit %q, want the commit the tag resolved to, %s", res.Source.Commit, head)
+	}
+
+	reg, err := Load(res.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reg.Version() != "v1.4.0" || reg.Len() != 5 {
+		t.Errorf("imported %d groups at %s, want the 5 of v1.4.0", reg.Len(), reg.Version())
+	}
+	if _, _, ok := reg.Attribute("enterprise.criticality_tier"); !ok {
+		t.Error("the adopter's own namespaced attribute did not survive the fetch")
+	}
+}
+
+// rungit runs git in dir with identity pinned, so the test needs no host
+// git config.
+func rungit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(cmd.Environ(),
+		"GIT_CONFIG_GLOBAL=/dev/null",
+		"GIT_CONFIG_SYSTEM=/dev/null",
+		"GIT_AUTHOR_NAME=fixture", "GIT_AUTHOR_EMAIL=fixture@example.com",
+		"GIT_COMMITTER_NAME=fixture", "GIT_COMMITTER_EMAIL=fixture@example.com",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+	return strings.TrimSpace(string(out))
 }
