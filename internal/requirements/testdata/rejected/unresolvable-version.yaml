@@ -1,0 +1,14 @@
+# A pin on a Schema Registry version that was never imported. Refused at
+# load: the requirement would otherwise judge every Service against nothing
+# and score them all compliant.
+id: unresolvable-version
+title: Pins a registry version that is not installed
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v9.9.9
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+remediation: import that registry version, or pin one that is installed

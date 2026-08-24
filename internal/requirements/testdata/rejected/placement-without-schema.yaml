@@ -1,0 +1,13 @@
+# Placement is a property of a schema-conformance requirement and means
+# nothing on any other, so it is refused there rather than carried as a
+# field that can never take effect.
+id: placement-without-schema
+title: Sets a placement on a signal requirement
+version: 1
+owner: platform-observability
+signal:
+  kind: logs
+  present: true
+  window: 24h
+placement: landed
+remediation: drop the placement

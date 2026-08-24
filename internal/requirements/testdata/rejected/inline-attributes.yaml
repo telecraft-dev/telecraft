@@ -1,0 +1,16 @@
+# An inline attribute list under schema_conformance. Refused because it
+# duplicates the Schema Registry and drifts from it (ADR-0034 §2).
+id: inline-attributes
+title: Copies the registry instead of referencing it
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+  attributes:
+    - db.namespace
+    - db.system.name
+remediation: reference the registry group instead

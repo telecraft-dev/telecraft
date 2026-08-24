@@ -1,0 +1,12 @@
+# A reference that neither pins a version nor opts into tracking head.
+# References pin by default (ADR-0026 §1), so this names nothing.
+id: no-version
+title: References no registry version at all
+version: 1
+owner: platform-observability
+schema_conformance:
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+remediation: pin a registry version

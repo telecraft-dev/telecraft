@@ -21,9 +21,9 @@ func write(t *testing.T, dir, name, body string) {
 }
 
 // loadErr is Load reduced to its error, for tests that only assert on failure.
-func loadErr(t *testing.T, dir string) error {
+func loadErr(t *testing.T, dir string, opts ...Option) error {
 	t.Helper()
-	lib, err := Load(dir)
+	lib, err := Load(dir, opts...)
 	if err != nil && len(lib.Requirements) != 0 {
 		t.Fatalf("Load failed but returned a non-empty library: a failed load must fail closed")
 	}
@@ -47,12 +47,12 @@ const goodReq = `
 // requirement exposes kind, requirement_level, owner and (optionally)
 // environments.
 func TestFixtureLibraryLoads(t *testing.T) {
-	lib, err := Load(filepath.Join("testdata", "library"))
+	lib, err := Load(filepath.Join("testdata", "library"), WithSchemaRegistries(installedRegistries(t)))
 	if err != nil {
 		t.Fatalf("the fixture library does not load: %v", err)
 	}
-	if len(lib.Requirements) != 7 {
-		t.Fatalf("fixture library holds %d requirements, want 7", len(lib.Requirements))
+	if len(lib.Requirements) != 9 {
+		t.Fatalf("fixture library holds %d requirements, want 9", len(lib.Requirements))
 	}
 	for _, r := range lib.Sorted() {
 		if r.Owner == "" {
@@ -61,8 +61,10 @@ func TestFixtureLibraryLoads(t *testing.T) {
 		if !r.Level.Valid() {
 			t.Errorf("requirement %q loaded with invalid level %q", r.ID, r.Level)
 		}
-		if k := r.Kind(); k != KindConfig && k != KindSignal && k != KindConfigAndSignal {
-			t.Errorf("requirement %q reports unknown kind %q", r.ID, k)
+		switch r.Kind() {
+		case KindConfig, KindSignal, KindConfigAndSignal, KindSchemaConformance:
+		default:
+			t.Errorf("requirement %q reports unknown kind %q", r.ID, r.Kind())
 		}
 	}
 

@@ -1,0 +1,18 @@
+# Schema conformance is judged against the Schema Registry alone: the
+# Effective half of the outcome cross does not apply to instrumentation, and
+# ADR-0034 §3 declines to grow an outcome for the combination.
+id: schema-and-signal
+title: Asserts schema conformance and signal delivery at once
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+signal:
+  kind: traces
+  present: true
+  window: 24h
+remediation: split the two apart

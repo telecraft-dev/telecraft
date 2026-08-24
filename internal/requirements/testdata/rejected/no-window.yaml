@@ -1,0 +1,12 @@
+# Every assertion that reads Observed state names the window it reads over,
+# and a schema assertion is one of them.
+id: no-window
+title: Names no window
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+remediation: name a window
