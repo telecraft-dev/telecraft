@@ -197,6 +197,62 @@ func TestEveryFindingCarriesRemediationAndAKnownSeverity(t *testing.T) {
 	}
 }
 
+// rowFinding reports whether a finding came from judging one row of the
+// conformance estate, which is the pipe every requirement kind is judged
+// through, schema conformance included. The conformance band also carries
+// repo-owned findings (library drift, a render floor) that are Blueprint's
+// by decision, so the band alone does not identify a row's finding.
+func rowFinding(f console.Finding) bool {
+	return f.Kind == "conformance" && strings.Contains(f.ID, "/conformance/")
+}
+
+// A row's conformance finding is owned by the Service it was judged on, and
+// its who-acts target says so. Schema conformance is judged through the same
+// pipe for the same reason: its fix is an instrumentation change, so a Tier
+// or a collector as the target would send the work to somebody who cannot do
+// it (ADR-0034 §7).
+func TestConformanceFindingsRouteToTheService(t *testing.T) {
+	b := build(t)
+	seen := 0
+	for tier, drawer := range b.Estate.Drawers {
+		for _, f := range drawer.Findings {
+			if !rowFinding(f) {
+				continue
+			}
+			seen++
+			if f.WhoActs.Target.Kind != "service" {
+				t.Errorf("%s: conformance finding %q routes to a %s, want the Service that owns it",
+					tier, f.ID, f.WhoActs.Target.Kind)
+			}
+			if f.WhoActs.Target.ID == "" {
+				t.Errorf("%s: conformance finding %q names no Service to act", tier, f.ID)
+			}
+		}
+	}
+	if seen == 0 {
+		t.Fatal("no row conformance finding in the snapshot, so nothing here is checked")
+	}
+}
+
+// A finding is shown on every Tier the Service's Paths traverse, and is
+// still one finding: the same id, the same target, and no second copy filed
+// against a collector.
+func TestConformanceFindingsDoNotSplit(t *testing.T) {
+	b := build(t)
+	byID := map[string]console.WhoActs{}
+	for _, drawer := range b.Estate.Drawers {
+		for _, f := range drawer.Findings {
+			if !rowFinding(f) {
+				continue
+			}
+			if prev, seen := byID[f.ID]; seen && prev != f.WhoActs {
+				t.Errorf("conformance finding %q routes two ways: %+v and %+v", f.ID, prev, f.WhoActs)
+			}
+			byID[f.ID] = f.WhoActs
+		}
+	}
+}
+
 func TestProvenanceIsFedFromTheRepositoryNeverReconstructed(t *testing.T) {
 	b := build(t)
 	drawer := b.Estate.Drawers["data-flow/gateway"]

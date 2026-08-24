@@ -68,10 +68,32 @@ func registryKey(a requirements.SchemaAssertion) string {
 // Registry declares it at and named by the group that demanded it. It is
 // read out of the registry at evaluation and never authored: a requirement
 // file that held one would be the copy ADR-0034 §2 refuses.
+//
+// It carries what the finding's remediation has to say (ADR-0034 §7): the
+// group and its kind, the attribute, the type the registry declares it at,
+// and upstream's machine-readable deprecation notice. Those travel here
+// rather than being looked up again when the text is written, because the
+// lookup is not free and the answer cannot change between the two moments.
 type demand struct {
 	Attribute string
 	Level     schemaregistry.Level
 	Group     string
+
+	// GroupKind is the demanding group's kind, which says what the
+	// attribute is demanded of: a span, a metric, a resource. It also
+	// decides whether collection-time enrichment is worth suggesting.
+	GroupKind schemaregistry.Kind
+
+	// Type is the type the registry declares the attribute at, read from
+	// the definition rather than from a reference to it. Empty when the
+	// definition lives in a registry this one imports from, which is not
+	// in the adopter's tree: the remediation says so rather than guessing.
+	Type string
+
+	// Deprecation is upstream's notice, read from the definition. A
+	// deprecated attribute already carries its own migration instruction,
+	// and the finding hands it over rather than paraphrasing it.
+	Deprecation *schemaregistry.Deprecation
 }
 
 // defaultLevel is the level an attribute is demanded at when the registry
@@ -98,12 +120,16 @@ func judgeSchema(req requirements.Requirement, ev Evidence) []Finding {
 	// braces: a live requirement that reached the evaluator must read
 	// unknown, because a dead tap must not read as clean.
 	if req.Placement == requirements.Live {
-		return []Finding{schemaUnknown(req, "this requirement is judged at placement live, and the collection-time tap that would emit its findings is not built yet")}
+		return []Finding{schemaUnknown(req,
+			"this requirement is judged at placement live, and the collection-time tap that would emit its findings is not built yet",
+			"Judge this requirement against landed telemetry by setting its placement to landed, or take it out of the library until the collection-time tap ships.")}
 	}
 
 	reg, ok := ev.Schema.RegistryFor(a)
 	if !ok {
-		return []Finding{schemaUnknown(req, fmt.Sprintf("no Schema Registry version %q is available to this evaluation, so what the scope demands is not known", registryKey(a)))}
+		return []Finding{schemaUnknown(req,
+			fmt.Sprintf("no Schema Registry version %q is available to this evaluation, so what the scope demands is not known", registryKey(a)),
+			fmt.Sprintf("Import Schema Registry version %q and make it available to the evaluation, or pin this requirement to a version that is installed.", registryKey(a)))}
 	}
 
 	demands := demandsOf(reg, a.Scope)
@@ -242,6 +268,7 @@ func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at 
 		if len(f.Detail) == 0 {
 			f.Detail = []string{"no reading covers this requirement's signals"}
 		}
+		f.Remediation = readingRemediation(f.Outcome)
 		return f
 	}
 
@@ -271,6 +298,7 @@ func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at 
 		// missing stays compliant: extra records can only add names.
 		f.Outcome = Unknown
 		f.Detail = append(f.Detail, fmt.Sprintf("%s not named by a truncated reading, which cannot tell an attribute that is absent from one it did not sample", attrList(missing)))
+		f.Remediation = truncatedReading
 		return f
 	}
 
@@ -280,6 +308,7 @@ func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at 
 		f.Outcome = Misconfigured
 	}
 	f.Detail = append(f.Detail, missDetail(level, missing, len(at)))
+	f.Remediation = schemaRemediation(level, missing)
 	return f
 }
 
@@ -329,12 +358,17 @@ func gradeOf(level schemaregistry.Level) ownership.Grade {
 // evaluation cannot be attempted at all. It is violation-grade and unknown:
 // a requirement nobody could judge must not read as a pass, and must not
 // quietly leave the denominator either.
-func schemaUnknown(req requirements.Requirement, cause string) Finding {
+//
+// It still routes to the Service and still carries a fix (ADR-0034 §7). The
+// fix is about the evaluation rather than about instrumentation, because
+// nothing here says the telemetry is the wrong shape.
+func schemaUnknown(req requirements.Requirement, cause, fix string) Finding {
 	return Finding{
 		Requirement: req,
 		Grade:       ownership.Violation,
 		Outcome:     Unknown,
 		Detail:      []string{cause},
+		Remediation: fix,
 	}
 }
 
@@ -368,7 +402,7 @@ func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand 
 			continue
 		}
 		for _, a := range g.Attributes {
-			keep(demand{Attribute: a.Key(), Level: levelOf(a), Group: g.ID})
+			keep(demandOf(reg, g, a))
 		}
 	}
 
@@ -377,7 +411,7 @@ func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand 
 		for _, g := range reg.Groups {
 			for _, a := range g.Attributes {
 				if key := a.Key(); key == ns || strings.HasPrefix(key, prefix) {
-					keep(demand{Attribute: key, Level: levelOf(a), Group: g.ID})
+					keep(demandOf(reg, g, a))
 				}
 			}
 		}
@@ -389,6 +423,38 @@ func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand 
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Attribute < out[j].Attribute })
 	return out
+}
+
+// demandOf reads one attribute entry into the demand the finding is written
+// from. The level comes from the entry, because tightening a level on a
+// reference is the whole mechanism a custom registry exists for (ADR-0009);
+// the type and the deprecation notice come from the definition, because a
+// reference restates neither.
+func demandOf(reg *schemaregistry.Registry, g schemaregistry.Group, a schemaregistry.Attribute) demand {
+	def := definitionOf(reg, a)
+	return demand{
+		Attribute:   a.Key(),
+		Level:       levelOf(a),
+		Group:       g.ID,
+		GroupKind:   g.Kind,
+		Type:        def.Type,
+		Deprecation: def.Deprecation,
+	}
+}
+
+// definitionOf resolves an entry to the declaration that defines it. An
+// entry that defines an attribute is its own definition; a reference is
+// resolved against this registry version, and one that resolves nowhere is
+// defined in a dependency registry that is not in this tree, so the entry
+// stands for itself and the fields it does not carry stay empty.
+func definitionOf(reg *schemaregistry.Registry, a schemaregistry.Attribute) schemaregistry.Attribute {
+	if a.Defines() {
+		return a
+	}
+	if def, _, ok := reg.Attribute(a.Ref); ok {
+		return def
+	}
+	return a
 }
 
 // levelOf reads the level the registry declares an attribute at, defaulting

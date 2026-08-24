@@ -185,6 +185,15 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 			if f.Outcome.Passing() {
 				continue
 			}
+			// One finding, one owner, and the owner is the Service's
+			// (ADR-0034 §7, REQ-015). Every conformance finding attaches
+			// to the (Service, Environment) row it was judged on and
+			// routes there, schema conformance included: its fix is an
+			// instrumentation change, so a Tier or a collector as the
+			// who-acts target would send the work to somebody who cannot
+			// do it. The finding is shown on each Tier the Service's
+			// Paths traverse, which is where a reader finds it, and is
+			// still the one finding with the one target.
 			finding := Finding{
 				ID:        fmt.Sprintf("%s/%s/conformance/%d", row.Service, row.Environment, i),
 				Kind:      "conformance",
@@ -192,7 +201,7 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 				Dampening: dampeningOf(f.Waived),
 				Summary: fmt.Sprintf("%s: %s in %s (%s)",
 					f.Requirement.ID, strings.ReplaceAll(string(f.Outcome), "_", " "), row.Environment, row.Service),
-				Remediation: f.Requirement.Remediation,
+				Remediation: conformanceRemediation(f),
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "service", ID: b.serviceID(row.Service)},
 					Label:  "Inspect the Service in Topology",
@@ -612,6 +621,20 @@ func severityRank(s string) int {
 // outcomeSeverity maps a verdict outcome onto the card contract's two
 // severities. The outcome vocabulary is richer and survives in the summary;
 // the face carries only how much a human should care (ADR-0041 §2).
+// conformanceRemediation prefers the fix the evaluator wrote over the one
+// the requirement's author wrote. Only a schema-conformance finding writes
+// its own, and only it can: what a schema requirement demands is whatever
+// the Schema Registry version declares for its scope, so the gap, the
+// declared types and any migration note are known at evaluation and not
+// before (ADR-0034 §7). Every other kind falls through to the authored
+// line, which the loader makes mandatory, so this is never empty.
+func conformanceRemediation(f conformance.Finding) string {
+	if f.Remediation != "" {
+		return f.Remediation
+	}
+	return f.Requirement.Remediation
+}
+
 func outcomeSeverity(o conformance.Outcome) string {
 	switch o {
 	case conformance.Unknown:
