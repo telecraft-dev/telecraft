@@ -59,7 +59,7 @@ implementation, and name the constructor after the product:
 **Seam:** `internal/telemetry`. **Decisions:** ADR-0008, ADR-0009, ADR-0034,
 ADR-0039, ADR-0040. **Shipped implementation:** `Elasticsearch`.
 
-The seam answers one question in four shapes: did signal X arrive for Service
+The seam answers one question in six shapes: did signal X arrive for Service
 Y in window W.
 
 ```go
@@ -67,6 +67,8 @@ type Provider interface {
 	Name() string
 	Observe(ctx context.Context, service Service, window time.Duration, attributes []string) Observed
 	AttributeNames(ctx context.Context, service Service, kind requirements.SignalKind, window time.Duration) AttributeNames
+	DistinctValues(ctx context.Context, service Service, kind requirements.SignalKind, attribute string, window time.Duration) DistinctValues
+	GroupNames(ctx context.Context, service Service, kind requirements.SignalKind, window time.Duration) GroupNames
 	ObserveSelf(ctx context.Context, tier string, window time.Duration) SelfObserved
 	Meter(ctx context.Context, tier string, window time.Duration) Metered
 }
@@ -75,11 +77,21 @@ type Provider interface {
 - `Observe` reads presence and volume per signal, plus the fraction of
   records carrying each requested attribute name, measured in the same round
   trip.
-- `AttributeNames` reads the set of attribute names in use. It is the
-  sanctioned extension primitive, and it is what makes schema-conformance
-  checking pure string logic instead of a widened seam. An implementation
-  that can only approximate, by sampling records for instance, says so
-  through `Truncated` rather than silently.
+- `AttributeNames` reads the set of attribute names in use. It is the first
+  of the three primitives that make schema-conformance checking pure string
+  logic instead of a widened seam. An implementation that can only
+  approximate, by sampling records for instance, says so through `Truncated`
+  rather than silently.
+- `DistinctValues` reads the values one attribute carries. It is hard-capped
+  at `telemetry.MaxDistinctValues`, and a set that reached the cap, or a
+  backend that held values outside the ones it returned, reads `Truncated`.
+  Callers offer it only for the attributes the Schema Registry declares as
+  enums; that constraint is caller-side, because a seam holding a registry
+  would be a seam holding a vocabulary.
+- `GroupNames` reads the values of the grouping key a signal is grouped by:
+  span names for traces, metric names for metrics, event names for logs.
+  semconv states its required-sets per group, so a conformance check cannot
+  ask what is required until it knows which groups arrived.
 - `ObserveSelf` reads collector self-telemetry for one Tier, matched on the
   `telecraft.tier` resource stamp every rendered artefact bakes into its own
   telemetry. This is the only door self-telemetry comes through: the platform
@@ -89,6 +101,26 @@ type Provider interface {
   whose backend cannot aggregate that way returns `MeterUnknown` with a
   cause. Metering never invents, and a reading nobody can take is unknown,
   not a zero.
+
+### Fidelity on the three primitives
+
+All three are service-scoped by contract, and the rule runs both ways
+(ADR-0034 §4). A reading you cannot narrow to one Service is `Known` false
+with a cause, which `telemetry.NotServiceScoped` renders. There is no third
+option, and the two that tempt are exactly the two the rule forbids.
+
+The first is a silent approximation: answering with what the whole index
+holds, because the index is easy to aggregate and the Service is not. The
+second is a misattribution: reporting a value another Service put in that
+index under this Service's name. Both read as knowledge downstream, and both
+fail in the direction that turns a violation into a pass. A wrong answer
+here is worse than no answer, because a wrong one is acted on.
+
+The index-scoped union is sanctioned, but only as a screening fast path with
+a service-scoped follow-up: a clean union proves every service in it clean, a
+dirty union triggers the costly service-scoped aggregation to attribute the
+violation. Nothing implements that today, and until something does, no
+implementation returns a union from these methods.
 
 The one thing that must not happen here is a backend's query syntax passing
 through the seam. The moment it can, only one backend is ever really
