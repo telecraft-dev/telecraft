@@ -61,7 +61,7 @@ decisions are recorded.
 
 | Path | What lives there |
 |---|---|
-| `cmd/` | The `telecraft` CLI, plus the `catalogue-import` and `blueprint-check` tools |
+| `cmd/` | The `telecraft` CLI, plus the `blueprint-check`, `catalogue-import` and `schema-registry-import` tools |
 | `internal/` | The neutral core: no vendor word appears here |
 | `internal/provider/` | Vendor implementations behind the core's seams, always product-qualified: `Elasticsearch`, `ElasticFleet` |
 | `console/` | The TypeScript and React console |
