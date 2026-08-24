@@ -99,6 +99,10 @@ func Load(dir string, opts ...Option) (Library, error) {
 	if len(problems) > 0 {
 		return Library{}, fmt.Errorf("invalid requirements library:\n  - %s", strings.Join(problems, "\n  - "))
 	}
+	// Every reference resolved, or the load has already failed. The
+	// versions travel with the library so the evaluator judges against
+	// what validation read (ADR-0034 §2).
+	lib.SchemaRegistries = regs.resolved()
 	return lib, nil
 }
 

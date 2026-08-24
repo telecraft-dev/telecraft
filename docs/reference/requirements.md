@@ -161,14 +161,12 @@ There's no attribute list here, and adding one is a load error. A list in a
 requirement file is a second copy of something the registry already states,
 and the copy drifts the first time somebody edits one and not the other.
 
-Evaluating schema conformance isn't finished yet. The format loads and
-validates, the evaluator maps the registry's four requirement levels onto
-findings, and those findings write their own remediation out of the registry.
-What's missing is the wiring: `telecraft check` doesn't yet take the Schema
-Registry directory a reference resolves against, so a Requirement of this kind
-isn't ready to run against an estate. Where one reaches the evaluator with no
-registry version resolved, it's reported `unknown`: no reading, so no verdict,
-and never a silent pass.
+A Requirement of this kind runs against an estate. The evaluator reads the
+attribute names in use for each signal and window the reference covers,
+resolves what the pinned registry version demands of the scope, and judges one
+against the other. Where the reading can't be taken, or the reference resolved
+to no version, the verdict is `unknown` with the cause: no reading, so no
+verdict, and never a silent pass.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -182,6 +180,13 @@ and never a silent pass.
 
 At least one of `scope.groups` and `scope.namespaces` must be present. An
 empty scope would demand the whole registry of every Service by omission.
+
+The window is read twice: once for the attribute names in use, and once for
+whether the covered signals arrived at all. That second reading is what tells
+`not_delivered` from `misconfigured`. Nothing arrived is `not_delivered`;
+telemetry arrived and is missing an attribute the registry demands at
+`required` is `misconfigured`; every `required` attribute in use is
+`compliant`.
 
 ```yaml
 # requirements/schema.yaml
@@ -251,7 +256,27 @@ one failure this loader exists to prevent.
 
 A tracking reference names no version, so there's nothing to resolve a scope
 against; what must exist is an imported registry for there to be a head at
-all.
+all. Which installed version is the active one is an activation decision, and
+nothing makes it yet, so a tracking reference loads and then reads `unknown`
+at evaluation. Pin a version to get a verdict today.
+
+Where the installed versions live is the command's to say. Each command that
+loads a library takes a `-schema-registries` directory, holding one
+`schema-registry-<ref>.json` artefact per imported version, which is what
+`schema-registry-import` writes:
+
+```sh
+go run ./cmd/schema-registry-import -repo https://git.example/registry -ref v1.4.0
+telecraft check -library requirements/ -estate estate.yaml \
+  -schema-registries schema-registries/
+```
+
+Schema Registry versions are instance-side artefacts, not estate content, the
+same as Catalogue versions and for the same reason: they're imported, retained
+version by version, and shared by every estate the instance judges. A library
+that references one and is loaded without the directory doesn't load at all,
+which is the fail-closed direction: the alternative is a Requirement that
+evaluates nothing and scores every Service clean.
 
 ### Placement
 

@@ -277,6 +277,12 @@ func (f fakeDelivery) Path(map[string]string) string { return string(f) }
 type fakeTelemetry struct {
 	observed map[string]telemetry.Observed
 	self     map[string]telemetry.SelfObserved
+
+	// names answers the attribute-name primitive per signal. A signal it
+	// holds nothing for reads Known false with the cause said out loud,
+	// because an empty name set is what a conformance check reads as
+	// "these attributes are not in use".
+	names map[requirements.SignalKind]telemetry.AttributeNames
 }
 
 func (f fakeTelemetry) Name() string { return "fake" }
@@ -285,8 +291,16 @@ func (f fakeTelemetry) Observe(_ context.Context, s telemetry.Service, _ time.Du
 	return f.observed[s.Name+"|"+s.Environment]
 }
 
-func (f fakeTelemetry) AttributeNames(context.Context, telemetry.Service, requirements.SignalKind, time.Duration) telemetry.AttributeNames {
-	return telemetry.AttributeNames{}
+func (f fakeTelemetry) AttributeNames(_ context.Context, _ telemetry.Service, kind requirements.SignalKind, window time.Duration) telemetry.AttributeNames {
+	if reading, held := f.names[kind]; held {
+		return reading
+	}
+	return telemetry.AttributeNames{
+		Known:  false,
+		Cause:  "the fake telemetry reading declares no attribute names",
+		AsOf:   base,
+		Window: window,
+	}
 }
 
 // The two ADR-0034 §4 primitives the fake holds nothing for. It answers
@@ -374,5 +388,118 @@ func TestObservePopulationsIgnoresATierWithNoFloor(t *testing.T) {
 
 	if !got.ShortfallSince.IsZero() {
 		t.Error("a Tier with no declared floor was given a shortfall start")
+	}
+}
+
+// The attribute-name reading is taken for the signals a schema-conformance
+// requirement is judged on, and carried into the readings file so the
+// snapshot judges the same reading the backend gave (ADR-0034 §4).
+func TestComposeCarriesTheAttributeNameReading(t *testing.T) {
+	c := &composer{
+		Collectors:    fakeEstate{asOf: base},
+		Delivery:      fakeDelivery("served"),
+		Rows:          []row{{Service: "checkout", Environment: "production"}},
+		SchemaSignals: []requirements.SignalKind{requirements.Traces},
+		Telemetry: fakeTelemetry{
+			observed: map[string]telemetry.Observed{
+				"checkout|production": {Signals: map[requirements.SignalKind]telemetry.SignalObservation{
+					requirements.Traces: {Known: true, Present: true, Volume: 12},
+					requirements.Logs:   {Known: true, Present: true, Volume: 90},
+				}},
+			},
+			names: map[requirements.SignalKind]telemetry.AttributeNames{
+				requirements.Traces: {
+					Known: true, AsOf: base, Window: time.Hour,
+					Names:          []string{"db.namespace", "db.system.name"},
+					Truncated:      true,
+					SampledRecords: 200,
+					TotalRecords:   4096,
+				},
+			},
+		},
+		Window: time.Hour,
+		Now:    func() time.Time { return base },
+	}
+
+	got := c.compose(context.Background())
+
+	if len(got.Rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(got.Rows))
+	}
+	traces := got.Rows[0].Signals["traces"]
+	if traces.AttributeNames == nil {
+		t.Fatal("the traces reading carries no attribute names, so no schema requirement can be judged from this file")
+	}
+	if len(traces.AttributeNames.Names) != 2 || traces.AttributeNames.Names[0] != "db.namespace" {
+		t.Errorf("names = %v, want what the seam returned", traces.AttributeNames.Names)
+	}
+	// Truncation travels or the file lies: a sampled reading played back as
+	// a complete one turns an unsampled attribute into a missing one.
+	if !traces.AttributeNames.Truncated ||
+		traces.AttributeNames.SampledRecords != 200 || traces.AttributeNames.TotalRecords != 4096 {
+		t.Errorf("truncation not carried: %+v", traces.AttributeNames)
+	}
+	// Logs were not asked about, and a reading nobody took is not declared:
+	// the console plays an undeclared reading back as Known false with a
+	// cause, which is the honest answer.
+	if got.Rows[0].Signals["logs"].AttributeNames != nil {
+		t.Error("a signal no schema requirement covers was declared anyway")
+	}
+}
+
+// A reading the backend could not give is left undeclared rather than
+// written as an empty name set: an empty set is what a schema verdict reads
+// as attributes nobody sets.
+func TestComposeDeclaresNoNamesWhenTheBackendCannotSee(t *testing.T) {
+	c := &composer{
+		Collectors:    fakeEstate{asOf: base},
+		Delivery:      fakeDelivery("served"),
+		Rows:          []row{{Service: "checkout", Environment: "production"}},
+		SchemaSignals: []requirements.SignalKind{requirements.Traces},
+		Telemetry: fakeTelemetry{observed: map[string]telemetry.Observed{
+			"checkout|production": {Signals: map[requirements.SignalKind]telemetry.SignalObservation{
+				requirements.Traces: {Known: true, Present: true, Volume: 12},
+			}},
+		}},
+		Window: time.Hour,
+		Now:    func() time.Time { return base },
+	}
+
+	got := c.compose(context.Background())
+
+	if got.Rows[0].Signals["traces"].AttributeNames != nil {
+		t.Error("a reading the backend could not give was written as one it could")
+	}
+}
+
+// Which signals the reading is taken for comes from the library: a library
+// referencing no Schema Registry buys no aggregations.
+func TestSchemaSignalsAreTheSignalsTheLibraryJudges(t *testing.T) {
+	lib := requirements.Library{Requirements: map[string]requirements.Requirement{
+		"a": {ID: "a", Schema: &requirements.SchemaAssertion{
+			Signals: []requirements.SignalKind{requirements.Traces},
+		}},
+		"b": {ID: "b", Schema: &requirements.SchemaAssertion{
+			Signals: []requirements.SignalKind{requirements.Logs, requirements.Traces},
+		}},
+		"c": {ID: "c", Signal: &requirements.SignalAssertion{Kind: requirements.Metrics}},
+	}}
+
+	got := schemaSignals(lib)
+
+	want := []requirements.SignalKind{requirements.Logs, requirements.Traces}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v in the seam's stable order", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v in the seam's stable order", got, want)
+		}
+	}
+
+	if signals := schemaSignals(requirements.Library{Requirements: map[string]requirements.Requirement{
+		"c": {ID: "c", Signal: &requirements.SignalAssertion{Kind: requirements.Metrics}},
+	}}); len(signals) != 0 {
+		t.Errorf("a library referencing no registry asks for %v", signals)
 	}
 }

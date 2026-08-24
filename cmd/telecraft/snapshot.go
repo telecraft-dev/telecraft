@@ -33,6 +33,7 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact (required)")
 	catalogues := fs.String("catalogues", "", "directory of installed Catalogue artefacts (default: the active artefact's directory)")
 	library := fs.String("library", "", "requirements library directory (required)")
+	registries := fs.String("schema-registries", "", "directory of installed Schema Registry artefacts, which a schema_conformance requirement's reference resolves against (needed only by a library that holds one)")
 	exemptions := fs.String("exemptions", "", "exemptions directory holding authored waivers (optional)")
 	rows := fs.String("rows", "", "conformance estate file: each Service's Effective reading per Environment (required)")
 	readings := fs.String("readings", "", "readings file: the collector estate and the live readings a repository cannot hold (required)")
@@ -64,15 +65,16 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 	}
 
 	bundle, err := console.Build(console.Inputs{
-		Root:         *estate,
-		Active:       *artefact,
-		Catalogues:   installed,
-		Library:      *library,
-		Exemptions:   *exemptions,
-		EstateFile:   *rows,
-		ReadingsFile: *readings,
-		Commit:       *commit,
-		Repository:   *repository,
+		Root:             *estate,
+		Active:           *artefact,
+		Catalogues:       installed,
+		Library:          *library,
+		SchemaRegistries: *registries,
+		Exemptions:       *exemptions,
+		EstateFile:       *rows,
+		ReadingsFile:     *readings,
+		Commit:           *commit,
+		Repository:       *repository,
 		User: console.User{
 			ID:    *user,
 			Name:  *userName,

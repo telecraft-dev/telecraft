@@ -48,6 +48,74 @@ type SchemaEvidence struct {
 	Names map[SchemaReading]telemetry.AttributeNames
 }
 
+// SchemaReadings returns the attribute-name readings the schema-conformance
+// requirements applying in one Environment ask for: one per signal and
+// window covered, de-duplicated and in stable order.
+//
+// It is the fetch plan the evidence is gathered against, kept beside the key
+// it produces so a caller cannot ask for a reading under one key and file it
+// under another. Two requirements covering the same signal over the same
+// window share one reading, which is what makes the plan cheaper than a
+// reading per requirement.
+func SchemaReadings(lib requirements.Library, environment string) []SchemaReading {
+	seen := map[SchemaReading]bool{}
+	var out []SchemaReading
+	for _, req := range lib.Sorted() {
+		if req.Schema == nil || !req.AppliesTo(environment) {
+			continue
+		}
+		window := req.Schema.Window.Std()
+		for _, kind := range telemetry.Signals() {
+			if !req.Schema.Covers(kind) {
+				continue
+			}
+			key := SchemaReading{Kind: kind, Window: window}
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, key)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Window != out[j].Window {
+			return out[i].Window < out[j].Window
+		}
+		return out[i].Kind < out[j].Kind
+	})
+	return out
+}
+
+// GatherSchema builds the evidence one row's schema-conformance
+// requirements are judged against: the Schema Registry versions the load
+// resolved, and one attribute-name reading per signal and window the
+// applying requirements cover, taken by read.
+//
+// read takes one planned reading rather than this package taking a
+// TelemetryProvider, so the plan and the seam stay apart: a caller reading
+// from a live backend and one replaying a declared reading gather the same
+// evidence through the same plan, and neither can quietly answer a key it
+// was not asked for.
+//
+// A row with no schema requirement gathers nothing. Its evidence is zero
+// valued, which is what a requirement of another kind is judged against
+// anyway, and reading attribute names for a library that asks about none
+// would be a round trip nobody wanted.
+func GatherSchema(lib requirements.Library, environment string, read func(SchemaReading) telemetry.AttributeNames) SchemaEvidence {
+	plan := SchemaReadings(lib, environment)
+	if len(plan) == 0 {
+		return SchemaEvidence{}
+	}
+	ev := SchemaEvidence{
+		Versions: lib.SchemaRegistries,
+		Names:    make(map[SchemaReading]telemetry.AttributeNames, len(plan)),
+	}
+	for _, key := range plan {
+		ev.Names[key] = read(key)
+	}
+	return ev
+}
+
 // RegistryFor returns the Schema Registry version this assertion is judged
 // against, and whether the evidence carries it.
 func (e SchemaEvidence) RegistryFor(a requirements.SchemaAssertion) (*schemaregistry.Registry, bool) {

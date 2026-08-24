@@ -230,3 +230,69 @@ func TestDeclaredPrimitivesRefuseAnUnnamedService(t *testing.T) {
 		t.Errorf("want Known=false naming what was missing, got %+v", names)
 	}
 }
+
+// The third primitive plays back the same way: a declared reading comes
+// through whole, truncation included, and one nobody declared is Known
+// false with a cause rather than an empty name set. An empty set is exactly
+// what a schema verdict reads as "these attributes are not in use", so the
+// two must never render the same.
+func TestDeclaredAttributeNamesPlayBackWithTheirTruncation(t *testing.T) {
+	p := declared(SignalReading{AttributeNames: &AttributeNamesReading{
+		Names:          []string{"db.system.name", "db.namespace", "db.system.name"},
+		Truncated:      true,
+		SampledRecords: 200,
+		TotalRecords:   4096,
+	}})
+
+	got := p.AttributeNames(context.Background(), service(), requirements.Logs, time.Hour)
+
+	if !got.Known {
+		t.Fatalf("a declared attribute-name reading must read Known: %+v", got)
+	}
+	if want := []string{"db.namespace", "db.system.name"}; !equalStrings(got.Names, want) {
+		t.Errorf("names = %v, want %v sorted and de-duplicated", got.Names, want)
+	}
+	if !got.AsOf.Equal(readAt) {
+		t.Errorf("as_of = %v, want %v", got.AsOf, readAt)
+	}
+	if !got.Truncated || got.SampledRecords != 200 || got.TotalRecords != 4096 {
+		t.Errorf("truncation not carried: %+v: a sampled reading played back as complete turns an unsampled attribute into a missing one", got)
+	}
+}
+
+func TestDeclaredAttributeNamesSeparateAbsenceFromSilence(t *testing.T) {
+	empty := declared(SignalReading{AttributeNames: &AttributeNamesReading{}}).
+		AttributeNames(context.Background(), service(), requirements.Logs, time.Hour)
+	if !empty.Known {
+		t.Fatalf("a declared empty name set is an observed absence, not a blind spot: %+v", empty)
+	}
+	if len(empty.Names) != 0 {
+		t.Errorf("names = %v, want none", empty.Names)
+	}
+
+	undeclared := declared(SignalReading{Present: true, AttributeCoverage: map[string]float64{"service.version": 1}}).
+		AttributeNames(context.Background(), service(), requirements.Logs, time.Hour)
+	if undeclared.Known {
+		t.Fatalf("an undeclared attribute-name reading must read Known=false: %+v", undeclared)
+	}
+	if !strings.Contains(undeclared.Cause, "attribute names") {
+		t.Errorf("cause %q does not say what was missing", undeclared.Cause)
+	}
+	// The coverage measurement is not the reading. It answers for the
+	// names a requirement asked about, which is a list the library chose;
+	// a scope is judged against the names in use.
+	if len(undeclared.Names) != 0 {
+		t.Errorf("names %v were derived from the coverage measurement, which is a different question", undeclared.Names)
+	}
+}
+
+// An unnamed Service is refused on this primitive too: a reading that
+// cannot be scoped to one Service is Known false with a cause.
+func TestDeclaredAttributeNamesRefuseAnUnnamedService(t *testing.T) {
+	p := declared(SignalReading{AttributeNames: &AttributeNamesReading{Names: []string{"db.namespace"}}})
+
+	got := p.AttributeNames(context.Background(), telemetry.Service{}, requirements.Logs, time.Hour)
+	if got.Known || !strings.Contains(got.Cause, "service.name") {
+		t.Errorf("want Known=false naming what was missing, got %+v", got)
+	}
+}

@@ -112,6 +112,19 @@ type SignalReading struct {
 	// attribute, in [0, 1].
 	AttributeCoverage map[string]float64 `yaml:"attribute_coverage"`
 
+	// AttributeNames is the attribute-name reading for this signal
+	// (ADR-0034 §4): which attribute names the records in the window
+	// carried. Absent is Known false with a cause, exactly as an absent
+	// group set is: a schema-conformance verdict reads a name's absence as
+	// an attribute nobody sets, so a reading nobody declared must not be
+	// rendered as one that found nothing.
+	//
+	// It is declared separately from AttributeCoverage because the two
+	// answer different questions. Coverage is measured for the names a
+	// requirement asked about, which is a list the library chose; this is
+	// the set in use, which is what a scope is judged against.
+	AttributeNames *AttributeNamesReading `yaml:"attribute_names"`
+
 	// Groups is the grouping key's values in the window: the span, metric
 	// or event names the records carried (ADR-0034 §4). Absent is Known
 	// false with a cause, and a declared empty list is the observed
@@ -134,6 +147,28 @@ type SignalReading struct {
 	// which reads as dampened, the honest answer for a gap nobody has
 	// watched yet.
 	Since time.Time `yaml:"since"`
+}
+
+// AttributeNamesReading is one signal's declared attribute-name reading. It
+// mirrors the seam's own shape (telemetry.AttributeNames) because a
+// declaration that dropped the truncation counts would play back a sampled
+// reading as a complete one, and a schema verdict would then read a name the
+// sample missed as an attribute nobody sets.
+type AttributeNamesReading struct {
+	// Names is the attribute names in use. A declared empty list is the
+	// observed absence: nothing carried a name, which for a signal that
+	// arrived is a real reading and not a missing one.
+	Names []string `yaml:"names"`
+
+	// Truncated reports that the reading was derived from fewer records
+	// than the window holds. Truncation is always reported (ADR-0034 §4).
+	Truncated bool `yaml:"truncated"`
+
+	// SampledRecords and TotalRecords are what a truncated reading was
+	// derived from, carried so a finding can say "3 of 900 records" rather
+	// than "some".
+	SampledRecords int64 `yaml:"sampled_records"`
+	TotalRecords   int64 `yaml:"total_records"`
 }
 
 // TierReading is one Tier's self-telemetry reading (ADR-0039).
@@ -635,35 +670,37 @@ func (p *provider) Observe(_ context.Context, service telemetry.Service, window 
 	return obs
 }
 
+// AttributeNames plays back the declared attribute-name reading for one
+// signal: the sanctioned extension primitive a schema-conformance verdict is
+// judged against (ADR-0034 §4). A signal the estate has declared no reading
+// for is Known false with the cause said out loud, never an empty set: a
+// scope reads a missing name as an attribute nobody sets, so "we never
+// looked" rendered as "nothing is there" would turn a blind spot into a
+// breach.
 func (p *provider) AttributeNames(_ context.Context, service telemetry.Service, kind requirements.SignalKind, window time.Duration) telemetry.AttributeNames {
-	row, ok := p.readings.row(service.Name, service.Environment)
-	if !ok {
-		return telemetry.AttributeNames{
-			Known:  false,
-			Cause:  missing(service.Name).Cause,
-			AsOf:   p.readings.AsOf,
-			Window: window,
-		}
+	unknown := func(cause string) telemetry.AttributeNames {
+		return telemetry.AttributeNames{Known: false, Cause: cause, AsOf: p.readings.AsOf, Window: window}
 	}
-	sig, declared := row.Signals[string(kind)]
-	if !declared {
-		return telemetry.AttributeNames{
-			Known:  false,
-			Cause:  missing(string(kind) + " for " + service.Name).Cause,
-			AsOf:   p.readings.AsOf,
-			Window: window,
-		}
+	if service.Name == "" {
+		return unknown(telemetry.NotServiceScoped(service, unnamedService))
 	}
-	names := make([]string, 0, len(sig.AttributeCoverage))
-	for a := range sig.AttributeCoverage {
-		names = append(names, a)
+	sig, cause := p.signal(service, kind)
+	if cause != "" {
+		return unknown(cause)
 	}
-	sort.Strings(names)
+	if sig.AttributeNames == nil {
+		return unknown("the estate's readings file declares no " + string(kind) +
+			" attribute names for " + service.Name)
+	}
+
 	return telemetry.AttributeNames{
-		Known:  true,
-		AsOf:   p.readings.AsOf,
-		Window: window,
-		Names:  names,
+		Known:          true,
+		AsOf:           p.readings.AsOf,
+		Window:         window,
+		Names:          unique(sig.AttributeNames.Names),
+		Truncated:      sig.AttributeNames.Truncated,
+		SampledRecords: sig.AttributeNames.SampledRecords,
+		TotalRecords:   sig.AttributeNames.TotalRecords,
 	}
 }
 
@@ -762,6 +799,17 @@ func (p *provider) GroupNames(_ context.Context, service telemetry.Service, kind
 // capped sorts and de-duplicates a declared set and clips it to the seam's
 // hard cap, reporting the clip rather than swallowing it.
 func capped(declared []string, limit int) ([]string, bool) {
+	out := unique(declared)
+	if len(out) > limit {
+		return out[:limit], true
+	}
+	return out, false
+}
+
+// unique sorts and de-duplicates a declared set. Every reading the seam
+// hands back is sorted and de-duplicated, so a set written in whatever order
+// somebody thought of it plays back the same as one written in order.
+func unique(declared []string) []string {
 	seen := map[string]bool{}
 	out := make([]string, 0, len(declared))
 	for _, v := range declared {
@@ -772,10 +820,7 @@ func capped(declared []string, limit int) ([]string, bool) {
 		out = append(out, v)
 	}
 	sort.Strings(out)
-	if len(out) > limit {
-		return out[:limit], true
-	}
-	return out, false
+	return out
 }
 
 func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Duration) telemetry.SelfObserved {

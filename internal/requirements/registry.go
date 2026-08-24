@@ -40,11 +40,43 @@ type Option func(*registries)
 // Registry artefacts, one file per imported version
 // (`schema-registry-<ref>.json`). A library whose requirements reference the
 // Schema Registry needs it; one whose requirements do not is unaffected.
+//
+// An empty directory is no directory, and the option does nothing. Every
+// command that loads a library takes the directory from an operator who may
+// not have named one, so passing the value straight through has to mean
+// what not passing it means: a reference then reads "this load was given no
+// Schema Registry directory" rather than "not installed in \"\"", which is
+// the same failure described as a missing file nobody asked for.
 func WithSchemaRegistries(dir string) Option {
 	return func(r *registries) {
+		if dir == "" {
+			return
+		}
 		r.dir = dir
 		r.set = true
 	}
+}
+
+// resolved returns the Schema Registry versions this load resolved, keyed by
+// the ref each requirement pinned. It is what a schema-conformance
+// requirement is judged against: the requirement names a version, the load
+// resolves it, and the resolved version travels to the evaluator as evidence
+// rather than being read a second time by whoever evaluates (ADR-0034 §2).
+//
+// A tracking reference contributes nothing here. It names no version, and
+// which installed version is active is an activation decision rather than a
+// load-time one, so there is nothing for the load to resolve and the
+// evaluator reports the requirement unknown rather than judging it against a
+// version nobody chose.
+func (r *registries) resolved() map[string]*schemaregistry.Registry {
+	if len(r.loaded) == 0 {
+		return nil
+	}
+	out := make(map[string]*schemaregistry.Registry, len(r.loaded))
+	for ref, reg := range r.loaded {
+		out[ref] = reg
+	}
+	return out
 }
 
 // version returns the installed Schema Registry version pinned by ref, or

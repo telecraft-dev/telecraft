@@ -58,6 +58,14 @@ type composer struct {
 	// assertion is judged against a measurement rather than a blank.
 	Attributes []string
 
+	// SchemaSignals are the signals a schema-conformance requirement in
+	// the library is judged on, and so the signals the attribute-name
+	// reading is taken for (ADR-0034 §4). Empty takes none: a library that
+	// references no Schema Registry has nothing to judge the names
+	// against, and an aggregation per signal per row would buy a reading
+	// nobody reads.
+	SchemaSignals []requirements.SignalKind
+
 	Window time.Duration
 	Now    func() time.Time
 
@@ -97,13 +105,16 @@ func (c *composer) compose(ctx context.Context) console.Readings {
 	}
 
 	for _, r := range c.Rows {
-		observed := c.Telemetry.Observe(ctx,
-			telemetry.Service{Name: r.Service, Environment: r.Environment},
-			c.Window, c.Attributes)
+		svc := telemetry.Service{Name: r.Service, Environment: r.Environment}
+		observed := c.Telemetry.Observe(ctx, svc, c.Window, c.Attributes)
+		names := make(map[requirements.SignalKind]telemetry.AttributeNames, len(c.SchemaSignals))
+		for _, kind := range c.SchemaSignals {
+			names[kind] = c.Telemetry.AttributeNames(ctx, svc, kind, c.Window)
+		}
 		out.Rows = append(out.Rows, console.RowReading{
 			Service:     r.Service,
 			Environment: r.Environment,
-			Signals:     c.signalsOf(r, observed, now),
+			Signals:     c.signalsOf(r, observed, names, now),
 		})
 	}
 
@@ -176,7 +187,13 @@ func collectorID(identity map[string]string) string {
 
 // signalsOf projects one row's arrival reading, one entry per signal the
 // backend was asked about.
-func (c *composer) signalsOf(r row, observed telemetry.Observed, now time.Time) map[string]console.SignalReading {
+//
+// The attribute-name reading rides along where one was taken and the
+// backend could answer it (ADR-0034 §4). A reading the backend could not
+// give is left undeclared rather than written as an empty name set: the
+// console plays an undeclared reading back as Known false with a cause, and
+// an empty set would be read by a schema verdict as attributes nobody sets.
+func (c *composer) signalsOf(r row, observed telemetry.Observed, names map[requirements.SignalKind]telemetry.AttributeNames, now time.Time) map[string]console.SignalReading {
 	out := make(map[string]console.SignalReading, len(observed.Signals))
 	for kind, obs := range observed.Signals {
 		known := obs.Known
@@ -187,10 +204,36 @@ func (c *composer) signalsOf(r row, observed telemetry.Observed, now time.Time) 
 			Volume:            obs.Volume,
 			AttributeCoverage: obs.AttributeCoverage,
 		}
+		if n, asked := names[kind]; asked && n.Known {
+			reading.AttributeNames = &console.AttributeNamesReading{
+				Names:          n.Names,
+				Truncated:      n.Truncated,
+				SampledRecords: n.SampledRecords,
+				TotalRecords:   n.TotalRecords,
+			}
+		}
 		if since, ok := c.trackSilence(r, string(kind), obs, now); ok {
 			reading.Since = since
 		}
 		out[string(kind)] = reading
+	}
+	return out
+}
+
+// schemaSignals is every signal a schema-conformance requirement in the
+// library is judged on, in the seam's stable signal order. The reading is
+// taken for those signals on every row rather than per Environment: which
+// requirement applies where is the evaluator's business, and a file that
+// depended on it would be a second copy of that judgement.
+func schemaSignals(lib requirements.Library) []requirements.SignalKind {
+	var out []requirements.SignalKind
+	for _, kind := range telemetry.Signals() {
+		for _, req := range lib.Sorted() {
+			if req.Schema != nil && req.Schema.Covers(kind) {
+				out = append(out, kind)
+				break
+			}
+		}
 	}
 	return out
 }

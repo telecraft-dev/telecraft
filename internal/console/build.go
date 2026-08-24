@@ -41,6 +41,14 @@ type Inputs struct {
 	// Library is the requirements library directory (REQ-021).
 	Library string
 
+	// SchemaRegistries is the directory of installed Schema Registry
+	// artefacts a schema-conformance requirement's reference resolves
+	// against (ADR-0034 §1). Empty means none, which a library holding no
+	// such requirement never notices and one holding a reference fails to
+	// load without: an unresolvable reference is a load error, never a
+	// requirement that evaluates nothing.
+	SchemaRegistries string
+
 	// Exemptions is the authored waivers directory; empty means none,
 	// which is the strictest state there is (ADR-0037).
 	Exemptions string
@@ -102,7 +110,7 @@ func Build(in Inputs) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	lib, err := requirements.Load(in.Library)
+	lib, err := requirements.Load(in.Library, requirements.WithSchemaRegistries(in.SchemaRegistries))
 	if err != nil {
 		return Bundle{}, err
 	}
