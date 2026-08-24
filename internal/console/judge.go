@@ -173,9 +173,18 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 			Observed:  map[time.Duration]telemetry.Observed{},
 		}
 		svc := telemetry.Service{Name: row.Service, Environment: row.Environment}
-		for _, w := range libraryWindows(b.lib, row.Environment) {
+		for _, w := range conformance.Windows(b.lib, row.Environment) {
 			ev.Observed[w] = prov.Observe(context.Background(), svc, w, attrs)
 		}
+		// The schema leg comes through the same seam as every other
+		// reading (ADR-0034 §4): the attribute names in use for each
+		// signal and window this row's schema requirements cover, scoped
+		// to the row's Service and Environment. The registry versions
+		// travel with the library, resolved when its references were
+		// validated at load.
+		ev.Schema = conformance.GatherSchema(b.lib, row.Environment, func(r conformance.SchemaReading) telemetry.AttributeNames {
+			return prov.AttributeNames(context.Background(), svc, r.Kind, r.Window)
+		})
 		verdict := conformance.Evaluate(row.Row, b.lib, ev, b.now)
 		if err := b.waivers.Apply(&verdict, row, b.now); err != nil {
 			return err
@@ -577,23 +586,6 @@ func libraryAttributes(lib requirements.Library) []string {
 		out = append(out, a)
 	}
 	sort.Strings(out)
-	return out
-}
-
-// libraryWindows lists the distinct windows the requirements applying in
-// one Environment ask for, read once each, exactly as the check does.
-func libraryWindows(lib requirements.Library, environment string) []time.Duration {
-	set := map[time.Duration]bool{}
-	for _, r := range lib.Sorted() {
-		if r.Signal != nil && r.AppliesTo(environment) {
-			set[r.Signal.Window.Std()] = true
-		}
-	}
-	out := make([]time.Duration, 0, len(set))
-	for w := range set {
-		out = append(out, w)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
 }
 
