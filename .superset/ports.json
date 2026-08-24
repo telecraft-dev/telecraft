@@ -1,0 +1,9 @@
+{
+  "ports": [
+    { "port": 5173, "label": "Console dev server (Vite)" },
+    { "port": 4700, "label": "Fixture backend (platform API)" },
+    { "port": 4321, "label": "devenv console snapshot" },
+    { "port": 4320, "label": "devenv OpAMP server" },
+    { "port": 9200, "label": "devenv telemetry backend (Elasticsearch)" }
+  ]
+}
