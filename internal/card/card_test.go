@@ -502,7 +502,7 @@ func richInput() Input {
 		PopulationFindings: []inventory.Finding{{
 			Class:  inventory.UnderPopulated,
 			Tier:   "data-flow/gateway",
-			Grade:  inventory.Violation,
+			Grade:  ownership.Violation,
 			Seen:   12,
 			Since:  readAt.Add(-6 * time.Hour),
 			Detail: "expected at least 40, seen 12",

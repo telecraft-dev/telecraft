@@ -31,17 +31,6 @@ const (
 	FloorConflict Class = "floor_conflict"
 )
 
-// Grade is a population finding's weight. Neutral is not a pass: a
-// neutral finding is excluded from every denominator (P2's rule, ADR-0035
-// §6), where a pass would count in one.
-type Grade string
-
-const (
-	Neutral   Grade = "neutral"
-	Advisory  Grade = "advisory"
-	Violation Grade = "violation"
-)
-
 // Finding is one population finding, Tier-attached (ADR-0035 §6): it
 // routes to the Tier's owner and joins the delivery finding kind in the
 // roll-up, because a population shortfall is a delivery problem, never a
@@ -49,7 +38,11 @@ const (
 type Finding struct {
 	Class Class
 	Tier  string // team-qualified Tier id
-	Grade Grade
+	// Grade is the finding's weight, in the platform's one grade
+	// vocabulary (ADR-0034 §3). Neutral is not a pass: it is excluded
+	// from every denominator (P2's rule, ADR-0035 §6), where a pass would
+	// count in one.
+	Grade ownership.Grade
 
 	// Floor is the resolved floor the finding was judged against; absent
 	// on a neutral never_seen with no floor.
@@ -154,7 +147,7 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 		out = append(out, Finding{
 			Class: FloorConflict,
 			Tier:  p.Tier,
-			Grade: Advisory,
+			Grade: ownership.Advisory,
 			Floor: floor,
 			Seen:  p.Seen,
 			Detail: fmt.Sprintf("declared floor min_expected %d is above the derived count %d. The estate has probably shrunk: check the declared floor",
@@ -167,12 +160,12 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 
 	switch {
 	case !p.EverSeen:
-		f := Finding{Class: NeverSeen, Tier: p.Tier, Grade: Neutral, Floor: floor, Since: p.FirstWatched}
+		f := Finding{Class: NeverSeen, Tier: p.Tier, Grade: ownership.Neutral, Floor: floor, Since: p.FirstWatched}
 		if toothed && persisted {
 			// §4: the one escalation rule, floor > 0 and zero matches
 			// persisting past the window. Neutrality is otherwise
 			// untouched.
-			f.Grade = Violation
+			f.Grade = ownership.Violation
 			f.Since = p.ShortfallSince
 			f.Detail = fmt.Sprintf("expected ≥%d (%s floor), seen 0 for longer than the %s grace window",
 				floor.Min, floor.Source, grace)
@@ -195,7 +188,7 @@ func (p Population) Findings(cfg Config, now time.Time) []Finding {
 		out = append(out, Finding{
 			Class: UnderPopulated,
 			Tier:  p.Tier,
-			Grade: Violation,
+			Grade: ownership.Violation,
 			Floor: floor,
 			Seen:  p.Seen,
 			Since: p.ShortfallSince,
@@ -242,27 +235,24 @@ func (d *Damper) Observe(tier string, seen int, floor Floor, now time.Time) time
 // DeliveryFindings converts population findings into ADR-0017 roll-up
 // findings: Tier-attached, routed to the Tier's owner, delivery-kind, because
 // a population shortfall is a delivery problem, never a conformance
-// problem with any Service (ADR-0035 §6). Escalated findings enter the
-// denominator; neutral ones are excluded entirely (P2's rule), which is
-// why a neutral never_seen produces nothing here rather than a pass.
-// Exemptions apply as everywhere: the caller sets Waived on the returned
-// findings when an owned, expiring Exemption covers the gap.
+// problem with any Service (ADR-0035 §6). The grade carries through
+// untranslated, because there is one grade vocabulary and this package
+// already speaks it.
+//
+// Every finding routes, neutral ones included: Rollup is what excludes
+// neutral from the denominator (P2's rule), and dropping the finding here
+// instead would make an authored Tier nobody ever used unreadable rather
+// than merely uncounted, which is the opposite of the stale-config signal
+// ADR-0035 §7 wants. Exemptions apply as everywhere: the caller sets
+// Waived on the returned findings when an owned, expiring Exemption
+// covers the gap.
 func DeliveryFindings(findings []Finding) []ownership.Finding {
 	var out []ownership.Finding
 	for _, f := range findings {
-		var grade ownership.Grade
-		switch f.Grade {
-		case Violation:
-			grade = ownership.Violation
-		case Advisory:
-			grade = ownership.Advisory
-		default:
-			continue
-		}
 		out = append(out, ownership.Finding{
 			Kind:    ownership.Delivery,
 			Subject: ownership.Subject{Kind: ownership.KindTier, ID: f.Tier},
-			Grade:   grade,
+			Grade:   f.Grade,
 			Detail:  f.Detail,
 		})
 	}
