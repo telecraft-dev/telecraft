@@ -183,6 +183,7 @@ What the product looks like. See [Console](console.md).
 - **ADR-0047** Visual identity: our own token layer, dark-first with a light twin, colour never load-bearing
 - **ADR-0048** A console primitive layer, and panel width as a reader's preference
 - **ADR-0051** Guided Tours: authored Steps over the running console, never driving it
+- **ADR-0056** A Home surface, and triage before activity: the landing answers "where do I look first?" and judges nothing itself
 
 ## Proposing a decision
 
