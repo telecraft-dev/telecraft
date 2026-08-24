@@ -51,6 +51,14 @@ type Elasticsearch struct {
 	identityLimit    int
 	commitLimit      int
 
+	// The schema-conformance fields (ADR-0034 §4): where each signal's
+	// grouping key lands, and how many values a value set or a group set
+	// carries before the reading says Truncated.
+	spanNameField  string
+	eventNameField string
+	distinctLimit  int
+	groupLimit     int
+
 	// The metering fields (ADR-0040): where a metric datapoint's value
 	// lands, which incarnation and exporter the datapoint belongs to, and
 	// how far each fan-out is followed before the reading says Truncated.
@@ -119,6 +127,23 @@ type ElasticsearchConfig struct {
 	// Default 200.
 	SampleSize int
 
+	// SpanNameField and EventNameField are the document fields holding the
+	// grouping key for traces and for logs (ADR-0034 §4). Metrics need no
+	// field here: a metric's name is a document field name under
+	// MetricValuePrefix rather than a value, so GroupNames reads it the
+	// way AttributeNames reads attribute names. Defaults: name and
+	// attributes.event.name (OTel-native mode).
+	SpanNameField  string
+	EventNameField string
+
+	// DistinctLimit caps how many values DistinctValues returns and
+	// GroupLimit how many names GroupNames returns; either cap reached is
+	// reported Truncated, never a silently short set. Defaults are the
+	// seam's own hard caps, which neither may exceed: the cap is the
+	// contract, not a knob.
+	DistinctLimit int
+	GroupLimit    int
+
 	// MetricValuePrefix is the document field prefix under which a metric
 	// datapoint's value lands, so a counter's field is the prefix plus
 	// the metric name. Default: metrics. (OTel-native mode).
@@ -174,6 +199,18 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 	if cfg.SampleSize <= 0 {
 		cfg.SampleSize = 200
 	}
+	if cfg.SpanNameField == "" {
+		cfg.SpanNameField = "name"
+	}
+	if cfg.EventNameField == "" {
+		cfg.EventNameField = "attributes.event.name"
+	}
+	if cfg.DistinctLimit <= 0 || cfg.DistinctLimit > seam.MaxDistinctValues {
+		cfg.DistinctLimit = seam.MaxDistinctValues
+	}
+	if cfg.GroupLimit <= 0 || cfg.GroupLimit > seam.MaxGroupNames {
+		cfg.GroupLimit = seam.MaxGroupNames
+	}
 	if cfg.IdentityLimit <= 0 {
 		cfg.IdentityLimit = 500
 	}
@@ -219,6 +256,11 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 		sampleSize:       cfg.SampleSize,
 		identityLimit:    cfg.IdentityLimit,
 		commitLimit:      cfg.CommitLimit,
+
+		spanNameField:  cfg.SpanNameField,
+		eventNameField: cfg.EventNameField,
+		distinctLimit:  cfg.DistinctLimit,
+		groupLimit:     cfg.GroupLimit,
 
 		metricValuePrefix: cfg.MetricValuePrefix,
 		instanceIDField:   cfg.InstanceIDField,

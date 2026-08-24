@@ -63,7 +63,8 @@ func envEndpoint(t *testing.T) string {
 
 // seedLive creates the logs index (strings mapped as keyword, matching how
 // real OTLP ingest maps attribute fields) with three records for the fixture
-// Service (two carrying http.request.method) plus an empty metrics index.
+// Service (two carrying http.request.method, between them two event names)
+// plus an empty metrics index.
 func seedLive(t *testing.T, endpoint string) {
 	t.Helper()
 	logs := liveIndices[requirements.Logs]
@@ -81,20 +82,27 @@ func seedLive(t *testing.T, endpoint string) {
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	doc := func(withMethod bool) string {
-		attrs := `{"url.path": "/pay"}`
-		if withMethod {
-			attrs = `{"url.path": "/pay", "http.request.method": "POST"}`
+	doc := func(method, event string) string {
+		attrs := fmt.Sprintf(`{"url.path": "/pay", "event.name": %q`, event)
+		if method != "" {
+			attrs += fmt.Sprintf(`, "http.request.method": %q`, method)
 		}
+		attrs += "}"
 		return fmt.Sprintf(`{"@timestamp": %q, "resource": {"attributes": {"service.name": "checkout"}}, "attributes": %s}`, now, attrs)
 	}
 	var bulk bytes.Buffer
-	for _, d := range []string{doc(true), doc(true), doc(false)} {
+	for _, d := range []string{
+		doc("POST", "checkout.order.placed"),
+		doc("GET", "checkout.cart.updated"),
+		doc("", "checkout.cart.updated"),
+	} {
 		bulk.WriteString(`{"index":{}}` + "\n" + d + "\n")
 	}
 	// A record for a different Service proves the reading is Service-scoped.
+	// It carries a value and an event name nothing about checkout should
+	// ever report, which is the misattribution ADR-0034 §4 forbids.
 	bulk.WriteString(`{"index":{}}` + "\n")
-	bulk.WriteString(fmt.Sprintf(`{"@timestamp": %q, "resource": {"attributes": {"service.name": "somebody-else"}}, "attributes": {"noise": "y"}}`, now) + "\n")
+	bulk.WriteString(fmt.Sprintf(`{"@timestamp": %q, "resource": {"attributes": {"service.name": "somebody-else"}}, "attributes": {"noise": "y", "http.request.method": "TRACE", "event.name": "somebody.else.event"}}`, now) + "\n")
 	liveDo(t, http.MethodPost, endpoint+"/"+logs+"/_bulk?refresh=true", bulk.String())
 }
 
@@ -182,5 +190,84 @@ func TestElasticsearchLiveAttributeNames(t *testing.T) {
 	missing := es.AttributeNames(context.Background(), seam.Service{Name: "checkout"}, requirements.Traces, 15*time.Minute)
 	if missing.Known || missing.Cause == "" {
 		t.Errorf("names against a missing index = %+v, want Known=false with a cause", missing)
+	}
+}
+
+// Criterion (ADR-0034 §4): the value set is the Service's own. Another
+// Service's records sit in the same index carrying the same attribute, and
+// the value they carry must not appear here.
+func TestElasticsearchLiveDistinctValues(t *testing.T) {
+	endpoint := envEndpoint(t)
+	seedLive(t, endpoint)
+	es := liveProvider(t)
+
+	got := es.DistinctValues(context.Background(), seam.Service{Name: "checkout"},
+		requirements.Logs, "http.request.method", 15*time.Minute)
+	if !got.Known {
+		t.Fatalf("live value set not Known: %+v", got)
+	}
+	if got.AsOf.IsZero() {
+		t.Error("live value set carries no as_of")
+	}
+	joined := strings.Join(got.Values, ",")
+	if joined != "GET,POST" {
+		t.Errorf("values = %v, want GET and POST sorted", got.Values)
+	}
+	if strings.Contains(joined, "TRACE") {
+		t.Errorf("values %v carry another Service's value: the reading is not Service-scoped", got.Values)
+	}
+	if got.Truncated {
+		t.Errorf("a two-value set inside the cap read as Truncated: %+v", got)
+	}
+	if got.Cap != seam.MaxDistinctValues {
+		t.Errorf("cap = %d, want the seam's hard cap %d", got.Cap, seam.MaxDistinctValues)
+	}
+
+	missing := es.DistinctValues(context.Background(), seam.Service{Name: "checkout"},
+		requirements.Traces, "http.request.method", 15*time.Minute)
+	if missing.Known || missing.Cause == "" {
+		t.Errorf("values against a missing index = %+v, want Known=false with a cause", missing)
+	}
+	if len(missing.Values) != 0 {
+		t.Errorf("fabricated values against a missing index: %v", missing.Values)
+	}
+}
+
+// Criterion (ADR-0034 §4): presence per event name, Service-scoped, and a
+// missing index reads Known false rather than an empty group set.
+func TestElasticsearchLiveGroupNames(t *testing.T) {
+	endpoint := envEndpoint(t)
+	seedLive(t, endpoint)
+	es := liveProvider(t)
+
+	got := es.GroupNames(context.Background(), seam.Service{Name: "checkout"},
+		requirements.Logs, 15*time.Minute)
+	if !got.Known {
+		t.Fatalf("live group set not Known: %+v", got)
+	}
+	if got.AsOf.IsZero() {
+		t.Error("live group set carries no as_of")
+	}
+	if got.Key != seam.EventName {
+		t.Errorf("key = %q, want %q: logs group by event name", got.Key, seam.EventName)
+	}
+	joined := strings.Join(got.Names, ",")
+	if joined != "checkout.cart.updated,checkout.order.placed" {
+		t.Errorf("names = %v, want the two seeded event names sorted", got.Names)
+	}
+	if strings.Contains(joined, "somebody.else") {
+		t.Errorf("names %v carry another Service's event: the reading is not Service-scoped", got.Names)
+	}
+	if got.Truncated {
+		t.Errorf("a two-group set inside the cap read as Truncated: %+v", got)
+	}
+
+	missing := es.GroupNames(context.Background(), seam.Service{Name: "checkout"},
+		requirements.Traces, 15*time.Minute)
+	if missing.Known || missing.Cause == "" {
+		t.Errorf("groups against a missing index = %+v, want Known=false with a cause", missing)
+	}
+	if !strings.Contains(missing.Cause, liveIndices[requirements.Traces]) {
+		t.Errorf("cause %q should name the missing index", missing.Cause)
 	}
 }
