@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 )
 
 // SignalKind is an OpenTelemetry signal. Profiles are deliberately absent
@@ -343,6 +345,20 @@ func (s SchemaAssertion) Covers(kind SignalKind) bool {
 // Library is the loaded, validated requirements library.
 type Library struct {
 	Requirements map[string]Requirement
+
+	// SchemaRegistries holds the Schema Registry versions this library's
+	// schema-conformance references resolved to at load, keyed by the ref
+	// each pins. A library whose requirements reference no registry has
+	// none, and a load that could not resolve a reference never got this
+	// far: an unresolvable reference is a load error naming the file
+	// (ADR-0034 §2).
+	//
+	// They live on the Library because a requirement is a reference and
+	// never a copy: resolution happens once, where the reference is
+	// validated, and the evaluator is handed what the load already read
+	// rather than reading the same artefacts again and risking a different
+	// answer.
+	SchemaRegistries map[string]*schemaregistry.Registry
 }
 
 // Sorted returns the requirements in stable ID order.

@@ -193,3 +193,69 @@ func TestLongestWindowAccountsForSchemaWindows(t *testing.T) {
 		t.Fatalf("LongestWindow = %v, want the 72h schema window", got)
 	}
 }
+
+// The load resolves each pinned reference once, and the resolved version
+// travels on the Library: the evaluator judges against what validation read
+// rather than reading the same artefacts again and risking a second answer.
+func TestLoadCarriesTheResolvedSchemaRegistries(t *testing.T) {
+	lib, err := Load(filepath.Join("testdata", "library"), WithSchemaRegistries(installedRegistries(t)))
+	if err != nil {
+		t.Fatalf("the fixture library does not load: %v", err)
+	}
+
+	reg, ok := lib.SchemaRegistries[snapshotRef]
+	if !ok || reg == nil {
+		t.Fatalf("the library carries no resolved registry for %s: %v", snapshotRef, lib.SchemaRegistries)
+	}
+	if _, declared := reg.Group("span.db.client"); !declared {
+		t.Error("the resolved version is not the one the fixture requirement pins")
+	}
+	// A tracking reference resolves to no version: which installed version
+	// is active is an activation decision, and inventing one here would be
+	// the platform choosing a bar nobody adopted.
+	if _, invented := lib.SchemaRegistries[TrackHead]; invented {
+		t.Error("a tracking reference contributed a version, which no load may decide")
+	}
+}
+
+// A library referencing no registry carries none, whether or not a
+// directory was named: nothing was resolved, so there is nothing to carry.
+func TestLibraryWithoutSchemaReferencesCarriesNoRegistries(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "r.yaml", `
+id: logs-delivered
+title: Logs are delivered
+version: 1
+owner: platform-observability
+signal:
+  kind: logs
+  present: true
+  window: 1h
+remediation: wire a logs pipeline
+`)
+	lib, err := Load(dir, WithSchemaRegistries(installedRegistries(t)))
+	if err != nil {
+		t.Fatalf("the library does not load: %v", err)
+	}
+	if len(lib.SchemaRegistries) != 0 {
+		t.Errorf("resolved %d registries for a library that references none", len(lib.SchemaRegistries))
+	}
+}
+
+// Every command that loads a library takes the directory from an operator
+// who may not have named one, so an empty directory has to mean what naming
+// no directory means. Otherwise the operator who left the flag off is told
+// their version is "not installed in \"\"", which describes a missing file
+// nobody asked for rather than the flag they did not pass.
+func TestAnEmptySchemaRegistryDirectoryIsNoDirectory(t *testing.T) {
+	err := loadErr(t, filepath.Join("testdata", "library"), WithSchemaRegistries(""))
+	if err == nil {
+		t.Fatal("a schema reference loaded with no Schema Registry to resolve it against")
+	}
+	if !strings.Contains(err.Error(), "no Schema Registry directory") {
+		t.Errorf("error does not say what is missing: %v", err)
+	}
+	if strings.Contains(err.Error(), "not installed in") {
+		t.Errorf("an unnamed directory was reported as a missing file: %v", err)
+	}
+}
