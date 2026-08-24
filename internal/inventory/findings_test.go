@@ -29,14 +29,15 @@ func TestNoSourceNoTeeth(t *testing.T) {
 	got := p.Findings(Config{}, t0)
 
 	f := one(t, got, NeverSeen)
-	if f.Grade != Neutral {
+	if f.Grade != ownership.Neutral {
 		t.Fatalf("never_seen grade = %q with no floor: neutrality is untouched without one", f.Grade)
 	}
 	if len(got) != 1 {
 		t.Fatalf("findings = %+v: with no floor the platform never invents a count or a shortfall", got)
 	}
-	if routed := DeliveryFindings(got); len(routed) != 0 {
-		t.Fatalf("a neutral never_seen entered the roll-up: %+v: un-toothed neutral states stay excluded (P2's rule)", routed)
+	routed := DeliveryFindings(got)
+	if len(routed) != 1 || routed[0].Grade != ownership.Neutral {
+		t.Fatalf("routed = %+v, want the neutral never_seen carried through: the roll-up is what excludes it from the denominator, not this conversion", routed)
 	}
 }
 
@@ -49,7 +50,7 @@ func TestNeverSeenEscalatesUnderAFloor(t *testing.T) {
 		ShortfallSince: t0.Add(-10 * time.Minute),
 	}
 	f := one(t, p.Findings(Config{Grace: 5 * time.Minute}, t0), NeverSeen)
-	if f.Grade != Violation {
+	if f.Grade != ownership.Violation {
 		t.Fatalf("grade = %q, want violation: floor > 0 and zero matches persisted past the window", f.Grade)
 	}
 	if !strings.Contains(f.Detail, "≥40") || !strings.Contains(f.Detail, "seen 0") {
@@ -66,7 +67,7 @@ func TestNeverSeenDampenedInsideGrace(t *testing.T) {
 		ShortfallSince: t0.Add(-time.Minute),
 	}
 	f := one(t, p.Findings(Config{Grace: 5 * time.Minute}, t0), NeverSeen)
-	if f.Grade != Neutral {
+	if f.Grade != ownership.Neutral {
 		t.Fatalf("grade = %q inside the grace window: a shortfall must persist before any finding raises", f.Grade)
 	}
 }
@@ -83,7 +84,7 @@ func TestUnderPopulatedBelowFloor(t *testing.T) {
 	}
 	got := p.Findings(Config{Grace: 5 * time.Minute}, t0)
 	f := one(t, got, UnderPopulated)
-	if f.Grade != Violation {
+	if f.Grade != ownership.Violation {
 		t.Fatalf("grade = %q, want violation: the floor is unmet", f.Grade)
 	}
 	if !strings.Contains(f.Detail, "≥40") || !strings.Contains(f.Detail, "seen 12") {
@@ -152,7 +153,7 @@ func TestDeclaredAboveDerivedIsAVisibleConflict(t *testing.T) {
 	}
 	got := p.Findings(Config{}, t0)
 	f := one(t, got, FloorConflict)
-	if f.Grade != Advisory {
+	if f.Grade != ownership.Advisory {
 		t.Fatalf("floor_conflict grade = %q, want advisory", f.Grade)
 	}
 	if f.Floor.Source != FloorDerived || f.Floor.Min != 12 {
@@ -173,14 +174,15 @@ func TestAgedNeverSeenIsAStaleConfigSignal(t *testing.T) {
 	if !f.StaleConfig {
 		t.Fatal("a 91-day never_seen is not flagged: the aged neutral case is the stale-config signal")
 	}
-	if f.Grade != Neutral {
+	if f.Grade != ownership.Neutral {
 		t.Fatalf("grade = %q: the stale-config signal is a presentation affordance, never a new finding class", f.Grade)
 	}
 	if !strings.Contains(f.Detail, "91 days") {
 		t.Fatalf("detail %q does not surface the age", f.Detail)
 	}
-	if routed := DeliveryFindings([]Finding{f}); len(routed) != 0 {
-		t.Fatalf("the stale-config signal entered the roll-up: %+v", routed)
+	routed := DeliveryFindings([]Finding{f})
+	if len(routed) != 1 || routed[0].Grade != ownership.Neutral {
+		t.Fatalf("routed = %+v: the stale-config signal is a Tier nobody ever used, which has to be readable in the roll-up to be read at all (ADR-0035 §7)", routed)
 	}
 }
 
@@ -219,28 +221,85 @@ func TestDamperTracksShortfallOnset(t *testing.T) {
 	}
 }
 
-// Escalated findings enter the ADR-0017 roll-up as Tier-attached
+// Population findings enter the ADR-0017 roll-up as Tier-attached
 // delivery-kind findings (ADR-0035 §6), and they route: the Rollup
-// machinery accepts them as authored-Tier subjects.
+// machinery accepts them as authored-Tier subjects. Every grade carries
+// through in the platform's one vocabulary, neutral included.
 func TestDeliveryFindingsJoinTheRollup(t *testing.T) {
-	findings := []Finding{
-		{Class: NeverSeen, Tier: "data-flow/edge", Grade: Violation, Detail: "expected ≥40, seen 0"},
-		{Class: FloorConflict, Tier: "data-flow/edge", Grade: Advisory, Detail: "declared 40 above derived 12"},
-		{Class: NeverSeen, Tier: "data-flow/gateway", Grade: Neutral},
-	}
-	routed := DeliveryFindings(findings)
-	if len(routed) != 2 {
-		t.Fatalf("%d roll-up findings, want 2 (the neutral one excluded): %+v", len(routed), routed)
+	routed := DeliveryFindings(populationFindings())
+	if len(routed) != 3 {
+		t.Fatalf("%d roll-up findings, want 3 (every grade carries through): %+v", len(routed), routed)
 	}
 	for _, f := range routed {
 		if f.Kind != ownership.Delivery {
 			t.Fatalf("kind = %q: a population shortfall is a delivery problem", f.Kind)
 		}
-		if f.Subject.Kind != ownership.KindTier || f.Subject.ID != "data-flow/edge" {
+		if f.Subject.Kind != ownership.KindTier {
 			t.Fatalf("subject = %+v: population findings are Tier-attached", f.Subject)
 		}
 	}
-	if routed[0].Grade != ownership.Violation || routed[1].Grade != ownership.Advisory {
-		t.Fatalf("grades = %q, %q, want violation then advisory", routed[0].Grade, routed[1].Grade)
+	if routed[0].Grade != ownership.Violation || routed[1].Grade != ownership.Advisory || routed[2].Grade != ownership.Neutral {
+		t.Fatalf("grades = %q, %q, %q, want violation, advisory then neutral", routed[0].Grade, routed[1].Grade, routed[2].Grade)
+	}
+}
+
+// The neutral finding is visible in the roll-up and in no denominator
+// (ADR-0035 §6): excluding it is Rollup's job, and the finding stays
+// readable because an authored Tier nobody ever used is worth reading (§7).
+func TestNeutralIsVisibleInTheRollupAndInNoDenominator(t *testing.T) {
+	est := twoTierEstate()
+	roll, err := est.Rollup("data-flow", DeliveryFindings(populationFindings()))
+	if err != nil {
+		t.Fatalf("Rollup: %v", err)
+	}
+
+	var neutral int
+	for _, f := range roll.Findings {
+		if f.Grade == ownership.Neutral {
+			neutral++
+		}
+	}
+	if neutral != 1 {
+		t.Fatalf("%d neutral findings in the roll-up, want 1: a Tier nobody ever used is readable, not silently absent", neutral)
+	}
+
+	score := roll.Scores[ownership.Delivery]
+	if score.Counted != 2 {
+		t.Fatalf("counted = %d, want 2: neutral is out of every denominator", score.Counted)
+	}
+	if score.Passing != 0 {
+		t.Fatalf("passing = %d, want 0: neutral is not a pass", score.Passing)
+	}
+	if score.Worst != ownership.Violation {
+		t.Fatalf("worst = %q, want violation: neutral never darkens a badge and never lightens one", score.Worst)
+	}
+}
+
+// populationFindings is one violation, one advisory and one neutral, the
+// three grades a population judgement can produce.
+func populationFindings() []Finding {
+	return []Finding{
+		{Class: NeverSeen, Tier: "data-flow/edge", Grade: ownership.Violation, Detail: "expected ≥40, seen 0"},
+		{Class: FloorConflict, Tier: "data-flow/edge", Grade: ownership.Advisory, Detail: "declared 40 above derived 12"},
+		{Class: NeverSeen, Tier: "data-flow/gateway", Grade: ownership.Neutral, Detail: "no collector has ever matched this Tier's selector"},
+	}
+}
+
+// twoTierEstate owns both Tiers the fixture findings attach to, under one
+// team, so every finding routes.
+func twoTierEstate() ownership.Estate {
+	return ownership.Estate{
+		Tree: ownership.Tree{
+			Teams: map[ownership.TeamID]ownership.Team{
+				"data-flow": {ID: "data-flow", Name: "Data Flow", Owners: []ownership.OwnerID{"pipelines"}},
+			},
+			Owners: map[ownership.OwnerID]ownership.Owner{
+				"pipelines": {ID: "pipelines", Team: "data-flow"},
+			},
+		},
+		Objects: map[ownership.Ref]ownership.Object{
+			{Kind: ownership.KindTier, ID: "data-flow/edge"}:    {Kind: ownership.KindTier, ID: "data-flow/edge", Owner: "pipelines"},
+			{Kind: ownership.KindTier, ID: "data-flow/gateway"}: {Kind: ownership.KindTier, ID: "data-flow/gateway", Owner: "pipelines"},
+		},
 	}
 }
