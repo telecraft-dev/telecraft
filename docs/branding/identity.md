@@ -81,8 +81,13 @@ recorded here so it survives contact with a second contributor.
 - **British English**, matching the corpus and the code: `colour`, `licence`,
   `judgement`, `normalise`, and `--colour-bg` in the tokens.
 
-Interface text follows the same rules, plus one: a control says exactly what
-happens, and the confirmation says it happened in the same words.
+Interface text follows the same rules and several of its own, which live with
+the house style in
+[Writing documentation](../contributing/documentation.md#interface-text). The
+shortest form of them is the line at the top of this file: an instrument, not
+a dashboard. Label the reading and stop. A surface that argues for its own
+design reads as a prototype, and a control says exactly what happens, with the
+confirmation saying it happened in the same words.
 
 ## Where this applies
 

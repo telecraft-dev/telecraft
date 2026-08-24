@@ -33,7 +33,7 @@ function KindCell({ kind, rollup }: { kind: BandName; rollup: KindRollup }) {
           {badge && <Mark name={badge} />}
         </>
       )}
-      {rollup.waived > 0 && <span className="rollup-waived">{rollup.waived} waived</span>}
+      {rollup.waived > 0 && <span className="rollup-waived">{rollup.waived} exempt</span>}
     </td>
   )
 }
@@ -45,8 +45,8 @@ export function RollUp({ payload }: { payload: EstatePayload }) {
   return (
     <section className="rollup" data-testid="rollup">
       <p className="section-summary">
-        Ratios are judged under the <strong data-testid="rollup-lens">{lens}</strong> lens.
-        Waived counts appear at every level.
+        Judged in <strong data-testid="rollup-lens">{lens}</strong>. Exempt counts appear at
+        every level.
       </p>
       <table className="catalogue-table rollup-table" data-testid="rollup-table">
         <thead>
@@ -84,7 +84,7 @@ export function RollUp({ payload }: { payload: EstatePayload }) {
               ))}
               <td>{row.neutral}</td>
               <td className="rollup-all" data-testid={`rollup-all-${row.team.id}`}>
-                {row.findingsAllEnvironments} findings, {row.waivedAllEnvironments} waived
+                {row.findingsAllEnvironments} findings, {row.waivedAllEnvironments} exempt
               </td>
             </tr>
           ))}

@@ -1,6 +1,6 @@
 ---
 title: Writing documentation
-description: The directory structure, the front matter schema, the navigation manifest, the house style, and how to add a page.
+description: The directory structure, the front matter schema, the navigation manifest, the house style, the rules for interface text, and how to add a page.
 order: 9
 ---
 
@@ -98,6 +98,14 @@ error messages, findings and their remediation text, or the comments the
 renderer writes into generated artefacts. Give the reason in plain words if
 the reader needs it, otherwise leave it out.
 
+**No rationale in anything a user sees.** Stripping the reference is not
+enough: the argument has to go too. A surface reports, it does not defend
+itself. "Ratios never blend, and waived counts ride every level" justifies a
+design decision to a reader who never questioned it, and prose that argues
+reads as a prototype whatever it is attached to. State the reading and stop.
+The reasoning belongs in the decision record and in a comment beside the code
+that implements it, which is where a reader who wants it will look.
+
 The rules that come up constantly:
 
 - **Sentence case for every heading**, including the page title.
@@ -122,6 +130,51 @@ The rules that come up constantly:
   No invented metrics, no superlatives, no claims you cannot verify.
 - **Describe what exists today.** Nothing unreleased is announced or hinted
   at. If a page describes planned work as if it ships, that is a bug.
+
+## Interface text
+
+Console surfaces, CLI help and output, error messages, and findings with their
+remediation text are held to everything above, plus the rules here. They are
+the surfaces a reader meets without having chosen to read anything, so they
+carry the least room for a sentence that is not pulling its weight.
+
+**An instrument, not a dashboard.** That line comes from the visual identity
+and it governs the words as much as the drawing: label the reading and stop.
+
+**A heading names what a thing is, not what to do about it.** "Tiers with
+findings" is a label; "Look here first" is an instruction, and an instruction
+in a heading reads as scaffolding somebody forgot to remove.
+
+**A control says exactly what happens, and the confirmation says it happened
+in the same words.**
+
+**Link text names its destination in the reader's words**, not the product's
+internal name for a surface. "See all Tiers" beats "Open the whole shelf": the
+reader wants the Tiers, and the shelf is our word for where they are kept.
+
+**Outside the glossary, prefer the plain word.** Governed domain nouns are
+exact, and they stay: a Tier is a Tier on every surface, and so are
+Environment, Rollout, Blueprint, and Service Class. Incidental vocabulary is
+not exact and is where jargon accumulates unnoticed. Where the glossary
+already holds the concept under a different word, use the glossary's word: it
+is the one a reader can look up.
+
+**Change a term on every surface that shows it.** Two surfaces naming one
+thing two ways is a defect even when each is defensible alone, and it is worse
+when one surface links to the other.
+
+Worked examples from the pass over the console's landing surface:
+
+| Instead of | Write | Because |
+|---|---|---|
+| Ratios never blend, and waived counts ride every level | *(nothing)* | Argues for a decision nobody questioned |
+| Look here first | Tiers with findings | A label, not an instruction |
+| A concern to claim, not a failure, and in no compliance denominator | 3 served, 2 foreign. | Editorial, and "denominator" is internal |
+| match no Tier selector | don't match any Tier | "Selector" is an implementation word |
+| Each row aggregates its whole subtree | Totals include every team below | "Subtree" is a data structure, not a team |
+| 1 waived | 1 exempt | Exemption is the glossary term, so "exempt" leads somewhere |
+| no verdict to give | no result yet | Affected |
+| 3 more not shown here (Home draws 6) | Showing 6 of 9 | The page was talking about itself |
 
 ## Vocabulary
 

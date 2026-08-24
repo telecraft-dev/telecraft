@@ -25,12 +25,13 @@ Read the page that matches what you are doing:
   boundary, and follows a verdict from authored files to output.
 - [Providers](providers.md) explains how to implement each seam and pass its
   conformance kit.
-- [Console](console.md) covers the four Workspaces, the card data contract,
+- [Console](console.md) covers the five Workspaces, the card data contract,
   the canvas engine, and the zero-CDN rule.
 - [Decisions](decisions.md) explains the ADR process and maps the ADRs by
   theme.
 - [Documentation](documentation.md) explains how this documentation system
-  works and how to add a page.
+  works, the house style and the rules for interface text, and how to add a
+  page.
 - [Releases](releases.md) explains what a version number means, what a
   release contains, and how to cut one.
 
@@ -97,7 +98,11 @@ What review expects:
 - **Green CI.** Every check that ran passes before review, not after it.
 - **House style in user-visible prose.** Documentation, error messages, and
   UI text follow the rules on the
-  [documentation page](documentation.md#house-style).
+  [documentation page](documentation.md#house-style). Console surfaces, CLI
+  output and findings carry the extra rules for
+  [interface text](documentation.md#interface-text): no rationale on screen,
+  a label rather than an instruction, and the plain word wherever the
+  glossary does not supply an exact one.
 
 ## What CI checks
 

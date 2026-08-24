@@ -79,19 +79,19 @@ test('the lens changes emphasis and evaluation context without removing rows', a
   await expect(rows).toHaveCount(before)
 })
 
-test('the roll-up shows ratio-plus-worst per kind with waived counts visible', async ({
+test('the roll-up shows ratio-plus-worst per kind with exempt counts visible', async ({
   page,
 }) => {
   await page.goto('/estate?view=rollup&lens=production')
   const dataFlow = page.getByTestId('rollup-data-flow')
   await expect(dataFlow.locator('[data-kind="conformance"] .rollup-ratio')).toHaveText('1/2')
   await expect(dataFlow.locator('[data-kind="conformance"] .rollup-waived')).toHaveText(
-    '1 waived',
+    '1 exempt',
   )
   // Waived counts ride every roll-up level (ADR-0017, ADR-0037).
   await expect(
     page.getByTestId('rollup-engineering').locator('[data-kind="conformance"] .rollup-waived'),
-  ).toHaveText('1 waived')
+  ).toHaveText('1 exempt')
   // The lens is the evaluation context: switching it re-judges the ratios
   // but removes no team row.
   const teamRows = page.getByTestId('rollup-table').locator('tbody tr')
@@ -101,7 +101,7 @@ test('the roll-up shows ratio-plus-worst per kind with waived counts visible', a
   await expect(teamRows).toHaveCount(before)
   await expect(
     page.getByTestId('rollup-all-data-flow'),
-  ).toHaveText('2 findings, 1 waived')
+  ).toHaveText('2 findings, 1 exempt')
 })
 
 test('the "why?" popover shows provenance and its trace action lights the canvas', async ({
