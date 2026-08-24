@@ -28,6 +28,7 @@ package conformance
 import (
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 )
 
@@ -158,6 +159,32 @@ type Finding struct {
 	Requirement requirements.Requirement
 	Outcome     Outcome
 
+	// Grade is the weight the finding carries, in the one grade vocabulary
+	// the platform has (ownership.Grade). It answers a different question
+	// from Outcome: Outcome is the diagnosis, Grade is whether the
+	// diagnosis is allowed to fail the row.
+	//
+	// Every outcome the Effective × Observed cross produces is
+	// violation-grade, which is why the zero value reads as violation:
+	// an ungraded finding fails closed rather than slipping out of a
+	// denominator. Schema conformance is the one producer that grades
+	// below that, mapping the Schema Registry's own requirement levels
+	// onto weights (ADR-0034 §3): required stays violation,
+	// conditionally_required and recommended demote to advisory
+	// (ADR-0034's "improvement"), and opt_in to neutral (its
+	// "information"). Grade is never Pass here: whether a finding passed
+	// is what Outcome says.
+	Grade ownership.Grade
+
+	// Coverage is the fraction of what the finding demanded that the
+	// reading found, set on a schema-conformance finding at the
+	// recommended level and nil everywhere else (ADR-0034 §3: a
+	// recommended finding carries a coverage ratio rather than a bare
+	// miss, because partial adoption is the normal state of a recommended
+	// attribute and "3 of 8" is the actionable form of it). Nil means no
+	// ratio was computed, which is not the same as a ratio of zero.
+	Coverage *float64
+
 	Waived       WaiverKind
 	WaiverReason string
 
@@ -165,13 +192,41 @@ type Finding struct {
 	Detail []string
 }
 
+// Weight is the finding's grade with the zero value resolved: an ungraded
+// finding is violation-grade, because everything the cross produces is.
+func (f Finding) Weight() ownership.Grade {
+	if f.Grade == "" {
+		return ownership.Violation
+	}
+	return f.Grade
+}
+
+// Scored reports whether this finding feeds the row's binary. Only
+// violation-grade findings do (ADR-0034 §3): improvement and information
+// findings ride alongside, visible on the Service and counted in their own
+// tallies, but the ratio and the worst-outcome badge are decided by
+// violations alone. Promoting an improvement to a violation is deferred
+// escalation (ADR-0022 §4) and is not a lever this package offers; the
+// supported one is tightening the level in the Schema Registry.
+func (f Finding) Scored() bool { return f.Weight() == ownership.Violation }
+
 // Counts reports whether this finding counts against the row's score. A
 // waived finding is still reported, still visible, and still diagnosed.
 func (f Finding) Counts() bool { return f.Waived == WaiverNone }
 
 // Failing reports a finding that both fails and counts: the unit the CI
-// check mode gates on (REQ-024).
-func (f Finding) Failing() bool { return !f.Outcome.Passing() && f.Counts() }
+// check mode gates on (REQ-024). A failing improvement never reaches it:
+// the gate is violations alone.
+func (f Finding) Failing() bool { return !f.Outcome.Passing() && f.Counts() && f.Scored() }
+
+// CoverageRatio returns the finding's coverage ratio and whether one was
+// computed.
+func (f Finding) CoverageRatio() (float64, bool) {
+	if f.Coverage == nil {
+		return 0, false
+	}
+	return *f.Coverage, true
+}
 
 // Row is the unit of conformance evaluation: one Service in one Environment
 // (ADR-0033). Roll-ups count rows, and estate views default to the
@@ -191,12 +246,23 @@ type Verdict struct {
 	Findings    []Finding
 }
 
-// Score is the counting summary for one row's verdict.
+// Score is the counting summary for one row's verdict. Total, Passing,
+// Waived and Failing count violation-grade findings alone, which is what
+// makes the ratio and the badge a statement about the floor rather than
+// about advice. Advisory and Neutral count the findings that ride alongside
+// so that they are visible in a roll-up without moving a score (ADR-0034
+// §3).
 type Score struct {
 	Total   int
 	Passing int
 	Waived  int
 	Failing int
+
+	// Advisory counts improvement-grade findings, Neutral information-grade
+	// ones. Neither enters a denominator; both are reported, because a
+	// finding nobody can see is a finding nobody acts on.
+	Advisory int
+	Neutral  int
 }
 
 // Ratio is passing over counted. A row with every requirement waived scores
@@ -216,6 +282,15 @@ func (s Score) Ratio() float64 {
 func (v Verdict) Score() Score {
 	var s Score
 	for _, f := range v.Findings {
+		if !f.Scored() {
+			switch f.Weight() {
+			case ownership.Neutral:
+				s.Neutral++
+			default:
+				s.Advisory++
+			}
+			continue
+		}
 		s.Total++
 		switch {
 		case f.Outcome.Passing():
@@ -230,14 +305,15 @@ func (v Verdict) Score() Score {
 }
 
 // Worst names the outcome a human should look at first: the highest-severity
-// counting finding. Counting findings always outrank waived ones, however
+// counting violation-grade finding: an improvement never darkens a badge
+// (ADR-0034 §3). Counting findings always outrank waived ones, however
 // severe the waived diagnosis: a waived problem has an owner and an expiry
 // date, so it is already someone's business and should not outrank a live
 // one. A verdict with no counting failure is compliant at worst.
 func (v Verdict) Worst() Outcome {
 	worst := Compliant
 	for _, f := range v.Findings {
-		if !f.Counts() {
+		if !f.Counts() || !f.Scored() {
 			continue
 		}
 		if f.Outcome.Severity() > worst.Severity() {

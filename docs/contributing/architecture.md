@@ -84,7 +84,7 @@ a silently lenient verdict.
 | `internal/requirements` | The requirements library: the versioned assertions a Service is judged against, and the signal vocabulary the rest of the core adopts. |
 | `internal/blueprint` | Blueprints and Components: per-signal lanes of ordered Component references, shared or local, with the ordering rules and the authoring findings. |
 | `internal/catalogue` | The Catalogue: the versioned inventory of collector component types, machine-generated from upstream metadata. Hand-curation of the component list is prohibited. |
-| `internal/ownership` | The Team tree and the owner every authored object carries. Routes each finding to the owner of the object it is about, and rolls compliance up as ratio-plus-worst per finding kind. |
+| `internal/ownership` | The Team tree and the owner every authored object carries. Routes each finding to the owner of the object it is about, and rolls compliance up as ratio-plus-worst per finding kind. Owns the one grade vocabulary every producer of findings grades in: pass, neutral, advisory, violation. |
 | `internal/allowlist` | The Allow-list policy: which subset of the Catalogue each Team may use, composed down the tree by narrowing-only inheritance with owned Grants as the one widening mechanism. |
 
 ### The import pipeline
@@ -116,7 +116,7 @@ pipeline.
 
 | Package | Owns |
 |---|---|
-| `internal/conformance` | The verdict cross, Effective against Observed, judged per requirement for one Service in one Environment, producing the seven outcomes with their severity ordering. Nothing here blends across environments. |
+| `internal/conformance` | The verdict cross, Effective against Observed, judged per requirement for one Service in one Environment, producing the eight outcomes with their severity ordering. Schema conformance is judged here too, against the Schema Registry rather than the cross, and maps the registry's four requirement levels onto those same eight outcomes and the one grade vocabulary, adding neither. Nothing here blends across environments. |
 | `internal/expectation` | The Expectation engine: derives checkable Claims from the Intended config at a commit SHA, literal-only, and judges arrivals against them. This is what makes green mean "the config worked" rather than "the config applied". |
 | `internal/drift` | `library_drift`: config in git that passes the version it claims while failing the current one, in its Requirement and Component facets. |
 | `internal/metering` | The derived flow readings on cards and the canvas, computed on read from readings taken through the TelemetryProvider seam. Two grains, pipeline and Service, never blended. Nothing is stored. |

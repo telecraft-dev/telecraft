@@ -27,27 +27,42 @@ func (k FindingKind) Valid() bool {
 	return false
 }
 
-// Grade is the outcome of one finding. Breach is graded, never a block:
+// Grade is the weight one finding carries. Breach is graded, never a block:
 // advisory is worth surfacing, violation is the floor unmet (ADR-0035
 // wording adopted here).
+//
+// The four values are the one grade vocabulary the platform has. Producers
+// name their own concepts in it rather than minting synonyms: ADR-0034 §3's
+// "improvement" is advisory, and its "information" is neutral. A second
+// spelling of the same three weights would give the console two ladders to
+// reconcile, which is exactly the divergence this type exists to prevent.
 type Grade string
 
 const (
-	Pass      Grade = "pass"
+	Pass Grade = "pass"
+
+	// Neutral is a finding that is worth reporting and settles nothing: it
+	// is not a pass, and it is excluded from every denominator (ADR-0035
+	// §6). Reporting an opt-in attribute nobody adopted is the shape of
+	// it: counting it as a pass would inflate a ratio nobody earned, and
+	// counting it as a failure would demand something nobody asked for.
+	Neutral Grade = "neutral"
+
 	Advisory  Grade = "advisory"
 	Violation Grade = "violation"
 )
 
 func (g Grade) Valid() bool {
 	switch g {
-	case Pass, Advisory, Violation:
+	case Pass, Neutral, Advisory, Violation:
 		return true
 	}
 	return false
 }
 
-// severity orders grades for the worst-outcome badge.
-var severity = map[Grade]int{Pass: 0, Advisory: 1, Violation: 2}
+// severity orders grades for the worst-outcome badge. Neutral ranks with
+// pass: it never darkens a badge, because it says nothing is wrong.
+var severity = map[Grade]int{Pass: 0, Neutral: 0, Advisory: 1, Violation: 2}
 
 // Subject identifies the object a finding is about.
 type Subject struct {
