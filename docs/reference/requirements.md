@@ -161,11 +161,14 @@ There's no attribute list here, and adding one is a load error. A list in a
 requirement file is a second copy of something the registry already states,
 and the copy drifts the first time somebody edits one and not the other.
 
-Evaluating schema conformance isn't built yet. The format loads and validates,
-and `telecraft check` doesn't yet take the Schema Registry directory a
-reference resolves against, so a Requirement of this kind isn't ready to run
-against an estate. Where one does reach the evaluator, it's reported
-`unknown`: no reading, so no verdict, and never a silent pass.
+Evaluating schema conformance isn't finished yet. The format loads and
+validates, the evaluator maps the registry's four requirement levels onto
+findings, and those findings write their own remediation out of the registry.
+What's missing is the wiring: `telecraft check` doesn't yet take the Schema
+Registry directory a reference resolves against, so a Requirement of this kind
+isn't ready to run against an estate. Where one reaches the evaluator with no
+registry version resolved, it's reported `unknown`: no reading, so no verdict,
+and never a silent pass.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -203,6 +206,28 @@ A `schema_conformance` Requirement doesn't also carry `config` or `signal`.
 Collector config can't see instrumentation, so there's no Effective reading to
 cross a schema verdict against, and no outcome for the combination. Two
 Requirements say the two things honestly.
+
+### Findings
+
+A schema-conformance finding belongs to the Service it was judged on, in the
+Environment it was judged in, and routes to that Service's owner. That's the
+party who can act on it. The fix is a change to the service's own
+instrumentation, so a Tier or a collector as the target would send the work to
+somebody who can't make it.
+
+The finding writes its own remediation out of the registry rather than
+repeating the line you authored. It names the group that demanded the
+attribute, the attribute, the type the registry declares it at, and the level.
+Where the registry carries a deprecation notice, the finding hands over
+upstream's own migration note, including what the attribute was renamed to.
+The `remediation` you author stays on the Requirement, and is what a finding
+falls back to when it has nothing better to say.
+
+Where a missing attribute sits on a `resource` or `entity` group, the
+remediation also mentions collection-time enrichment: a processor such as
+`k8sattributes` can add it when the service can't. That's a suggestion and
+nothing more. The finding doesn't split in two and doesn't reroute, so the
+Service's owner still owns it.
 
 ### Pinned and tracking references
 
