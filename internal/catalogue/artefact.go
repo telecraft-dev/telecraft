@@ -1,12 +1,10 @@
 package catalogue
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+
+	"github.com/telecraft-dev/telecraft/internal/substrate"
 )
 
 // FormatVersion is the artefact format this package writes and reads. The
@@ -40,47 +38,16 @@ func (c *Catalogue) Encode() ([]byte, error) {
 // by tag is what lets versions sit side by side: installed catalogues are
 // retained, never replaced (ADR-0020 §9).
 func ArtefactName(ref string) string {
-	return "catalogue-" + ref + ".json"
+	return substrate.Name(Substrate{}.Prefix(), ref)
 }
 
 // Write stores the Catalogue artefact under dir, named for its release tag.
-// The write is atomic (the bytes land in a temp file first and are renamed
-// into place), so a reader never sees a half-written Catalogue. If the file
-// already holds exactly these bytes the write is skipped and changed is
-// false: re-importing the same tag is a no-op, not a rewrite.
+// The write is atomic and idempotent: the bytes land in a temp file first
+// and are renamed into place, so a reader never sees a half-written
+// Catalogue, and a file that already holds exactly these bytes is left
+// alone with changed false.
 func (c *Catalogue) Write(dir string) (path string, changed bool, err error) {
-	if strings.ContainsAny(c.Source.Ref, `/\`) {
-		return "", false, fmt.Errorf("release tag %q cannot name an artefact file", c.Source.Ref)
-	}
-	encoded, err := c.Encode()
-	if err != nil {
-		return "", false, err
-	}
-	path = filepath.Join(dir, ArtefactName(c.Source.Ref))
-
-	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, encoded) {
-		return path, false, nil
-	}
-
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", false, err
-	}
-	tmp, err := os.CreateTemp(dir, ArtefactName(c.Source.Ref)+".tmp")
-	if err != nil {
-		return "", false, err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(encoded); err != nil {
-		tmp.Close()
-		return "", false, err
-	}
-	if err := tmp.Close(); err != nil {
-		return "", false, err
-	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
-		return "", false, err
-	}
-	return path, true, nil
+	return substrate.Write(c, dir, Substrate{}.Prefix())
 }
 
 // Load reads and validates one Catalogue artefact. Loading fails closed,
@@ -91,21 +58,10 @@ func (c *Catalogue) Write(dir string) (path string, changed bool, err error) {
 // missing mandatory field is a load error naming the file, and the returned
 // Catalogue is nil, never partially loaded.
 func Load(path string) (*Catalogue, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
+	var cat Catalogue
+	if err := substrate.LoadStrict(path, "catalogue", &cat); err != nil {
 		return nil, err
 	}
-
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	var cat Catalogue
-	if err := dec.Decode(&cat); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
-	}
-	if dec.More() {
-		return nil, fmt.Errorf("%s: trailing data after the catalogue document", path)
-	}
-
 	if err := cat.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}

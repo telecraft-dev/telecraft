@@ -2,55 +2,44 @@ package catalogue
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
+
+	"github.com/telecraft-dev/telecraft/internal/substrate"
 )
 
-// Fetch materialises the source tree for one pinned release tag into dir: a
-// sparse, depth-1 git checkout of only the metadata.yaml and go.mod files:
-// a few megabytes, not the whole repository. It returns the commit the tag
-// resolved to, which the artefact records so every Catalogue is reproducible
-// and auditable (ADR-0020).
-//
-// Fetching happens at import time only, on an operator's machine with the
-// result carried onward as the artefact; the platform itself never fetches
-// at runtime (ADR-0019), and the upstream tree is never vendored into this
-// repository.
-func Fetch(repoURL, tag, dir string) (commit string, err error) {
-	steps := [][]string{
-		{"init", "--quiet", "."},
-		{"remote", "add", "origin", repoURL},
-		{"sparse-checkout", "set", "--no-cone", "**/metadata.yaml", "**/go.mod"},
-		{"fetch", "--quiet", "--depth", "1", "origin", "refs/tags/" + tag},
-		{"checkout", "--quiet", "FETCH_HEAD"},
-	}
-	for _, args := range steps {
-		if out, err := git(dir, args...); err != nil {
-			return "", fmt.Errorf("git %s: %v: %s", strings.Join(args, " "), err, out)
-		}
-	}
-	// Peel explicitly: for an annotated tag, FETCH_HEAD names the tag
-	// object, and the auditable fact the artefact records is the commit.
-	out, err := git(dir, "rev-parse", "FETCH_HEAD^{commit}")
+// Substrate is the Catalogue's half of the one import pipeline
+// (ADR-0020 §5): what a Catalogue is called, which upstream files it needs
+// checked out, what its artefacts are named, and how to walk a materialised
+// collector source tree into one. Everything else, the fetch, the atomic
+// idempotent write, the side-by-side version naming and the strict load,
+// belongs to the pipeline and is shared with every other substrate.
+type Substrate struct{}
+
+func (Substrate) Name() string { return "Catalogue" }
+
+// Files are the sparse-checkout patterns a Catalogue import needs: every
+// metadata.yaml, and the sibling go.mod that is the discovery anchor. A few
+// megabytes, not the whole repository.
+func (Substrate) Files() []string { return []string{"**/metadata.yaml", "**/go.mod"} }
+
+func (Substrate) Prefix() string { return "catalogue-" }
+
+// Build walks the tree at root and returns the Catalogue for src.Ref with
+// its coverage report.
+func (Substrate) Build(root string, src substrate.Source) (substrate.Artefact, fmt.Stringer, error) {
+	cat, cov, err := Import(root, src)
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse FETCH_HEAD: %v: %s", err, out)
+		return nil, nil, err
 	}
-	return strings.TrimSpace(out), nil
+	return cat, cov, nil
+}
+
+// Fetch materialises the collector source tree for one pinned release tag
+// into dir, sparsely and at depth 1, and returns the commit the tag resolved
+// to. It is the shared pipeline's fetch with the Catalogue's file patterns.
+func Fetch(repoURL, tag, dir string) (commit string, err error) {
+	return substrate.Fetch(repoURL, tag, dir, Substrate{}.Files())
 }
 
 // Commit resolves the HEAD commit of an existing checkout, for imports run
 // against a pre-fetched tree.
-func Commit(dir string) (string, error) {
-	out, err := git(dir, "rev-parse", "HEAD")
-	if err != nil {
-		return "", fmt.Errorf("git rev-parse HEAD in %s: %v: %s", dir, err, out)
-	}
-	return strings.TrimSpace(out), nil
-}
-
-func git(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	return string(out), err
-}
+func Commit(dir string) (string, error) { return substrate.Commit(dir) }

@@ -26,6 +26,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/telecraft-dev/telecraft/internal/substrate"
 )
 
 // Class is a component's upstream `status.class`, adopted verbatim
@@ -138,12 +140,10 @@ func (c Component) key() string {
 
 // Source records where a Catalogue came from: the upstream repository, the
 // pinned release tag, and the commit that tag resolved to. Recording the
-// commit makes every artefact reproducible and auditable (ADR-0020).
-type Source struct {
-	Repository string `json:"repository"`
-	Ref        string `json:"ref"`
-	Commit     string `json:"commit,omitempty"`
-}
+// commit makes every artefact reproducible and auditable (ADR-0020). It is
+// the shared pipeline's record, identical for every substrate, so a reader
+// of one artefact reads provenance the same way in all of them.
+type Source = substrate.Source
 
 // Catalogue is one atomic Catalogue version: every pipeline component type
 // found in the source tree at one collector release tag.
@@ -165,6 +165,9 @@ type compKey struct {
 func (c *Catalogue) Version() string { return c.Source.Ref }
 
 func (c *Catalogue) Len() int { return len(c.Components) }
+
+// Summary is the count the import pipeline reports on a write.
+func (c *Catalogue) Summary() string { return fmt.Sprintf("%d components", c.Len()) }
 
 // Lookup finds a component by its (class, type) primary key, resolving
 // deprecated_type aliases: a config saying `spanmetrics` still finds
