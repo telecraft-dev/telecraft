@@ -52,7 +52,7 @@ func (e Estate) Rollup(team TeamID, findings []Finding) (Rollup, error) {
 			return Rollup{}, fmt.Errorf("finding about %s %q has unknown kind %q. Use one of service_conformance, delivery, component_health, or expectation", f.Subject.Kind, f.Subject.ID, f.Kind)
 		}
 		if !f.Grade.Valid() {
-			return Rollup{}, fmt.Errorf("finding about %s %q has unknown grade %q. Use one of pass, advisory, or violation", f.Subject.Kind, f.Subject.ID, f.Grade)
+			return Rollup{}, fmt.Errorf("finding about %s %q has unknown grade %q. Use one of pass, neutral, advisory, or violation", f.Subject.Kind, f.Subject.ID, f.Grade)
 		}
 		owner, err := e.OwnerOf(f.Subject)
 		if err != nil {
@@ -70,9 +70,15 @@ func (e Estate) Rollup(team TeamID, findings []Finding) (Rollup, error) {
 			// from hiding (ADR-0017).
 			s.Worst = Pass
 		}
-		if f.Waived {
+		switch {
+		case f.Waived:
 			s.Waived++
-		} else {
+		case f.Grade == Neutral:
+			// Neutral is excluded from every denominator (ADR-0035 §6): it
+			// stays in Findings, where a human reads it, and out of the
+			// ratio, where it would either inflate a score nobody earned
+			// or deflate one nobody lost.
+		default:
 			s.Counted++
 			if f.Grade == Pass {
 				s.Passing++

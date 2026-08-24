@@ -164,3 +164,38 @@ func TestRollupFailsClosedOnBadFindings(t *testing.T) {
 		})
 	}
 }
+
+// A neutral finding is reported and excluded from every denominator
+// (ADR-0035 §6, ADR-0034 §3): counting it as a pass would inflate a ratio
+// nobody earned, and counting it as a failure would demand something nobody
+// asked for.
+func TestNeutralFindingIsReportedAndOutOfTheDenominator(t *testing.T) {
+	est := loadFixture(t)
+
+	findings := []Finding{
+		{Kind: ServiceConformance, Subject: Subject{Kind: KindService, ID: "checkout"}, Grade: Pass, Detail: "traces-delivered met"},
+		{Kind: ServiceConformance, Subject: Subject{Kind: KindService, ID: "checkout"}, Grade: Neutral, Detail: "enterprise.cost_centre is offered at opt_in and not in use"},
+	}
+
+	got, err := est.Rollup("product", findings)
+	if err != nil {
+		t.Fatalf("rolling up: %v", err)
+	}
+	if len(got.Findings) != 2 {
+		t.Errorf("routed %d findings, want both: a neutral finding is still reported", len(got.Findings))
+	}
+	want := Score{Passing: 1, Counted: 1, Worst: Pass}
+	if !reflect.DeepEqual(got.Scores[ServiceConformance], want) {
+		t.Errorf("score = %+v, want %+v", got.Scores[ServiceConformance], want)
+	}
+}
+
+// Neutral never darkens a badge: it says nothing is wrong.
+func TestNeutralIsAValidGradeThatNeverDarkensTheBadge(t *testing.T) {
+	if !Neutral.Valid() {
+		t.Fatal("neutral is not a valid grade")
+	}
+	if severity[Neutral] > severity[Advisory] {
+		t.Errorf("neutral ranks above advisory")
+	}
+}
