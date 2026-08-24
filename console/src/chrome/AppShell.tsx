@@ -11,11 +11,11 @@ import { TourControl } from '../tours/TourControl'
 import { TourRunner } from '../tours/TourRunner'
 import { Button } from '../ui/Button'
 
-// Navigation is activity-first: the four Workspaces are the only top-level
-// entries (ADR-0042 §1). Switching Workspaces keeps the lens (one global
-// chrome control) and a running Tour (ADR-0051 §3, which rides with it),
-// and drops the object selection, which belongs to the Workspace that read
-// it. The list itself lives in ./workspaces, because
+// Navigation is activity-first: the five Workspaces are the only top-level
+// entries (ADR-0042 §1, amended by ADR-0056 §1). Switching Workspaces keeps
+// the lens (one global chrome control) and a running Tour (ADR-0051 §3,
+// which rides with it), and drops the object selection, which belongs to
+// the Workspace that read it. The list itself lives in ./workspaces, because
 // the deploy pre-renders an entry document per Workspace URL and the two
 // must not drift.
 
@@ -41,6 +41,11 @@ export function AppShell() {
               search={(prev) => ({ lens: prev.lens, tour: prev.tour, step: prev.step })}
               data-testid={ws.testid}
               className="workspace-link"
+              // Home is `/`, which prefix-matches every other Workspace, so
+              // it alone is matched exactly. Without this the landing entry
+              // reads as pressed on every surface (the ADR-0048 hazard: the
+              // router stamps `active` on any Link whose route matches).
+              activeOptions={{ exact: ws.to === '/' }}
               activeProps={{ className: 'workspace-link active', 'aria-current': 'page' }}
             >
               {ws.label}

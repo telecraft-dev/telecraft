@@ -1,6 +1,6 @@
 ---
 title: Console architecture
-description: The four Workspaces, the card data contract, the pure canvas engine, the presentation store, guided Tours, demo mode, the bundle budget, and the zero-CDN rule.
+description: The five Workspaces, the card data contract, the pure canvas engine, the presentation store, guided Tours, demo mode, the bundle budget, and the zero-CDN rule.
 order: 7
 ---
 
@@ -26,15 +26,19 @@ ADR-0045 chose boring on purpose, and named its one escape hatch.
 DOM scale stays modest by construction: every surface renders at
 authored-object cardinality, never collector count.
 
-## The four Workspaces
+## The five Workspaces
 
 Navigation is activity-first. Surfaces group under the activity they serve,
 because every prototype verdict found them to be complementary representations
 of one model rather than competing candidates. That is a view-switcher
 relationship, not a menu.
 
+Home is the exception, and the only entry named for a place: the activity it
+serves is choosing which activity (ADR-0056).
+
 | Workspace | Question it answers | Surfaces |
 |---|---|---|
+| **Home** | Where do I look first? | One surface, at `/`. It judges nothing: the estate standing is the roll-up's own root row, the worst Tiers are in the shelf's own order, and every element on it is a door into the Workspace that can act. Every list is bounded and says what it left out. |
 | **Estate** | How are we doing? | The shelf (the landing view), the tree-table roll-up, and the flat filter-first list, which is the only home of per-collector detail. |
 | **Topology** | How does telemetry flow? | The flow canvas and the rollout ledger. |
 | **Compose** | How do I author a Blueprint? | The Composer, the requirement-first overview, the node canvas, and the resident read-only YAML flyout. |
@@ -52,7 +56,11 @@ The code follows the same shape:
 - `src/router.tsx` declares the routes, validates every search param, and
   loads each Workspace's component through a dynamic import, which is what
   gives every Workspace a chunk of its own (see
-  [the bundle budget](#the-bundle-budget)).
+  [the bundle budget](#the-bundle-budget)). Home is the one exception and is
+  imported eagerly: it is the landing, so a dynamic import there would put a
+  round trip in front of the first paint.
+- `src/home/summary.ts` is Home's whole derivation, and it is a pure module
+  like `src/estate/rollup.ts`, which it reads.
 - `src/api/` holds the client, the demo adapter, and the TypeScript shapes of
   the platform API.
 
@@ -274,11 +282,12 @@ and not to the assembler is a failing test.
 
 ## The bundle budget
 
-The four Workspaces meet at the router, so the router is where the bundle
+The five Workspaces meet at the router, so the router is where the bundle
 divides. `src/router.tsx` reaches each Workspace's component through a
 dynamic import, and Rollup gives each one a chunk that arrives on the
 navigation that first needs it. Estate, Topology, Compose, and Catalogue
-each land in their own chunk; the card panel and the claim panel, which
+each land in their own chunk; Home rides in the entry chunk, because it is
+the landing; the card panel and the claim panel, which
 more than one Workspace draws, land in chunks those Workspaces share.
 
 The dependency that makes this worth doing is the canvas substrate.

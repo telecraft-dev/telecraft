@@ -39,8 +39,8 @@ export function stepBody(step: Step, demo: boolean): string {
   return demo && step.demoBody !== undefined ? step.demoBody : step.body
 }
 
-/** The Workspace a reader who typed nothing lands on. */
-const LANDING = '/estate'
+/** The Workspace a reader who typed nothing lands on: Home (ADR-0056 §1). */
+const LANDING = '/'
 
 /**
  * Whether this URL is somebody's own arrival rather than somebody else's
@@ -53,6 +53,9 @@ const LANDING = '/estate'
  * persisted preference that reaches the URL on its own (ADR-0042 §4).
  */
 export function isBareLanding(pathname: string, search: Record<string, unknown>): boolean {
-  if (pathname !== LANDING && pathname !== `${LANDING}/`) return false
+  // Both spellings of the route, which collapse to one now that the landing
+  // is `/`: a trailing slash on the root is the root.
+  const normalised = pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname
+  if (normalised !== LANDING) return false
   return Object.entries(search).every(([key, value]) => key === 'lens' || value === undefined)
 }

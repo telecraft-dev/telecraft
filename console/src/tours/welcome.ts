@@ -33,7 +33,18 @@ export const welcome: Tour = {
         'governed building blocks, then checks that the telemetry that configuration ' +
         'implies actually arrived. This tour changes nothing. Press Escape to leave at any ' +
         'point.',
-      to: '/estate',
+      to: '/',
+    },
+    {
+      id: 'home',
+      title: "Home answers 'where do I look first?'",
+      body:
+        'This is where you start. It shows the Tiers with findings, the teams they belong ' +
+        'to, collectors nothing governs yet, and any Rollout waiting on a decision. Every ' +
+        'number here is a link into the surface it came from, so you can go straight to ' +
+        'whatever needs you.',
+      anchor: 'home-standing',
+      to: '/',
     },
     {
       id: 'shelf',

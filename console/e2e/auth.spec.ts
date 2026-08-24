@@ -35,11 +35,14 @@ test.describe('signed out', () => {
   test('signing out returns to the gate', async ({ page }) => {
     // A session of this test's own: signing out must not revoke the
     // shared storageState the parallel specs ride on.
-    await page.goto('/estate')
+    // Arriving at `/`, because that is the bare landing the welcome Tour
+    // opens itself on, and this test closes it below (ADR-0051 §7,
+    // ADR-0056 §1 moved the landing from the shelf to Home).
+    await page.goto('/')
     await page.getByTestId('login-username').fill('demo@example.com')
     await page.getByTestId('login-secret').fill('demo-password')
     await page.getByTestId('login-submit').click()
-    await expect(page.getByTestId('shelf')).toBeVisible()
+    await expect(page.getByTestId('home')).toBeVisible()
 
     // This session's reader is brand new, and the welcome Tour opens
     // itself for exactly that reader (ADR-0051 §7). It is a modal, so it
@@ -66,7 +69,7 @@ test.describe('signed out', () => {
     await page.getByTestId('login-username').fill('demo@example.com')
     await page.getByTestId('login-secret').fill('demo-password')
     await page.getByTestId('login-submit').click()
-    await expect(page.getByTestId('shelf')).toBeVisible()
+    await expect(page.getByTestId('home')).toBeVisible()
     expect(external).toEqual([])
   })
 })

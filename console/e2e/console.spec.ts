@@ -1,14 +1,22 @@
 import { expect, test } from '@playwright/test'
 
 // The issue #25 acceptance criteria, end to end: the console boots against
-// the fixture backend, the four Workspaces navigate, jump-to-object finds
+// the fixture backend, the five Workspaces navigate, jump-to-object finds
 // authored objects and deep-links, a deep-link URL restores state, the
 // presentation store persists per user, and nothing is ever fetched from
 // outside the origin.
 
-test('boots against the fixture backend onto the shelf', async ({ page }) => {
+test('boots against the fixture backend onto Home', async ({ page }) => {
+  // `/` is Home now, and it no longer redirects (ADR-0056 §1).
   await page.goto('/')
-  await expect(page).toHaveURL(/\/estate/)
+  await expect(page).toHaveURL(/\/(\?|$)/)
+  await expect(page.getByTestId('home')).toBeVisible()
+  await expect(page.getByTestId('home-standing')).toBeVisible()
+})
+
+test('the shelf is one click from Home, at its resting scope', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('nav-estate').click()
   await expect(page.getByTestId('shelf')).toBeVisible()
   // The resting scope is the signed-in user's team subtree (ADR-0042 §2).
   await expect(page.getByTestId('section-data-flow')).toBeVisible()
@@ -22,8 +30,9 @@ test('cards order worst-severity-first within an Environment row', async ({ page
   await expect(row.first()).toHaveAttribute('data-testid', 'card-data-flow/gateway')
 })
 
-test('all four Workspaces are navigable', async ({ page }) => {
+test('all five Workspaces are navigable', async ({ page }) => {
   await page.goto('/')
+  await expect(page.getByTestId('home')).toBeVisible()
   await page.getByTestId('nav-topology').click()
   await expect(page.getByTestId('topology-canvas')).toBeVisible()
   await page.getByTestId('nav-compose').click()
@@ -32,6 +41,8 @@ test('all four Workspaces are navigable', async ({ page }) => {
   await expect(page.getByTestId('catalogue-table')).toBeVisible()
   await page.getByTestId('nav-estate').click()
   await expect(page.getByTestId('shelf')).toBeVisible()
+  await page.getByTestId('nav-home').click()
+  await expect(page.getByTestId('home')).toBeVisible()
 })
 
 test('jump-to-object finds a Tier by name and deep-links to its card', async ({ page }) => {

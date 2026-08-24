@@ -1,7 +1,8 @@
 // The bundle budget check (issue #125, ADR-0042 §1, ADR-0045).
 //
-// The console is four Workspaces behind TanStack Router, and `src/router.tsx`
-// loads each one's component through a dynamic import. That split is only
+// The console is five Workspaces behind TanStack Router, and `src/router.tsx`
+// loads all but Home's component through a dynamic import (Home is the
+// landing, and is eager on purpose; ADR-0056). That split is only
 // worth having if it stays split, so this is the check that holds it: the
 // third of the small Node scripts over `dist` that guard a rule review
 // cannot, beside the zero-CDN check and the palette check.

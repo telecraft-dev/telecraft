@@ -3,9 +3,10 @@
 The purpose-built console (ADR-0006), scaffolded on the ADR-0045 stack:
 TypeScript, React, and Vite; TanStack Router and Query; Radix primitives
 over design tokens; xyflow as the canvas interaction substrate with the
-pure engine library above it (ADR-0044). The shell is ADR-0042's: four
+pure engine library above it (ADR-0044). The shell is ADR-0042's:
 activity-first Workspaces, global jump-to-object search, and every surface
-state URL-addressable.
+state URL-addressable. Home leads them and is the one named for a place,
+because the activity it serves is choosing which activity (ADR-0056).
 
 ## Running it
 
@@ -23,7 +24,7 @@ Checks, as CI runs them:
 
 ```sh
 npm run typecheck
-npm test                    # Vitest: engine, presentation store, shelf ordering
+npm test                    # Vitest: engine, presentation store, shelf ordering, Home
 npm run check:palette       # the design tokens against their accessibility floors
 npm run build               # tsc --noEmit + vite build into dist/
 npm run check:zero-cdn      # no external host in any built artefact
@@ -41,8 +42,13 @@ npm run e2e                 # Playwright against dist/ and the fixture backend
   only, with the within-row offset in the per-user presentation store;
   simulate is cosmetic dots over the routed geometry and persists
   nothing (ADR-0044 §3, §5).
-- `src/surfaces/`: the Workspace surfaces (the Estate shelf, the
+- `src/surfaces/`: the Workspace surfaces (Home, the Estate shelf, the
   Topology flow canvas, Compose, and Catalogue & Governance).
+- `src/home/`: Home's derivation, a pure module like `src/estate/`. It
+  judges nothing: the estate standing is `estate/rollup.ts`'s own root row
+  and the worst Tiers are in `estate/order.ts`'s own order, so the landing
+  cannot disagree with the surface it points at (ADR-0056 §2). Nothing it
+  returns is blended, and every bounded list reports what it dropped.
 - `src/chrome/`: the shell (Workspace navigation, the environment lens,
   and jump-to-object search).
 - `src/presentation/`: the per-user presentation store, the console's

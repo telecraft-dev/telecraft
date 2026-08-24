@@ -95,13 +95,16 @@ describe('tourById', () => {
 
 describe('isBareLanding', () => {
   it('is a reader arriving at the landing Workspace with nothing in hand', () => {
-    expect(isBareLanding('/estate', {})).toBe(true)
-    expect(isBareLanding('/estate', { lens: 'staging' })).toBe(true)
-    expect(isBareLanding('/estate', { object: undefined })).toBe(true)
+    expect(isBareLanding('/', {})).toBe(true)
+    expect(isBareLanding('/', { lens: 'staging' })).toBe(true)
+    expect(isBareLanding('/', { object: undefined })).toBe(true)
   })
 
   it('is not somebody else’s link, which a Tour never lands on top of (§7)', () => {
-    expect(isBareLanding('/estate', { object: 'tier:data-flow/gateway' })).toBe(false)
+    expect(isBareLanding('/', { object: 'tier:data-flow/gateway' })).toBe(false)
+    // The landing is Home now (ADR-0056 §1), so Estate is somebody's
+    // navigation rather than their arrival, and the welcome stays shut.
+    expect(isBareLanding('/estate', {})).toBe(false)
     expect(isBareLanding('/estate', { view: 'list', ungoverned: true })).toBe(false)
     expect(isBareLanding('/topology', {})).toBe(false)
     expect(isBareLanding('/compose', { claim: 'service.name=api' })).toBe(false)
@@ -128,7 +131,7 @@ describe('the authored Tours', () => {
   })
 
   it('travel only to a Workspace', () => {
-    const workspaces = ['/estate', '/topology', '/compose', '/catalogue']
+    const workspaces = ['/', '/estate', '/topology', '/compose', '/catalogue']
     for (const tour of TOURS) {
       for (const step of tour.steps) {
         if (step.to === undefined) continue

@@ -1,17 +1,15 @@
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  redirect,
-} from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router'
 import { lazy } from 'react'
 import { AuthGate } from './auth/AuthGate'
 import { AppShell } from './chrome/AppShell'
+import { Home } from './surfaces/home/Home'
 
-// Each Workspace loads its own code (issue #125). The four Workspaces
-// (ADR-0042 §1) already meet at the router, so the router is where the
-// bundle divides: a Workspace reached through a dynamic import is a chunk
-// of its own, fetched on the navigation that first needs it.
+// Each Workspace loads its own code (issue #125). The five Workspaces
+// (ADR-0042 §1, amended by ADR-0056 §1) already meet at the router, so the
+// router is where the bundle divides: a Workspace reached through a dynamic
+// import is a chunk of its own, fetched on the navigation that first needs
+// it. Home is the exception and is imported eagerly: it is the landing, so
+// a dynamic import there would only add a round trip to the first paint.
 //
 // The reason to bother is the canvas engine's substrate. `@xyflow/react` is
 // the console's one substantial dependency (ADR-0045 §2), and only
@@ -95,12 +93,16 @@ const rootRoute = createRootRoute({
   }),
 })
 
-const indexRoute = createRoute({
+/**
+ * Home: the landing, and the fifth top-level entry (ADR-0056 §1). It holds
+ * no state of its own, so it validates no search params beyond the root's:
+ * there is no selection, no filter and no view-switcher to address, which
+ * is how it satisfies ADR-0042 §3.5 rather than an exemption from it.
+ */
+const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: () => {
-    throw redirect({ to: '/estate' })
-  },
+  component: Home,
 })
 
 /** The Estate view-switchers: one model, complementary representations (ADR-0042 §1). */
@@ -238,7 +240,7 @@ const catalogueRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  homeRoute,
   estateRoute,
   topologyRoute,
   composeRoute,

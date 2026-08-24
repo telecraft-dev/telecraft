@@ -31,7 +31,7 @@ export function parseObjectRef(raw: string | undefined): ObjectRef | undefined {
   return { kind, id }
 }
 
-export type WorkspacePath = '/estate' | '/topology' | '/compose' | '/catalogue'
+export type WorkspacePath = '/' | '/estate' | '/topology' | '/compose' | '/catalogue'
 
 /**
  * The Workspace an object kind deep-links into: Tiers summon their card on

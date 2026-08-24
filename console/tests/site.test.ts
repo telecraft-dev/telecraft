@@ -16,10 +16,22 @@ describe('the assembled site covers every Workspace URL', () => {
   it('writes both spellings of each route, so a bare path resolves either way', () => {
     const documents = entryDocuments()
     for (const route of WORKSPACE_ROUTES) {
+      if (route === '/') continue
       const path = route.replace(/^\//, '')
       expect(documents).toContain(`${path}.html`)
       expect(documents).toContain(`${path}/index.html`)
     }
+  })
+
+  it('writes nothing for Home, because index.html already answers /', () => {
+    // Home is a Workspace whose URL is `/` (ADR-0056 §1). The bundle's own
+    // `index.html` is what every host resolves that to, so there is no
+    // second document to write. Stripping the slash the way the other
+    // routes are stripped would produce `.html`: a dotfile, which is worse
+    // than useless, because most hosts decline to serve it at all.
+    expect(WORKSPACE_ROUTES).toContain('/')
+    expect(entryDocuments()).not.toContain('.html')
+    expect(entryDocuments()).not.toContain('/index.html')
   })
 
   it('keeps the not-found fallback for the deeper parameterised routes', () => {

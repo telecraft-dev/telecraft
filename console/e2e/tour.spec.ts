@@ -16,7 +16,7 @@ const PRESENTATION_KEY = 'telecraft.console.presentation.v1.demo-user'
  * writes afterwards survives, which is the whole point of the test below.
  */
 async function asNewReader(page: Page) {
-  await page.goto('/estate?view=list')
+  await page.goto('/estate?view=list')  // not a bare landing, and never was
   await page.evaluate((key) => localStorage.removeItem(key), PRESENTATION_KEY)
 }
 
@@ -66,7 +66,9 @@ test('the welcome opens itself once, for a reader who has not been offered it', 
   page,
 }) => {
   await asNewReader(page)
-  await page.goto('/estate')
+  // The bare landing is Home (ADR-0056 §1), and that is where the welcome
+  // offers itself.
+  await page.goto('/')
 
   const card = page.getByTestId('tour-card')
   await expect(card).toBeVisible()
@@ -77,7 +79,7 @@ test('the welcome opens itself once, for a reader who has not been offered it', 
   // closes the tab halfway through is not offered it again.
   await page.getByTestId('tour-end').click()
   await expect(card).toBeHidden()
-  await page.goto('/estate')
+  await page.goto('/')
   await expect(card).toBeHidden()
 })
 
@@ -90,18 +92,18 @@ test('it never lands on top of somebody else’s link', async ({ page }) => {
   await expect(page.getByTestId('tour-card')).toBeHidden()
 
   // Their own bare arrival still opens it.
-  await page.goto('/estate')
+  await page.goto('/')
   await expect(page.getByTestId('tour-card')).toBeVisible()
 })
 
 test('the position is in the URL, and the Tour survives a Workspace switch', async ({ page }) => {
-  await page.goto('/estate?tour=welcome&step=2')
+  await page.goto('/estate?tour=welcome&step=3')
   await expect(page.getByTestId('tour-card')).toHaveAttribute('data-step', 'shelf')
 
   // Next is a navigation, so the address bar says where the reader is and
   // the back button walks the Tour backwards.
   await page.getByTestId('tour-next').click()
-  await expect(page).toHaveURL(/step=3/)
+  await expect(page).toHaveURL(/step=4/)
   await expect(page.getByTestId('tour-card')).toHaveAttribute('data-step', 'bands')
   await page.goBack()
   await expect(page.getByTestId('tour-card')).toHaveAttribute('data-step', 'shelf')
@@ -125,7 +127,7 @@ test('a Tour nobody authored is no Tour, never an error', async ({ page }) => {
 })
 
 test('the product stays usable while a Tour points at it', async ({ page }) => {
-  await page.goto('/estate?tour=welcome&step=4')
+  await page.goto('/estate?tour=welcome&step=5')
   await expect(page.getByTestId('tour-card')).toHaveAttribute('data-step', 'lens')
 
   // The spotlight dims the surface and takes nothing from it: the control

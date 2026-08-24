@@ -28,12 +28,21 @@ import process from 'node:process'
  * tests/site.test.ts holds the two lists together: a Workspace added to
  * the chrome and not here would ship a URL that 404s.
  */
-export const WORKSPACE_ROUTES = ['/estate', '/topology', '/compose', '/catalogue']
+export const WORKSPACE_ROUTES = ['/', '/estate', '/topology', '/compose', '/catalogue']
 
-/** The documents an assembled site carries beyond the built bundle. */
+/**
+ * The documents an assembled site carries beyond the built bundle.
+ *
+ * Home is `/` (ADR-0056 §1), and it is the one Workspace with nothing to
+ * pre-render: `dist/index.html` is already the document that URL resolves
+ * to on every host. Left in the loop it would strip to the empty string and
+ * write a file literally named `.html`, which is a dotfile most hosts do not
+ * serve and none resolve `/` to.
+ */
 export function entryDocuments(routes = WORKSPACE_ROUTES) {
   const out = ['404.html']
   for (const route of routes) {
+    if (route === '/') continue
     const path = route.replace(/^\//, '')
     out.push(`${path}.html`, `${path}/index.html`)
   }

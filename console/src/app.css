@@ -2285,3 +2285,153 @@
   display: flex;
   flex-direction: column;
 }
+
+/* Home (ADR-0056): the landing, and a launchpad rather than a surface of
+   its own. Everything here reuses the vocabulary the Estate Workspace
+   already draws with (`.section-header`, `.section-summary`, the roll-up's
+   ratio and waived rules, `.count-door`), because Home shows the same
+   judgements those surfaces show and must not look like a second opinion.
+   No rule below re-decides padding, border, radius or size for a chip, a
+   button or a panel: those are the primitive layer's (ADR-0048 §1). */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-width: 78rem;
+}
+
+.home-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The section header stacks on Home: its summary is a sentence rather than
+   the shelf's short count, and baseline-aligning a sentence beside a
+   heading leaves the sentence's tail hanging off the rule. */
+.home-block .section-header {
+  display: block;
+  padding-bottom: var(--space-2);
+}
+
+.home-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* Estate standing: the root roll-up row, one tile per finding kind. Four
+   equal tiles, because the neutral count is a sibling of the three kinds
+   and not a footnote to them (ADR-0035, ADR-0042 §2). */
+.standing-kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+
+.standing-kind {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-2);
+  background: var(--colour-surface);
+}
+
+.standing-kind-label {
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+.standing-kind-ratio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-l);
+}
+
+.standing-kind.severity-violation .mark {
+  color: var(--severity-violation);
+}
+
+.standing-kind.severity-advisory .mark {
+  color: var(--severity-advisory);
+}
+
+/* The two bounded lists. Rows, not cards: a card at this size would read as
+   an ADR-0041 card face and carry none of its contract. */
+.home-tiers,
+.home-teams,
+.home-rollouts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.home-tier,
+.home-rollout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-rule-soft);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
+.home-team {
+  display: grid;
+  grid-template-columns: minmax(8rem, 14rem) auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-rule-soft);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
+.home-team-standing.severity-violation .mark {
+  color: var(--severity-violation);
+}
+
+.home-team-standing.severity-advisory .mark {
+  color: var(--severity-advisory);
+}
+
+.home-tier-counts,
+.home-team-counts,
+.home-rollout-reason {
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+  margin-left: auto;
+}
+
+.home-team-counts {
+  margin-left: 0;
+}
+
+/* A Rollout's reason is a sentence rather than a count, so it takes its own
+   line and starts at the left margin. Trailing the name like the Tier
+   counts do, it wraps, and `margin-left: auto` then right-aligns the
+   wrapped line against a left-aligned one above it. */
+.home-rollout-reason {
+  flex-basis: 100%;
+  margin-left: 0;
+}
+
+@media (max-width: 44rem) {
+  .home-team {
+    grid-template-columns: 1fr auto;
+  }
+
+  .home-team-counts {
+    grid-column: 1 / -1;
+  }
+}
