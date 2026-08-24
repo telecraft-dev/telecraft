@@ -1,0 +1,11 @@
+# A scope judged on no signals is judged on nothing.
+id: no-signals
+title: Covers no signals
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  window: 24h
+remediation: list the signals the scope is judged on

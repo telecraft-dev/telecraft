@@ -1,0 +1,13 @@
+# head is the only tracking mode there is (ADR-0026 §1). An invented one is
+# refused rather than read as head.
+id: unknown-track-mode
+title: Invents a tracking mode
+version: 1
+owner: platform-observability
+schema_conformance:
+  track: latest
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+remediation: write track head, or pin a version

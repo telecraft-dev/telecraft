@@ -1,0 +1,16 @@
+# placement: live is carried in the model and refused in the loader: the
+# collection-time tap it reads findings from is not built, so the
+# requirement would evaluate nothing and every Service would read clean
+# (ADR-0034 §6).
+id: live-placement
+title: Asks for a placement that is not implemented
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+placement: live
+remediation: write placement landed until the tap lands

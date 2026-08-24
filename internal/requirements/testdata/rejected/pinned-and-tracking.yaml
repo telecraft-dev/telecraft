@@ -1,0 +1,14 @@
+# A reference that both pins a version and tracks head. The two contradict
+# each other, so neither is what the author meant.
+id: pinned-and-tracking
+title: Pins a version and tracks head at once
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  track: head
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+remediation: choose a pin or tracking

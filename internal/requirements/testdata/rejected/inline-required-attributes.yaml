@@ -1,0 +1,15 @@
+# The same copy under the other name a signal assertion uses for it. Both
+# spellings are refused, and for the same stated reason (ADR-0034 §2).
+id: inline-required-attributes
+title: Copies the registry under the signal assertion's field name
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+  required_attributes:
+    - db.namespace
+remediation: reference the registry group instead

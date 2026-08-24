@@ -1,0 +1,13 @@
+# A placement outside the two the model knows.
+id: unknown-placement
+title: Invents a placement
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+placement: backend
+remediation: write placement landed

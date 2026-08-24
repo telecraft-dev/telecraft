@@ -1,0 +1,52 @@
+# Schema conformance requirements (ADR-0034 §2).
+#
+# These assert nothing about collector config and everything about the shape
+# of what arrived, judged against the Schema Registry. Each one is a
+# reference into a pinned registry version: the registry says which
+# attributes the named groups demand and at which level, and the requirement
+# says which scope, which signals and which window. There is deliberately no
+# attribute list here to fall out of step with it.
+
+- id: db-spans-conform
+  title: Database spans carry what the registry demands
+  description: >
+    Spans describing a database call carry the attributes the estate's own
+    registry declares on span.db.client, at the levels it declares them.
+    Pinned rather than tracking: tightening a level in the registry is a
+    change every Service's score feels, so it is adopted deliberately.
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  schema_conformance:
+    registry_version: v1.4.0
+    scope:
+      groups: [span.db.client]
+    signals: [traces]
+    window: 24h
+  remediation: >
+    Add the missing attributes to the database instrumentation, or upgrade
+    the instrumentation library to a version that sets them. The registry
+    group span.db.client names each attribute and the level it is demanded
+    at; a deprecated one carries the name it was renamed to.
+
+- id: enterprise-attributes-tracked
+  title: The estate's own attributes are carried on every signal
+  description: >
+    The enterprise namespace is the estate's own vocabulary rather than
+    upstream's, so it moves on the estate's own schedule and this reference
+    tracks head instead of pinning: adopting a change here is an internal
+    decision, not somebody else's release.
+  version: 1
+  owner: platform-observability
+  schema_conformance:
+    track: head
+    scope:
+      namespaces: [enterprise]
+    signals: [logs, traces]
+    window: 6h
+  placement: landed
+  remediation: >
+    Set the enterprise attributes in the SDK's resource, or upsert them with
+    a resource processor on the collector serving this Service. The registry
+    group registry.enterprise names each one and its allowed values.

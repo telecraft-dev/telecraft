@@ -1,0 +1,14 @@
+# A scope naming a group the pinned registry version does not declare,
+# which is what a typo looks like. It demands nothing, so it passes
+# everything, so it is refused.
+id: unknown-group
+title: Demands a group the registry does not declare
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.clietn]
+  signals: [traces]
+  window: 24h
+remediation: name a group the registry declares

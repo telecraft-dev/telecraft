@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 )
 
 // Load reads a requirements library from a directory of YAML files, one
@@ -23,7 +25,18 @@ import (
 // document, a duplicate ID or a missing mandatory field is a load error
 // naming the file (and, for field errors, the field), and the returned
 // Library is empty, never partially loaded.
-func Load(dir string) (Library, error) {
+//
+// A library holding a schema-conformance requirement needs
+// WithSchemaRegistries to name the directory the Schema Registry versions
+// were installed into, because a reference into a registry that is not there
+// cannot be validated, and an unvalidated reference is a requirement that
+// evaluates nothing.
+func Load(dir string, opts ...Option) (Library, error) {
+	var regs registries
+	for _, opt := range opts {
+		opt(&regs)
+	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -71,9 +84,15 @@ func Load(dir string) (Library, error) {
 				// The upstream semantic-conventions default (ADR-0009).
 				r.Level = Recommended
 			}
+			if r.Schema != nil && r.Placement == "" {
+				// Backend-side is the reading the product exists for, so
+				// it is what a requirement gets when it says nothing
+				// (ADR-0034 §6).
+				r.Placement = Landed
+			}
 			definedIn[r.ID] = path
 			lib.Requirements[r.ID] = r
-			problems = append(problems, validate(path, r)...)
+			problems = append(problems, validate(path, r, &regs)...)
 		}
 	}
 
@@ -128,7 +147,7 @@ func loadFile(path string) ([]Requirement, error) {
 
 // validate collects everything wrong with one loaded requirement. Each
 // message names the file and the requirement so the fix is a one-file edit.
-func validate(path string, r Requirement) []string {
+func validate(path string, r Requirement, regs *registries) []string {
 	ctx := fmt.Sprintf("%s: requirement %q", path, r.ID)
 	var p []string
 
@@ -147,8 +166,15 @@ func validate(path string, r Requirement) []string {
 		p = append(p, fmt.Sprintf("%s: unknown requirement_level %q, want one of required, conditionally_required, recommended, or opt_in", ctx, r.Level))
 	}
 
-	if r.Config == nil && r.Signal == nil {
-		p = append(p, ctx+" asserts nothing: it needs a config assertion, a signal assertion, or both")
+	if r.Config == nil && r.Signal == nil && r.Schema == nil {
+		p = append(p, ctx+" asserts nothing: it needs a config assertion, a signal assertion, both, or a schema_conformance assertion")
+	}
+	if r.Schema != nil && (r.Config != nil || r.Signal != nil) {
+		// The Effective half of the outcome cross is not applicable to
+		// schema conformance: instrumentation is invisible to collector
+		// config, and ADR-0034 §3 declines to grow an outcome for the
+		// combination. Two requirements say the two things honestly.
+		p = append(p, ctx+" asserts schema conformance alongside a config or signal assertion. Schema conformance is judged against the Schema Registry alone, so split the two apart into their own requirements")
 	}
 	if r.Config != nil && r.Config.Empty() {
 		p = append(p, ctx+" has an empty config assertion")
@@ -173,6 +199,11 @@ func validate(path string, r Requirement) []string {
 		}
 	}
 
+	p = append(p, placementProblems(ctx, r)...)
+	if r.Schema != nil {
+		p = append(p, schemaProblems(ctx, *r.Schema, regs)...)
+	}
+
 	seenEnv := map[string]bool{}
 	for _, env := range r.Environments {
 		if env == "" {
@@ -186,4 +217,137 @@ func validate(path string, r Requirement) []string {
 	}
 
 	return p
+}
+
+// placementProblems collects everything wrong with a requirement's
+// placement. Placement is carried now so that the requirement shape does not
+// change again when the live tap lands (ADR-0034 §6), and `live` is refused
+// meanwhile: the tap is not built, so a live requirement would evaluate
+// nothing and a Service failing it would read as clean.
+func placementProblems(ctx string, r Requirement) []string {
+	var p []string
+	switch {
+	case r.Placement == "":
+	case r.Schema == nil:
+		p = append(p, fmt.Sprintf("%s sets placement %q, but only a schema_conformance requirement has a placement", ctx, r.Placement))
+	case r.Placement == Live:
+		p = append(p, ctx+" asks for placement: live, which is not implemented yet. The collection-time tap it reads findings from is not built, so the requirement would evaluate nothing; write placement: landed until it is")
+	case !r.Placement.Valid():
+		p = append(p, fmt.Sprintf("%s: unknown placement %q, want one of landed or live", ctx, r.Placement))
+	}
+	return p
+}
+
+// schemaProblems collects everything wrong with one schema-conformance
+// assertion, including whether its Schema Registry reference resolves.
+func schemaProblems(ctx string, s SchemaAssertion, regs *registries) []string {
+	var p []string
+
+	// The reference-not-a-copy rule, first and by name. An author who
+	// wrote an attribute list wants to know why the list is refused, not
+	// which key the decoder failed to find.
+	for _, field := range []struct {
+		name string
+		list []string
+	}{{"attributes", s.Attributes}, {"required_attributes", s.RequiredAttributes}} {
+		if len(field.list) > 0 {
+			p = append(p, fmt.Sprintf("%s lists %s inline under schema_conformance. A schema_conformance requirement is a reference into the Schema Registry and never a copy of it, because a copy drifts: name the groups or namespaces it demands under scope, and let the registry say which attributes they carry and at which level", ctx, field.name))
+		}
+	}
+
+	switch s.Track {
+	case "", TrackHead:
+	default:
+		p = append(p, fmt.Sprintf("%s: track %q is not a tracking mode. The only value is head", ctx, s.Track))
+	}
+	switch {
+	case s.RegistryVersion != "" && s.Tracking():
+		p = append(p, ctx+" both pins a Schema Registry version and tracks head. Choose one or the other")
+	case s.RegistryVersion == "" && !s.Tracking():
+		p = append(p, ctx+" names no Schema Registry version. A registry reference pins a version by default, so write registry_version: <ref>, or set track: head to judge against whichever version is active")
+	}
+
+	if s.Scope.Empty() {
+		p = append(p, ctx+" has an empty schema_conformance scope. Name the registry groups or the attribute namespaces it demands: an empty scope would demand the whole registry of every Service by omission")
+	}
+	if len(s.Signals) == 0 {
+		p = append(p, ctx+" covers no signals. List the signals the scope is judged on, such as [traces]")
+	}
+	seenSignal := map[SignalKind]bool{}
+	for _, kind := range s.Signals {
+		if !kind.Valid() {
+			p = append(p, fmt.Sprintf("%s: unknown signal kind %q under schema_conformance, want one of logs, metrics, or traces", ctx, kind))
+			continue
+		}
+		if seenSignal[kind] {
+			p = append(p, fmt.Sprintf("%s lists signal %q twice under schema_conformance", ctx, kind))
+		}
+		seenSignal[kind] = true
+	}
+	if s.Window <= 0 {
+		p = append(p, ctx+" needs a positive schema_conformance window")
+	}
+
+	if s.Tracking() {
+		if why := regs.head(); why != "" {
+			p = append(p, ctx+" "+why)
+		}
+		// A tracking reference names no version, so there is no version to
+		// resolve the scope against. Which version is active is decided at
+		// activation, not here.
+		return p
+	}
+	if s.RegistryVersion == "" {
+		return p
+	}
+	reg, why := regs.version(s.RegistryVersion)
+	if why != "" {
+		p = append(p, ctx+" "+why)
+		return p
+	}
+	return append(p, scopeProblems(ctx, s, reg)...)
+}
+
+// scopeProblems checks the demanded scope against the pinned Schema Registry
+// version. A group id or a namespace that names nothing in the registry
+// demands nothing, and a requirement that demands nothing passes every
+// Service: the same silent leniency an unresolvable reference would be.
+func scopeProblems(ctx string, s SchemaAssertion, reg *schemaregistry.Registry) []string {
+	var p []string
+	for _, id := range s.Scope.Groups {
+		if id == "" {
+			p = append(p, ctx+" demands an empty group id")
+			continue
+		}
+		if _, ok := reg.Group(id); !ok {
+			p = append(p, fmt.Sprintf("%s demands group %q, which Schema Registry version %s does not declare", ctx, id, s.RegistryVersion))
+		}
+	}
+	for _, ns := range s.Scope.Namespaces {
+		if ns == "" {
+			p = append(p, ctx+" demands an empty namespace")
+			continue
+		}
+		if !carriesNamespace(reg, ns) {
+			p = append(p, fmt.Sprintf("%s demands namespace %q, which Schema Registry version %s carries no attribute in", ctx, ns, s.RegistryVersion))
+		}
+	}
+	return p
+}
+
+// carriesNamespace reports whether any attribute in the registry sits under
+// the namespace, whether the registry defines that attribute or references
+// one a dependency registry defines. A reference counts: a group demanding
+// `server.address` demands it whether or not this registry is where the
+// attribute was declared.
+func carriesNamespace(reg *schemaregistry.Registry, ns string) bool {
+	prefix := ns + "."
+	for _, g := range reg.Groups {
+		for _, a := range g.Attributes {
+			if key := a.Key(); key == ns || strings.HasPrefix(key, prefix) {
+				return true
+			}
+		}
+	}
+	return false
 }

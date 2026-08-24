@@ -1,0 +1,7 @@
+# The refusal that predates schema conformance, held in place: a third leg
+# in the model must not turn "asserts nothing" into "asserts something".
+id: asserts-nothing
+title: Asserts nothing at all
+version: 1
+owner: platform-observability
+remediation: assert something

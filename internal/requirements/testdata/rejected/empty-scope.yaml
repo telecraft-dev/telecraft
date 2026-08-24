@@ -1,0 +1,11 @@
+# A schema_conformance assertion with no scope at all would demand the whole
+# registry of every Service by omission.
+id: empty-scope
+title: Demands nothing in particular
+version: 1
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  signals: [traces]
+  window: 24h
+remediation: name the groups or namespaces demanded

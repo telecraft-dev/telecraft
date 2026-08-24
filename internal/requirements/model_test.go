@@ -40,6 +40,7 @@ func TestNoQueryLanguageFieldIsRepresentable(t *testing.T) {
 func TestKindIsDerivedFromTheAssertionsPresent(t *testing.T) {
 	cfg := &ConfigAssertion{HasReceiver: []string{"otlp"}}
 	sig := &SignalAssertion{Kind: Logs}
+	sch := &SchemaAssertion{RegistryVersion: "v1.4.0"}
 
 	cases := []struct {
 		req  Requirement
@@ -48,6 +49,12 @@ func TestKindIsDerivedFromTheAssertionsPresent(t *testing.T) {
 		{Requirement{Config: cfg}, KindConfig},
 		{Requirement{Signal: sig}, KindSignal},
 		{Requirement{Config: cfg, Signal: sig}, KindConfigAndSignal},
+		{Requirement{Schema: sch}, KindSchemaConformance},
+		// Unreachable on a loaded requirement, and reported as no kind
+		// rather than falling through to one the requirement does not
+		// assert: the fallthrough that used to answer signal here would
+		// now be answering for a leg it never saw.
+		{Requirement{}, ""},
 	}
 	for _, tc := range cases {
 		if got := tc.req.Kind(); got != tc.want {
