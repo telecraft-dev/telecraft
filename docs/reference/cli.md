@@ -6,14 +6,15 @@ order: 2
 
 # Command line reference
 
-Telecraft ships three binaries: `telecraft`, the main command line;
-`catalogue-import`, the Catalogue import pipeline; and `blueprint-check`, the
-strict Blueprint and Component loader. All three build from this repository
-with the Go toolchain:
+Telecraft ships four binaries: `telecraft`, the main command line;
+`catalogue-import` and `schema-registry-import`, the two substrates of the one
+import pipeline; and `blueprint-check`, the strict Blueprint and Component
+loader. All four build from this repository with the Go toolchain:
 
 ```sh
 go build ./cmd/telecraft
 go build ./cmd/catalogue-import
+go build ./cmd/schema-registry-import
 go build ./cmd/blueprint-check
 ```
 
@@ -108,9 +109,17 @@ count.
 `-source` and `-catalogue` go together and turn on `library_drift` detection
 over the authored estate. Supplying one without the other is a usage error.
 
+`-schema-registries` names the directory a `schema_conformance` reference
+resolves against, holding one `schema-registry-<ref>.json` per imported
+version. A library that references a version and is loaded without the
+directory is a load error and exit `2`, never a run that scored every Service
+against a floor nobody checked. See
+[Schema conformance assertions](requirements.md#schema-conformance-assertions).
+
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `-library` | string | none, required | Requirements library directory. |
+| `-schema-registries` | string | empty | Directory of installed Schema Registry artefacts. A library holding a `schema_conformance` Requirement needs it; one that holds none is unaffected. |
 | `-estate` | string | none, required | Estate file: services and their per-environment Effective reading. |
 | `-exemptions` | string | empty | Exemptions directory. Empty means no authored waivers. |
 | `-ownership` | string | empty | Ownership directory holding `teams.yaml` and the authored objects. Needed only to resolve team-scoped exemptions. |
@@ -251,6 +260,7 @@ can't hold: the collector estate, the arrivals, and each Tier's flow.
 | `-commit` | string | none, required | Commit SHA the snapshot is taken at. |
 | `-team` | string | none, required | The team of the user the snapshot presents. The console's shelf starts on this team's Tiers. |
 | `-catalogues` | string | the directory holding `-catalogue` | Directory of installed Catalogue artefacts. |
+| `-schema-registries` | string | empty | Directory of installed Schema Registry artefacts, which a `schema_conformance` reference resolves against. |
 | `-exemptions` | string | empty | Exemptions directory. |
 | `-repository` | string | empty | Estate repository name, shown as the source link. |
 | `-user` | string | `demo-user` | Id of the user the snapshot presents as signed in. |
@@ -354,6 +364,41 @@ its `.git` still imports; the artefact then records no source commit.
 
 ```sh
 catalogue-import -tag v0.158.0
+```
+
+## schema-registry-import
+
+Runs the Schema Registry import pipeline, the Catalogue's sibling on the same
+pipeline. It fetches an adopter's custom registry at a pinned ref, reads every
+model file out of it, and writes one atomic, versioned Schema Registry
+artefact plus a coverage report of what was found, what was left out, and
+which references come from a dependency registry that isn't in the tree.
+
+The fetch is a sparse, depth-1 checkout of only the YAML into a temporary
+directory, removed afterwards. Re-running against the same ref is idempotent;
+a different ref writes a new artefact beside the old one. The import reads
+registry content out of git and runs no registry toolchain.
+
+The directory this writes to is the one a `schema_conformance` Requirement's
+reference resolves against: see
+[Schema conformance assertions](requirements.md#schema-conformance-assertions).
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-ref` | string | none, required | Registry version to import: a tag or branch in the registry repository. |
+| `-repo` | string | none, required | Registry repository URL, recorded as the artefact's provenance. |
+| `-out` | string | `schema-registries` | Directory the versioned artefact is written to. |
+| `-path` | string | empty | Registry root within the repository, where the registry manifest lives. |
+| `-source` | string | empty | Import an existing checkout instead of fetching. |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The artefact was written, or already held this import byte for byte. |
+| `1` | A required flag was missing, or the fetch, import, or write failed. |
+| `2` | An unknown flag was given. |
+
+```sh
+schema-registry-import -repo https://git.example/registry -ref v1.4.0
 ```
 
 ## blueprint-check
