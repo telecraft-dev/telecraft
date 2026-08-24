@@ -2,11 +2,13 @@ package conformance
 
 import (
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
@@ -99,14 +101,24 @@ func TestGatherSchemaReadsNothingWithoutASchemaRequirement(t *testing.T) {
 	}}
 
 	reads := 0
-	ev := GatherSchema(lib, "production", func(SchemaReading) telemetry.AttributeNames {
-		reads++
-		return telemetry.AttributeNames{Known: true}
+	ev := GatherSchema(lib, "production", SchemaSource{
+		Names: func(SchemaReading) telemetry.AttributeNames {
+			reads++
+			return telemetry.AttributeNames{Known: true}
+		},
+		Groups: func(SchemaReading) telemetry.GroupNames {
+			reads++
+			return telemetry.GroupNames{Known: true}
+		},
+		Values: func(SchemaValueReading) telemetry.DistinctValues {
+			reads++
+			return telemetry.DistinctValues{Known: true}
+		},
 	})
 	if reads != 0 {
-		t.Errorf("took %d attribute-name readings for a library that asks for none", reads)
+		t.Errorf("took %d readings for a library that asks for none", reads)
 	}
-	if len(ev.Names) != 0 || len(ev.Versions) != 0 {
+	if len(ev.Names) != 0 || len(ev.Groups) != 0 || len(ev.Values) != 0 || len(ev.Versions) != 0 {
 		t.Errorf("gathered evidence %+v, want none", ev)
 	}
 }
@@ -118,9 +130,11 @@ func TestGatherSchemaFilesEachReadingUnderThePlannedKey(t *testing.T) {
 	lib := fixtureLibrary(t)
 
 	asked := map[SchemaReading]bool{}
-	ev := GatherSchema(lib, "production", func(r SchemaReading) telemetry.AttributeNames {
-		asked[r] = true
-		return telemetry.AttributeNames{Known: true, Window: r.Window, Names: []string{string(r.Kind)}}
+	ev := GatherSchema(lib, "production", SchemaSource{
+		Names: func(r SchemaReading) telemetry.AttributeNames {
+			asked[r] = true
+			return telemetry.AttributeNames{Known: true, Window: r.Window, Names: []string{string(r.Kind)}}
+		},
 	})
 
 	if ev.Versions[snapshotRef] == nil {
@@ -185,11 +199,6 @@ func TestWindowsCoverSignalAndSchemaAssertions(t *testing.T) {
 // evidence.
 func TestASchemaRequirementJudgedAgainstAReadingProducesARealVerdict(t *testing.T) {
 	lib := fixtureLibrary(t)
-	names := func(inUse ...string) func(SchemaReading) telemetry.AttributeNames {
-		return func(r SchemaReading) telemetry.AttributeNames {
-			return telemetry.AttributeNames{Known: true, Window: r.Window, Names: inUse}
-		}
-	}
 	arrived := map[time.Duration]telemetry.Observed{}
 	for _, w := range Windows(lib, "production") {
 		arrived[w] = telemetry.Observed{Window: w, Signals: map[requirements.SignalKind]telemetry.SignalObservation{
@@ -211,7 +220,7 @@ func TestASchemaRequirementJudgedAgainstAReadingProducesARealVerdict(t *testing.
 		t.Run(name, func(t *testing.T) {
 			ev := Evidence{
 				Observed: arrived,
-				Schema:   GatherSchema(lib, "production", names(tc.inUse...)),
+				Schema:   GatherSchema(lib, "production", conformingSource(t, tc.inUse...)),
 			}
 			v := Evaluate(Row{Service: "checkout", Environment: "production"}, lib, ev, time.Now())
 
@@ -232,9 +241,7 @@ func TestASchemaRequirementOverASilentSignalIsNotDelivered(t *testing.T) {
 	lib := fixtureLibrary(t)
 	ev := Evidence{
 		Observed: map[time.Duration]telemetry.Observed{},
-		Schema: GatherSchema(lib, "production", func(r SchemaReading) telemetry.AttributeNames {
-			return telemetry.AttributeNames{Known: true, Window: r.Window}
-		}),
+		Schema:   GatherSchema(lib, "production", conformingSource(t)),
 	}
 	for _, w := range Windows(lib, "production") {
 		ev.Observed[w] = telemetry.Observed{Window: w, Signals: map[requirements.SignalKind]telemetry.SignalObservation{
@@ -259,9 +266,7 @@ func TestASchemaRequirementOverASilentSignalIsNotDelivered(t *testing.T) {
 // active is an activation decision and no load makes it.
 func TestAReferenceNothingResolvedStaysUnknownWithACause(t *testing.T) {
 	lib := fixtureLibrary(t)
-	ev := Evidence{Schema: GatherSchema(lib, "production", func(r SchemaReading) telemetry.AttributeNames {
-		return telemetry.AttributeNames{Known: true, Window: r.Window, Names: conformingSpan()}
-	})}
+	ev := Evidence{Schema: GatherSchema(lib, "production", conformingSource(t, conformingSpan()...))}
 
 	v := Evaluate(Row{Service: "checkout", Environment: "production"}, lib, ev, time.Now())
 	f, found := findingFor(v, "enterprise-attributes-tracked")
@@ -277,6 +282,41 @@ func TestAReferenceNothingResolvedStaysUnknownWithACause(t *testing.T) {
 	if f.Remediation == "" {
 		t.Error("an unknown verdict with no fix is a complaint")
 	}
+}
+
+// conformingSource answers every planned reading the way a backend carrying
+// exactly the named attributes would: those names in use, every registry
+// group arrived, and every enum carrying exactly what the registry declares.
+// It is the shape a caller has to answer in, all three readings together, so
+// a test that only declared names would leave the value readings unknown and
+// the verdict with them.
+func conformingSource(t *testing.T, inUse ...string) SchemaSource {
+	t.Helper()
+	reg := registry(t)
+	return SchemaSource{
+		Names: func(r SchemaReading) telemetry.AttributeNames {
+			return telemetry.AttributeNames{Known: true, Window: r.Window, Names: inUse}
+		},
+		Groups: func(r SchemaReading) telemetry.GroupNames {
+			return telemetry.GroupNames{Known: true, Window: r.Window, Key: telemetry.GroupKeyFor(r.Kind), Names: groupNamesOf(reg, r.Kind)}
+		},
+		Values: func(r SchemaValueReading) telemetry.DistinctValues {
+			return conformingValues(r.Attribute, declaredIn(reg, r.Attribute))
+		},
+	}
+}
+
+// groupNamesOf is every grouping-key value the registry declares for one
+// signal: the reading a backend carrying all of them would give.
+func groupNamesOf(reg *schemaregistry.Registry, kind requirements.SignalKind) []string {
+	var out []string
+	for _, g := range reg.Groups {
+		if k, name, ok := groupKeyValue(g); ok && k == kind {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // findingFor returns one requirement's violation-grade finding: the one

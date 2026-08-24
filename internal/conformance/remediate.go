@@ -33,6 +33,85 @@ const instrumentationFix = "Fixing this is an instrumentation change in the serv
 // the service may already have.
 const truncatedReading = "The attribute-name reading was truncated, so an attribute it does not name may still be in use. Widen the sample the provider reads, or narrow the window, and judge this again."
 
+// unreadValues is the fix when the value set itself could not be read, or
+// could not be read whole. A clipped set has its violations exactly where it
+// stopped looking, so the remediation asks for a better reading rather than
+// for instrumentation that may already be right.
+const unreadValues = "The value-set reading could not prove the enum clean: a reading nobody could take says nothing, and a clipped one cannot prove the values it does name are the only ones. Raise what the provider can read, or narrow the window, and judge this again."
+
+// enumDetail says what one enum reading found, in the reading's own terms:
+// the attribute, the values nobody declared, and the set the registry does
+// declare, so the finding can be read without opening the registry.
+func enumDetail(breached []enumVerdict) []string {
+	out := make([]string, 0, len(breached))
+	for _, v := range breached {
+		out = append(out, fmt.Sprintf("attribute %q carries %s, which %s does not declare; the declared values are %s",
+			v.Attribute, quoted(v.Undeclared), declaringGroup(v), quoted(v.Declared)))
+	}
+	return out
+}
+
+// enumRemediation writes the fix for one level's enum breaches. It names both
+// ways out, because the registry is the adopter's own: either the value is
+// wrong and the instrumentation changes, or the value is right and the
+// registry has not caught up with it.
+//
+// Unlike a miss, this carries the instrumentation sentence at every level
+// including opt_in. A miss at opt_in is an offer nobody took up, so there is
+// nothing to fix and nobody to send; a value nobody declared is a real
+// mismatch between the telemetry and the registry whatever level the
+// attribute sits at.
+func enumRemediation(level schemaregistry.Level, breached []enumVerdict) string {
+	if len(breached) == 0 {
+		return ""
+	}
+	clauses := make([]string, 0, len(breached))
+	for _, v := range breached {
+		clauses = append(clauses, fmt.Sprintf("%q carries %s where %s declares %s",
+			v.Attribute, quoted(v.Undeclared), declaringGroup(v), quoted(v.Declared)))
+	}
+	lead := fmt.Sprintf("The Schema Registry declares these attributes as enums at %s, and the telemetry carries values it does not declare: %s.", level, strings.Join(clauses, "; "))
+	return strings.Join([]string{
+		lead,
+		"Either stop emitting the undeclared values, or add them as members in the Schema Registry if they are right.",
+		instrumentationFix,
+	}, " ")
+}
+
+// declaringGroup names where the members are declared, which is not always
+// the group that demanded the attribute: a signal group references an
+// attribute an attribute_group declares, and the values live with the
+// declaration.
+func declaringGroup(v enumVerdict) string {
+	if v.DeclaredIn == "" {
+		return "the Schema Registry"
+	}
+	return "registry group " + v.DeclaredIn
+}
+
+// quoted renders a value set, quoted and with the serial comma.
+func quoted(values []string) string {
+	items := make([]string, 0, len(values))
+	for _, v := range values {
+		items = append(items, fmt.Sprintf("%q", v))
+	}
+	return joinAnd(items)
+}
+
+// joinFixes joins the fixes one finding's checks produced into one paragraph,
+// dropping the empty ones. A finding carries one remediation string, and a
+// level that both misses an attribute and carries an undeclared value has two
+// things to say about it.
+func joinFixes(fixes []string) string {
+	var out []string
+	for _, f := range fixes {
+		if f != "" {
+			out = append(out, f)
+		}
+	}
+	return strings.Join(out, " ")
+}
+
 // schemaRemediation writes the fix for one level's misses. Nothing in it is
 // authored beside the requirement: the attributes, their declared types,
 // the groups that demanded them and any deprecation notice are all read out

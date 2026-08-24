@@ -13,9 +13,15 @@ import (
 )
 
 // SchemaReading keys one Observed reading a schema-conformance requirement
-// needs: the attribute names in use for one signal over one window. A
+// needs: the attribute names in use for one signal over one window, and the
+// grouping-key values that signal carried over the same window. A
 // requirement covering two signals needs two, and two requirements covering
 // the same signal over the same window share one.
+//
+// The two readings share a key because they are the same ask of the same
+// window: one names the attributes, the other names the groups. Keeping them
+// under one key is what stops a caller filing a group reading for one window
+// beside an attribute reading for another and judging the two together.
 type SchemaReading struct {
 	Kind   requirements.SignalKind
 	Window time.Duration
@@ -23,6 +29,25 @@ type SchemaReading struct {
 
 func (r SchemaReading) String() string {
 	return fmt.Sprintf("%s over %s", r.Kind, r.Window)
+}
+
+// SchemaValueReading keys one Observed value-set reading: the distinct values
+// one attribute carries for one signal over one window (ADR-0034 §4).
+//
+// It names the attribute because a value set is read per attribute by
+// contract: the seam's DistinctValues answers for one attribute at a time,
+// and a key that did not say which would file two answers under one name.
+// Only attributes the Schema Registry declares as enums are ever read this
+// way, which is the caller-side constraint ADR-0034 §4 puts on the primitive
+// and this package is the caller.
+type SchemaValueReading struct {
+	Kind      requirements.SignalKind
+	Window    time.Duration
+	Attribute string
+}
+
+func (r SchemaValueReading) String() string {
+	return fmt.Sprintf("%q on %s over %s", r.Attribute, r.Kind, r.Window)
 }
 
 // SchemaEvidence is the evidence a schema-conformance requirement is judged
@@ -46,6 +71,40 @@ type SchemaEvidence struct {
 	// missing reading is unknown, never an empty one: "we did not look" and
 	// "nothing is there" are different answers (ADR-0008).
 	Names map[SchemaReading]telemetry.AttributeNames
+
+	// Groups holds the grouping-key reading per signal and window: which
+	// spans, metrics or events arrived (ADR-0034 §4). It is what tells a
+	// group that never arrived from a group that arrived missing an
+	// attribute, which one flat attribute reading across a scope cannot.
+	// A missing reading is unknown for the groups it would have answered
+	// for, never an empty set.
+	Groups map[SchemaReading]telemetry.GroupNames
+
+	// Values holds the value-set reading per enum attribute, signal and
+	// window. It is gathered only for attributes the registry declares as
+	// enums and only where the attribute-name reading found the attribute
+	// in use, because a value set for an attribute nobody sets is a round
+	// trip that answers a question the presence check has already
+	// answered.
+	Values map[SchemaValueReading]telemetry.DistinctValues
+}
+
+// InUse reports whether the gathered attribute-name reading for one signal
+// and window found an attribute in use. A reading nobody took and a reading
+// nobody could take both answer false, which is right for what this is for:
+// deciding whether to spend a round trip reading that attribute's values.
+// Neither is read as an absence anywhere a verdict is drawn from it.
+func (e SchemaEvidence) InUse(key SchemaReading, attribute string) bool {
+	names, have := e.Names[key]
+	if !have || !names.Known {
+		return false
+	}
+	for _, n := range names.Names {
+		if n == attribute {
+			return true
+		}
+	}
+	return false
 }
 
 // SchemaReadings returns the attribute-name readings the schema-conformance
@@ -86,22 +145,161 @@ func SchemaReadings(lib requirements.Library, environment string) []SchemaReadin
 	return out
 }
 
+// SchemaGroupReadings returns the grouping-key readings the
+// schema-conformance requirements applying in one Environment ask for: one
+// per signal and window on which some requirement's scope reaches a group the
+// registry says which grouping-key value to look for.
+//
+// It is a subset of SchemaReadings rather than the same plan, because a
+// grouping-key reading nobody can use is a round trip nobody should pay for.
+// A scope of attribute groups and span groups locates no group in a reading
+// (see groupKeyValue), so asking for one would buy nothing.
+func SchemaGroupReadings(lib requirements.Library, environment string) []SchemaReading {
+	seen := map[SchemaReading]bool{}
+	var out []SchemaReading
+	forEachScopedGroup(lib, environment, func(a requirements.SchemaAssertion, s scoped) {
+		kind, _, locatable := groupKeyValue(s.Group)
+		if !locatable || !a.Covers(kind) {
+			return
+		}
+		key := SchemaReading{Kind: kind, Window: a.Window.Std()}
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, key)
+	})
+	sortReadings(out)
+	return out
+}
+
+// SchemaValueReadings returns the value-set readings the schema-conformance
+// requirements applying in one Environment ask for: one per enum-declared
+// attribute, per covered signal and window, and only where inUse says the
+// attribute-name reading for that signal and window found the attribute.
+//
+// The presence gate is what bounds the cost. Left ungated, this plan is one
+// round trip per enum attribute in scope per covered signal, paid on every
+// row whether the service sets the attribute or not. Gated, a service that
+// sets none of them pays nothing, and a service that sets them pays one
+// round trip each: the readings bought are exactly the ones a verdict is
+// drawn from. Nothing is lost by the gate, because an attribute the reading
+// did not find is a presence question rather than a value question, and the
+// presence check has already answered it (ADR-0034 §3).
+func SchemaValueReadings(lib requirements.Library, environment string, inUse func(SchemaReading, string) bool) []SchemaValueReading {
+	seen := map[SchemaValueReading]bool{}
+	var out []SchemaValueReading
+	for _, req := range lib.Sorted() {
+		if req.Schema == nil || !req.AppliesTo(environment) {
+			continue
+		}
+		a := *req.Schema
+		reg, ok := lib.SchemaRegistries[registryKey(a)]
+		if !ok || reg == nil {
+			continue
+		}
+		for _, d := range demandsOf(reg, a.Scope) {
+			if len(d.Members) == 0 {
+				continue
+			}
+			for _, kind := range telemetry.Signals() {
+				if !a.Covers(kind) {
+					continue
+				}
+				window := a.Window.Std()
+				if inUse != nil && !inUse(SchemaReading{Kind: kind, Window: window}, d.Attribute) {
+					continue
+				}
+				key := SchemaValueReading{Kind: kind, Window: window, Attribute: d.Attribute}
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				out = append(out, key)
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Window != out[j].Window {
+			return out[i].Window < out[j].Window
+		}
+		if out[i].Kind != out[j].Kind {
+			return out[i].Kind < out[j].Kind
+		}
+		return out[i].Attribute < out[j].Attribute
+	})
+	return out
+}
+
+// forEachScopedGroup walks every registry group the schema-conformance
+// requirements applying in one Environment reach. A reference whose version
+// the library did not resolve reaches nothing: what its scope demands is not
+// known, which the evaluator reports as unknown rather than guessing at here.
+func forEachScopedGroup(lib requirements.Library, environment string, visit func(requirements.SchemaAssertion, scoped)) {
+	for _, req := range lib.Sorted() {
+		if req.Schema == nil || !req.AppliesTo(environment) {
+			continue
+		}
+		a := *req.Schema
+		reg, ok := lib.SchemaRegistries[registryKey(a)]
+		if !ok || reg == nil {
+			continue
+		}
+		for _, s := range scopedGroups(reg, a.Scope) {
+			visit(a, s)
+		}
+	}
+}
+
+// sortReadings puts a plan in the stable order every caller files it under.
+func sortReadings(out []SchemaReading) {
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Window != out[j].Window {
+			return out[i].Window < out[j].Window
+		}
+		return out[i].Kind < out[j].Kind
+	})
+}
+
+// SchemaSource is where gathered evidence comes from: one function per kind
+// of planned reading, each taking the key it answers for.
+//
+// It is a set of functions over planned keys rather than a TelemetryProvider,
+// so the plan and the seam stay apart: a caller reading from a live backend
+// and one replaying a declared reading gather the same evidence through the
+// same plan, and neither can quietly answer a key it was not asked for. A nil
+// function takes no readings of its kind, and the checks that would have read
+// them are unknown rather than passing.
+type SchemaSource struct {
+	// Names reads the attribute names in use for one signal and window.
+	Names func(SchemaReading) telemetry.AttributeNames
+
+	// Groups reads the grouping-key values one signal carried, which is
+	// what says which of the registry's groups arrived (ADR-0034 §4).
+	Groups func(SchemaReading) telemetry.GroupNames
+
+	// Values reads the distinct values one enum-declared attribute
+	// carries, hard-capped and reporting its own truncation.
+	Values func(SchemaValueReading) telemetry.DistinctValues
+}
+
 // GatherSchema builds the evidence one row's schema-conformance
 // requirements are judged against: the Schema Registry versions the load
-// resolved, and one attribute-name reading per signal and window the
-// applying requirements cover, taken by read.
+// resolved, one attribute-name and grouping-key reading per signal and window
+// the applying requirements cover, and one value-set reading per enum
+// attribute those requirements found in use.
 //
-// read takes one planned reading rather than this package taking a
-// TelemetryProvider, so the plan and the seam stay apart: a caller reading
-// from a live backend and one replaying a declared reading gather the same
-// evidence through the same plan, and neither can quietly answer a key it
-// was not asked for.
+// The value plan is computed after the name readings are in hand rather than
+// alongside them, because it is gated on what they found: an attribute nobody
+// sets buys no value reading (see SchemaValueReadings). That ordering is the
+// whole of the cost control here, and it is why this takes a SchemaSource
+// rather than three separate plans a caller could run in any order.
 //
 // A row with no schema requirement gathers nothing. Its evidence is zero
 // valued, which is what a requirement of another kind is judged against
 // anyway, and reading attribute names for a library that asks about none
 // would be a round trip nobody wanted.
-func GatherSchema(lib requirements.Library, environment string, read func(SchemaReading) telemetry.AttributeNames) SchemaEvidence {
+func GatherSchema(lib requirements.Library, environment string, src SchemaSource) SchemaEvidence {
 	plan := SchemaReadings(lib, environment)
 	if len(plan) == 0 {
 		return SchemaEvidence{}
@@ -109,9 +307,23 @@ func GatherSchema(lib requirements.Library, environment string, read func(Schema
 	ev := SchemaEvidence{
 		Versions: lib.SchemaRegistries,
 		Names:    make(map[SchemaReading]telemetry.AttributeNames, len(plan)),
+		Groups:   map[SchemaReading]telemetry.GroupNames{},
+		Values:   map[SchemaValueReading]telemetry.DistinctValues{},
 	}
-	for _, key := range plan {
-		ev.Names[key] = read(key)
+	if src.Names != nil {
+		for _, key := range plan {
+			ev.Names[key] = src.Names(key)
+		}
+	}
+	if src.Groups != nil {
+		for _, key := range SchemaGroupReadings(lib, environment) {
+			ev.Groups[key] = src.Groups(key)
+		}
+	}
+	if src.Values != nil {
+		for _, key := range SchemaValueReadings(lib, environment, ev.InUse) {
+			ev.Values[key] = src.Values(key)
+		}
 	}
 	return ev
 }
@@ -162,6 +374,20 @@ type demand struct {
 	// deprecated attribute already carries its own migration instruction,
 	// and the finding hands it over rather than paraphrasing it.
 	Deprecation *schemaregistry.Deprecation
+
+	// Members are the values the registry declares for an enum-typed
+	// attribute, read from the definition. Empty for every other type,
+	// which is what says an attribute has no value set to be judged
+	// against (ADR-0034 §4).
+	Members []schemaregistry.Member
+
+	// DeclaredIn is the group that defines the attribute, which is not
+	// always the group that demands it: a signal group references an
+	// attribute an attribute_group declares. The members live with the
+	// definition, so a finding about a value sends the reader there rather
+	// than to the reference. Empty when the definition lives in a registry
+	// this one imports from, which is not in the adopter's tree.
+	DeclaredIn string
 }
 
 // defaultLevel is the level an attribute is demanded at when the registry
@@ -200,13 +426,29 @@ func judgeSchema(req requirements.Requirement, ev Evidence) []Finding {
 			fmt.Sprintf("Import Schema Registry version %q and make it available to the evaluation, or pin this requirement to a version that is installed.", registryKey(a)))}
 	}
 
-	demands := demandsOf(reg, a.Scope)
+	reading := readScope(a, ev)
+
+	// Which groups arrived decides what is demanded at all: semconv states
+	// its required-sets per group, so the scope is resolved per group and
+	// only the groups in play are flattened into demands (ADR-0034 §4). A
+	// group that never arrived is not_delivered for that group, reusing
+	// §3's mapping at the grain below the signal rather than growing it.
+	groups := readGroups(a, scopedGroups(reg, a.Scope), ev)
+	reading.detail = append(reading.detail, groups.detail...)
+	if groups.absent {
+		reading.escalate(NotDelivered)
+	}
+	if groups.unsure {
+		reading.escalate(Unknown)
+	}
+
+	demands := demandsIn(groups.inPlay)
+	enums := readEnums(a, demands, ev)
+
 	byLevel := map[schemaregistry.Level][]demand{}
 	for _, d := range demands {
 		byLevel[d.Level] = append(byLevel[d.Level], d)
 	}
-
-	reading := readScope(a, ev)
 
 	var out []Finding
 	for _, level := range schemaregistry.Levels {
@@ -218,7 +460,7 @@ func judgeSchema(req requirements.Requirement, ev Evidence) []Finding {
 			// verdict.
 			continue
 		}
-		out = append(out, schemaFinding(req, level, at, reading))
+		out = append(out, schemaFinding(req, level, at, reading, enums))
 	}
 	return out
 }
@@ -298,13 +540,31 @@ func readScope(a requirements.SchemaAssertion, ev Evidence) scopeReading {
 	return r
 }
 
-// worsen records a per-signal verdict, keeping the worst on the existing
-// severity ordering.
+// worsen records a per-signal verdict and what it was, keeping the worst on
+// the existing severity ordering.
 func (r *scopeReading) worsen(o Outcome, detail string) {
+	r.escalate(o)
+	r.detail = append(r.detail, detail)
+}
+
+// escalate keeps the worst verdict without adding to the detail, for a
+// verdict whose detail was written elsewhere.
+func (r *scopeReading) escalate(o Outcome) {
 	if o.Severity() > r.outcome.Severity() {
 		r.outcome = o
 	}
-	r.detail = append(r.detail, detail)
+}
+
+// worst returns the worse of two outcomes on the existing severity ordering.
+// A finding takes it rather than the later verdict, so a check that runs
+// second cannot quietly downgrade what a check that ran first found: a scope
+// with a group that never arrived and an attribute in the wrong shape reads
+// not_delivered, because the telemetry that is not there is the larger fact.
+func worst(a, b Outcome) Outcome {
+	if b.Severity() > a.Severity() {
+		return b
+	}
+	return a
 }
 
 // arrived reports whether the covered signal arrived in the window at all.
@@ -323,8 +583,16 @@ func arrived(kind requirements.SignalKind, window time.Duration, names telemetry
 
 // schemaFinding builds one level's finding: the grade the level maps to, the
 // outcome that grade's checks produce, and the detail naming every attribute
-// the reading did not find.
-func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at []demand, r scopeReading) Finding {
+// the reading did not find and every enum the reading found a value the
+// registry does not declare.
+//
+// Both checks land on one finding per level rather than on findings of their
+// own, and both take their weight from #157's level mapping (gradeOf) rather
+// than extending it. An undeclared value on an attribute the registry demands
+// at required is a violation, and the same value on one it recommends is an
+// improvement, for the same reason a missing attribute is: the level is what
+// the registry says about how much the attribute matters, and it says it once.
+func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at []demand, r scopeReading, enums map[string]enumVerdict) Finding {
 	f := Finding{Requirement: req, Grade: gradeOf(level), Outcome: r.outcome}
 	f.Detail = append(f.Detail, r.detail...)
 
@@ -347,36 +615,74 @@ func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at 
 		}
 	}
 
+	var breached, unsure []enumVerdict
+	for _, d := range at {
+		v, judged := enums[d.Attribute]
+		switch {
+		case !judged:
+		case len(v.Undeclared) > 0:
+			breached = append(breached, v)
+		case v.Unknown:
+			unsure = append(unsure, v)
+		}
+	}
+
 	if level == schemaregistry.Recommended {
+		// Coverage is presence coverage, which is what ADR-0034 §3 asks a
+		// recommended finding to carry: how much of what the registry
+		// recommends is in use. An enum breach is a different fact about
+		// an attribute that is in use, and folding it into the ratio would
+		// make "3 of 8" mean two things at once.
 		f.Coverage = ratio(len(at)-len(missing), len(at))
 	}
 
-	if len(missing) == 0 {
+	var fixes []string
+
+	switch {
+	case len(missing) == 0:
 		if len(at) > 0 {
 			f.Detail = append(f.Detail, fmt.Sprintf("every %s attribute the scope demands is in use (%d of %d)", level, len(at), len(at)))
 		}
-		return f
-	}
-
-	if r.truncated && level == schemaregistry.Required {
+	case r.truncated && level == schemaregistry.Required:
 		// A truncated reading can miss a name that is in use, so an absence
 		// read off one is not knowledge (ADR-0034 §4: truncation is always
 		// reported, and this is what reporting it is for). Presence is
 		// still proof, which is why a truncated reading with nothing
 		// missing stays compliant: extra records can only add names.
-		f.Outcome = Unknown
+		f.Outcome = worst(f.Outcome, Unknown)
 		f.Detail = append(f.Detail, fmt.Sprintf("%s not named by a truncated reading, which cannot tell an attribute that is absent from one it did not sample", attrList(missing)))
-		f.Remediation = truncatedReading
-		return f
+		fixes = append(fixes, truncatedReading)
+	default:
+		if level == schemaregistry.Required {
+			// The only level that flips the outcome: the telemetry arrived
+			// and is the wrong shape, which is misconfigured (ADR-0034 §3).
+			f.Outcome = worst(f.Outcome, Misconfigured)
+		}
+		f.Detail = append(f.Detail, missDetail(level, missing, len(at)))
+		fixes = append(fixes, schemaRemediation(level, missing))
 	}
 
-	if level == schemaregistry.Required {
-		// The only level that flips the outcome: the telemetry arrived and
-		// is the wrong shape, which is misconfigured (ADR-0034 §3).
-		f.Outcome = Misconfigured
+	if len(breached) > 0 {
+		// An attribute in use carrying a value nobody declared is the
+		// wrong shape as surely as an attribute nobody sets, and the
+		// reading proves it: the value is in the telemetry.
+		if level == schemaregistry.Required {
+			f.Outcome = worst(f.Outcome, Misconfigured)
+		}
+		f.Detail = append(f.Detail, enumDetail(breached)...)
+		fixes = append(fixes, enumRemediation(level, breached))
 	}
-	f.Detail = append(f.Detail, missDetail(level, missing, len(at)))
-	f.Remediation = schemaRemediation(level, missing)
+	if len(unsure) > 0 {
+		if level == schemaregistry.Required {
+			f.Outcome = worst(f.Outcome, Unknown)
+		}
+		for _, v := range unsure {
+			f.Detail = append(f.Detail, v.Detail...)
+		}
+		fixes = append(fixes, unreadValues)
+	}
+
+	f.Remediation = joinFixes(fixes)
 	return f
 }
 
@@ -440,23 +746,47 @@ func schemaUnknown(req requirements.Requirement, cause, fix string) Finding {
 	}
 }
 
-// demandsOf resolves a scope into the attributes it demands and the level
-// the registry declares each at. Groups are demanded by id; a namespace
-// demands every attribute the registry carries under it, whether the
-// registry defines that attribute or references one a dependency defines.
+// scoped is one registry group a requirement's scope reaches, with the
+// attributes that scope takes from it. It is the per-group view the
+// grouping-key check needs (ADR-0034 §4): semconv states its required-sets
+// per group, so a check that flattens the scope before reading which groups
+// arrived can no longer tell a group that never arrived from one that
+// arrived missing an attribute.
+type scoped struct {
+	Group   schemaregistry.Group
+	Demands []demand
+}
+
+// scopedGroups resolves a scope into the registry groups it reaches and what
+// each of them demands. Groups are demanded by id; a namespace demands every
+// attribute the registry carries under it, whether the registry defines that
+// attribute or references one a dependency defines, and reaches every group
+// that carries one.
 //
-// An attribute demanded twice at two levels is kept at the stricter one.
-// Tightening a level locally is the whole mechanism a custom registry exists
-// for (ADR-0009), so the tightening has to win: taking the looser reading
-// would let a group that mentions an attribute in passing undo a group that
-// demands it.
-func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand {
-	strict := map[string]demand{}
-	keep := func(d demand) {
-		prev, seen := strict[d.Attribute]
-		if !seen || rank(d.Level) < rank(prev.Level) {
-			strict[d.Attribute] = d
+// The order is the order the scope was authored in, groups first and then
+// the namespace walk in registry id order. It is the order a level's
+// strictest declaration is resolved in, so it is kept stable rather than
+// re-sorted: two authorings that name the same groups resolve the same way.
+func scopedGroups(reg *schemaregistry.Registry, scope requirements.Scope) []scoped {
+	at := map[string]int{}
+	var out []scoped
+
+	ensure := func(g schemaregistry.Group) int {
+		if i, seen := at[g.ID]; seen {
+			return i
 		}
+		at[g.ID] = len(out)
+		out = append(out, scoped{Group: g})
+		return len(out) - 1
+	}
+	take := func(g schemaregistry.Group, a schemaregistry.Attribute) {
+		i := ensure(g)
+		for _, d := range out[i].Demands {
+			if d.Attribute == a.Key() {
+				return
+			}
+		}
+		out[i].Demands = append(out[i].Demands, demandOf(reg, g, a))
 	}
 
 	for _, id := range scope.Groups {
@@ -469,8 +799,12 @@ func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand 
 			// registry no longer says it demands anything.
 			continue
 		}
+		// A group named outright is reached whether or not it carries
+		// attributes: a group with none still arrived or did not, and that
+		// is a reading in its own right.
+		ensure(g)
 		for _, a := range g.Attributes {
-			keep(demandOf(reg, g, a))
+			take(g, a)
 		}
 	}
 
@@ -479,8 +813,68 @@ func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand 
 		for _, g := range reg.Groups {
 			for _, a := range g.Attributes {
 				if key := a.Key(); key == ns || strings.HasPrefix(key, prefix) {
-					keep(demandOf(reg, g, a))
+					take(g, a)
 				}
+			}
+		}
+	}
+	return out
+}
+
+// groupKeyValue returns the signal one registry group's records arrive on and
+// the value the grouping key carries for it, and whether the registry states
+// both. A group it states both for can be located in a GroupNames reading; a
+// group it does not cannot, and is never guessed at (ADR-0034 §4's fidelity
+// rule: never a silent approximation).
+//
+// A metric group declares its metric name, which is the metric.name a
+// reading is grouped by, so a metric group is locatable exactly.
+//
+// A span group is not. The convention model declares a span's kind and its
+// attributes, and says nothing about its name: semconv states span naming as
+// prose over other attributes ("{db.operation.name} {target}"), which is not
+// a value this package can compute. Reading a span group as arrived because
+// some span name looked like it would be the misattribution the seam's
+// contract forbids.
+//
+// An event group is not either, for a different reason: upstream declares an
+// event's name, and the Schema Registry model this package reads does not
+// carry it yet. That is a gap in the import rather than in the convention,
+// and until it closes an event group's required-set is judged against the
+// scope's own reading like a span group's.
+func groupKeyValue(g schemaregistry.Group) (requirements.SignalKind, string, bool) {
+	if g.Kind == schemaregistry.Metric && g.MetricName != "" {
+		return requirements.Metrics, g.MetricName, true
+	}
+	return "", "", false
+}
+
+// demandsOf resolves a scope into the attributes it demands and the level the
+// registry declares each at, flattened across the groups the scope reaches.
+func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand {
+	return demandsIn(scopedGroups(reg, scope))
+}
+
+// demandsIn flattens a set of scoped groups into the attributes they demand.
+//
+// An attribute demanded twice at two levels is kept at the stricter one.
+// Tightening a level locally is the whole mechanism a custom registry exists
+// for (ADR-0009), so the tightening has to win: taking the looser reading
+// would let a group that mentions an attribute in passing undo a group that
+// demands it.
+//
+// It is called with the groups still in play rather than with every group the
+// scope reaches, which is what makes a group that never arrived stop
+// demanding anything: its required-set is not in play, so nothing it alone
+// demands is judged, while an attribute another arrived group also demands
+// survives through that group (ADR-0034 §4).
+func demandsIn(groups []scoped) []demand {
+	strict := map[string]demand{}
+	for _, s := range groups {
+		for _, d := range s.Demands {
+			prev, seen := strict[d.Attribute]
+			if !seen || rank(d.Level) < rank(prev.Level) {
+				strict[d.Attribute] = d
 			}
 		}
 	}
@@ -496,10 +890,10 @@ func demandsOf(reg *schemaregistry.Registry, scope requirements.Scope) []demand 
 // demandOf reads one attribute entry into the demand the finding is written
 // from. The level comes from the entry, because tightening a level on a
 // reference is the whole mechanism a custom registry exists for (ADR-0009);
-// the type and the deprecation notice come from the definition, because a
-// reference restates neither.
+// the type, the enum members and the deprecation notice come from the
+// definition, because a reference restates none of them.
 func demandOf(reg *schemaregistry.Registry, g schemaregistry.Group, a schemaregistry.Attribute) demand {
-	def := definitionOf(reg, a)
+	def, in := definitionOf(reg, g, a)
 	return demand{
 		Attribute:   a.Key(),
 		Level:       levelOf(a),
@@ -507,22 +901,25 @@ func demandOf(reg *schemaregistry.Registry, g schemaregistry.Group, a schemaregi
 		GroupKind:   g.Kind,
 		Type:        def.Type,
 		Deprecation: def.Deprecation,
+		Members:     def.Members,
+		DeclaredIn:  in,
 	}
 }
 
-// definitionOf resolves an entry to the declaration that defines it. An
-// entry that defines an attribute is its own definition; a reference is
+// definitionOf resolves an entry to the declaration that defines it, and to
+// the group that holds that declaration. An entry that defines an attribute
+// is its own definition, in the group it was read from; a reference is
 // resolved against this registry version, and one that resolves nowhere is
 // defined in a dependency registry that is not in this tree, so the entry
-// stands for itself and the fields it does not carry stay empty.
-func definitionOf(reg *schemaregistry.Registry, a schemaregistry.Attribute) schemaregistry.Attribute {
+// stands for itself and what it does not carry stays empty.
+func definitionOf(reg *schemaregistry.Registry, g schemaregistry.Group, a schemaregistry.Attribute) (schemaregistry.Attribute, string) {
 	if a.Defines() {
-		return a
+		return a, g.ID
 	}
-	if def, _, ok := reg.Attribute(a.Ref); ok {
-		return def
+	if def, in, ok := reg.Attribute(a.Ref); ok {
+		return def, in.ID
 	}
-	return a
+	return a, ""
 }
 
 // levelOf reads the level the registry declares an attribute at, defaulting

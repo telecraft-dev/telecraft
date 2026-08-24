@@ -161,12 +161,20 @@ There's no attribute list here, and adding one is a load error. A list in a
 requirement file is a second copy of something the registry already states,
 and the copy drifts the first time somebody edits one and not the other.
 
-A Requirement of this kind runs against an estate. The evaluator reads the
-attribute names in use for each signal and window the reference covers,
-resolves what the pinned registry version demands of the scope, and judges one
-against the other. Where the reading can't be taken, or the reference resolved
-to no version, the verdict is `unknown` with the cause: no reading, so no
-verdict, and never a silent pass.
+A Requirement of this kind runs against an estate. The evaluator takes three
+readings for each signal and window the reference covers, resolves what the
+pinned registry version demands of the scope, and judges one against the
+other:
+
+| Reading | What it answers |
+|---|---|
+| Attribute names | Which attribute names the records carried, which is what a demand for an attribute is judged against. |
+| Grouping-key values | Which spans, metrics or events arrived, which is what says whose required-set is in play. |
+| Distinct values | What an attribute the registry declares as an enum actually carries. |
+
+Where a reading can't be taken, or the reference resolved to no version, the
+verdict is `unknown` with the cause: no reading, so no verdict, and never a
+silent pass.
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -181,11 +189,10 @@ verdict, and never a silent pass.
 At least one of `scope.groups` and `scope.namespaces` must be present. An
 empty scope would demand the whole registry of every Service by omission.
 
-The window is read twice: once for the attribute names in use, and once for
-whether the covered signals arrived at all. That second reading is what tells
-`not_delivered` from `misconfigured`. Nothing arrived is `not_delivered`;
-telemetry arrived and is missing an attribute the registry demands at
-`required` is `misconfigured`; every `required` attribute in use is
+Whether the covered signals arrived at all is read over the same window. That
+reading is what tells `not_delivered` from `misconfigured`. Nothing arrived is
+`not_delivered`; telemetry arrived and is missing an attribute the registry
+demands at `required` is `misconfigured`; every `required` attribute in use is
 `compliant`.
 
 ```yaml
@@ -211,6 +218,74 @@ A `schema_conformance` Requirement doesn't also carry `config` or `signal`.
 Collector config can't see instrumentation, so there's no Effective reading to
 cross a schema verdict against, and no outcome for the combination. Two
 Requirements say the two things honestly.
+
+### Enum values
+
+Where the registry declares an attribute as an enum, the evaluator reads what
+that attribute actually carries and judges it against the declared members. An
+attribute carrying a value the registry never declared is a finding, at
+whatever level the registry demands the attribute: a breach on a `required`
+attribute is a violation and flips the outcome to `misconfigured`, and the
+same breach on a `recommended` one is an improvement that rides alongside.
+Without this, an attribute is judged on whether its name is there and never on
+what it holds, so a wrong value reads as clean.
+
+The remediation names both ways out, because the registry is yours: either
+stop emitting the value, or add it as a member. It also names the group the
+members are declared in, which isn't always the group that demanded the
+attribute.
+
+The value reading is hard-capped and reports its own truncation, and the two
+directions of a clipped reading don't mean the same thing:
+
+- **A value the reading returned is in the telemetry.** Truncation only says
+  there may be more, so an undeclared value found in a clipped reading is
+  still a breach.
+- **A reading that found nothing undeclared has proved nothing**, because the
+  values it returned aren't the only ones the window holds. A clipped reading
+  with no breach in it is `unknown`, never `compliant`.
+
+That second rule is the one the attribute-name check doesn't have. A clipped
+name reading that found everything demanded is still a pass, because the
+records it didn't read can only add names. A clipped value set has its
+violations exactly where it stopped looking.
+
+An enum attribute in use whose values nobody read is `unknown` too. Only
+attributes the registry declares as enums are read this way, and only where
+the name reading found them in use: an attribute nobody sets buys no round
+trip, because whether it's missing is a question the presence check has
+already answered.
+
+### Groups and required-sets
+
+Semantic conventions state their required-sets per group, so what's demanded
+depends on which groups arrived. The evaluator reads the grouping key each
+signal is grouped by (`span.name` for traces, `metric.name` for metrics,
+`event.name` for logs) and judges each arrived group's required-set, rather
+than one flat union of attributes across the scope.
+
+A group in scope that never arrived is `not_delivered` for that group. Its
+required-set isn't in play, and nothing it alone demands is judged: the
+attributes are absent because the telemetry is, not because the
+instrumentation is wrong, so reporting them as missing would name a fix nobody
+can make. An attribute another group in play also demands is still judged,
+through that group. A group that arrived and is missing a required attribute
+is `misconfigured`, as it always was. The two now read differently.
+
+Presence in the grouping-key reading is proof a group arrived, because extra
+records can only add group names. A group a *truncated* reading doesn't name
+is `unknown`: a clipped reading can't tell a group that didn't arrive from one
+it didn't sample, so the group is neither judged nor written off.
+
+A group can only be located this way where the registry states which
+grouping-key value its records carry. A `metric` group declares its
+`metric_name`, so it can. A `span` group can't: the convention model declares
+a span's kind and its attributes and says nothing about its name, which
+semantic conventions state as prose over other attributes. An `event` group
+can't either, for a different reason: upstream declares an event's name, and
+the Schema Registry import doesn't carry it yet. A group that can't be located
+keeps its demands in play and is judged against the scope's own reading, which
+is what every group did before this check existed.
 
 ### Findings
 

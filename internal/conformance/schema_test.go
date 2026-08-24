@@ -66,13 +66,22 @@ func schemaRequirement(scope requirements.Scope, signals ...requirements.SignalK
 	}
 }
 
-// schemaEvidence builds evidence carrying the fixture registry and one
-// attribute-name reading naming exactly the attributes in use.
+// schemaEvidence builds evidence carrying the fixture registry, one
+// attribute-name reading naming exactly the attributes in use, and, for every
+// enum-declared attribute among them, a value-set reading carrying exactly
+// what the registry declares.
+//
+// The conforming value sets are part of the fixture rather than an
+// afterthought. An enum attribute in use whose values nobody read is unknown
+// rather than clean (ADR-0034 §4), so evidence that named the attribute and
+// said nothing about its values would make every one of these tests unknown
+// and prove nothing about the level mapping they are here for.
 func schemaEvidence(t *testing.T, kind requirements.SignalKind, inUse ...string) Evidence {
 	t.Helper()
-	return Evidence{
+	reg := registry(t)
+	ev := Evidence{
 		Schema: SchemaEvidence{
-			Versions: map[string]*schemaregistry.Registry{snapshotRef: registry(t)},
+			Versions: map[string]*schemaregistry.Registry{snapshotRef: reg},
 			Names: map[SchemaReading]telemetry.AttributeNames{
 				{Kind: kind, Window: schemaWindow}: {
 					Known:  true,
@@ -81,7 +90,39 @@ func schemaEvidence(t *testing.T, kind requirements.SignalKind, inUse ...string)
 					Names:  inUse,
 				},
 			},
+			Values: map[SchemaValueReading]telemetry.DistinctValues{},
 		},
+	}
+	for _, name := range inUse {
+		values := declaredIn(reg, name)
+		if len(values) == 0 {
+			continue
+		}
+		ev.Schema.Values[SchemaValueReading{Kind: kind, Window: schemaWindow, Attribute: name}] = conformingValues(name, values)
+	}
+	return ev
+}
+
+// declaredIn is the value set the fixture registry declares for one
+// attribute, or nothing when the attribute is not an enum.
+func declaredIn(reg *schemaregistry.Registry, attribute string) []string {
+	def, _, ok := reg.Attribute(attribute)
+	if !ok {
+		return nil
+	}
+	return sortedSet(declaredValues(def.Members))
+}
+
+// conformingValues is a whole, untruncated reading carrying exactly the
+// declared set: an enum nobody violated.
+func conformingValues(attribute string, values []string) telemetry.DistinctValues {
+	return telemetry.DistinctValues{
+		Known:     true,
+		AsOf:      time.Now(),
+		Window:    schemaWindow,
+		Attribute: attribute,
+		Values:    values,
+		Cap:       telemetry.MaxDistinctValues,
 	}
 }
 
@@ -501,6 +542,28 @@ func TestSchemaWorstSignalWins(t *testing.T) {
 	f := findingAt(t, evaluateSchema(t, req, ev), schemaregistry.Recommended)
 	if f.Outcome != Unknown {
 		t.Errorf("outcome = %q, want %q: one covered signal has no reading", f.Outcome, Unknown)
+	}
+}
+
+// The reading's own verdict is not downgraded by a check that runs after it.
+// A scope with one covered signal that never arrived and another that arrived
+// in the wrong shape reads not_delivered: telemetry that is not there is the
+// larger fact, and the severity ordering already says so.
+func TestSchemaNeverArrivedOutranksAWrongShape(t *testing.T) {
+	req := schemaRequirement(requirements.Scope{Namespaces: []string{"enterprise"}}, requirements.Logs, requirements.Traces)
+	ev := schemaEvidence(t, requirements.Traces, "enterprise.cost_centre")
+	ev.Schema.Names[SchemaReading{Kind: requirements.Logs, Window: schemaWindow}] = telemetry.AttributeNames{
+		Known: true, Window: schemaWindow,
+	}
+
+	// enterprise.criticality_tier is demanded at recommended by
+	// registry.enterprise, so the recommended finding carries both facts.
+	f := findingAt(t, evaluateSchema(t, req, ev), schemaregistry.Recommended)
+	if f.Outcome != NotDelivered {
+		t.Errorf("outcome = %q, want %q (detail: %v)", f.Outcome, NotDelivered, f.Detail)
+	}
+	if !detailNames(f, "no logs arrived") {
+		t.Errorf("the detail does not say the signal never arrived: %v", f.Detail)
 	}
 }
 
