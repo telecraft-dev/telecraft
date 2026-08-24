@@ -408,6 +408,12 @@ which is the whole design system as a versioned dependency: sheets, faces
 and mark in one archive with a checksum beside it. `app.css` is not,
 because it is the console's structure and nothing else consumes it.
 
+The archive carries `LICENSE`, a `VERSION` file and a README beside those
+five. The README is `design-artefact-readme.md` in this directory, copied
+in unchanged by the release workflow, so it is edited here. It is prose a
+consumer reads, and the house style applies to it as it does to any
+published page.
+
 The icon set was the last thing to join. Until it did, "the design system"
 meant one of two different sets depending on how you took it: the release
 gave you sheets and faces, and the mark had to be fetched file by file from
