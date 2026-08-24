@@ -11,6 +11,13 @@
 // never a backend query language (REQ-023). The moment a requirement can
 // embed a query string, TelemetryProvider stops being an abstraction and only
 // one backend is ever really supported, so no such field exists in this model.
+//
+// A Requirement may also assert schema conformance (ADR-0034 §2), which is a
+// reference into the Schema Registry and never a copy of it: a pinned
+// registry version and a scope within it, with the registry saying what that
+// scope demands. An inline attribute list is refused for the same reason a
+// query string is: it is a second copy of something that is already
+// authoritative somewhere else, and copies drift.
 package requirements
 
 import (
@@ -69,10 +76,38 @@ func (l Level) Valid() bool {
 type Kind string
 
 const (
-	KindConfig          Kind = "config"
-	KindSignal          Kind = "signal"
-	KindConfigAndSignal Kind = "config_and_signal"
+	KindConfig            Kind = "config"
+	KindSignal            Kind = "signal"
+	KindConfigAndSignal   Kind = "config_and_signal"
+	KindSchemaConformance Kind = "schema_conformance"
 )
+
+// Placement says which reading a schema-conformance requirement is judged
+// against (ADR-0034 §6): telemetry that has already landed in a backend, or
+// the findings a collection-time tap emitted. The registry reference and the
+// outcome mapping are the same either way, so placement is a property of the
+// requirement rather than of the reference.
+type Placement string
+
+const (
+	// Landed judges telemetry that has already landed, which is the gap
+	// the product exists to fill and so the default.
+	Landed Placement = "landed"
+
+	// Live judges the findings an adopter-deployed tap emitted. The tap is
+	// not built yet, so the loader carries the value and refuses it: see
+	// load.go. Accepting it would produce a requirement that evaluates
+	// nothing and reads as clean.
+	Live Placement = "live"
+)
+
+func (p Placement) Valid() bool {
+	switch p {
+	case Landed, Live:
+		return true
+	}
+	return false
+}
 
 // Duration is a time.Duration that unmarshals from the YAML string form
 // ("24h", "90m"), which is how windows are authored in library files.
@@ -102,7 +137,8 @@ func (d Duration) Std() time.Duration { return time.Duration(d) }
 
 // Requirement is one named, versioned assertion with mandatory remediation
 // text, so every finding tells you what to do. It may assert on
-// Effective state, on Observed state, or on both.
+// Effective state, on Observed state, or on both, or it may assert schema
+// conformance, which is judged against the Schema Registry alone.
 type Requirement struct {
 	ID          string `yaml:"id"`
 	Title       string `yaml:"title"`
@@ -130,6 +166,16 @@ type Requirement struct {
 	Config *ConfigAssertion `yaml:"config"`
 	Signal *SignalAssertion `yaml:"signal"`
 
+	// Schema is the schema-conformance assertion (ADR-0034 §2): a
+	// reference into the Schema Registry, never a copy of it.
+	Schema *SchemaAssertion `yaml:"schema_conformance"`
+
+	// Placement says which reading the schema assertion is judged against
+	// (ADR-0034 §6). Absent defaults to landed on a schema-conformance
+	// requirement, and means nothing on any other, so the loader refuses it
+	// there rather than carrying a field that can never take effect.
+	Placement Placement `yaml:"placement"`
+
 	// Remediation is the concrete change that would close the gap. The
 	// platform suggests; it never applies.
 	Remediation string `yaml:"remediation"`
@@ -139,13 +185,20 @@ type Requirement struct {
 // loaded Requirement: the loader rejects one with no assertion at all.
 func (r Requirement) Kind() Kind {
 	switch {
+	case r.Schema != nil:
+		return KindSchemaConformance
 	case r.Config != nil && r.Signal != nil:
 		return KindConfigAndSignal
 	case r.Config != nil:
 		return KindConfig
-	default:
+	case r.Signal != nil:
 		return KindSignal
 	}
+	// Unreachable on a loaded Requirement. There is no fallthrough to a
+	// real kind on purpose: a leg added without a leg added here would
+	// otherwise be reported as some other kind, which is exactly the
+	// disagreement deriving the kind exists to make impossible.
+	return ""
 }
 
 // AppliesTo reports whether this Requirement applies in the given
@@ -208,6 +261,85 @@ func (s SignalAssertion) Coverage() float64 {
 	return *s.AttributeCoverage
 }
 
+// Scope is what a schema-conformance assertion demands conformance of: the
+// registry groups named outright, and the attribute namespaces demanded
+// wholesale. It is a scope into the Schema Registry rather than a list of
+// attributes, because the registry already says which attributes a group
+// carries and at which level, and a second copy of that would drift.
+type Scope struct {
+	// Groups are registry group ids, such as `span.db.client`.
+	Groups []string `yaml:"groups"`
+
+	// Namespaces are attribute-name prefixes, such as `db`: every
+	// attribute the registry carries under the prefix is demanded.
+	Namespaces []string `yaml:"namespaces"`
+}
+
+func (s Scope) Empty() bool { return len(s.Groups) == 0 && len(s.Namespaces) == 0 }
+
+// TrackHead is the only tracking mode a Schema Registry reference takes
+// (ADR-0026 §1). A reference pins a version by default; tracking head is the
+// author's opt-in to re-judging against whichever version is active.
+const TrackHead = "head"
+
+// SchemaAssertion evaluates against Observed state, judged against the
+// Schema Registry (ADR-0034 §2). It is a reference and never a copy: it
+// names a registry version and a scope within it, and the registry says what
+// that scope demands, at which requirement level, with which types and enum
+// members. Nothing here can hold an attribute list, so a requirement file
+// cannot drift from the registry it is judged against.
+//
+// Note that the levels this assertion is judged by are the registry's own
+// (schemaregistry.Level), read from the referenced version. They are not the
+// Level on the enclosing Requirement, which grades the requirement as a
+// whole.
+type SchemaAssertion struct {
+	// RegistryVersion pins the Schema Registry version, by the ref it was
+	// imported at. Pinning is the default (ADR-0026 §1): an adopter's
+	// registry tightening a level overnight must not silently move every
+	// service's score.
+	RegistryVersion string `yaml:"registry_version"`
+
+	// Track opts this reference into head-tracking; the only value is
+	// `head`. Empty means pinned.
+	Track string `yaml:"track"`
+
+	// Scope is what conformance is demanded of. It is mandatory: an empty
+	// scope would demand the whole registry of every service by omission.
+	Scope Scope `yaml:"scope"`
+
+	// Signals are the signals the scope is judged on. A group is attached
+	// to a signal in the registry, but which signals an adopter wants
+	// judged is the requirement's business.
+	Signals []SignalKind `yaml:"signals"`
+
+	// Window is the trailing window the reading is taken over, exactly as
+	// a signal assertion's is.
+	Window Duration `yaml:"window"`
+
+	// Attributes and RequiredAttributes exist only to be refused. Strict
+	// decoding would reject either as an unknown field, but with a message
+	// about a field that is not found rather than about the decision:
+	// inline attribute lists duplicate the registry and drift (ADR-0034
+	// §2), so the author gets told that, and told what to write instead.
+	Attributes         []string `yaml:"attributes"`
+	RequiredAttributes []string `yaml:"required_attributes"`
+}
+
+// Tracking reports whether this reference tracks the active Schema Registry
+// version rather than pinning one.
+func (s SchemaAssertion) Tracking() bool { return s.Track == TrackHead }
+
+// Covers reports whether this assertion is judged on the given signal.
+func (s SchemaAssertion) Covers(kind SignalKind) bool {
+	for _, k := range s.Signals {
+		if k == kind {
+			return true
+		}
+	}
+	return false
+}
+
 // Library is the loaded, validated requirements library.
 type Library struct {
 	Requirements map[string]Requirement
@@ -223,13 +355,19 @@ func (l Library) Sorted() []Requirement {
 	return out
 }
 
-// LongestWindow returns the longest signal window any requirement asks for,
-// which is how much history a TelemetryProvider needs to fetch per Service.
+// LongestWindow returns the longest window any requirement asks for, which
+// is how much history a TelemetryProvider needs to fetch per Service. Both
+// assertion kinds that read Observed state carry a window, and both count: a
+// schema window left out here would have the fetch planner short a reading
+// the evaluator then reports unknown.
 func (l Library) LongestWindow() time.Duration {
 	var longest time.Duration
 	for _, r := range l.Requirements {
 		if r.Signal != nil && r.Signal.Window.Std() > longest {
 			longest = r.Signal.Window.Std()
+		}
+		if r.Schema != nil && r.Schema.Window.Std() > longest {
+			longest = r.Schema.Window.Std()
 		}
 	}
 	return longest
