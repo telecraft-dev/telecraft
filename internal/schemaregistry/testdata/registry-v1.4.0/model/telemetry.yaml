@@ -1,0 +1,26 @@
+groups:
+  - id: metric.db.client.operation.duration
+    type: metric
+    metric_name: db.client.operation.duration
+    instrument: histogram
+    unit: s
+    stability: stable
+    brief: How long one database call took.
+    attributes:
+      - ref: db.system.name
+        requirement_level: required
+
+  - id: entity.service
+    type: entity
+    stability: stable
+    brief: The service a signal came from.
+    attributes:
+      - ref: service.name
+        requirement_level: required
+      - ref: enterprise.cost_centre
+        requirement_level: opt_in
+
+  - id: profile.db.client
+    type: profile
+    stability: development
+    brief: A group kind this model does not know, kept out and reported.

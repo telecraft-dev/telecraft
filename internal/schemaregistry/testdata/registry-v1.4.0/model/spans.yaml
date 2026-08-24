@@ -1,0 +1,21 @@
+groups:
+  - id: span.db.client
+    type: span
+    span_kind: client
+    stability: stable
+    brief: A span describing one call out to a database.
+    attributes:
+      - ref: db.namespace
+        requirement_level: required
+      - ref: db.system.name
+        requirement_level: required
+      - ref: db.operation.name
+        requirement_level:
+          conditionally_required: if the operation name is readily available
+      - ref: enterprise.criticality_tier
+        requirement_level: required
+      # From the dependency registry, which is not in this tree.
+      - ref: server.address
+        requirement_level: required
+      - ref: server.port
+        requirement_level: recommended

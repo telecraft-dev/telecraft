@@ -141,13 +141,26 @@ well.
 
 ## Run the CLI binaries
 
-Three binaries live under `cmd/`:
+Four binaries live under `cmd/`:
 
 ```sh
 go run ./cmd/telecraft            # the platform CLI; prints its usage with no arguments
 go run ./cmd/blueprint-check .    # strict-load every Blueprint and Component in an estate
 go run ./cmd/catalogue-import -tag v0.158.0
+go run ./cmd/schema-registry-import -repo https://git.example/registry -ref v1.4.0
 ```
+
+The last two are the two substrates on the one import pipeline. Each
+fetches a repository at a pinned ref, writes one atomic versioned artefact,
+and prints a coverage report of everything the walk saw. Re-running the same
+ref is a no-op, and a new ref writes a new artefact beside the old one
+rather than replacing it.
+
+`schema-registry-import` reads an adopter's own registry repository, so it
+has no default `-repo`. Add `-path` when the registry manifest lives in a
+subdirectory rather than at the repository root. Both commands take
+`-source` to import a checkout that is already on disk, which is the path a
+tree carried across an air gap takes.
 
 `telecraft observe` and `telecraft check` read their backend settings from
 flags, defaulting to the `TELECRAFT_TELEMETRY_ENDPOINT` and

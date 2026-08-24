@@ -11,7 +11,7 @@ seams, a TypeScript console, and one lint that keeps the first two apart.
 
 | Path | What lives there |
 |---|---|
-| `cmd/` | The three binaries. |
+| `cmd/` | The four binaries. |
 | `internal/` | The neutral core. No vendor word appears here. |
 | `internal/provider/` | Vendor implementations behind the core's seams, product-qualified. |
 | `console/` | The console, which consumes only the documented platform API. |
@@ -87,6 +87,21 @@ a silently lenient verdict.
 | `internal/ownership` | The Team tree and the owner every authored object carries. Routes each finding to the owner of the object it is about, and rolls compliance up as ratio-plus-worst per finding kind. |
 | `internal/allowlist` | The Allow-list policy: which subset of the Catalogue each Team may use, composed down the tree by narrowing-only inheritance with owned Grants as the one widening mechanism. |
 
+### The import pipeline
+
+Two substrates are imported rather than authored: content somebody else
+maintains as ordinary git files, which the platform imports at a pinned ref
+into an atomic, versioned artefact and keeps beside the versions already
+installed.
+
+| Package | Owns |
+|---|---|
+| `internal/substrate` | The one import pipeline: the provenance record every artefact carries, the sparse fetch parameterised by the files a substrate needs, the deterministic ref-named atomic write, and the strict load. A substrate supplies four facts (its name, its files, its artefact name, and how to build one from a materialised tree) and gets the pipeline. There is one so that a second one cannot drift from it. |
+| `internal/schemaregistry` | The Schema Registry: the versioned declaration of what the estate's telemetry is supposed to look like, imported from a custom Weaver registry held as ordinary git content. Groups, their attributes, enum members, requirement levels and deprecation notices, recorded as declared. The import reads content out of git and runs no registry toolchain, which an architecture test holds the whole repository to. |
+
+`internal/catalogue`, in the table above, is the other substrate on this
+pipeline.
+
 ### Rendering and delivery
 
 | Package | Owns |
@@ -134,7 +149,8 @@ See [Providers](providers.md) for how to add one.
 |---|---|
 | `cmd/telecraft` | The platform CLI, with eight subcommands: `observe` prints Observed readings for one Service; `check` is the CI mode, evaluating the estate once and writing one machine-readable report; `palette` prints one team's effective palette with provenance; `render` compiles every Tier's bound Blueprint to the rendered tree; `serve` runs the stateless OpAMP server; `snapshot` writes the console API snapshot; `delivery` prints one collector's delivery status; and `passwd` hashes one basic-auth secret for the `users.yaml` seam. |
 | `cmd/blueprint-check` | Strict-loads every Blueprint and shared Component in an estate's source roots and prints the findings. Mechanical invalidity refuses the load and exits 1; findings print and exit 0, because they advise owners and never block. |
-| `cmd/catalogue-import` | Runs the Catalogue import pipeline: fetches the upstream collector-contrib tree at a pinned release tag, walks every `metadata.yaml`, and writes one atomic versioned Catalogue artefact plus a coverage report. Re-running the same tag is idempotent, and existing versions are retained rather than replaced. |
+| `cmd/catalogue-import` | Runs the Catalogue half of the import pipeline: fetches the upstream collector-contrib tree at a pinned release tag, walks every `metadata.yaml`, and writes one atomic versioned Catalogue artefact plus a coverage report. Re-running the same tag is idempotent, and existing versions are retained rather than replaced. |
+| `cmd/schema-registry-import` | Runs the Schema Registry half of the same pipeline: fetches an adopter's registry repository at a pinned ref, reads every model file out of it, and writes one atomic versioned Schema Registry artefact plus a coverage report of what entered it, what was left out, and which references come from a dependency registry. Idempotent and version-retaining in the same way. |
 
 Run any of them with `go run ./cmd/<name>`. `cmd/telecraft` with no arguments
 prints its usage.
