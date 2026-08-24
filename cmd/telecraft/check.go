@@ -332,19 +332,29 @@ func resolveEstate(estatePath, collectors, source string, now time.Time) (confor
 // Service and Environment so evidence for two environments never meets
 // (ADR-0033).
 //
-// A library holding a schema-conformance requirement needs the second
-// reading too (ADR-0034 §4): the attribute names in use for each signal and
-// window its references cover, taken through the same seam and scoped to the
-// same Service. The registry versions come with the library, resolved when
-// its references were validated.
+// A library holding a schema-conformance requirement needs the other three
+// readings too (ADR-0034 §4): the attribute names in use for each signal and
+// window its references cover, the grouping-key values that say which of the
+// registry's groups arrived, and the value sets of the attributes the
+// registry declares as enums. All are taken through the same seam and scoped
+// to the same Service. The registry versions come with the library, resolved
+// when its references were validated.
 func gatherEvidence(ctx context.Context, tel telemetry.Provider, row conformance.EstateRow, lib requirements.Library, attrs []string) conformance.Evidence {
 	ev := conformance.Evidence{Effective: row.Effective, Observed: map[time.Duration]telemetry.Observed{}}
 	svc := telemetry.Service{Name: row.Service, Environment: row.Environment}
 	for _, w := range conformance.Windows(lib, row.Environment) {
 		ev.Observed[w] = tel.Observe(ctx, svc, w, attrs)
 	}
-	ev.Schema = conformance.GatherSchema(lib, row.Environment, func(r conformance.SchemaReading) telemetry.AttributeNames {
-		return tel.AttributeNames(ctx, svc, r.Kind, r.Window)
+	ev.Schema = conformance.GatherSchema(lib, row.Environment, conformance.SchemaSource{
+		Names: func(r conformance.SchemaReading) telemetry.AttributeNames {
+			return tel.AttributeNames(ctx, svc, r.Kind, r.Window)
+		},
+		Groups: func(r conformance.SchemaReading) telemetry.GroupNames {
+			return tel.GroupNames(ctx, svc, r.Kind, r.Window)
+		},
+		Values: func(r conformance.SchemaValueReading) telemetry.DistinctValues {
+			return tel.DistinctValues(ctx, svc, r.Kind, r.Attribute, r.Window)
+		},
 	})
 	return ev
 }

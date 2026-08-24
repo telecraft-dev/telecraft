@@ -177,13 +177,23 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 			ev.Observed[w] = prov.Observe(context.Background(), svc, w, attrs)
 		}
 		// The schema leg comes through the same seam as every other
-		// reading (ADR-0034 §4): the attribute names in use for each
-		// signal and window this row's schema requirements cover, scoped
-		// to the row's Service and Environment. The registry versions
-		// travel with the library, resolved when its references were
-		// validated at load.
-		ev.Schema = conformance.GatherSchema(b.lib, row.Environment, func(r conformance.SchemaReading) telemetry.AttributeNames {
-			return prov.AttributeNames(context.Background(), svc, r.Kind, r.Window)
+		// reading (ADR-0034 §4): the attribute names in use, the
+		// grouping-key values that say which of the registry's groups
+		// arrived, and the value sets of the attributes the registry
+		// declares as enums, each for the signals and windows this row's
+		// schema requirements cover and each scoped to the row's Service
+		// and Environment. The registry versions travel with the library,
+		// resolved when its references were validated at load.
+		ev.Schema = conformance.GatherSchema(b.lib, row.Environment, conformance.SchemaSource{
+			Names: func(r conformance.SchemaReading) telemetry.AttributeNames {
+				return prov.AttributeNames(context.Background(), svc, r.Kind, r.Window)
+			},
+			Groups: func(r conformance.SchemaReading) telemetry.GroupNames {
+				return prov.GroupNames(context.Background(), svc, r.Kind, r.Window)
+			},
+			Values: func(r conformance.SchemaValueReading) telemetry.DistinctValues {
+				return prov.DistinctValues(context.Background(), svc, r.Kind, r.Attribute, r.Window)
+			},
 		})
 		verdict := conformance.Evaluate(row.Row, b.lib, ev, b.now)
 		if err := b.waivers.Apply(&verdict, row, b.now); err != nil {

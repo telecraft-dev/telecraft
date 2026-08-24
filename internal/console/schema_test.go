@@ -32,15 +32,28 @@ const schemaRequirement = `
   remediation: Add the missing attributes to the database instrumentation.
 `
 
+// conformingValues is the value set the fixture registry declares for the two
+// enum attributes span.db.client demands. An enum attribute in use whose
+// values nobody declared is unknown rather than clean (ADR-0034 §4), so a
+// scenario that means "this Service conforms" has to declare them: the
+// readings file carries value sets for exactly this reason.
+func conformingValues() map[string][]string {
+	return map[string][]string{
+		"db.system.name":              {"postgresql"},
+		"enterprise.criticality_tier": {"gold", "platinum"},
+	}
+}
+
 // schemaEstate copies the fixture estate, installs the Schema Registry
 // version the requirement pins, adds the requirement, and declares the
-// attribute names in use on the row's traces. It returns the Inputs a
+// attribute names in use on the row's traces along with the distinct values
+// of the attributes the registry declares as enums. It returns the Inputs a
 // snapshot is built from.
 //
 // The fixture estate itself is left alone: a failing schema requirement in
 // it would move every count the other tests assert on, and this is one
 // scenario rather than a change to the estate everything else reads.
-func schemaEstate(t *testing.T, namesInUse []string) console.Inputs {
+func schemaEstate(t *testing.T, namesInUse []string, values map[string][]string) console.Inputs {
 	t.Helper()
 	root := t.TempDir()
 	copyTree(t, "testdata/estate", root)
@@ -75,6 +88,7 @@ func schemaEstate(t *testing.T, namesInUse []string) console.Inputs {
 	if namesInUse != nil {
 		traces := readings.Rows[0].Signals["traces"]
 		traces.AttributeNames = &console.AttributeNamesReading{Names: namesInUse}
+		traces.Values = values
 		readings.Rows[0].Signals["traces"] = traces
 	}
 	body, err := yaml.Marshal(readings)
@@ -143,7 +157,7 @@ func TestSnapshotJudgesSchemaConformanceAgainstTheReading(t *testing.T) {
 	// The reading names three of the four attributes the registry demands
 	// at required on span.db.client. server.address is missing, which is
 	// telemetry that arrived in the wrong shape: misconfigured.
-	in := schemaEstate(t, []string{"db.namespace", "db.system.name", "enterprise.criticality_tier", "server.port"})
+	in := schemaEstate(t, []string{"db.namespace", "db.system.name", "enterprise.criticality_tier", "server.port"}, conformingValues())
 
 	b, err := console.Build(in)
 	if err != nil {
@@ -176,7 +190,7 @@ func TestSnapshotPassesAConformingService(t *testing.T) {
 	in := schemaEstate(t, []string{
 		"db.namespace", "db.operation.name", "db.system.name",
 		"enterprise.criticality_tier", "server.address", "server.port",
-	})
+	}, conformingValues())
 
 	b, err := console.Build(in)
 	if err != nil {
@@ -187,11 +201,66 @@ func TestSnapshotPassesAConformingService(t *testing.T) {
 	}
 }
 
+// An attribute carrying a value the Schema Registry never declared is a
+// finding, through the whole path: the estate declares the value set, the
+// playback answers DistinctValues with it, and the evaluator judges it
+// against the registry's members (ADR-0034 §4). Before this check existed the
+// attribute was present, and present read as clean.
+func TestSnapshotFindsAnUndeclaredEnumValue(t *testing.T) {
+	values := conformingValues()
+	values["db.system.name"] = []string{"cassandra", "postgresql"}
+	in := schemaEstate(t, []string{
+		"db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port",
+	}, values)
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	f, found := schemaFinding(t, b)
+	if !found {
+		t.Fatal("an attribute carrying an undeclared value produced no finding, so present still reads as clean")
+	}
+	if !strings.Contains(f.Summary, "misconfigured") {
+		t.Errorf("summary = %q, want misconfigured: the traces arrived and carry a value nobody declared", f.Summary)
+	}
+	if !strings.Contains(f.Remediation, "cassandra") {
+		t.Errorf("remediation does not name the undeclared value: %q", f.Remediation)
+	}
+	if !strings.Contains(f.Remediation, "postgresql") {
+		t.Errorf("remediation does not name what the registry does declare: %q", f.Remediation)
+	}
+}
+
+// An enum attribute in use whose values nobody read is unknown, not clean:
+// the presence check asks whether the name is there and never what it holds,
+// so a verdict drawn from presence alone would pass an attribute nobody
+// looked inside.
+func TestSnapshotReportsAnUndeclaredValueSetAsUnknown(t *testing.T) {
+	in := schemaEstate(t, []string{
+		"db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port",
+	}, nil)
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	f, found := schemaFinding(t, b)
+	if !found {
+		t.Fatal("an enum nobody read produced no finding, which reads as a pass")
+	}
+	if !strings.Contains(f.Summary, "unknown") {
+		t.Errorf("summary = %q, want unknown: no value reading, so no verdict on the values", f.Summary)
+	}
+}
+
 // A reading nobody declared is not an empty one. A schema requirement over a
 // signal the estate has said nothing about is unknown with a cause, never a
 // pass and never a breach invented out of a blank.
 func TestSnapshotReportsAnUndeclaredAttributeReadingAsUnknown(t *testing.T) {
-	in := schemaEstate(t, nil)
+	in := schemaEstate(t, nil, nil)
 
 	b, err := console.Build(in)
 	if err != nil {
