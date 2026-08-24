@@ -55,7 +55,7 @@ release, or hand someone a build to test, without moving what the world sees.
 | Artefact | What it is |
 |---|---|
 | The source at the tag | The ref `estate-demo` builds the demo from, and the ref to build the CLI from with `go build -o telecraft ./cmd/telecraft`. GitHub attaches the source archives itself. |
-| `telecraft-design-<version>.tar.gz` | `tokens.css`, `base.css` once it exists, `fonts/fonts.css`, the `.woff2` faces, and the two OFL licence texts, laid out the way a site serves them. |
+| `telecraft-design-<version>.tar.gz` | The design system: `tokens.css`, `base.css` once it exists, `fonts/` holding `fonts.css`, the `.woff2` faces and the two OFL licence texts, and `icons/` holding the brand mark in the five formats a browser is offered. `LICENSE`, `VERSION` and a `README.md` describing each file travel with them. |
 | `SHA256SUMS` | The checksum of the archive above. |
 
 Three things are deliberately absent:
@@ -146,11 +146,14 @@ tar -xzf telecraft-design-v0.3.0.tar.gz
 ```
 
 The archive extracts to `telecraft-design-v0.3.0/`, holding `tokens.css`,
-`fonts/`, and a `README.md` describing each file. `fonts/fonts.css` reaches
-its faces by relative URL, so keep the directory whole and serve all of it
-from your own host. Nothing in the archive reaches another origin, which is
-the rule the console is held to (ADR-0019) and which a site inherits by using
-these sheets.
+`fonts/`, `icons/`, and a `README.md` describing each file. `fonts/fonts.css`
+reaches its faces by relative URL, so keep the directory whole and serve all
+of it from your own host. `icons/` is the mark as a browser sees it, and
+nothing in it points at anything else, so move those five files to wherever
+your markup names them; `favicon.ico` belongs at the site root, because a
+browser probes for it there whether or not a page links it. Nothing in the
+archive reaches another origin, which is the rule the console is held to
+(ADR-0019) and which a site inherits by using these sheets.
 
 The sheets change rarely, so a pin can sit across several releases. Compare
 the checksum of the archive you hold against the one in the newer release to

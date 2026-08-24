@@ -37,7 +37,7 @@ are the mark's use of `--brand`, which never appears on a data surface
 | `telecraft-lockup-brand-on-dark.svg` / `-on-light.svg` | The horizontal lockup with the amber "tele": marketing surfaces only |
 | `telecraft-lockup-stacked-on-dark.svg` / `-on-light.svg` | Mark centred over the word, for square-ish spaces |
 | `png/telecraft-icon-{180,192,512}.png` | Renders at the sizes other services demand; regenerate with [`tools/render.sh`](tools/render.sh) |
-| `console/public/favicon.{svg,ico}`, `icon-{192,512}.png`, `apple-touch-icon.png` | The browser icon set the console ships, written by the same script. Not in this directory, because it is shipped rather than published |
+| `console/public/favicon.{svg,ico}`, `icon-{192,512}.png`, `apple-touch-icon.png` | The browser icon set the console ships, written by the same script. Not in this directory, because it is shipped rather than published. These five are also what the release archive carries in `icons/` |
 
 `-on-dark` and `-on-light` name the ground the file is drawn for, not the
 file's own colour. The grounds are `--colour-bg`: `#0f1518` and `#f3f5f4`.
@@ -81,8 +81,16 @@ its own leaves Safari and any bare `/favicon.ico` probe with the browser's
 default rather than the mark. Both scripts rasterise or copy the one SVG, so
 no format is a second drawing of the artwork.
 
-`telecraft.dev` vendors the mark from here; after a change lands, re-vendor
-there (`node tools/vendor.mjs update`, issue #101).
+Those same five files go into `icons/` in `telecraft-design-<version>.tar.gz`
+on every release, taken from `console/public/` rather than copied a second
+time, so the mark is a versioned dependency alongside the sheets and the
+faces rather than something a consumer has to fetch by raw URL. Changing the
+artwork here changes what the next release ships.
+
+`telecraft.dev` vendors the mark from here by raw URL; after a change lands,
+re-vendor there (`node tools/vendor.mjs update`, issue #101). It could take
+the release archive instead now that the archive carries the mark, which is
+a change in that repository.
 
 The letterforms derive from Atkinson Hyperlegible Next, OFL 1.1; the licence
 is beside the face in [`console/src/fonts/`](../../../console/src/fonts/).

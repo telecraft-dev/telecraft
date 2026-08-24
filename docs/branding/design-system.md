@@ -392,7 +392,7 @@ ADR-0042 §3.5.
 
 ## Distribution
 
-Five artefacts, two repositories.
+Six artefacts, two repositories.
 
 | Artefact | Holds | Consumed by |
 |---|---|---|
@@ -400,7 +400,21 @@ Five artefacts, two repositories.
 | `base.css` | Typography, links, code, tables, controls, focus rings | all |
 | `fonts/fonts.css` | The `@font-face` declarations, kept out of `tokens.css` so that file stays values only | all |
 | `fonts/*.woff2` | Two families, three faces, subset and self-hosted | all |
+| `icons/` | The mark as a browser sees it: `favicon.svg`, `favicon.ico`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, every one rendered from the SVG | console, `telecraft.dev` |
 | `app.css` | Structure only, reading tokens | console |
+
+Five of the six are in `telecraft-design-<version>.tar.gz` on each release,
+which is the whole design system as a versioned dependency: sheets, faces
+and mark in one archive with a checksum beside it. `app.css` is not,
+because it is the console's structure and nothing else consumes it.
+
+The icon set was the last thing to join. Until it did, "the design system"
+meant one of two different sets depending on how you took it: the release
+gave you sheets and faces, and the mark had to be fetched file by file from
+`console/public/` by raw URL. One of those is a dependency and the other is
+a copy, and the split was the defect. The archive takes the same generated
+bytes the console ships, so no format is a second drawing and the two
+cannot disagree.
 
 `base.css` is a file: `console/src/base.css`. It came out of the top of
 `app.css` rather than being written fresh, so the console's elements are
@@ -437,5 +451,8 @@ weekly, because drift happens here on a day when nothing changed there. That
 is drift made visible, which is the most a copy can offer. It is not a
 release.
 
-The tagging scheme it is waiting on is issue #86. When there is one, the
-copies become a dependency and this section goes.
+The tagging scheme it was waiting on arrived with issue #86, and the release
+archive now carries every file `telecraft.dev` vendors, the mark included.
+Nothing on this side is holding the switch up. Making it is a change in that
+repository and is not yet made; when it is, the copies become a dependency
+and this section goes.
