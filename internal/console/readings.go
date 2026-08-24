@@ -112,6 +112,21 @@ type SignalReading struct {
 	// attribute, in [0, 1].
 	AttributeCoverage map[string]float64 `yaml:"attribute_coverage"`
 
+	// Groups is the grouping key's values in the window: the span, metric
+	// or event names the records carried (ADR-0034 §4). Absent is Known
+	// false with a cause, and a declared empty list is the observed
+	// absence: an estate that has said nothing about groups has said
+	// nothing, and rendering that as "no groups arrived" would fabricate
+	// the reading a conformance check is about to judge.
+	Groups *[]string `yaml:"groups"`
+
+	// Values is the distinct value set per attribute name, declared for
+	// the enum attributes a conformance check asks about (ADR-0034 §4). An
+	// attribute absent from the map is Known false with a cause, for the
+	// same reason: an empty set is what a check reads as "the enum was
+	// never violated".
+	Values map[string][]string `yaml:"values"`
+
 	// Since is when this signal stopped arriving. The judgement never
 	// raises a finding from a single instant (ADR-0035 §3) and a snapshot
 	// is a single instant, so persistence is declared here exactly as a
@@ -650,6 +665,117 @@ func (p *provider) AttributeNames(_ context.Context, service telemetry.Service, 
 		Window: window,
 		Names:  names,
 	}
+}
+
+// unnamedService is why an unnamed Service is refused rather than answered.
+// The declaration is keyed on service.name, and an unnamed ask would either
+// match nothing or, in a live implementation, match the whole backend. The
+// two must never differ, so the playback refuses it the same way the live
+// provider does (ADR-0034 §4).
+const unnamedService = "no service.name was given, so the reading would not be one Service's"
+
+// signal resolves one (Service, Environment, signal) declaration, or the
+// cause the reading is Known false for. It is the door the two ADR-0034 §4
+// primitives come through, so an undeclared row and an undeclared signal
+// read the same whichever primitive asked.
+func (p *provider) signal(service telemetry.Service, kind requirements.SignalKind) (SignalReading, string) {
+	row, ok := p.readings.row(service.Name, service.Environment)
+	if !ok {
+		return SignalReading{}, missing(service.Name).Cause
+	}
+	sig, declared := row.Signals[string(kind)]
+	if !declared {
+		return SignalReading{}, missing(string(kind) + " for " + service.Name).Cause
+	}
+	return sig, ""
+}
+
+// DistinctValues plays back the declared value set for one attribute. A
+// snapshot has no backend to aggregate, so an attribute the estate has not
+// declared values for is Known false with the cause said out loud, never an
+// empty set: the difference between "this enum was never violated" and "we
+// never looked" is the whole of ADR-0034 §4's fidelity rule.
+func (p *provider) DistinctValues(_ context.Context, service telemetry.Service, kind requirements.SignalKind, attribute string, window time.Duration) telemetry.DistinctValues {
+	unknown := func(cause string) telemetry.DistinctValues {
+		return telemetry.DistinctValuesUnknown(p.readings.AsOf, window, attribute, cause)
+	}
+	if attribute == "" {
+		return unknown("no attribute was named: a value set of nothing is not a reading")
+	}
+	if service.Name == "" {
+		return unknown(telemetry.NotServiceScoped(service, unnamedService))
+	}
+	sig, cause := p.signal(service, kind)
+	if cause != "" {
+		return unknown(cause)
+	}
+	values, declared := sig.Values[attribute]
+	if !declared {
+		return unknown("the estate's readings file declares no distinct values for " +
+			attribute + " on " + string(kind) + " for " + service.Name)
+	}
+
+	reading := telemetry.DistinctValues{
+		Known:     true,
+		AsOf:      p.readings.AsOf,
+		Window:    window,
+		Attribute: attribute,
+		Cap:       telemetry.MaxDistinctValues,
+	}
+	reading.Values, reading.Truncated = capped(values, telemetry.MaxDistinctValues)
+	return reading
+}
+
+// GroupNames plays back the declared group set for one signal. A declared
+// reading is complete by construction, so it is never Truncated unless the
+// estate declared more groups than the seam's cap holds, which is itself
+// worth surfacing.
+func (p *provider) GroupNames(_ context.Context, service telemetry.Service, kind requirements.SignalKind, window time.Duration) telemetry.GroupNames {
+	unknown := func(cause string) telemetry.GroupNames {
+		return telemetry.GroupNamesUnknown(p.readings.AsOf, window, kind, cause)
+	}
+	if telemetry.GroupKeyFor(kind) == "" {
+		return unknown(string(kind) + " has no grouping key")
+	}
+	if service.Name == "" {
+		return unknown(telemetry.NotServiceScoped(service, unnamedService))
+	}
+	sig, cause := p.signal(service, kind)
+	if cause != "" {
+		return unknown(cause)
+	}
+	if sig.Groups == nil {
+		return unknown("the estate's readings file declares no " + string(kind) +
+			" group names for " + service.Name)
+	}
+
+	reading := telemetry.GroupNames{
+		Known:  true,
+		AsOf:   p.readings.AsOf,
+		Window: window,
+		Key:    telemetry.GroupKeyFor(kind),
+	}
+	reading.Names, reading.Truncated = capped(*sig.Groups, telemetry.MaxGroupNames)
+	return reading
+}
+
+// capped sorts and de-duplicates a declared set and clips it to the seam's
+// hard cap, reporting the clip rather than swallowing it.
+func capped(declared []string, limit int) ([]string, bool) {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(declared))
+	for _, v := range declared {
+		if seen[v] {
+			continue
+		}
+		seen[v] = true
+		out = append(out, v)
+	}
+	sort.Strings(out)
+	if len(out) > limit {
+		return out[:limit], true
+	}
+	return out, false
 }
 
 func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Duration) telemetry.SelfObserved {

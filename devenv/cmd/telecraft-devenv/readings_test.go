@@ -289,6 +289,18 @@ func (f fakeTelemetry) AttributeNames(context.Context, telemetry.Service, requir
 	return telemetry.AttributeNames{}
 }
 
+// The two ADR-0034 §4 primitives the fake holds nothing for. It answers
+// Known false with the cause said out loud rather than an empty set,
+// because an empty value set and an empty group set are exactly what a
+// conformance check reads as "clean", and this fake has looked at nothing.
+func (f fakeTelemetry) DistinctValues(_ context.Context, _ telemetry.Service, _ requirements.SignalKind, attribute string, window time.Duration) telemetry.DistinctValues {
+	return telemetry.DistinctValuesUnknown(base, window, attribute, "the fake telemetry reading declares no value sets")
+}
+
+func (f fakeTelemetry) GroupNames(_ context.Context, _ telemetry.Service, kind requirements.SignalKind, window time.Duration) telemetry.GroupNames {
+	return telemetry.GroupNamesUnknown(base, window, kind, "the fake telemetry reading declares no group names")
+}
+
 func (f fakeTelemetry) ObserveSelf(_ context.Context, tier string, _ time.Duration) telemetry.SelfObserved {
 	return f.self[tier]
 }
