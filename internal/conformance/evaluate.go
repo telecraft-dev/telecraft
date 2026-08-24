@@ -40,6 +40,41 @@ func (e Evidence) ObservedIn(w time.Duration) (telemetry.Observed, bool) {
 	return o, ok
 }
 
+// Windows returns the distinct trailing windows the requirements applying in
+// one Environment ask for, shortest first: the fetch plan for the Observed
+// leg, read once each and selected per requirement by the evaluator.
+//
+// Both assertion kinds that read Observed state carry a window and both are
+// here. A schema-conformance requirement's window is what decides whether
+// its covered signals arrived at all, which is the difference between
+// not_delivered and misconfigured (ADR-0034 §3), so a planner that read only
+// signal windows would leave that question to a fallback rather than to the
+// reading that answers it.
+func Windows(lib requirements.Library, environment string) []time.Duration {
+	seen := map[time.Duration]bool{}
+	var out []time.Duration
+	add := func(w time.Duration) {
+		if w <= 0 || seen[w] {
+			return
+		}
+		seen[w] = true
+		out = append(out, w)
+	}
+	for _, r := range lib.Sorted() {
+		if !r.AppliesTo(environment) {
+			continue
+		}
+		if r.Signal != nil {
+			add(r.Signal.Window.Std())
+		}
+		if r.Schema != nil {
+			add(r.Schema.Window.Std())
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
 // Evaluate judges one row: every requirement that applies in the row's
 // Environment (ADR-0033: an env-scoped requirement produces no
 // finding elsewhere), crossed against the row's evidence. Verdicts for the
