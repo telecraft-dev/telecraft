@@ -99,6 +99,7 @@ The rules that hold everywhere.
 - **ADR-0049** Releases are tags on main; the public demo follows a moving pointer
 - **ADR-0050** Elastic License 2.0; the project is source-available, not open source
 - **ADR-0052** A local development environment that reads the runtime seams for real
+- **ADR-0057** The design archive carries the brand mark
 
 ### Readings and verdicts
 
