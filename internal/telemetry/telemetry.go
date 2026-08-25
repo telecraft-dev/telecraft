@@ -102,6 +102,18 @@ type Provider interface {
 	// telemetry, never over a privileged side channel.
 	ObserveSelf(ctx context.Context, tier string, window time.Duration) SelfObserved
 
+	// LiveCheckFindings reads the finding records the live-check tap
+	// emitted for one Service over the trailing window, verbatim, plus the
+	// liveness leg: whether anything was sent to the tap in the window,
+	// read from the teeing Tier's own self-telemetry counters (ADR-0034 §5
+	// and §6, issue #159). The findings came home as ordinary log records
+	// and are read back like any other telemetry, never over a privileged
+	// side channel. A provider that cannot see either leg reports it Known
+	// false with a cause, never an observed silence: a clean stream and a
+	// dead tap are both silent, and only the liveness leg can tell them
+	// apart.
+	LiveCheckFindings(ctx context.Context, service Service, window time.Duration) LiveCheckFindings
+
 	// Meter reads one Tier's pipeline-grain flow counters over the
 	// trailing window (REQ-050, ADR-0040): per (Tier, signal) in and out
 	// item counts, the per-exporter split a Hop's throughput reads, the

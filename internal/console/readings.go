@@ -887,6 +887,21 @@ func unique(declared []string) []string {
 	return out
 }
 
+// LiveCheckFindings answers Known false: the readings file declares no
+// live-check reading yet, and a snapshot has no tap to read, so "we never
+// looked" is said out loud rather than played back as a quiet stream. The
+// declaration grows a live-check shape when the console starts gathering
+// live evidence; until then every live-placement requirement judged over a
+// snapshot reads unknown, never clean.
+func (p *provider) LiveCheckFindings(_ context.Context, service telemetry.Service, window time.Duration) telemetry.LiveCheckFindings {
+	who := service.Name
+	if who == "" {
+		who = "an unnamed service"
+	}
+	return telemetry.LiveCheckUnknown(p.readings.AsOf, window,
+		"the estate's readings file declares no live-check reading for "+who)
+}
+
 func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Duration) telemetry.SelfObserved {
 	out := telemetry.SelfObserved{
 		AsOf:    p.readings.AsOf,

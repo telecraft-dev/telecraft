@@ -59,6 +59,12 @@ type Elasticsearch struct {
 	distinctLimit  int
 	groupLimit     int
 
+	// The live-check fields (ADR-0034 §6): where a log record's body
+	// lands, and how many finding records are read before the reading
+	// says Truncated.
+	logBodyField   string
+	liveCheckLimit int
+
 	// The metering fields (ADR-0040): where a metric datapoint's value
 	// lands, which incarnation and exporter the datapoint belongs to, and
 	// how far each fan-out is followed before the reading says Truncated.
@@ -144,6 +150,17 @@ type ElasticsearchConfig struct {
 	DistinctLimit int
 	GroupLimit    int
 
+	// LogBodyField is the document field holding a log record's body, from
+	// which a live-check finding's message is read. Default: body.text
+	// (OTel-native mode).
+	LogBodyField string
+
+	// LiveCheckLimit caps how many finding records LiveCheckFindings
+	// reads; a window holding more is reported Truncated, never a silently
+	// short set. Defaults to the seam's own hard cap, which it may not
+	// exceed: the cap is the contract, not a knob.
+	LiveCheckLimit int
+
 	// MetricValuePrefix is the document field prefix under which a metric
 	// datapoint's value lands, so a counter's field is the prefix plus
 	// the metric name. Default: metrics. (OTel-native mode).
@@ -211,6 +228,12 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 	if cfg.GroupLimit <= 0 || cfg.GroupLimit > seam.MaxGroupNames {
 		cfg.GroupLimit = seam.MaxGroupNames
 	}
+	if cfg.LogBodyField == "" {
+		cfg.LogBodyField = "body.text"
+	}
+	if cfg.LiveCheckLimit <= 0 || cfg.LiveCheckLimit > seam.MaxLiveCheckRecords {
+		cfg.LiveCheckLimit = seam.MaxLiveCheckRecords
+	}
 	if cfg.IdentityLimit <= 0 {
 		cfg.IdentityLimit = 500
 	}
@@ -261,6 +284,9 @@ func NewElasticsearch(cfg ElasticsearchConfig) (*Elasticsearch, error) {
 		eventNameField: cfg.EventNameField,
 		distinctLimit:  cfg.DistinctLimit,
 		groupLimit:     cfg.GroupLimit,
+
+		logBodyField:   cfg.LogBodyField,
+		liveCheckLimit: cfg.LiveCheckLimit,
 
 		metricValuePrefix: cfg.MetricValuePrefix,
 		instanceIDField:   cfg.InstanceIDField,
