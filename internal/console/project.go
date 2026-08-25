@@ -57,11 +57,15 @@ func (b *builder) face(v *tierView) CardFace {
 
 // bandFor is the shared shape: the worst counting finding of a kind decides
 // the state and the label, and a waived finding never outranks a live one
-// (ADR-0017's rule, applied to the face).
+// (ADR-0017's rule, applied to the face). A finding marked Advice never
+// moves the band either: improvement and information findings ride
+// alongside the verdict, shown in the drawer and counted on the face, while
+// the band state, and with it every ratio and worst-severity roll-up built
+// from face fields, stays decided by violations alone (ADR-0034 §3).
 func bandFor(findings []Finding, kind string, empty Band) Band {
 	band := empty
 	for _, f := range findings {
-		if f.Kind != kind || f.Dampening == "waived" {
+		if f.Kind != kind || f.Dampening == "waived" || f.Advice {
 			continue
 		}
 		if severityRank(f.Severity) > severityRank(band.WorstSeverity) {

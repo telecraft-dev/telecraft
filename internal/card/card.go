@@ -50,7 +50,12 @@ import (
 // integer is one contract's and not one struct's: the payloads that
 // travel together version together, or the two sides of the seam stop
 // agreeing without anybody noticing (§4).
-const Version = 4
+// v5 marks the drawer findings that ride alongside a verdict (Advice):
+// improvement and information findings are shown and counted, but a
+// band's state and everything fed from it are decided by violations
+// alone (ADR-0034 §3), and until the marker existed a consumer could not
+// tell an advisory finding that counts from one that rides.
+const Version = 5
 
 // BandName is one of the three reading bands. The order is fixed and the
 // same on every card, so band position is load-bearing where hue is not.
@@ -614,6 +619,16 @@ type Finding struct {
 	Remediation string `json:"remediation"`
 
 	WhoActs WhoActs `json:"whoActs"`
+
+	// Advice marks a finding that rides alongside the verdict instead of
+	// feeding it: improvement and information findings are shown in the
+	// drawer and counted on the face, but the band states and everything
+	// derived from them are decided by violations alone (ADR-0034 §3). A
+	// consumer computing its own roll-up from drawer findings needs this to
+	// keep advice out of the binary, which severity alone cannot say: an
+	// advisory finding that counts and an advisory one that rides carry the
+	// same severity.
+	Advice bool `json:"advice,omitempty"`
 }
 
 // ProvenanceLine is one config line implying a derived value.

@@ -635,6 +635,9 @@ func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at 
 		// an attribute that is in use, and folding it into the ratio would
 		// make "3 of 8" mean two things at once.
 		f.Coverage = ratio(len(at)-len(missing), len(at))
+		if f.Coverage != nil {
+			f.CoverageInUse, f.CoverageDemanded = len(at)-len(missing), len(at)
+		}
 	}
 
 	var fixes []string

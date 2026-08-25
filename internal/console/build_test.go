@@ -330,11 +330,11 @@ func TestABuildWithoutACommitIsRefused(t *testing.T) {
 	}
 }
 
-func TestTheFaceCarriesTheVersionFourContract(t *testing.T) {
+func TestTheFaceCarriesTheCurrentContract(t *testing.T) {
 	card := cardFor(t, build(t), "data-flow/gateway")
 
-	if card.ContractVersion != 4 {
-		t.Errorf("contract version = %d, want 4: the per-signal matrix with its lane states, and the Hop throughput beside them", card.ContractVersion)
+	if card.ContractVersion != console.ContractVersion {
+		t.Errorf("contract version = %d, want %d", card.ContractVersion, console.ContractVersion)
 	}
 	if len(card.Signals) != 3 {
 		t.Fatalf("signal rows = %d, want one per signal the seam covers", len(card.Signals))

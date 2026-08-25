@@ -55,6 +55,13 @@ func conformingValues() map[string][]string {
 // scenario rather than a change to the estate everything else reads.
 func schemaEstate(t *testing.T, namesInUse []string, values map[string][]string) console.Inputs {
 	t.Helper()
+	return schemaEstateWith(t, schemaRequirement, namesInUse, values)
+}
+
+// schemaEstateWith is schemaEstate over a different requirement, for the
+// scenarios whose scope has to reach levels span.db.client does not carry.
+func schemaEstateWith(t *testing.T, requirement string, namesInUse []string, values map[string][]string) console.Inputs {
+	t.Helper()
 	root := t.TempDir()
 	copyTree(t, "testdata/estate", root)
 
@@ -73,7 +80,7 @@ func schemaEstate(t *testing.T, namesInUse []string, values map[string][]string)
 		t.Fatalf("installing the fixture Schema Registry: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(root, "requirements", "schema.yaml"), []byte(schemaRequirement), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "requirements", "schema.yaml"), []byte(requirement), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -253,6 +260,184 @@ func TestSnapshotReportsAnUndeclaredValueSetAsUnknown(t *testing.T) {
 	}
 	if !strings.Contains(f.Summary, "unknown") {
 		t.Errorf("summary = %q, want unknown: no value reading, so no verdict on the values", f.Summary)
+	}
+}
+
+// entityRequirement scopes the fixture registry's entity.service group,
+// which is where an opt_in level lives: service.name is demanded at
+// required and enterprise.cost_centre offered at opt_in.
+const entityRequirement = `
+- id: service-entity-conform
+  title: Service entities carry what the registry declares
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  schema_conformance:
+    registry_version: v1.4.0
+    scope:
+      groups: [entity.service]
+    signals: [traces]
+    window: 24h
+  remediation: Add the missing attributes to the service instrumentation.
+`
+
+// adviceFinding finds the drawer finding for one requirement that rides
+// alongside the verdict, and names the Tier whose drawer carries it.
+func adviceFinding(t *testing.T, b console.Bundle, requirement string) (string, console.Finding, bool) {
+	t.Helper()
+	for tier, drawer := range b.Estate.Drawers {
+		for _, f := range drawer.Findings {
+			if strings.Contains(f.Summary, requirement) && f.Advice {
+				return tier, f, true
+			}
+		}
+	}
+	return "", console.Finding{}, false
+}
+
+// A recommended attribute nobody emits is not a breach, and it used to be
+// nothing at all: computed, graded, given its coverage ratio, and dropped
+// before a reader could see it. It reaches the drawer as an improvement
+// finding carrying the counts.
+func TestSnapshotShowsARecommendedCoverageGap(t *testing.T) {
+	// Everything demanded at required and conditionally_required is in
+	// use; server.port, the group's one recommended attribute, is not.
+	in := schemaEstate(t, []string{
+		"db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address",
+	}, conformingValues())
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+
+	tier, f, found := adviceFinding(t, b, "db-spans-conform")
+	if !found {
+		t.Fatal("no improvement finding in any drawer: the coverage ratio still never arrives")
+	}
+	if !strings.Contains(f.Summary, "0 of 1 recommended attributes in use") {
+		t.Errorf("summary = %q, want the coverage counts in the N of M form", f.Summary)
+	}
+	if f.Severity != console.SeverityAdvisory {
+		t.Errorf("severity = %q, want %q: an improvement is advisory however its outcome reads", f.Severity, console.SeverityAdvisory)
+	}
+	if !strings.Contains(f.Remediation, "server.port") {
+		t.Errorf("remediation does not name the attribute to add: %q", f.Remediation)
+	}
+	if f.WhoActs.Target.Kind != "service" {
+		t.Errorf("who-acts target = %+v, want the Service: riding alongside changes nothing about routing", f.WhoActs.Target)
+	}
+
+	// Counted in the roll-ups: the face's shelf summary counts carry it.
+	card := cardFor(t, b, tier)
+	if card.FindingCounts["conformance"] == 0 {
+		t.Errorf("finding counts = %v: an improvement finding is not counted", card.FindingCounts)
+	}
+}
+
+// The binary feeding ratio-plus-worst is decided by violations alone
+// (the improvement rides alongside): against the conforming baseline, an
+// advisory finding changes the drawer and the counts, and the conformance
+// band, which every face-fed ratio and worst-severity roll-up reads, does
+// not move.
+func TestSnapshotAdvisoryFindingDoesNotMoveTheBand(t *testing.T) {
+	conforming := []string{
+		"db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port",
+	}
+	baseline, err := console.Build(schemaEstate(t, conforming, conformingValues()))
+	if err != nil {
+		t.Fatalf("building the baseline snapshot: %v", err)
+	}
+
+	gapped, err := console.Build(schemaEstate(t, conforming[:len(conforming)-1], conformingValues()))
+	if err != nil {
+		t.Fatalf("building the snapshot with the coverage gap: %v", err)
+	}
+
+	tier, _, found := adviceFinding(t, gapped, "db-spans-conform")
+	if !found {
+		t.Fatal("no improvement finding to test the band against")
+	}
+
+	before := cardFor(t, baseline, tier).Bands["conformance"]
+	after := cardFor(t, gapped, tier).Bands["conformance"]
+	if after != before {
+		t.Errorf("conformance band moved from %+v to %+v: an advisory finding decided the binary", before, after)
+	}
+}
+
+// An opt_in attribute nobody emits is information: visible in the drawer,
+// counted on the face, neutral in severity, and out of every denominator.
+func TestSnapshotShowsAnOptInFindingAsInformation(t *testing.T) {
+	in := schemaEstateWith(t, entityRequirement, []string{"service.name"}, nil)
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+
+	tier, f, found := adviceFinding(t, b, "service-entity-conform")
+	if !found {
+		t.Fatal("no information finding in any drawer: opt_in is still invisible")
+	}
+	if f.Severity != console.SeverityNone {
+		t.Errorf("severity = %q, want %q: information is neutral", f.Severity, console.SeverityNone)
+	}
+	if !strings.Contains(f.Summary, "1 attribute on offer and not in use") {
+		t.Errorf("summary = %q, want the offer stated", f.Summary)
+	}
+	if !strings.Contains(f.Remediation, "enterprise.cost_centre") {
+		t.Errorf("remediation does not name the offered attribute: %q", f.Remediation)
+	}
+
+	card := cardFor(t, b, tier)
+	if card.FindingCounts["conformance"] == 0 {
+		t.Errorf("finding counts = %v: an information finding is not counted", card.FindingCounts)
+	}
+
+	// The band does not move for information either: against a baseline
+	// whose one difference is the offer being taken up, the band reads the
+	// same while the drawer and the counts differ.
+	baseline, err := console.Build(schemaEstateWith(t, entityRequirement,
+		[]string{"service.name", "enterprise.cost_centre"}, nil))
+	if err != nil {
+		t.Fatalf("building the baseline snapshot: %v", err)
+	}
+	before := cardFor(t, baseline, tier).Bands["conformance"]
+	if after := card.Bands["conformance"]; after != before {
+		t.Errorf("conformance band moved from %+v to %+v: an information finding decided the binary", before, after)
+	}
+}
+
+// A conditionally_required attribute nobody emits rides alongside too: the
+// condition is prose the platform cannot evaluate, so the miss is an
+// improvement, never a flipped outcome.
+func TestSnapshotShowsAConditionallyRequiredMissAsAdvice(t *testing.T) {
+	in := schemaEstate(t, []string{
+		"db.namespace", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port",
+	}, conformingValues())
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+
+	_, f, found := adviceFinding(t, b, "db-spans-conform")
+	if !found {
+		t.Fatal("no improvement finding in any drawer for the conditionally required miss")
+	}
+	if f.Severity != console.SeverityAdvisory {
+		t.Errorf("severity = %q, want %q", f.Severity, console.SeverityAdvisory)
+	}
+	if !strings.Contains(f.Summary, "1 attribute required only where a condition applies, not in use") {
+		t.Errorf("summary = %q, want the conditional miss stated", f.Summary)
+	}
+	if !strings.Contains(f.Remediation, "db.operation.name") {
+		t.Errorf("remediation does not name the attribute: %q", f.Remediation)
 	}
 }
 

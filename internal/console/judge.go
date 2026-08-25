@@ -208,8 +208,28 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 		}
 
 		for i, f := range verdict.Findings {
-			if f.Outcome.Passing() {
+			if f.Scored() {
+				if f.Outcome.Passing() {
+					continue
+				}
+			} else if !f.Outcome.Passing() || f.Remediation == "" {
+				// An improvement or information finding rides alongside
+				// the verdict (ADR-0034 §3) and is filed when it carries
+				// something a reader could act on: a coverage gap, an
+				// unmet condition, an offer not taken up, a value note.
+				// One with no remediation has nothing to say, because the
+				// advice was fully taken. One whose outcome fails is a
+				// reading problem, and the violation-grade finding for
+				// the same requirement already reports it; filing the
+				// graded copy would put the same fact on the card twice.
 				continue
+			}
+			severity := outcomeSeverity(f.Outcome)
+			summary := fmt.Sprintf("%s: %s in %s (%s)",
+				f.Requirement.ID, strings.ReplaceAll(string(f.Outcome), "_", " "), row.Environment, row.Service)
+			if !f.Scored() {
+				severity = gradeSeverity(f.Weight())
+				summary = gradedSummary(f, row.Row)
 			}
 			// One finding, one owner, and the owner is the Service's
 			// (ADR-0034 §7, REQ-015). Every conformance finding attaches
@@ -219,19 +239,21 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 			// who-acts target would send the work to somebody who cannot
 			// do it. The finding is shown on each Tier the Service's
 			// Paths traverse, which is where a reader finds it, and is
-			// still the one finding with the one target.
+			// still the one finding with the one target. A graded finding
+			// routes exactly the same way: riding alongside changes what
+			// it feeds, never who acts on it.
 			finding := Finding{
-				ID:        fmt.Sprintf("%s/%s/conformance/%d", row.Service, row.Environment, i),
-				Kind:      "conformance",
-				Severity:  outcomeSeverity(f.Outcome),
-				Dampening: dampeningOf(f.Waived),
-				Summary: fmt.Sprintf("%s: %s in %s (%s)",
-					f.Requirement.ID, strings.ReplaceAll(string(f.Outcome), "_", " "), row.Environment, row.Service),
+				ID:          fmt.Sprintf("%s/%s/conformance/%d", row.Service, row.Environment, i),
+				Kind:        "conformance",
+				Severity:    severity,
+				Dampening:   dampeningOf(f.Waived),
+				Summary:     summary,
 				Remediation: conformanceRemediation(f),
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "service", ID: b.serviceID(row.Service)},
 					Label:  "Inspect the Service in Topology",
 				},
+				Advice: !f.Scored(),
 			}
 			for _, v := range targets {
 				v.findings = append(v.findings, finding)
@@ -627,9 +649,6 @@ func severityRank(s string) int {
 	return 0
 }
 
-// outcomeSeverity maps a verdict outcome onto the card contract's two
-// severities. The outcome vocabulary is richer and survives in the summary;
-// the face carries only how much a human should care (ADR-0041 §2).
 // conformanceRemediation prefers the fix the evaluator wrote over the one
 // the requirement's author wrote. Only a schema-conformance finding writes
 // its own, and only it can: what a schema requirement demands is whatever
@@ -644,6 +663,11 @@ func conformanceRemediation(f conformance.Finding) string {
 	return f.Requirement.Remediation
 }
 
+// outcomeSeverity maps a verdict outcome onto the card contract's two
+// severities. The outcome vocabulary is richer and survives in the summary;
+// the face carries only how much a human should care (ADR-0041 §2). It
+// answers for violation-grade findings alone: on those the outcome and the
+// grade ask one question, whether the row's floor holds.
 func outcomeSeverity(o conformance.Outcome) string {
 	switch o {
 	case conformance.Unknown:
@@ -653,6 +677,47 @@ func outcomeSeverity(o conformance.Outcome) string {
 	default:
 		return SeverityViolation
 	}
+}
+
+// gradeSeverity is the severity of a finding that rides alongside the
+// verdict, where the grade is the whole answer: an improvement is advisory
+// and an information finding is neutral, whatever their outcome reads
+// (ADR-0034 §3). The outcome says whether the requirement's floor holds;
+// the grade says how much a reader should care; the card's severity
+// carries care (ADR-0041 §2). Mapping the outcome here would let a passing
+// improvement read as nothing, which is how these findings went unseen.
+func gradeSeverity(g ownership.Grade) string {
+	if g == ownership.Neutral {
+		return SeverityNone
+	}
+	return SeverityAdvisory
+}
+
+// gradedSummary is the one-line reading of a finding that rides alongside
+// the verdict. The outcome word would mislead here: such a finding is filed
+// only when its outcome passes, and "compliant" beside an advisory chip
+// reads as a contradiction, so the line states what the level found. The
+// coverage counts are the finding's own, in the "3 of 8" form ADR-0034 §3
+// names as the actionable one.
+func gradedSummary(f conformance.Finding, row conformance.Row) string {
+	reading := "attribute values are not confirmed against the Schema Registry"
+	switch {
+	case f.Coverage != nil && f.CoverageInUse < f.CoverageDemanded:
+		reading = fmt.Sprintf("%d of %d recommended attributes in use", f.CoverageInUse, f.CoverageDemanded)
+	case len(f.Missing) > 0 && f.Weight() == ownership.Advisory:
+		reading = attrCount(len(f.Missing)) + " required only where a condition applies, not in use"
+	case len(f.Missing) > 0:
+		reading = attrCount(len(f.Missing)) + " on offer and not in use"
+	}
+	return fmt.Sprintf("%s: %s in %s (%s)", f.Requirement.ID, reading, row.Environment, row.Service)
+}
+
+// attrCount says how many attributes, with the noun agreeing.
+func attrCount(n int) string {
+	if n == 1 {
+		return "1 attribute"
+	}
+	return fmt.Sprintf("%d attributes", n)
 }
 
 // populationSeverity maps a population grade. Neutral is not a pass: it is

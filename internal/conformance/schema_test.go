@@ -297,6 +297,11 @@ func TestSchemaRecommendedCarriesACoverageRatio(t *testing.T) {
 	if got != 0 {
 		t.Errorf("coverage = %v, want 0: db.connection_string is the only recommended attribute in scope and it is not in use", got)
 	}
+	// The counts behind the ratio travel with it: "0 of 1" is the form a
+	// surface shows, and it cannot be unfolded from the float.
+	if f.CoverageInUse != 0 || f.CoverageDemanded != 1 {
+		t.Errorf("coverage counts = %d of %d, want 0 of 1", f.CoverageInUse, f.CoverageDemanded)
+	}
 	if f.Weight() != ownership.Advisory {
 		t.Errorf("recommended grade = %q, want %q", f.Weight(), ownership.Advisory)
 	}
