@@ -205,17 +205,17 @@ function Workspace({
       </header>
 
       {/* The claim flow's draft path (ADR-0042 §6): the selector arrives
-          pre-filled from the herd's shared identity attributes, and the
-          proposal authors the Tier binding beside this Blueprint. */}
+          pre-filled from the herd's shared identity attributes, never a
+          list of instance ids, and the proposal authors the Tier binding
+          beside this Blueprint. */}
       {claim && (
         <div className="claim-banner" data-testid="claim-banner">
           <p>
             Claiming into new Tier <span className="mono">{claim.tier}</span> (
             {claim.environment}, owned by {claim.team}) with selector{' '}
             <code data-testid="claim-banner-selector">{formatSelector(claim.selector)}</code>.
-            The selector is built from the identity attributes the collectors share, never a
-            list of instance ids. Save proposes the Tier binding and this Blueprint as one pull
-            request.
+            The selector is built from the identity attributes the collectors share. Save
+            proposes the Tier binding and this Blueprint as one pull request.
           </p>
         </div>
       )}
@@ -235,11 +235,12 @@ function Workspace({
       {editable && (
         <div className="save-area">
           {blocked && (
+            /* Only an Allow-list violation blocks a save; every other
+               finding is advisory (ADR-0022 §3, ADR-0028 §3). The notice
+               states the reasons and offers the Grant door. */
             <div className="save-blocked" data-testid="save-blocked">
               <p>
-                <strong>Save is disabled</strong>: {verdict.data?.save.reasons.join('; ')}. An
-                allow-list violation is the only finding that blocks a save. Every other finding
-                is advisory.
+                <strong>Save is disabled</strong>: {verdict.data?.save.reasons.join('; ')}.
               </p>
               <Link
                 to="/catalogue"

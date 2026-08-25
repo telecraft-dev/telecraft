@@ -136,9 +136,11 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
 
       <section className="claim-section">
         <h3>Suggested selector</h3>
+        {/* The suggestion is shared identity attributes only, never a
+            list of instance ids (ADR-0042 §6). */}
         <p className="section-summary">
-          Built from the identity attributes every collector in this selection shares.
-          Instance ids are never part of a selector. Narrow it by removing pairs.
+          Built from the identity attributes the collectors share. Narrow it by removing
+          pairs.
         </p>
         {Object.keys(suggested).length === 0 ? (
           <p className="surface-status" data-testid="claim-no-shared">

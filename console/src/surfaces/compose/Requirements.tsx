@@ -80,9 +80,11 @@ export function Requirements({
           ))}
         </tbody>
       </table>
+      {/* Intent and verdict sit side by side and are never combined: the
+          `satisfies` claim is checked rather than trusted. */}
       <p className="item-meta">
         A `satisfies` entry says what the draft intends to meet. The verdict column says what
-        the engine found. The two are shown side by side and never combined.
+        Telecraft found.
       </p>
     </div>
   )
