@@ -26,9 +26,9 @@ test('the rollout ledger renders per-cohort progress across both paths', async (
 
   // Both delivery paths in one view: the active cohort splits 2 served,
   // 1 foreign, the foreign member marked advisory, lag never failure (§7).
-  await expect(page.getByTestId(`cohort-served-${CANARY}-1`)).toContainText('1 of 2 on to')
-  await expect(page.getByTestId(`cohort-foreign-${CANARY}-1`)).toContainText('0 of 1 on to')
-  await expect(page.getByTestId(`cohort-foreign-${CANARY}-1`)).toContainText('1 from')
+  await expect(page.getByTestId(`cohort-served-${CANARY}-1`)).toContainText('1 of 2 on the new version')
+  await expect(page.getByTestId(`cohort-foreign-${CANARY}-1`)).toContainText('0 of 1 on the new version')
+  await expect(page.getByTestId(`cohort-foreign-${CANARY}-1`)).toContainText('1 on the previous version')
   await expect(page.getByTestId(`advisory-${CANARY}-1`)).toHaveText('advisory')
 })
 

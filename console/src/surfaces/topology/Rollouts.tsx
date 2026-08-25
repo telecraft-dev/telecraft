@@ -40,25 +40,41 @@ const DECISION_TONE: Record<RolloutDecision, ChipTone> = {
   abort: 'violation',
 }
 
-/** One path's running split, `to` leading: the advance evidence number. */
+/** One path's running split, `to` leading: the advance evidence number.
+ * The words match the Rollout panel's evidence line, so the ledger's cells
+ * and the panel beside them read the same. */
 function PathSplit({ split }: { split: RolloutPathProgress }) {
   if (split.members === 0) return <span className="path-split">none</span>
-  const rest = [
-    ['from', split.from],
-    ['other', split.other],
-    ['unknown', split.unknown],
-  ].filter(([, count]) => (count as number) > 0)
+  const rest: Array<[string, string, number]> = [
+    ['from', 'on the previous version', split.from],
+    ['other', 'on another configuration', split.other],
+    ['unknown', 'unknown', split.unknown],
+  ]
   return (
     <span className="path-split">
-      {split.to} of {split.members} on to
-      {rest.map(([label, count]) => (
-        <span key={label as string} className={`path-split-part running-${label}`}>
-          {' '}
-          · {count} {label}
-        </span>
-      ))}
+      {split.to} of {split.members} on the new version
+      {rest
+        .filter(([, , count]) => count > 0)
+        .map(([key, label, count]) => (
+          <span key={key} className={`path-split-part running-${key}`}>
+            {' '}
+            · {count} {label}
+          </span>
+        ))}
     </span>
   )
+}
+
+/* Halt conditions arrive as the evaluator's enum names, and the set is
+   explicitly extensible (ADR-0029 §6), so an unmapped condition falls back
+   to its name with the underscores spaced out. */
+const HALT_CONDITION_LABEL: Record<string, string> = {
+  failed: 'apply failed',
+  went_dark: 'went dark',
+}
+
+function haltConditionLabel(condition: string): string {
+  return HALT_CONDITION_LABEL[condition] ?? condition.replace(/_/g, ' ')
 }
 
 function CohortRow({
@@ -222,7 +238,7 @@ function RolloutSection({
                 className={chipClass('violation', { extra: 'halt-chip' })}
                 data-testid={`rollout-halt-${rollout.id}-${halt.collector}`}
               >
-                <Mark name="violation" /> {halt.collector} {halt.condition}
+                <Mark name="violation" /> {halt.collector} {haltConditionLabel(halt.condition)}
               </Link>
             </li>
           ))}
@@ -334,7 +350,7 @@ function RolloutPanel({ rollout }: { rollout: RolloutProgress }) {
               >
                 <p className="finding-head">
                   <Mark name="violation" />
-                  <span className="finding-kind">{halt.condition}</span>
+                  <span className="finding-kind">{haltConditionLabel(halt.condition)}</span>
                   {halt.path === 'foreign' && (
                     <Chip tone="ungoverned" className="advisory-chip">
                       foreign
@@ -383,9 +399,7 @@ export function Rollouts() {
         </header>
         <div className="rollout-ledger" data-testid="rollout-ledger">
           {rollouts.data.length === 0 ? (
-            <p className="section-summary">
-              No Rollout is active: every Tier is single-bound, the flat rebind.
-            </p>
+            <p className="section-summary">No Rollout is active.</p>
           ) : (
             rollouts.data.map((rollout) => (
               <RolloutSection
