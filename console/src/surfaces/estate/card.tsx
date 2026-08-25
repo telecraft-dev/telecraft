@@ -365,8 +365,8 @@ export function CardPanel({ card }: { card: CardFace }) {
       </section>
       <section className="panel-findings" data-testid="panel-findings">
         <h3>Findings</h3>
-        {drawer.isPending && <p className="surface-status">Loading the drawer…</p>}
-        {drawer.isError && <p className="surface-status">The drawer failed to load.</p>}
+        {drawer.isPending && <p className="surface-status">Loading the findings…</p>}
+        {drawer.isError && <p className="surface-status">The findings failed to load.</p>}
         {drawer.data &&
           (drawer.data.findings.length === 0 ? (
             <p className="section-summary">No findings.</p>

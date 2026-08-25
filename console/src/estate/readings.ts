@@ -43,9 +43,9 @@ export function laneReads(row: SignalRow): row is SignalRow & {
 /** What a row says in place of the readings it has no lane to take. */
 export const NO_LANE = 'no lane on this Tier'
 
-/** Why, at length, for the cell's own title. */
-export const NO_LANE_TITLE =
-  "the Tier's artefact instantiates no pipeline for this signal, so there is nothing here to meter"
+/* Why, at length, for the cell's own title. A lane the configuration never
+   wired has nothing to meter, which is why the cell shows no reading. */
+export const NO_LANE_TITLE = 'The configuration has no pipeline for this signal.'
 
 /** The words a card shows where a number would be a fabrication. */
 export const NO_READING = 'no reading'

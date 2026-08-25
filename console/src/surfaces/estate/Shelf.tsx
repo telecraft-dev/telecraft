@@ -106,8 +106,7 @@ export function Shelf({
               {payload.ungoverned.served + payload.ungoverned.foreign} ungoverned collectors
             </strong>
             : {payload.ungoverned.served} served the Unmatched artefact,{' '}
-            {payload.ungoverned.foreign} foreign. No Tier matches them, so no team owns them
-            and no compliance ratio counts them.
+            {payload.ungoverned.foreign} foreign. They don't match any Tier.
           </p>
           <Link
             from="/estate"
@@ -116,7 +115,7 @@ export function Shelf({
             className={buttonClass('secondary', 'onboard-cta')}
             data-testid="onboard-cta"
           >
-            Onboard them
+            Claim them
           </Link>
         </aside>
       )}

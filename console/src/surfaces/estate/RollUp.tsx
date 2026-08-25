@@ -84,7 +84,9 @@ export function RollUp({ payload }: { payload: EstatePayload }) {
               ))}
               <td>{row.neutral}</td>
               <td className="rollup-all" data-testid={`rollup-all-${row.team.id}`}>
-                {row.findingsAllEnvironments} findings, {row.waivedAllEnvironments} exempt
+                {row.findingsAllEnvironments} finding
+                {row.findingsAllEnvironments === 1 ? '' : 's'}, {row.waivedAllEnvironments}{' '}
+                exempt
               </td>
             </tr>
           ))}
