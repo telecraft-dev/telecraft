@@ -87,6 +87,14 @@ type SchemaEvidence struct {
 	// trip that answers a question the presence check has already
 	// answered.
 	Values map[SchemaValueReading]telemetry.DistinctValues
+
+	// Live holds the live-check reading per window: the finding records
+	// the tap emitted for the row's Service, with the liveness leg beside
+	// them (ADR-0034 §6). It is keyed by window alone because the tap
+	// judges the stream it was fed, whichever signals rode in it; which
+	// signals a requirement covers is applied at evaluation. A missing
+	// reading is unknown, never a clean stream.
+	Live map[time.Duration]telemetry.LiveCheckFindings
 }
 
 // InUse reports whether the gathered attribute-name reading for one signal
@@ -120,7 +128,7 @@ func SchemaReadings(lib requirements.Library, environment string) []SchemaReadin
 	seen := map[SchemaReading]bool{}
 	var out []SchemaReading
 	for _, req := range lib.Sorted() {
-		if req.Schema == nil || !req.AppliesTo(environment) {
+		if !landedSchema(req, environment) {
 			continue
 		}
 		window := req.Schema.Window.Std()
@@ -190,7 +198,7 @@ func SchemaValueReadings(lib requirements.Library, environment string, inUse fun
 	seen := map[SchemaValueReading]bool{}
 	var out []SchemaValueReading
 	for _, req := range lib.Sorted() {
-		if req.Schema == nil || !req.AppliesTo(environment) {
+		if !landedSchema(req, environment) {
 			continue
 		}
 		a := *req.Schema
@@ -231,13 +239,23 @@ func SchemaValueReadings(lib requirements.Library, environment string, inUse fun
 	return out
 }
 
+// landedSchema reports whether one requirement contributes to the landed
+// evidence plans: a schema-conformance requirement applying in the
+// Environment and judged at placement landed. A live requirement is judged
+// against the tap's emitted findings instead (ADR-0034 §6, see
+// SchemaLiveReadings), so gathering backend readings for it would buy
+// round trips nothing judges.
+func landedSchema(req requirements.Requirement, environment string) bool {
+	return req.Schema != nil && req.AppliesTo(environment) && req.Placement != requirements.Live
+}
+
 // forEachScopedGroup walks every registry group the schema-conformance
 // requirements applying in one Environment reach. A reference whose version
 // the library did not resolve reaches nothing: what its scope demands is not
 // known, which the evaluator reports as unknown rather than guessing at here.
 func forEachScopedGroup(lib requirements.Library, environment string, visit func(requirements.SchemaAssertion, scoped)) {
 	for _, req := range lib.Sorted() {
-		if req.Schema == nil || !req.AppliesTo(environment) {
+		if !landedSchema(req, environment) {
 			continue
 		}
 		a := *req.Schema
@@ -281,6 +299,11 @@ type SchemaSource struct {
 	// Values reads the distinct values one enum-declared attribute
 	// carries, hard-capped and reporting its own truncation.
 	Values func(SchemaValueReading) telemetry.DistinctValues
+
+	// Live reads the finding records the live-check tap emitted for the
+	// row's Service over one window, with the liveness leg beside them
+	// (ADR-0034 §6).
+	Live func(time.Duration) telemetry.LiveCheckFindings
 }
 
 // GatherSchema builds the evidence one row's schema-conformance
@@ -301,7 +324,8 @@ type SchemaSource struct {
 // would be a round trip nobody wanted.
 func GatherSchema(lib requirements.Library, environment string, src SchemaSource) SchemaEvidence {
 	plan := SchemaReadings(lib, environment)
-	if len(plan) == 0 {
+	livePlan := SchemaLiveReadings(lib, environment)
+	if len(plan) == 0 && len(livePlan) == 0 {
 		return SchemaEvidence{}
 	}
 	ev := SchemaEvidence{
@@ -309,6 +333,7 @@ func GatherSchema(lib requirements.Library, environment string, src SchemaSource
 		Names:    make(map[SchemaReading]telemetry.AttributeNames, len(plan)),
 		Groups:   map[SchemaReading]telemetry.GroupNames{},
 		Values:   map[SchemaValueReading]telemetry.DistinctValues{},
+		Live:     map[time.Duration]telemetry.LiveCheckFindings{},
 	}
 	if src.Names != nil {
 		for _, key := range plan {
@@ -323,6 +348,11 @@ func GatherSchema(lib requirements.Library, environment string, src SchemaSource
 	if src.Values != nil {
 		for _, key := range SchemaValueReadings(lib, environment, ev.InUse) {
 			ev.Values[key] = src.Values(key)
+		}
+	}
+	if src.Live != nil {
+		for _, window := range livePlan {
+			ev.Live[window] = src.Live(window)
 		}
 	}
 	return ev
@@ -409,14 +439,15 @@ const defaultLevel = schemaregistry.Recommended
 func judgeSchema(req requirements.Requirement, ev Evidence) []Finding {
 	a := *req.Schema
 
-	// The live tap is not built (ADR-0034 §6, issue #159). The loader
-	// refuses `placement: live` today, so this is the belt to that
-	// braces: a live requirement that reached the evaluator must read
-	// unknown, because a dead tap must not read as clean.
+	// The live placement is its own arm (ADR-0034 §6): the tap has
+	// already judged the stream against the registry, so the evaluator
+	// reads its findings rather than the backend readings this arm reads.
+	// The loader still refuses `placement: live` (issue #159: the rendered
+	// tap pattern and the activation slices are not built), so nothing
+	// reaches the live arm from a loaded library yet; it is judged here so
+	// that it is fully tested before the refusal lifts.
 	if req.Placement == requirements.Live {
-		return []Finding{schemaUnknown(req,
-			"this requirement is judged at placement live, and the collection-time tap that would emit its findings is not built yet",
-			"Judge this requirement against landed telemetry by setting its placement to landed, or take it out of the library until the collection-time tap ships.")}
+		return judgeSchemaLive(req, ev)
 	}
 
 	reg, ok := ev.Schema.RegistryFor(a)
