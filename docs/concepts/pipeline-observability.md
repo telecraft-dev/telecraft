@@ -1,6 +1,6 @@
 ---
 title: Pipeline observability
-description: Expectations and Claims, settle windows, self-telemetry ingestion, metering at two grains, and the card contract that surfaces them.
+description: Expectations and Claims, Settle windows, self-telemetry ingestion, metering at two grains, and the card contract that surfaces them.
 order: 7
 ---
 
@@ -91,19 +91,19 @@ delivery's red, and blending the two would hide it.
 
 ### Settle windows
 
-A **settle window** is the period after a configuration goes `APPLIED` at a new
+A **Settle window** is the period after a configuration goes `APPLIED` at a new
 SHA during which its claims read neutral-pending: never red, never green.
 
 Self-telemetry settles in seconds; arrival and enrichment take longer. The
 shipped defaults are 30 seconds for self-telemetry claims and 30 minutes for
 arrival and enrichment claims.
 
-A settle window is not the observation window. The observation window is how
+A Settle window is not the observation window. The observation window is how
 far back a claim looks, defaulting to 24 hours, long enough to survive an
 overnight quiet period. Persistence dampens shortfalls, using the same
-mechanism population floors use, so one blip never paints an estate red.
+mechanism Population floors use, so one blip never paints an estate red.
 
-A claim reads one of four statuses: green, red, `pending` inside its settle
+A claim reads one of four statuses: green, red, `pending` inside its Settle
 window, or `unknown` when the reading behind it is not available.
 
 ### Where claim failures land

@@ -91,7 +91,7 @@ the Blueprint's owner, and can't be referenced from outside that Blueprint.
 |---|---|---|---|---|
 | `name` | string | yes | none | On a shared Component, must equal the filename without its extension. On a local Component, the name that lane entries reference. |
 | `class` | string | yes | none | One of `receiver`, `processor`, `exporter`, `connector`, `extension`. |
-| `type` | string | yes | none | The catalogue type this Component configures. |
+| `type` | string | yes | none | The Catalogue type this Component configures. |
 | `version` | integer | yes | none | An integer, 1 or higher. |
 | `owner` | string | shared only | none | Required on a shared Component, forbidden on a local one. |
 | `config` | mapping | no | empty | The otelcol configuration body, written as is under the rendered id. |
@@ -238,7 +238,7 @@ has its own detection.
 ### Ordering findings
 
 Kind `ordering`. Raised when a lane's explicit order contradicts an ordering
-rule keyed on a catalogue type. Position is judged among the same-class
+rule keyed on a Catalogue type. Position is judged among the same-class
 entries of that lane, because that's how the rendered pipeline executes. The
 `extensions` block is never judged: extensions have no pipeline order.
 

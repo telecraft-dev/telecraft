@@ -187,7 +187,7 @@ against what's committed.
 
 Findings don't block. Each is printed on stdout after the written paths,
 prefixed `finding`. Exactly one policy rule refuses the render: the
-allow-list check. Mechanical problems also refuse it, such as a reference
+Allow-list check. Mechanical problems also refuse it, such as a reference
 that resolves to nothing or a rendered-id collision.
 
 | Flag | Type | Default | Description |

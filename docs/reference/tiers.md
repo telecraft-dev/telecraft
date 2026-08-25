@@ -1,6 +1,6 @@
 ---
 title: Tier file format
-description: Every field of a Tier, Service and Rollout, with selectors, Blueprint binding, population floors and dual binding.
+description: Every field of a Tier, Service and Rollout, with selectors, Blueprint binding, Population floors and dual binding.
 order: 5
 ---
 
@@ -24,7 +24,7 @@ how strictly a Tier is judged and a Rollout dual-binds a Tier. See
 | `environment` | string | yes | none | The one Environment this Tier declares. |
 | `blueprint` | string | yes | none | The Blueprint binding, `<team>/<name>@<version>`. |
 | `selector` | map of string to string | no | empty | Equality selector over reported identifying attributes. |
-| `min_expected` | integer | no | `0` | The declared population floor. Zero means no declared floor. |
+| `min_expected` | integer | no | `0` | The declared Population floor. Zero means no declared floor. |
 | `serving` | mapping | no | absent | When present, marks the Tier as served over OpAMP. Holds one field, `endpoint`. |
 | `hops` | list of mappings | no | empty | Directed edges arriving at this Tier. Each has `from` and `trusted`. |
 
@@ -57,7 +57,7 @@ declares one and only one. To bind per Environment, author sibling Tiers:
 its own binding.
 
 `production` is the value that policy defaults attach to: it's the default
-Environment lens, it leads every report, and the shipped stability floors are
+Environment lens, it leads every report, and the shipped Stability floors are
 defined for it.
 
 A Tier with no `environment` is a load error.
@@ -97,7 +97,7 @@ artefact.
 
 ## Population floors
 
-`min_expected` is the Tier's declared population floor: at least this many
+`min_expected` is the Tier's declared Population floor: at least this many
 collectors should match its selector. It's reviewable in git, which suits
 substrates with no queryable inventory.
 
@@ -208,10 +208,10 @@ Each stage has:
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `cohort` | mapping | yes | none | The cohort spec. At least one form must be present. |
+| `cohort` | mapping | yes | none | The Cohort spec. At least one form must be present. |
 | `soak` | duration string | no | `0s` | Minimum time the stage must have been active before its advance can be proposed. Zero means no soak gate. |
 
-A cohort spec has three forms, which you can mix. Membership is their union,
+A Cohort spec has three forms, which you can mix. Membership is their union,
 so "the three hosts I trust plus 5%" is one stage:
 
 | Field | Type | Description |
@@ -249,11 +249,11 @@ render at head: the base artefact from `from` at
 `rendered/<team>/<tier>@next.yaml`. The `@next` artefact exists exactly while
 the Rollout does, and is removed with it.
 
-The candidate is judged like any bound Blueprint: floors, the allow-list
+The candidate is judged like any bound Blueprint: floors, the Allow-list
 block, and the stale-pin finding all apply, because that config is about to
 run in this Tier.
 
-Every step is a commit on this one small file. To start a rollout, add the
+Every step is a commit on this one small file. To start a Rollout, add the
 file. To advance, raise `stage`. To complete, rebind the Tier to `to` and
 delete the file. To abort, delete the file.
 
@@ -270,9 +270,9 @@ Beyond the field rules above, the topology load refuses when:
 - `from` and `to` name the same Blueprint. The estate tree holds one content
   per Blueprint id at head, so both artefacts would render identically and the
   rollout would stage nothing. Author the candidate as a sibling Blueprint.
-- `stage` is negative or not an index into `stages`. To complete a rollout,
+- `stage` is negative or not an index into `stages`. To complete a Rollout,
   delete the file rather than counting past the end.
-- A stage's cohort spec is empty, its `hosts` form lacks an attribute or
+- A stage's Cohort spec is empty, its `hosts` form lacks an attribute or
   values, its `match` form has an empty key or value, or its `percent` is
   outside 1 to 100.
 - A stage uses `percent` but the Rollout sets no `hash_attributes`, or

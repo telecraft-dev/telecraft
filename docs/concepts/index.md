@@ -104,9 +104,9 @@ have to delegate identity to a git host that is not there.
 - [Ownership](ownership.md): who is accountable for what, how findings route,
   and how compliance rolls up a team tree without a single blended number.
 - [Authoring](authoring.md): Services, Tiers, Blueprints, Components, the
-  Catalogue, and the allow-list policy that decides what a team can use.
+  Catalogue, and the Allow-list policy that decides what a team can use.
 - [Environments](environments.md): the Environment axis, Service Class,
-  Sensitivity, stability floors, and why every verdict is per environment.
+  Sensitivity, Stability floors, and why every verdict is per environment.
 - [Delivery](delivery.md): served and foreign collectors, the stateless OpAMP
   server, the commit stamp, and staged rollouts.
 - [Pipeline observability](pipeline-observability.md): Expectations and

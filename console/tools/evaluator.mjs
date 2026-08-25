@@ -285,7 +285,7 @@ function findings(estate, entries, draft, environment) {
           ref,
           summary: `${ref} (${key}) is outside this team's effective Allow-list`,
           remediation:
-            'Request a Grant from the parent team that owns the wider list, or remove the Component. An allow-list violation is the only finding that blocks the render.',
+            'Request a Grant from the parent team that owns the wider list, or remove the Component.',
         })
       }
       const level = catType?.stability?.[signal]
@@ -493,7 +493,7 @@ export function propose(estate, entries, draft, environment, claim) {
   const verdict = validate(estate, entries, draft, environment)
   if (verdict.save.blocked) {
     const failure = new Error(
-      `render refused, no proposal: ${verdict.save.reasons.join('; ')}. Request a Grant.`,
+      `Save is disabled: ${verdict.save.reasons.join('; ')}.`,
     )
     failure.status = 409
     throw failure

@@ -85,7 +85,7 @@ export const welcome: Tour = {
       id: 'topology',
       title: 'How telemetry flows',
       body:
-        "Tiers, the hops between them, and each Service's path through the graph. " +
+        "Tiers, the Hops between them, and each Service's Path through the graph. " +
         'Collectors are never drawn: each one matches a Tier by selector and appears in ' +
         "that Tier's count. Telecraft derives the edges from the configuration rather than " +
         'arranging them by hand, so the picture always agrees with what is rendered.',
@@ -108,8 +108,8 @@ export const welcome: Tour = {
       id: 'catalogue',
       title: 'What you may use, and how to ask for more',
       body:
-        'The catalogue lists what exists at a given collector version. Your effective ' +
-        'palette is that list, narrowed by the allow-list your team inherits, and every ' +
+        'The Catalogue lists what exists at a given collector version. Your effective ' +
+        'Palette is that list, narrowed by the Allow-list your team inherits, and every ' +
         'entry says why it is there. To use something outside it, ask for a Grant. A Grant ' +
         'is another pull request.',
       anchor: 'catalogue',

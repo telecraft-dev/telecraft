@@ -251,8 +251,10 @@ func (p Pipeline) HopFlow(kind requirements.SignalKind, laneExporters []string) 
 		return HopThroughput{Cause: fmt.Sprintf("the sending Tier wires no %s lane, so no exporter feeds this Hop", kind)}
 	case 1:
 	default:
+		// A Hop names no component (ADR-0007), so a fanned-out lane's
+		// reading says it cannot tell rather than guessing an exporter.
 		return HopThroughput{Cause: fmt.Sprintf(
-			"the sending Tier's %s lane leaves through %d exporters and a Hop names none of them (ADR-0007), so which one feeds this Hop is not in the model",
+			"the sending Tier's %s lane leaves through %d exporters and a Hop names none of them, so the reading cannot tell which one feeds this Hop",
 			kind, len(laneExporters))}
 	}
 

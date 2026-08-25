@@ -107,7 +107,7 @@ Two rules cover first boot:
 ## The Unmatched artefact
 
 A served collector that matches no Tier selector receives the **Unmatched
-artefact**: a distinguished rendered configuration owned by the root team,
+artefact**: a distinguished rendered configuration owned by the root Team,
 commit stamped, with self-telemetry on, no data pipelines, and never empty.
 
 This is the one case where Telecraft is talking to an ungoverned thing, and
@@ -132,11 +132,11 @@ Effective or Observed reading, and a Tier with no collectors has neither. The
 selector *is* the expectation, so the finding is the selector's.
 
 Without a floor it is neutral. A freshly authored Tier waiting for its
-workload is an ordinary state: visible, excluded from every compliance
-denominator, and never red. Its age doubles as the stale-configuration
+workload is an ordinary state: visible, counted in no compliance ratio,
+and never red. Its age doubles as the stale-configuration
 signal: "never matched in 90 days".
 
-A **population floor** gives it teeth. The floor is the minimum instance count
+A **Population floor** gives it teeth. The floor is the minimum instance count
 a Tier's selector should match, either derived live from the substrate through
 the `InventoryProvider` seam or declared in the Tier file. Absent means no
 teeth at all. With a floor above zero and a zero that persists past the grace
@@ -182,7 +182,7 @@ forms can mix within a stage:
 - **Attribute selector**, such as a region.
 - **Fraction**, resolved by a stable hash over the same identifying attributes
   the Tier matches on. Widening from 5% to 50% is a strict superset, so no
-  collector flaps backwards. A fractional cohort is statistically 5%, not
+  collector flaps backwards. A fractional Cohort is statistically 5%, not
   exactly 5%.
 
 Membership is a pure function the server evaluates on each connect, never
@@ -203,7 +203,7 @@ Rollout: the Tier flips to single-bound *to*, the Rollout closes, and the
 is no control loop to race, and collectors that individually broke have
 already reverted themselves and report `FAILED`. Two halt conditions ship:
 
-- A cohort member reporting `FAILED` for the *to* artefact's hash.
+- A Cohort member reporting `FAILED` for the *to* artefact's hash.
 - Went dark after apply: the collector was reporting, took the new
   configuration, then fell silent within the soak window. That is the
   crash-loop signature, and it never reports `FAILED` at all.
@@ -211,7 +211,7 @@ already reverted themselves and report `FAILED`. Two halt conditions ship:
 The condition set is extensible, so further signals plug in as conditions
 rather than as changes to the model.
 
-**Aborting is a proposal too.** By default, any cohort failure blocks the
+**Aborting is a proposal too.** By default, any Cohort failure blocks the
 advance, and 10% failed-or-dark proposes an abort: Telecraft opens a proposal
 that reverts the Tier to single-bound *from*. Nothing is reverted behind your
 back.

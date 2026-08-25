@@ -43,7 +43,7 @@ Three controls sit above every Workspace:
 - **Jump to object** (`⌘K`) is how you reach a specific Tier, Service,
   Blueprint, or Catalogue entry. There is no object-first navigation tree.
 - The user chip shows whose team scopes the shelf. The demo signs you in as
-  the root team, so the first view is the whole estate.
+  the root Team, so the first view is the whole estate.
 
 ## Estate
 
@@ -57,8 +57,8 @@ the face alone.
 
 A banner sits above the grid:
 
-> **4 ungoverned collectors**: 2 served the Unmatched artefact, 2 foreign. No
-> Tier matches them, so no team owns them and no compliance ratio counts them.
+> **4 ungoverned collectors**: 2 served the Unmatched artefact, 2 foreign.
+> They don't match any Tier.
 
 Click a card to open its drawer. The `data-flow/gateway` drawer names the
 Tier, its owning team, its Environment, its Service Class, and its population
@@ -79,11 +79,11 @@ counts at every level:
 
 ```
 Team                   Tiers   Delivery  Expectation  Conformance      All Environments
-Engineering            5 / 6   4/5 ✗     3/4 ✗        1/4 ✗ 1 waived   14 findings, 1 waived
-Platform Engineering   4 / 5   3/4 ✗     2/3 ✗        1/3 ✗ 1 waived   10 findings, 1 waived
-Data Flow              2 / 3   2/2       1/2 ✗        0/2 ✗ 1 waived   9 findings, 1 waived
-Edge Operations        2 / 2   1/2 ✗     1/1          1/1              1 findings, 0 waived
-Storefront             1 / 1   1/1       1/1          0/1 ✗            4 findings, 0 waived
+Engineering            5 / 6   4/5 ✗     3/4 ✗        1/4 ✗ 1 exempt   14 findings, 1 exempt
+Platform Engineering   4 / 5   3/4 ✗     2/3 ✗        1/3 ✗ 1 exempt   10 findings, 1 exempt
+Data Flow              2 / 3   2/2       1/2 ✗        0/2 ✗ 1 exempt   9 findings, 1 exempt
+Edge Operations        2 / 2   1/2 ✗     1/1          1/1              1 finding, 0 exempt
+Storefront             1 / 1   1/1       1/1          0/1 ✗            4 findings, 0 exempt
 ```
 
 Teams with no Tiers read `no verdicts` rather than a misleading 100%.
@@ -132,7 +132,7 @@ graph, and **Simulate flow** animates them.
 
 The Rollouts view currently reports:
 
-> No Rollout is active: every Tier is single-bound, the flat rebind.
+> No Rollout is active.
 
 The demo estate does carry an active Rollout, `data-flow/bridge-canary`, but
 its effect is visible in the estate repository rather than in this view: the
@@ -204,7 +204,7 @@ checking your own estate against.
 | A stability-floor breach | `storefront/mobile-collector` routes metrics through a processor upstream rates alpha, below the C2 production floor |
 | Ungoverned collectors | Four collectors match no Tier selector: two served the Unmatched artefact, two read through the estate provider |
 | A never-seen Tier | `edge-ops/edge-arm` was authored ahead of a migration and nothing has ever matched it |
-| A silent component | The Kafka bridge's batch processor emits no self-telemetry past the settle window |
+| A silent component | The Kafka bridge's batch processor emits no self-telemetry past the Settle window |
 | Delivery divergence | One staging collector reports an artefact other than the one git holds |
 | An active Rollout | `data-flow/bridge-canary` is mid-stage across the Kafka bridge |
 

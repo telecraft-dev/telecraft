@@ -96,7 +96,7 @@ receiver/kafka            allow-list
 receiver/otlp             allow-list
 ```
 
-A team with no declared list inherits its parent's unchanged. The root team
+A team with no declared list inherits its parent's unchanged. The root Team
 sees the whole Catalogue, marked `default-allow`.
 
 ## Author a Blueprint
@@ -190,7 +190,7 @@ The parts that matter:
   one connects, reports its identifying attributes, and Telecraft matches it
   into the Tier whose selector its attributes satisfy. Matching is equality
   over every authored pair, and the most specific satisfied selector wins.
-- `min_expected` is the population floor: at least this many collectors should
+- `min_expected` is the Population floor: at least this many collectors should
   match. It is a floor, never an equality, so a surplus is never a finding.
 - `hops` are the arrivals into this Tier. Trust belongs to the Hop, not the
   Tier, and an undeclared trust level fails safe.
@@ -351,7 +351,7 @@ The command exits 1 and writes nothing. The fix is a Grant from an ancestor
 team, which is one reviewable file.
 
 `render` exits 0 when it rendered, 1 when it refused (a mechanical invalidity
-or the allow-list hard block), and 2 on a usage or load error.
+or the Allow-list hard block), and 2 on a usage or load error.
 
 A stability-floor breach is a finding, not a block. The render completes and
 reports it on stdout, after the `wrote` lines:

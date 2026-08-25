@@ -56,7 +56,7 @@ profiles. A floor is judged per (component, signal), never per component.
 | `unmaintained` | lifecycle end-state |
 
 The maturity ladder is `development` < `alpha` < `beta` < `stable`. A
-[stability floor](tiers.md#how-paths-set-a-tiers-floor) compares against
+[Stability floor](tiers.md#how-paths-set-a-tiers-floor) compares against
 that ladder. Lifecycle end-states have no rung; lifecycle findings judge them
 separately.
 
@@ -218,7 +218,7 @@ a new artefact beside the old one.
 
 The active Catalogue is the version your estate has activated, recorded in
 `activations.yaml` beside `teams.yaml`. Authoring, the Palette and the
-stability floors are all judged against it. Activating a version is explicit:
+Stability floors are all judged against it. Activating a version is explicit:
 you read an impact report first, and nothing changes until an operator
 confirms. See [Activate a version](../guides/activate-a-version.md) for the
 task, and `telecraft activate` in the [command line
@@ -239,7 +239,7 @@ still accepts `-catalogue` to point at one artefact deliberately:
 | Command | Used for |
 |---|---|
 | `telecraft palette` | Validating entries and materialising the palette. |
-| `telecraft render` | The allow-list block and stability floors. |
+| `telecraft render` | The Allow-list block and Stability floors. |
 | `telecraft check` | `library_drift` detection, with `-source`. |
 | `telecraft snapshot` | The active version, marked as such among the installed set. |
 

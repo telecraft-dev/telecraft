@@ -15,7 +15,7 @@ Versions are kept side by side, so activating is reversible and the report is
 cheap to compute: both versions are already on disk.
 
 Activating changes judgement only. It moves what Blueprints are validated
-against, what the Palette offers, which stability floors bite, and what
+against, what the Palette offers, which Stability floors bite, and what
 `schema_conformance` Requirements that track head demand. It never reaches a
 running collector, and it never rewrites a rendered configuration.
 

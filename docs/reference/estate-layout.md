@@ -213,7 +213,7 @@ directory shape, so an ancestor keeps its say over a team nested several
 levels below it. A team whose whole chain has no owners gets no line at all,
 which leaves the path to the repository default.
 
-When the root team or teams carry owners, the renderer writes one further
+When the root Team or Teams carry owners, the renderer writes one further
 line:
 
 ```

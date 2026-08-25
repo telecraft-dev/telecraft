@@ -98,7 +98,7 @@ An Exemption (an authored waiver for one requirement) or a Grace Period (an
 onboarding window Telecraft computes from a Service's class) waives a
 finding's *count*, never its diagnosis. An exempted broken pipeline is still
 broken, and Telecraft keeps saying so. It gives up only its place in the
-denominator, and the waived total sits alongside, so a green built entirely
+compliance ratio, and the waived total sits alongside, so a green built entirely
 on exemptions cannot look clean. See
 [governance](governance.md#exemptions-and-grace) for who can grant one.
 

@@ -1,6 +1,6 @@
 ---
 title: Authoring
-description: Services, Tiers, Blueprints and Components, the Catalogue they draw from, and the allow-list policy that decides what each team may use.
+description: Services, Tiers, Blueprints and Components, the Catalogue they draw from, and the Allow-list policy that decides what each team may use.
 order: 4
 ---
 
@@ -62,7 +62,7 @@ judged reliably. Conformance covers logs, metrics, and traces.
 There is no phase concept. With one Blueprint bound per Tier, there is no
 stacking of Blueprints for phases to arbitrate. Ordering advice, such as
 putting `memory_limiter` first and `batch` last, ships as evaluator rules
-keyed on catalogue types. Those rules raise ordering findings that advise;
+keyed on Catalogue types. Those rules raise ordering findings that advise;
 they never reorder.
 
 A Blueprint also carries the Requirement ids it claims to satisfy. That claim
@@ -71,7 +71,7 @@ the author meant, and the verdict says what is true.
 
 ## Components
 
-A **Component** is a configured instance of a catalogue type: a receiver,
+A **Component** is a configured instance of a Catalogue type: a receiver,
 processor, exporter, connector, or extension. It is named, integer-versioned,
 and ownable. Every lane entry is a Component. Raw inline otelcol blocks are
 not a second kind of lane entry, because ownership, routing, and the
@@ -143,7 +143,7 @@ Three details matter when you use it:
   yields byte-identical artefacts. A new tag yields a new artefact beside the
   old one rather than replacing it. Telecraft does not control collector
   binaries, so the version a collector runs is a discovered fact, and the
-  matching catalogue has to still be there.
+  matching Catalogue has to still be there.
 
 The Catalogue states what exists. It never states what you can use.
 
@@ -176,7 +176,7 @@ use component X, and on whose authority?".
 whole active Catalogue. Governance pressure comes from floors, lifecycle
 findings, and conformance, not from an empty shop on day one. Deprecated
 components stay in the default allow and produce findings, so a newly
-imported catalogue never breaks a re-render.
+imported Catalogue never breaks a re-render.
 
 Allow-lists and Grants are authored files in the estate repository beside
 `teams.yaml`, reviewed and versioned like everything else. They are never

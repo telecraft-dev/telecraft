@@ -360,12 +360,11 @@ evaluates nothing and scores every Service clean.
 | Value | Meaning |
 |---|---|
 | `landed` | Telemetry that has already landed in a backend. The default. |
-| `live` | Findings a collection-time tap emitted. |
+| `live` | Declared and refused: a library that sets it does not load. |
 
-`placement: live` is a load error today: the tap it reads findings from isn't
-built, so a `live` Requirement would evaluate nothing and every Service would
-read clean against it. The field is carried now so that the Requirement shape
-doesn't change again when the tap lands.
+`placement: live` is a load error: nothing emits collection-time findings for
+it to read, so a `live` Requirement would evaluate nothing and every Service
+would read clean against it.
 
 `placement` on a Requirement with no `schema_conformance` block is a load
 error. Nothing else has a placement.

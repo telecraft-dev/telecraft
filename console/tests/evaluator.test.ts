@@ -201,10 +201,10 @@ describe('the rendered preview (REQ-035, ADR-0024 §5)', () => {
 })
 
 describe('the proposal exit (ADR-0028)', () => {
-  it('fails closed on the hard block: no proposal, request a Grant', () => {
+  it('fails closed on the hard block: no proposal, and the message matches the surface', () => {
     expect(() =>
       propose(estate, entries, doc('data-flow/gateway-standard'), 'production'),
-    ).toThrowError(/no proposal.*Request a Grant/)
+    ).toThrowError(/Save is disabled: .*Allow-list/)
   })
 
   it('opens a branch-per-draft proposal, attributed to the acting human', () => {

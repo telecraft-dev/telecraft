@@ -194,9 +194,10 @@ function GovernanceEditor({
       </section>
       <section className="governance-section">
         <h2>Propose</h2>
+        {/* The console never writes the policy itself: the proposal goes
+            through pull request review (ADR-0028). */}
         <p className="section-summary">
-          Proposing opens a pull request attributed to you. The console never writes the
-          policy itself: the pull request review decides.
+          Proposing opens a pull request attributed to you.
         </p>
         <div className="governance-form">
           <label>

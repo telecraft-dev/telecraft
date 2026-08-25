@@ -1,12 +1,12 @@
 ---
 title: Stage a Rollout
-description: Move one Tier's collector population onto a new Blueprint version in cohorts, advancing and aborting by pull request.
+description: Move one Tier's collector population onto a new Blueprint version in Cohorts, advancing and aborting by pull request.
 order: 6
 ---
 
 # Stage a Rollout
 
-A Rollout moves one Tier from one Blueprint version to another in cohorts,
+A Rollout moves one Tier from one Blueprint version to another in Cohorts,
 instead of flipping the whole population at once. It is optional: the default
 is still the flat rebind, which means editing the Tier's `blueprint:` field in
 a pull request.
@@ -50,7 +50,7 @@ stages:
 - `owner` must be the target Tier's owner. A Rollout is the Tier owner's tool,
   never a cross-team lever.
 - `tier` is the one Tier this Rollout stages. Cohorts subdivide that Tier's
-  population; a cohort is never a Tier itself.
+  population; a Cohort is never a Tier itself.
 - `from` must equal the Tier's current binding. `to` names the candidate. The
   two must bind distinct Blueprints, so you author the candidate as a sibling
   Blueprint.
@@ -58,13 +58,13 @@ stages:
   reviewed edit of this one field.
 - `hash_attributes` pins the attributes that fractional membership hashes
   over. It is pinned with the object, because changing it mid-Rollout would
-  reshuffle every fractional cohort.
+  reshuffle every fractional Cohort.
 - `soak` is the minimum time a stage must have been active before its advance
   can be proposed.
 
 ## Cohorts
 
-A stage's cohort has three forms, and you can mix them. Membership is their
+A stage's Cohort has three forms, and you can mix them. Membership is their
 union, so "the three machines I trust, plus 5%" is one stage.
 
 ```yaml
@@ -81,7 +81,7 @@ Two properties are worth knowing before you rely on them:
 
 - The fractional form is statistically 5%, never exactly 5%.
 - Membership is the union of every stage up to and including the active one,
-  so advancing only ever widens. No collector flaps backwards out of a cohort.
+  so advancing only ever widens. No collector flaps backwards out of a Cohort.
 
 Membership is a pure function of the Rollout and the collector's reported
 attributes, computed at serve time and never stored. Every replica computes
@@ -107,13 +107,13 @@ kafka-bridge@next.yaml
 ```
 
 The base artefact is the *from* binding, and it goes to everybody outside the
-cohort:
+Cohort:
 
 ```
 # Tier data-flow/kafka-bridge (production), Blueprint data-flow/bridge-standard@2, commit 0000000000000000000000000000000000000000.
 ```
 
-`kafka-bridge@next.yaml` is the *to* binding, and it goes to cohort members:
+`kafka-bridge@next.yaml` is the *to* binding, and it goes to Cohort members:
 
 ```
 # Tier data-flow/kafka-bridge (production), Blueprint data-flow/bridge-next@1, commit 0000000000000000000000000000000000000000.
@@ -139,7 +139,7 @@ stage: 2
 ```
 
 Render again, and both artefacts are still there. What changed is who is in
-the cohort, which the server recomputes on the next connect. Both render
+the Cohort, which the server recomputes on the next connect. Both render
 commands exit 0; a validation failure exits 2 and writes nothing.
 
 The stage number is an index into the authored stages, so it can't run past
@@ -157,14 +157,14 @@ Halting is passive: it is the proposal that never arrives.
 
 Two halt conditions ship, and they gate the advance:
 
-- A cohort member reports `FAILED` for the candidate artefact's hash. It took
+- A Cohort member reports `FAILED` for the candidate artefact's hash. It took
   the offer, the apply failed, and the Supervisor has already reverted it. A
   `FAILED` for any other hash belongs to some other delivery.
-- A cohort member takes the candidate and then goes silent within the soak
+- A Cohort member takes the candidate and then goes silent within the soak
   window. That is the crash-loop signature that never reports `FAILED`.
 
-Any halted cohort member blocks the advance. When 10% or more of the seen
-cohort has halted, Telecraft proposes the abort instead of the advance.
+Any halted Cohort member blocks the advance. When 10% or more of the seen
+Cohort has halted, Telecraft proposes the abort instead of the advance.
 
 ## Complete
 
@@ -232,14 +232,14 @@ That gives four readings: `to`, `from`, `other` (a different commit entirely,
 or a foreign config), and `unknown`. Wiring that both artefacts share
 distinguishes nothing, so it reads `unknown` rather than a guess.
 
-The important consequence: a Foreign cohort member still on the *from*
+The important consequence: a Foreign Cohort member still on the *from*
 artefact is lag, never failure. Telecraft never controlled Foreign delivery
 timing, and the `FAILED` halt signal isn't available there. The Rollout reads
 everything and blocks nothing on that path.
 
 ## What next
 
-- [Serve configurations](serve-configs.md) covers how cohort members receive
+- [Serve configurations](serve-configs.md) covers how Cohort members receive
   the candidate artefact.
 - [Check conformance](check-conformance.md) answers whether the new Blueprint
   version delivers.
