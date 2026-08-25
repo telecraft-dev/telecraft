@@ -149,12 +149,12 @@ declared lists, the default, or a named Grant.
 
 ## Enforcement
 
-The allow-list check is the one policy rule that blocks a render. If a
-Blueprint uses a catalogue type outside the owning team's effective palette,
+The Allow-list check is the one policy rule that blocks a render. If a
+Blueprint uses a Catalogue type outside the owning team's effective palette,
 `telecraft render` refuses. There's no override: to add the component, ask
 for a Grant.
 
-Everything else the render notices, such as a stability floor breach or a
+Everything else the render notices, such as a Stability floor breach or a
 binding pinned off head, is a finding routed to an owner. Findings never
 block.
 
@@ -168,7 +168,7 @@ load refuses on:
   file
 - a present `allow-lists.yaml` holding no `allow_lists`, or a present
   `grants.yaml` holding no `grants`: declare one or delete the file
-- an allow-list with an empty `allow` list. To inherit the parent's effective
+- an Allow-list with an empty `allow` list. To inherit the parent's effective
   list unchanged, declare no list at all. An empty list isn't supported as a
   way to ban everything.
 - a Grant with an empty `adds` list: a Grant exists to widen a palette

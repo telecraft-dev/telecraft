@@ -111,7 +111,7 @@ when the change introducing it is approved by the owner of the Requirement
 being waived, or by that owner's ancestor team. This makes self-forgiveness
 impossible: an Exemption is a loosening, and every loosening mechanism in the
 model runs in one direction, the same way only an ancestor can widen an
-[allow-list](authoring.md#allow-lists-and-grants).
+[Allow-list](authoring.md#allow-lists-and-grants).
 
 Telecraft builds no approval workflow for that. Review routing belongs to the
 forge (your git host), driven by the
@@ -155,11 +155,11 @@ Several families feed those kinds:
   [outcomes](readings-and-verdicts.md#the-outcome-cross).
 - **Population findings** on Tiers: `never_seen`, `under_populated`, and a
   floor conflict where a declared floor sits above the live derived count.
-  These add a `neutral` weight of their own, which is not a pass: a neutral
-  finding is excluded from every denominator. See
+  These add a `neutral` weight of their own, which is not a pass: no
+  compliance ratio counts a neutral finding. See
   [population and `never_seen`](delivery.md#population-and-never_seen).
 - **Stability floor and lifecycle findings** on components a Blueprint routes.
-  See [stability floors](environments.md#stability-floors).
+  See [Stability floors](environments.md#stability-floors).
 - **Expectation findings** from claim failures. See
   [where claim failures land](pipeline-observability.md#where-claim-failures-land).
 - **Authoring findings**, which are about the authored files rather than the
@@ -173,7 +173,7 @@ Several families feed those kinds:
 There is **one evaluator**, and every caller goes through it: the composer as
 you edit, the render step, the CI check, and the continuous evaluation over
 Effective configurations. CI never vendors a copy of the rules, because the
-policy state they need (the active Catalogue, the allow-lists, the Grants, the
+policy state they need (the active Catalogue, the Allow-lists, the Grants, the
 floors) lives with the instance, and a vendored copy would judge with stale
 policy. The composer's live findings, the save gate, CI annotations, and the
 estate view can never disagree, because the same code judges all four over
@@ -183,7 +183,7 @@ Judging is stateless, draft in and findings out, so validation is continuous
 rather than triggered by saving: the composer shows findings and palette
 states as you edit, and saving asks the same question with enforcement on.
 
-**Exactly one policy rule hard-blocks: an allow-list violation, at render.** A
+**Exactly one policy rule hard-blocks: an Allow-list violation, at render.** A
 Blueprint that references a component outside its team's effective list does
 not render into the estate repository. The rule has a complete authority chain
 and a fast, auditable escape hatch: request a
@@ -192,8 +192,8 @@ exists, there is no override mechanism.
 
 Everything else that is policy produces findings. Stability floors and
 lifecycle never block: breaches have legitimate temporary states, such as a
-newly imported catalogue downgrading a long-running component, and blocking
-would let a routine catalogue import freeze everyone's configuration work.
+newly imported Catalogue downgrading a long-running component, and blocking
+would let a routine Catalogue import freeze everyone's configuration work.
 Tightening can be added later without breaking the model, while loosening
 cannot, so findings stay findings.
 
@@ -205,7 +205,7 @@ artefact nobody reviewed must not exist, and a partial artefact is one nobody
 reviewed.
 
 To state the distinction once more: *mechanical validity* can always refuse.
-*Policy* hard-blocks on allow-list violations and nothing else.
+*Policy* hard-blocks on Allow-list violations and nothing else.
 
 ### The CI check
 
@@ -232,7 +232,7 @@ matches no Tier selector. It might be served, in which case it runs the
 health-visible, or foreign, read through the `EstateProvider` seam.
 
 Ungoverned collectors appear in the estate view with an explicit onboarding
-prompt, and are excluded from compliance denominators: a concern, never a
+prompt, and no compliance ratio counts them: a concern, never a
 failure. No stigma attaches to the delivery path itself. Foreign but governed
 is fully legitimate; only matching no selector is the problem.
 

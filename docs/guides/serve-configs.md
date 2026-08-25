@@ -208,10 +208,10 @@ Generated comments and the matching `logs` block are cut for length. The
 `telecraft.unmatched: true` label is the point. An ungoverned collector served
 this artefact reports itself, so it shows up in the console as governed by
 nobody rather than staying silent. The artefact lives at
-`rendered/_estate/unmatched.yaml`, and the root team owns it.
+`rendered/_estate/unmatched.yaml`, and the root Team owns it.
 
-Ungoverned collectors count against nobody: they appear in no compliance
-denominator. They do appear in the estate view, which is a different thing.
+Ungoverned collectors count against nobody: no compliance ratio counts
+them. They do appear in the estate view, which is a different thing.
 
 ## Install a served collector
 

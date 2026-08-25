@@ -71,14 +71,14 @@ collector routes through the Tier the collector matched into.
 
 Every failure to resolve is an error, never a silent drop. A finding about a
 collector that names no Tier, or about an object no estate authored, stops
-the roll-up rather than quietly leaving a denominator.
+the roll-up rather than quietly falling out of the compliance ratios.
 
 ## Roll-up
 
 A Team's roll-up is the set of findings routed to owners anywhere in its
 subtree. That set is larger than the sum of its Services: it includes the
 delivery findings on Tiers the team owns and the component findings on
-Components it owns. A parent team's view is bigger than its children's
+Components it owns. A parent Team's view is bigger than its children's
 combined service verdicts, and that is the point.
 
 Aggregation is **ratio plus worst, per finding kind, never blended**. For each
@@ -108,9 +108,9 @@ Telecraft scores each kind separately and never collapses one into another:
 Every finding carries a grade: `pass`, `advisory`, or `violation`. A breach is
 graded, never blocked. `advisory` is worth surfacing; `violation` means the
 floor is unmet. Population findings add a fourth weight of their own,
-`neutral`, which is not a pass: a neutral finding is excluded from every
-denominator, where a pass would count in one. See
-[population floors](delivery.md#population-and-never_seen).
+`neutral`, which is not a pass: no compliance ratio counts a neutral
+finding, where a pass would count in one. See
+[Population floors](delivery.md#population-and-never_seen).
 
 A kind whose findings are all waived keeps a pass badge. The waived count
 beside it is what stops that from reading as clean.

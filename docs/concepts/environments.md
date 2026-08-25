@@ -1,6 +1,6 @@
 ---
 title: Environments
-description: The Environment axis, Service Class and Sensitivity, stability floors per class and environment, and why every verdict is per environment.
+description: The Environment axis, Service Class and Sensitivity, Stability floors per class and environment, and why every verdict is per environment.
 order: 5
 ---
 
@@ -75,7 +75,7 @@ Service can be C3 and highly sensitive, or C1 and entirely public.
 
 ## Stability floors
 
-A **stability floor** is the minimum upstream stability a Service's components
+A **Stability floor** is the minimum upstream stability a Service's components
 must meet. Floors exist because "a C1 service should not run its telemetry
 through alpha components" needs a rule, and because stability is per signal:
 one component can be beta for logs and alpha for another signal.
@@ -106,7 +106,7 @@ Two rules govern how floors apply:
 - **A breach is a finding, never a block.** It carries remediation text naming
   the level, the floor, and the alternatives, and it routes to an owner.
   Breaches have legitimate temporary states, and blocking would let a routine
-  catalogue import freeze everyone's configuration work.
+  Catalogue import freeze everyone's configuration work.
 
 Lifecycle is a separate axis, not a rung on the same ladder. Deprecated and
 unmaintained are end states, judged by their own findings at any class and
