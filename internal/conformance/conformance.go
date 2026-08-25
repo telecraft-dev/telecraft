@@ -204,6 +204,16 @@ type Finding struct {
 	// and upstream's migration note where the registry carries one. A
 	// surface reads this first and falls back to the authored line.
 	Remediation string
+
+	// Missing names the attributes a schema-conformance finding demanded
+	// and the reading did not find, in stable order, and is empty on every
+	// other finding. Detail says the same thing in a sentence; this is the
+	// same fact in a form something other than a reader can use, which is
+	// what lets an activation impact report say which attribute a Service
+	// newly fails on rather than only that it newly fails (ADR-0034's
+	// Consequences). Nothing here is a second judgement: the list is the
+	// one the finding was built from.
+	Missing []string
 }
 
 // Weight is the finding's grade with the zero value resolved: an ungraded
