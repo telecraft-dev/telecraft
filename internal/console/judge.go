@@ -134,7 +134,7 @@ func (b *builder) judgeTiers(views map[string]*tierView, set expectation.Set) er
 				Severity:    SeverityViolation,
 				Dampening:   "none",
 				Summary:     fmt.Sprintf("%s %s emits no self-telemetry", claim.Claim.ComponentKind, claim.Claim.Component),
-				Remediation: "Check the component is wired into a lane that carries traffic, or remove it from the Blueprint. The artefact instantiates it, and nothing is arriving.",
+				Remediation: "Check the component is wired into a lane that carries traffic, or remove it from the Blueprint. The configuration includes it, and nothing is arriving.",
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "blueprint", ID: v.tier.Binding().ID()},
 					Lane:   laneOf(b.bp, v.tier.Binding().ID(), claim.Claim.Component),

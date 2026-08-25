@@ -536,7 +536,7 @@ func (b *builder) hopThroughput(views map[string]*tierView, from string, signals
 		// An ungoverned arrival runs no collector the platform describes
 		// (ADR-0031), so there is no exporter and no self-telemetry behind
 		// this edge. That is a permanent, statable answer, not a gap.
-		return unknown("the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)")
+		return unknown("the arrival comes from an ungoverned source, which reports no exporter of its own")
 	}
 	lanes, recorded := b.exporters[from]
 	if !recorded {

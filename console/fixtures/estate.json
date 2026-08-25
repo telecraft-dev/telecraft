@@ -1126,17 +1126,17 @@
           "traces": {
             "known": false,
             "asOf": "2026-08-18T11:59:00Z",
-            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)"
+            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own"
           },
           "logs": {
             "known": false,
             "asOf": "2026-08-18T11:59:00Z",
-            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)"
+            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own"
           },
           "metrics": {
             "known": false,
             "asOf": "2026-08-18T11:59:00Z",
-            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own (ADR-0031)"
+            "cause": "the arrival comes from an ungoverned source, which reports no exporter of its own"
           }
         }
       },
@@ -1181,7 +1181,7 @@
           "logs": {
             "known": false,
             "asOf": "2026-08-18T11:59:00Z",
-            "cause": "the sending Tier's logs lane leaves through 2 exporters and a Hop names none of them (ADR-0007), so which one feeds this Hop is not in the model"
+            "cause": "the sending Tier's logs lane leaves through 2 exporters and a Hop names none of them, so the reading cannot tell which one feeds this Hop"
           }
         }
       }

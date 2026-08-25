@@ -223,7 +223,9 @@ func judgeDataClaim(claim Claim, ev RowEvidence, damper *inventory.Damper,
 		coverage, measured := sig.AttributeCoverage[claim.Attribute]
 		if !measured {
 			clearShortfall(damper, key, now)
-			return StatusUnknown, time.Time{}, fmt.Sprintf("the reading did not measure attribute %q. Pass Set.RowAttributes to the provider's Observe", claim.Attribute)
+			// Integrators: coverage is measured only when Set.RowAttributes
+			// is passed to the provider's Observe.
+			return StatusUnknown, time.Time{}, fmt.Sprintf("the reading did not measure attribute %q", claim.Attribute)
 		}
 		met = coverage > 0
 		gap = fmt.Sprintf("the config literally inserts %s=%q on %s, and no landed record carries the attribute",
