@@ -90,3 +90,27 @@ func (a Actor) CanEdit(est ownership.Estate, ref ownership.Ref) (bool, error) {
 	}
 	return false, nil
 }
+
+// Operator reports whether the actor may activate an imported Catalogue or
+// Schema Registry version. Activation is offered to operators and not to
+// general console users (ADR-0020 §6), and an operator here is derived from
+// the same tree as every other permission rather than from a parallel role
+// store (ADR-0019 §2).
+//
+// The derivation is the edit rule applied to what activation is. Authority
+// in the tree only ever points downward, so an actor's horizon is their team
+// and the teams beneath it. Activating changes judgement for the whole
+// Estate: every Team's Palette, every floor, every schema verdict. The only
+// actors whose horizon is the whole Estate are those at a root of the tree,
+// so they are the operators, and nothing narrower can authorise an act that
+// reaches past its own subtree.
+//
+// An actor whose team is not in the tree is not an operator, and the error
+// says so: a session with no place in the tree could author nothing anyway.
+func (a Actor) Operator(tree ownership.Tree) (bool, error) {
+	team, ok := tree.Teams[a.Team]
+	if !ok {
+		return false, fmt.Errorf("actor %q acts in team %q, which is not in the team tree", a.Owner, a.Team)
+	}
+	return team.Parent == "", nil
+}
