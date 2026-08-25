@@ -1,6 +1,8 @@
 import { previewClaim, ungovernedSummary } from '../../tools/claims'
 import { validate } from '../../tools/evaluator'
 import type {
+  ActivationProposalRequest,
+  ActivationsPayload,
   AuthProviderInfo,
   BlueprintDoc,
   CardDrawer,
@@ -82,8 +84,9 @@ interface Snapshot {
     repository?: string
     evaluatedAt: string
   }
+  activations: ActivationsPayload
   estate: {
-    me: { id: string; name: string; email: string; team: string }
+    me: { id: string; name: string; email: string; team: string; operator: boolean }
     environments: Environment[]
     teams: TeamNode
     cards: EstatePayload['cards']
@@ -299,6 +302,8 @@ export const demoApi: PlatformApi = {
     }
   },
 
+  activations: async (): Promise<ActivationsPayload> => (await snapshot()).activations,
+
   catalogueEntries: async (version: string): Promise<CatalogueEntry[]> => {
     const s = await snapshot()
     const found = s.catalogues.versions.find((v) => v.version === version)
@@ -352,5 +357,9 @@ export const demoApi: PlatformApi = {
 
   proposeGovernance: async (_request: GovernanceProposalRequest): Promise<ProposalOutcome> => ({
     problems: refusal('proposing this policy change'),
+  }),
+
+  proposeActivation: async (_request: ActivationProposalRequest): Promise<ProposalOutcome> => ({
+    problems: refusal('activating this version'),
   }),
 }

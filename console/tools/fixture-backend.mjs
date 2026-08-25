@@ -33,6 +33,7 @@ const dist = argValue('--dist')
 const root = join(fileURLToPath(import.meta.url), '..', '..')
 const estate = JSON.parse(await readFile(join(root, 'fixtures', 'estate.json'), 'utf8'))
 const catalogues = JSON.parse(await readFile(join(root, 'fixtures', 'catalogues.json'), 'utf8'))
+const activations = JSON.parse(await readFile(join(root, 'fixtures', 'activations.json'), 'utf8'))
 
 const activeCatalogue = () =>
   catalogues.versions.find((v) => v.version === catalogues.active)
@@ -65,8 +66,19 @@ function subtree(teamId) {
   return out
 }
 
+// An operator is an actor at a root of the team tree, which is where the
+// platform derives it from too (ADR-0019 §2): activating changes judgement
+// for the whole Estate, so nothing narrower can authorise it.
+function operator(teamId) {
+  return estate.teams.id === teamId
+}
+
 function me() {
-  return { ...estate.me, editableTeams: subtree(estate.me.team) }
+  return {
+    ...estate.me,
+    editableTeams: subtree(estate.me.team),
+    operator: operator(estate.me.team),
+  }
 }
 
 function sessionOf(req) {
@@ -184,6 +196,10 @@ const api = {
       source: v.source,
     })),
   }),
+  // Which version of each substrate the estate judges against, what
+  // activating each retained version would change, and every activation so
+  // far (ADR-0020 §6, §9).
+  '/api/v1/activations': () => activations,
   '/api/v1/catalogue/entries': (url) => {
     const version = url.searchParams.get('version') ?? catalogues.active
     return catalogues.versions.find((v) => v.version === version)?.components
@@ -195,6 +211,26 @@ const api = {
     allowLists: estate.allowLists,
     grants: estate.grants,
   }),
+}
+
+// activationProblems holds the rules an activation proposal is refused on,
+// in the reader's words: who may make it, and which version it names.
+function activationProblems(body) {
+  const problems = []
+  if (!operator(estate.me.team)) {
+    problems.push('Activating a version is an operator\'s to do, and your team is not at the top of the tree.')
+  }
+  const substrate = activations.substrates.find((s) => s.kind === body?.kind)
+  if (substrate === undefined) {
+    problems.push(`There is no substrate called "${body?.kind}".`)
+    return problems
+  }
+  if (body.version === substrate.active) {
+    problems.push(`${substrate.name} ${body.version} is already active.`)
+  } else if (!substrate.candidates.some((c) => c.version === body.version)) {
+    problems.push(`${substrate.name} ${body.version} is not imported, so there is nothing to activate.`)
+  }
+  return problems
 }
 
 // ---- Governance proposals: the PR exit (ADR-0042 §6) --------------------
@@ -414,6 +450,30 @@ const server = createServer(async (req, res) => {
       return
     }
     await handleProposal(req, res)
+    return
+  }
+
+  // Activating a version leaves the console as a PR, like every other
+  // change to the estate (ADR-0020 §6, ADR-0028). It is refused for
+  // anybody but an operator, and for a version that is already active or
+  // was never imported: the surface withholds the control, and the
+  // endpoint holds the rule.
+  if (url.pathname === '/api/v1/activations/proposals' && req.method === 'POST') {
+    if (!sessionOf(req)) {
+      sendJSON(res, 401, { error: 'sign in to use this API' })
+      return
+    }
+    const body = await readBody(req)
+    const problems = activationProblems(body)
+    if (problems.length > 0) {
+      sendJSON(res, 422, { problems })
+      return
+    }
+    sendJSON(res, 200, {
+      id: `activate-${body.kind}-${body.version}`,
+      url: `https://forge.example/estate/pull/${body.version}`,
+      branch: `activate/${body.kind}-${body.version}`,
+    })
     return
   }
 

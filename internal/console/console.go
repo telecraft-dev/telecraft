@@ -61,9 +61,10 @@ type Meta struct {
 // endpoint from. The shape mirrors console/fixtures/, so the fixture
 // backend, the Vitest suites and the demo client all read one contract.
 type Bundle struct {
-	Meta       Meta       `json:"meta"`
-	Estate     EstateDoc  `json:"estate"`
-	Catalogues Catalogues `json:"catalogues"`
+	Meta        Meta           `json:"meta"`
+	Estate      EstateDoc      `json:"estate"`
+	Catalogues  Catalogues     `json:"catalogues"`
+	Activations ActivationsDoc `json:"activations"`
 }
 
 // EstateDoc is the estate half of the bundle: every document the API's GET
@@ -96,6 +97,14 @@ type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 	Team  string `json:"team"`
+
+	// Operator says whether this user may activate an imported version.
+	// Activation is offered to operators and not to general console users
+	// (ADR-0020 §6), and the answer is derived from the team tree like
+	// every other permission (ADR-0019 §2): an operator is an actor at a
+	// root of the tree, whose horizon is the whole Estate, because that is
+	// what an activation changes.
+	Operator bool `json:"operator"`
 }
 
 // TeamNode is one node of the team tree as the shelf groups by it.

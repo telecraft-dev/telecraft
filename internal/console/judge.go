@@ -196,6 +196,12 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 				return prov.DistinctValues(context.Background(), svc, r.Kind, r.Attribute, r.Window)
 			},
 		})
+		// The evidence is kept as gathered, before any waiver touches the
+		// verdict drawn from it: an activation impact report asks what the
+		// candidate version diagnoses, and a waiver answers a different
+		// question, which is whether a diagnosis counts.
+		b.rowEvidence = append(b.rowEvidence, rowEvidence{row: row.Row, evidence: ev})
+
 		verdict := conformance.Evaluate(row.Row, b.lib, ev, b.now)
 		if err := b.waivers.Apply(&verdict, row, b.now); err != nil {
 			return err

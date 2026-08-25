@@ -2435,3 +2435,96 @@
     grid-column: 1 / -1;
   }
 }
+
+/* The activation surface: one section per Catalogue-pattern substrate, each
+   with the versions on offer and the activations already made. The impact
+   report is the body of a candidate, because it is what the decision is
+   taken on rather than a detail behind a disclosure. */
+.activation-layout {
+  flex: 1;
+  overflow: auto;
+  max-width: 52rem;
+}
+
+.activation-substrate {
+  margin-bottom: var(--space-6);
+}
+
+.activation-header {
+  border-bottom: 1px solid var(--colour-rule);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.activation-substrate h2 {
+  font-size: var(--text-base);
+  margin: 0;
+}
+
+.activation-substrate h3 {
+  font-size: var(--text-m);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.activation-active {
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+  margin: var(--space-1) 0 0;
+}
+
+.activation-candidates,
+.activation-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activation-candidate,
+.activation-record {
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-2);
+  background: var(--colour-surface-raised);
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.activation-candidate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.activation-version {
+  font-family: var(--font-mono);
+  font-size: var(--text-s);
+}
+
+.activation-by,
+.activation-withheld {
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+.activation-summary {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-s);
+}
+
+.activation-lines,
+.activation-problems {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+.activation-lines li,
+.activation-problems li {
+  margin-bottom: var(--space-1);
+}
+
+.activation-outcome {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-s);
+}

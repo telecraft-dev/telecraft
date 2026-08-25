@@ -207,7 +207,7 @@ const composeRoute = createRoute({
  * retained catalogues, a team's effective palette, and the governance
  * editor whose edits exit as PRs.
  */
-export type CatalogueView = 'browse' | 'palette' | 'governance'
+export type CatalogueView = 'browse' | 'palette' | 'governance' | 'activation'
 
 export interface CatalogueSearch {
   view?: CatalogueView
@@ -228,7 +228,10 @@ const catalogueRoute = createRoute({
   component: Catalogue,
   validateSearch: (search: Record<string, unknown>): CatalogueSearch => ({
     view:
-      search.view === 'palette' || search.view === 'governance' || search.view === 'browse'
+      search.view === 'palette' ||
+      search.view === 'governance' ||
+      search.view === 'browse' ||
+      search.view === 'activation'
         ? search.view
         : undefined,
     version: typeof search.version === 'string' ? search.version : undefined,

@@ -1,0 +1,45 @@
+{
+  "substrates": [
+    {
+      "kind": "catalogue",
+      "name": "Catalogue",
+      "active": "v0.158.0",
+      "candidates": [
+        {
+          "version": "v0.155.0",
+          "summary": "Catalogue v0.158.0 to v0.155.0: 1 component in use is removed and 1 stability change crosses a floor.",
+          "lines": [
+            "processor/transform is removed. 1 Blueprint uses it: data-flow/gateway-standard (Data flow).",
+            "exporter/otlp_http is alpha for logs in this version, under the beta floor data-flow/gateway holds in production for Service Class C1. 1 Blueprint uses it: data-flow/gateway-standard (Data flow)."
+          ]
+        }
+      ],
+      "history": [
+        {
+          "version": "v0.155.0",
+          "at": "2026-06-02T09:15:00Z",
+          "by": "engineering-lead",
+          "summary": "Catalogue v0.155.0: nothing in this estate is affected.",
+          "lines": []
+        },
+        {
+          "version": "v0.158.0",
+          "previous": "v0.155.0",
+          "at": "2026-07-14T11:30:00Z",
+          "by": "engineering-lead",
+          "summary": "Catalogue v0.155.0 to v0.158.0: 1 entry is newly deprecated.",
+          "lines": [
+            "processor/batch is deprecated for logs in this version. The upstream migration note is: use processor/batchprocessor. 1 Blueprint uses it: data-flow/gateway-standard (Data flow)."
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "schema_registry",
+      "name": "Schema Registry",
+      "active": "",
+      "candidates": [],
+      "history": []
+    }
+  ]
+}

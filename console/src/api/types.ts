@@ -21,6 +21,13 @@ export interface Me {
    * exactly on objects owned inside this set.
    */
   editableTeams: string[]
+  /**
+   * Whether this user may activate an imported Catalogue or Schema
+   * Registry version (ADR-0020 §6: activation is offered to operators,
+   * not to general console users). Derived server-side from the same
+   * ownership tree as editableTeams (ADR-0019 §2).
+   */
+  operator: boolean
 }
 
 /**
@@ -773,6 +780,64 @@ export interface CatalogueVersionsPayload {
   versions: CatalogueVersionInfo[]
 }
 
+/**
+ * One version on offer, with the impact report activating it would be
+ * decided on (ADR-0020 §6: the report is computed before activation).
+ */
+export interface ActivationCandidate {
+  version: string
+  /** The one-line reading: what activating this version would change. */
+  summary: string
+  /** The report beneath the summary, one line per change. */
+  lines: string[]
+  /** Why no report could be computed, when none could. */
+  blocked?: string
+}
+
+/** One activation as it happened: the audit record (ADR-0020 §6). */
+export interface ActivationRecord {
+  version: string
+  previous?: string
+  /** When the activation was decided, RFC 3339 in UTC. */
+  at: string
+  /** The Owner who decided it. */
+  by: string
+  summary: string
+  lines: string[]
+}
+
+/**
+ * One Catalogue-pattern substrate's designation: the version the estate
+ * judges against, what else is installed, and every activation so far
+ * (ADR-0020 §9, ADR-0034 §1).
+ */
+export interface SubstrateActivation {
+  /** `catalogue` or `schema_registry`. */
+  kind: string
+  /** The substrate's name in the glossary's words. */
+  name: string
+  /** The active version, empty when the estate has designated none. */
+  active: string
+  candidates: ActivationCandidate[]
+  history: ActivationRecord[]
+}
+
+/** GET /api/v1/activations: the designation for every substrate. */
+export interface ActivationsPayload {
+  substrates: SubstrateActivation[]
+}
+
+/**
+ * POST /api/v1/activations/proposals: activating a version, as the change
+ * to the estate that it is. The report the decision was taken on travels
+ * with it, so the review reads what the operator read.
+ */
+export interface ActivationProposalRequest {
+  /** `catalogue` or `schema_registry`. */
+  kind: string
+  version: string
+}
+
 /** An Owner in the team tree (ADR-0016), as governance authoring needs it. */
 export interface OwnerDoc {
   id: string
@@ -943,6 +1008,7 @@ export interface PlatformApi {
   blueprints(): Promise<BlueprintDoc[]>
   catalogue(): Promise<CatalogueComponent[]>
   catalogueVersions(): Promise<CatalogueVersionsPayload>
+  activations(): Promise<ActivationsPayload>
   catalogueEntries(version: string): Promise<CatalogueEntry[]>
   governance(): Promise<GovernancePayload>
   rollouts(): Promise<RolloutProgress[]>
@@ -951,4 +1017,5 @@ export interface PlatformApi {
   claimPreview(request: ClaimPreviewRequest): Promise<ClaimPreview>
   claim(request: ClaimRequest): Promise<ClaimOutcome>
   proposeGovernance(request: GovernanceProposalRequest): Promise<ProposalOutcome>
+  proposeActivation(request: ActivationProposalRequest): Promise<ProposalOutcome>
 }

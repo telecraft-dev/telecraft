@@ -1,4 +1,6 @@
 import type {
+  ActivationProposalRequest,
+  ActivationsPayload,
   AuthProviderInfo,
   BlueprintDoc,
   CardDrawer,
@@ -86,6 +88,8 @@ export const liveApi: PlatformApi = {
   blueprints: () => get<BlueprintDoc[]>('/api/v1/blueprints'),
   catalogue: () => get<CatalogueComponent[]>('/api/v1/catalogue'),
   catalogueVersions: () => get<CatalogueVersionsPayload>('/api/v1/catalogue/versions'),
+
+  activations: () => get<ActivationsPayload>('/api/v1/activations'),
   catalogueEntries: (version: string) =>
     get<CatalogueEntry[]>(`/api/v1/catalogue/entries?version=${encodeURIComponent(version)}`),
   governance: () => get<GovernancePayload>('/api/v1/governance'),
@@ -146,6 +150,30 @@ export const liveApi: PlatformApi = {
     }
     if (!res.ok) {
       throw new Error(`/api/v1/governance/proposals: ${res.status} ${res.statusText}`)
+    }
+    return { proposal: (await res.json()) as ProposalRef }
+  },
+
+  /**
+   * Activating a version is a change to the estate, so it leaves here the
+   * way every other change does: as a pull request, attributed to the
+   * operator, and the review is the audit (ADR-0020 §6, ADR-0028).
+   */
+  proposeActivation: async (request: ActivationProposalRequest): Promise<ProposalOutcome> => {
+    const res = await fetch('/api/v1/activations/proposals', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+    if (res.status === 401) {
+      throw new UnauthenticatedError('/api/v1/activations/proposals')
+    }
+    if (res.status === 422) {
+      const body = (await res.json()) as { problems?: string[] }
+      return { problems: body.problems ?? ['the activation was refused'] }
+    }
+    if (!res.ok) {
+      throw new Error(`/api/v1/activations/proposals: ${res.status} ${res.statusText}`)
     }
     return { proposal: (await res.json()) as ProposalRef }
   },
