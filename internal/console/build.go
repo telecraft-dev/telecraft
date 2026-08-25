@@ -188,6 +188,7 @@ func Build(in Inputs) (Bundle, error) {
 		own:            own,
 		renderFindings: rendered.Findings,
 		bpFindings:     bpFindings,
+		artefacts:      rendered.Artefacts,
 		exporters:      rendered.Exporters,
 		now:            readings.AsOf,
 	}
@@ -293,6 +294,12 @@ type builder struct {
 	renderFindings []renderer.Finding
 	bpFindings     []blueprint.Finding
 
+	// artefacts is the rendered tree this snapshot was taken over, keyed by
+	// repository-relative path. The rollout ledger reads a Tier's two
+	// artefacts out of it: their hashes are what a served collector's
+	// acknowledgement names (ADR-0029 §7).
+	artefacts map[string][]byte
+
 	// exporters is the exporter side of every Tier's wiring, as the render
 	// recorded it (ADR-0040 §1). It is the only join from a Hop to the
 	// exporter feeding it: a Hop is authored on the receiving Tier and
@@ -351,6 +358,11 @@ func (b *builder) build() (Bundle, error) {
 		}
 	}
 
+	rollouts, err := b.rollouts(views)
+	if err != nil {
+		return Bundle{}, err
+	}
+
 	catalogues, err := b.catalogues()
 	if err != nil {
 		return Bundle{}, err
@@ -371,6 +383,7 @@ func (b *builder) build() (Bundle, error) {
 			Drawers:      drawers,
 			Collectors:   collectors,
 			Selectors:    selectors,
+			Rollouts:     rollouts,
 			Topology: TopologyDoc{
 				Sources:  b.sources(),
 				Delivery: delivery,
