@@ -35,8 +35,11 @@ import (
 // v3 gave each of those rows a lane state, and dropped its readings when
 // that state is not_applicable. v4 gives every topology Hop its per-signal
 // throughput: the out-rate of the exporter feeding it (ADR-0040 §1), which
-// the canvas had no field to read.
-const ContractVersion = 4
+// the canvas had no field to read. v5 marks the drawer findings that ride
+// alongside a verdict (Advice), so improvement and information findings
+// can be shown and counted without a consumer mistaking them for findings
+// that feed a band (ADR-0034 §3).
+const ContractVersion = 5
 
 // Meta stamps a snapshot with what it was built from, so a stale demo is
 // visibly stale rather than quietly wrong (ADR-0013's discipline applied
@@ -296,6 +299,14 @@ type Finding struct {
 	Summary     string  `json:"summary"`
 	Remediation string  `json:"remediation"`
 	WhoActs     WhoActs `json:"whoActs"`
+
+	// Advice marks a finding that rides alongside the verdict instead of
+	// feeding it: improvement and information findings are shown in the
+	// drawer and counted on the face, but a band's state and everything
+	// derived from it are decided by violations alone (ADR-0034 §3).
+	// Severity alone cannot say this: an advisory finding that counts and
+	// an advisory one that rides carry the same severity.
+	Advice bool `json:"advice,omitempty"`
 }
 
 // ProvenanceLine is one config line implying a derived value.

@@ -36,7 +36,7 @@
   },
   "cards": [
     {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "tier": "data-flow/edge",
       "name": "edge",
       "team": "data-flow",
@@ -130,7 +130,7 @@
       }
     },
     {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "tier": "data-flow/gateway",
       "name": "gateway",
       "team": "data-flow",
@@ -254,7 +254,7 @@
       }
     },
     {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "tier": "data-flow/gateway-staging",
       "name": "gateway-staging",
       "team": "data-flow",
@@ -371,7 +371,7 @@
       }
     },
     {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "tier": "product/storefront-edge",
       "name": "storefront-edge",
       "team": "product",
@@ -466,7 +466,7 @@
   ],
   "drawers": {
     "data-flow/gateway": {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "tier": "data-flow/gateway",
       "findings": [
         {
@@ -584,7 +584,7 @@
       ]
     },
     "data-flow/edge": {
-      "contractVersion": 4,
+      "contractVersion": 5,
       "tier": "data-flow/edge",
       "findings": [],
       "provenance": [

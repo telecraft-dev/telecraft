@@ -349,6 +349,7 @@ func TestSharedContractFixture(t *testing.T) {
 	drawer, err := NewDrawer("data-flow/gateway", []Finding{
 		violation("gateway-delivery-stalled"),
 		advisory("gateway-expectation-logs"),
+		advice("checkout-schema-coverage"),
 	}, []Provenance{{
 		Key:   "band:expectation",
 		Claim: "arrival claim: logs should land for product/checkout in production (via data-flow/gateway)",
@@ -410,6 +411,18 @@ func advisory(id string) Finding {
 			Lane:   "logs",
 			Label:  "Fix the logs lane in Compose",
 		},
+	}
+}
+
+// advice is a finding that rides alongside the verdict (ADR-0034 §3): shown
+// and counted, marked so a consumer keeps it out of the binary.
+func advice(id string) Finding {
+	return Finding{
+		ID: id, Kind: "conformance", Severity: SeverityAdvisory, Dampening: DampeningNone,
+		Summary:     "3 of 8 recommended attributes in use in production (product/checkout)",
+		Remediation: "Close the coverage gap by emitting the attributes the Schema Registry declares at recommended.",
+		WhoActs:     WhoActs{Target: ObjectRef{Kind: "service", ID: "product/checkout"}, Label: "Inspect the Service in Topology"},
+		Advice:      true,
 	}
 }
 

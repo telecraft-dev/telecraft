@@ -211,19 +211,20 @@ export interface Population {
  * The card contract's integer version (ADR-0041 §4). v2 added the
  * per-signal matrix rows, the population state and the churn reading; v3
  * gave each of those rows a lane state and dropped its readings when that
- * state is `not_applicable`. The bump is the visible, reviewable event
- * the ADR asks for, and both sides are held to
+ * state is `not_applicable`; v5 marked the drawer findings that ride
+ * alongside a verdict (`advice`). The bump is the visible, reviewable
+ * event the ADR asks for, and both sides are held to
  * console/fixtures/card-contract.json, which the engine writes and
  * `tests/card-contract.test.ts` reads.
  */
-export const CARD_CONTRACT_VERSION = 4
+export const CARD_CONTRACT_VERSION = 5
 
 /**
- * The card face, contract version 3: the card unit is the Tier, and the
- * shelf groups and sorts from these fields alone (ADR-0041, ADR-0042 §2).
+ * The card face: the card unit is the Tier, and the shelf groups and
+ * sorts from these fields alone (ADR-0041, ADR-0042 §2).
  */
 export interface CardFace {
-  contractVersion: 4
+  contractVersion: 5
   /** Tier id: the contract keys on Tier id, never on a pair. */
   tier: string
   name: string
@@ -275,6 +276,14 @@ export interface Finding {
   summary: string
   remediation: string
   whoActs: WhoActs
+  /**
+   * A finding that rides alongside the verdict instead of feeding it:
+   * shown and counted, while band states and every roll-up built from
+   * them are decided without it (ADR-0034 §3). Severity alone cannot say
+   * this: an advisory finding that counts and one that rides carry the
+   * same severity.
+   */
+  advice?: boolean
 }
 
 /** One config line implying a derived value (ADR-0041 §3). */
@@ -301,7 +310,7 @@ export interface Provenance {
 
 /** GET /api/v1/drawer?tier= returns the on-demand drawer payload (ADR-0041 §3). */
 export interface CardDrawer {
-  contractVersion: 4
+  contractVersion: 5
   tier: string
   findings: Finding[]
   provenance: Provenance[]

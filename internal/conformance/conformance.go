@@ -185,6 +185,14 @@ type Finding struct {
 	// ratio was computed, which is not the same as a ratio of zero.
 	Coverage *float64
 
+	// CoverageInUse and CoverageDemanded are the integers behind Coverage,
+	// set exactly when it is. They exist because "3 of 8" is the form a
+	// surface shows (ADR-0034 §3) and a ratio cannot be unfolded back into
+	// its counts, so the counts travel with the ratio rather than being
+	// re-derived downstream from floating point.
+	CoverageInUse    int
+	CoverageDemanded int
+
 	Waived       WaiverKind
 	WaiverReason string
 
