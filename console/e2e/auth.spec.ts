@@ -17,9 +17,11 @@ test.describe('signed out', () => {
     await page.getByTestId('login-secret').fill('demo-password')
     await page.getByTestId('login-submit').click()
 
-    // The URL survived the gate: the same deep link is now the surface.
+    // The URL survived the gate: the same deep link is now the surface,
+    // and the profile menu says who arrived through it.
     await expect(page.getByTestId('compose-detail')).toBeVisible()
     await expect(page).toHaveURL(/\/compose\?object=blueprint%3Adata-flow%2Fgateway-standard/)
+    await page.getByTestId('profile-trigger').click()
     await expect(page.getByTestId('chrome-user')).toHaveText('Demo user')
   })
 
@@ -50,6 +52,8 @@ test.describe('signed out', () => {
     // welcome is for, and what tour.spec.ts tests.
     await page.getByTestId('tour-end').click()
 
+    // Sign out lives in the profile menu (issue #182).
+    await page.getByTestId('profile-trigger').click()
     await page.getByTestId('sign-out').click()
     await expect(page.getByTestId('login')).toBeVisible()
   })

@@ -2,21 +2,25 @@ import { useEffect, useState } from 'react'
 import { THEME_CHOICES, applyTheme, loadChoice, saveChoice, type ThemeChoice } from './theme'
 
 /**
- * The one chrome control the branding pass adds (ADR-0047 §2). Three
- * states, offered as three: `system` is a real choice and an on/off switch
- * cannot express it, so it is an option beside the other two rather than
- * something inferred from an unset switch.
+ * The theme choice (ADR-0047 §2). Three states, offered as three: `system`
+ * is a real choice and an on/off switch cannot express it, so it is an
+ * option beside the other two rather than something inferred from an unset
+ * switch.
  *
- * It is a labelled select, matching the environment lens immediately beside
- * it. It began as a three-segment control, each segment carrying an icon
+ * This control has now had three shapes, each answering the last. It began
+ * as a three-segment control in the chrome, each segment carrying an icon
  * and its word, which read well and did not fit: measured on the demo at
  * 1600px, the chrome wanted 1749px, the Workspace navigation wrapped
  * "Catalogue & Governance" onto three lines, and the bar grew from 48px to
- * 107px. Hiding the words at a breakpoint would have bought the space by
- * giving up the thing that made the control readable.
- *
- * A select keeps all three words at every width, weighs about half as much,
- * and makes the two chrome controls one pattern rather than two.
+ * 107px. It became a labelled select in the bar, which kept all three words
+ * at every width for the cost of one. The chrome compaction (issue #182)
+ * then moved the select into the profile menu, where the theme belongs
+ * beside the reader's name and Sign out: it is a preference about the
+ * reader, not about what the numbers mean, which is why it left the bar and
+ * the environment lens did not (issue #183). Inside the menu the width
+ * pressure that forced each earlier shape is gone, and the select still
+ * offers the three states as three full words, which is the constraint
+ * every shape has had to keep.
  */
 
 const LABEL: Record<ThemeChoice, string> = {

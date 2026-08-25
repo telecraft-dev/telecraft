@@ -281,6 +281,50 @@
   font-size: var(--text-s);
 }
 
+/* The profile control: the trigger sits in the bar, the panel hangs from
+   it. The panel is `fixed`, not `absolute`, because the chrome scrolls
+   horizontally once it is narrower than its content and a scroll container
+   clips an absolutely positioned child; the trigger's rectangle places it
+   (ProfileMenu.tsx). */
+
+.profile {
+  display: flex;
+}
+
+.profile-trigger {
+  white-space: nowrap;
+  justify-content: center;
+  /* Two initials never make a word, so the plate holds a steady width
+     instead of shrink-wrapping a narrow pair like "IL". */
+  min-width: 2.25rem;
+}
+
+.profile-menu {
+  position: fixed;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  min-width: 14rem;
+  max-width: 22rem;
+  padding: var(--space-3);
+  background: var(--colour-surface-raised);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-2);
+  box-shadow: var(--elevation-2);
+}
+
+.profile-name {
+  font-weight: var(--weight-medium);
+}
+
+/* The theme row keeps the lens control's shape; in the panel the select
+   takes the row's remaining width so the rows line up. */
+.profile-menu .lens-control {
+  justify-content: space-between;
+}
+
 /* Jump-to-object dialog */
 
 .jump-overlay {
@@ -445,8 +489,12 @@
   flex: 1;
 }
 
+/* Icon only in the bar; the accessible name and the tooltip carry the
+   words (TourControl.tsx). Even padding, because a square button around a
+   lone icon reads as a control rather than a stray glyph. */
 .tour-trigger {
   white-space: nowrap;
+  padding: var(--space-1) var(--space-2);
 }
 
 /* Workspace body */
@@ -1946,33 +1994,20 @@
   font-size: var(--text-m);
 }
 
-.chrome-user {
-  color: var(--colour-text-muted);
-  white-space: nowrap;
-}
-
 /* The demo's own statement of what it is: a snapshot, not an instance.
-   Words carry it: the badge's hue only reinforces (ADR-0041 §2). */
+   Words carry it: the badge's hue only reinforces (ADR-0041 §2). It reads
+   inside the profile panel now, where a column has room for the whole
+   provenance, so nothing here truncates any more. */
 
 .demo-banner {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-2);
-  white-space: nowrap;
-  min-width: 0;
 }
 
 .demo-provenance {
   color: var(--colour-text-muted);
-  /* Which snapshot this is stays readable; which commit it came from
-     truncates before anything else in the chrome does. The full value is
-     in the title, and on the surface below. Bounded rather than flexible,
-     so it truncates at a width that still says something instead of being
-     squeezed to nothing. */
-  max-width: 22rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* The authoring affordance: words first, hue reinforcing (ADR-0041 §2). */
