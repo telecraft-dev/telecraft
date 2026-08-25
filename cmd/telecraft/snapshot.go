@@ -30,7 +30,7 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("snapshot", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	estate := fs.String("estate", "", "estate root holding teams.yaml, the teams/ tree and rendered/ (required)")
-	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact (required)")
+	artefact := fs.String("catalogue", "", "path to the Catalogue artefact to judge authoring against (default: the version the estate has activated)")
 	catalogues := fs.String("catalogues", "", "directory of installed Catalogue artefacts (default: the active artefact's directory)")
 	library := fs.String("library", "", "requirements library directory (required)")
 	registries := fs.String("schema-registries", "", "directory of installed Schema Registry artefacts, which a schema_conformance requirement's reference resolves against (needed only by a library that holds one)")
@@ -47,12 +47,20 @@ func runSnapshot(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if *estate == "" || *artefact == "" || *library == "" || *rows == "" || *readings == "" || *commit == "" || *team == "" {
-		fmt.Fprintln(stderr, "snapshot: -estate, -catalogue, -library, -rows, -readings, -commit and -team are required")
+	if *estate == "" || *library == "" || *rows == "" || *readings == "" || *commit == "" || *team == "" {
+		fmt.Fprintln(stderr, "snapshot: -estate, -library, -rows, -readings, -commit and -team are required")
 		return 2
 	}
+	// Which version judges authoring is the estate's own designation
+	// (ADR-0020 §9), so -catalogue is an override rather than an input the
+	// caller has to supply. With neither, the build says the estate has
+	// activated nothing rather than picking a version for it.
 	if *catalogues == "" {
-		*catalogues = filepath.Dir(*artefact)
+		if *artefact != "" {
+			*catalogues = filepath.Dir(*artefact)
+		} else {
+			*catalogues = filepath.Join(*estate, CataloguesDir)
+		}
 	}
 	if *userEmail == "" {
 		*userEmail = *user + "@estate.internal"

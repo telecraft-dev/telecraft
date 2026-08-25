@@ -18,6 +18,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/telecraft-dev/telecraft/internal/activation"
 	"github.com/telecraft-dev/telecraft/internal/conformance"
 	"github.com/telecraft-dev/telecraft/internal/console"
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
@@ -198,8 +199,21 @@ func loadInputs(root, team string) (inputs, error) {
 	// library referencing no registry never notices.
 	registries := filepath.Join(root, "schema-registries")
 
+	// Which version of each substrate the estate judges against is the
+	// estate's own designation (ADR-0020 §9), so the devenv reads it
+	// rather than picking the newest artefact in the directory: a
+	// development instance that chose for itself would be judging against
+	// a version nobody activated.
+	designation, err := activation.Load(root)
+	if err != nil {
+		return in, err
+	}
+	activeRegistry, _ := designation.Active(activation.SchemaRegistry)
+
 	library := filepath.Join(root, "requirements")
-	lib, err := requirements.Load(library, requirements.WithSchemaRegistries(registries))
+	lib, err := requirements.Load(library,
+		requirements.WithSchemaRegistries(registries),
+		requirements.WithActiveSchemaRegistry(activeRegistry))
 	if err != nil {
 		return in, err
 	}
@@ -208,7 +222,6 @@ func loadInputs(root, team string) (inputs, error) {
 
 	in.console = console.Inputs{
 		Root:             root,
-		Active:           catalogues[len(catalogues)-1],
 		Catalogues:       catalogues,
 		Library:          library,
 		SchemaRegistries: registries,

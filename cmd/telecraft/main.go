@@ -31,6 +31,11 @@
 // Effective cross via the normaliser (ADR-0004, ADR-0005), computed
 // identically for both delivery paths (REQ-041). See delivery.go.
 //
+// activate designates which imported version of a Catalogue-pattern
+// substrate the estate judges against, after showing the impact report the
+// decision is taken on (ADR-0020 §6). Nothing is activated without -confirm.
+// See activate.go.
+//
 // passwd hashes one basic-auth secret for the users.yaml seam (REQ-017,
 // ADR-0019): stdin in, the stored hash out. See passwd.go.
 //
@@ -79,6 +84,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runSnapshot(args[1:], stdout, stderr)
 	case "delivery":
 		return runDelivery(args[1:], stdout, stderr)
+	case "activate":
+		return runActivate(args[1:], stdout, stderr)
 	case "passwd":
 		return runPasswd(args[1:], os.Stdin, stdout, stderr)
 	default:
@@ -95,6 +102,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
 	fmt.Fprintln(stderr, "       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
+	fmt.Fprintln(stderr, "       telecraft activate -estate <dir> -substrate (catalogue|schema-registry) -version <ref> [-artefacts dir] [-confirm -by <owner>]")
 	fmt.Fprintln(stderr, "       telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)")
 }
 

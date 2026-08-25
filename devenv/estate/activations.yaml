@@ -1,0 +1,8 @@
+catalogue:
+  active: v0.159.0
+  activations:
+    - version: v0.159.0
+      at: 2026-08-25T05:47:26Z
+      by: engineering-lead
+      impact:
+        summary: 'Catalogue v0.159.0: nothing in this estate is affected.'
