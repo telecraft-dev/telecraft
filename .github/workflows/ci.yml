@@ -295,7 +295,6 @@ jobs:
         run: |
           go run ./cmd/telecraft snapshot \
             -estate internal/console/testdata/estate \
-            -catalogue internal/console/testdata/estate/catalogues/catalogue-v1.0.0.json \
             -library internal/console/testdata/estate/requirements \
             -exemptions internal/console/testdata/estate/exemptions \
             -rows internal/console/testdata/estate/rows.yaml \

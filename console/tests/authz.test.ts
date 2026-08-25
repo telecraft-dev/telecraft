@@ -13,6 +13,7 @@ describe('canActOn', () => {
     email: 'jo@example.com',
     team: 'data-flow',
     editableTeams: ['data-flow', 'edge'],
+    operator: false,
   }
 
   it('offers authoring inside the subtree', () => {

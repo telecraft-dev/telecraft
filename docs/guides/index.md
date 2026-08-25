@@ -42,6 +42,8 @@ keeps flowing.
    Service against its requirements, and wires the check into CI.
 3. [Write an Exemption](exemptions.md) waives a finding's count, with an owner
    and an expiry, without hiding the diagnosis.
+4. [Activate a version](activate-a-version.md) moves the estate onto a new
+   Catalogue or Schema Registry version, after showing you what changes.
 
 ### The Authoring path
 
@@ -49,6 +51,8 @@ keeps flowing.
 2. [Author and render](author-and-render.md) composes Blueprints from governed
    Components, inspects a team's effective palette, and renders plain otelcol
    YAML into git.
+3. [Activate a version](activate-a-version.md) moves the estate onto a new
+   Catalogue version, after showing you what changes.
 
 ### The Serving path
 

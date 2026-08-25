@@ -216,20 +216,37 @@ Installed catalogues are kept, never replaced. Re-importing the same tag is
 idempotent and leaves the existing artefact untouched. A different tag writes
 a new artefact beside the old one.
 
-The active Catalogue is the artefact you pass as `-catalogue`. Every command
-that judges authoring against the Catalogue takes it explicitly:
+The active Catalogue is the version your estate has activated, recorded in
+`activations.yaml` beside `teams.yaml`. Authoring, the Palette and the
+stability floors are all judged against it. Activating a version is explicit:
+you read an impact report first, and nothing changes until an operator
+confirms. See [Activate a version](../guides/activate-a-version.md) for the
+task, and `telecraft activate` in the [command line
+reference](cli.md#telecraft-activate) for the flags.
 
-| Command | Flag | Used for |
-|---|---|---|
-| `telecraft palette` | `-catalogue` | Validating entries and materialising the palette. |
-| `telecraft render` | `-catalogue` | The allow-list block and stability floors. |
-| `telecraft check` | `-catalogue` | `library_drift` detection, with `-source`. |
-| `telecraft snapshot` | `-catalogue` | The active version, marked as such among the installed set. |
+Evaluating a collector is the other half of the rule, and it does not use the
+active version. A collector is judged against the Catalogue for the version it
+actually runs, because Telecraft does not control collector binaries and the
+version is something it discovers. Where a collector runs a version you have
+not imported, the nearest older Catalogue judges it and the judgement says it
+is degraded: an older Catalogue describes components the collector still has
+and cannot describe ones added since. Where there is nothing older either,
+nothing is known, and the fix is to import the missing version.
+
+Commands that judge authoring take the Catalogue from the estate, and each
+still accepts `-catalogue` to point at one artefact deliberately:
+
+| Command | Used for |
+|---|---|
+| `telecraft palette` | Validating entries and materialising the palette. |
+| `telecraft render` | The allow-list block and stability floors. |
+| `telecraft check` | `library_drift` detection, with `-source`. |
+| `telecraft snapshot` | The active version, marked as such among the installed set. |
 
 `telecraft snapshot` also takes `-catalogues`, a directory of installed
-artefacts. It reads every `catalogue-*.json` in that directory, marks the one
-given by `-catalogue` as active, and includes the active artefact even when it
-lives elsewhere. The default is the directory holding `-catalogue`.
+artefacts. It reads every `catalogue-*.json` in that directory. The default is
+the `catalogues/` directory under `-estate`, or the directory holding
+`-catalogue` where you gave one.
 
 An Allow-list policy is bound to the Catalogue version it was validated
 against, because every entry must select at least one component in it.

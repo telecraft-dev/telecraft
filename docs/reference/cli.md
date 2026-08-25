@@ -44,6 +44,7 @@ and exits `2`.
 | `serve` | Run the stateless OpAMP server. |
 | `snapshot` | Write the console API snapshot for one estate checkout. |
 | `delivery` | Print one collector's delivery status from two files. |
+| `activate` | Show what activating an imported version would change, and designate it. |
 | `passwd` | Hash one basic-auth secret for `users.yaml`. |
 
 Every subcommand accepts `-h`, which prints that subcommand's flags to stderr
@@ -308,6 +309,42 @@ included.
 ```sh
 telecraft delivery -intended rendered/data-flow/gateway.yaml \
   -effective reported.yaml -path served
+```
+
+## telecraft activate
+
+Designates which imported version of the Catalogue or the Schema Registry
+your estate is judged against, after showing you what activating it would
+change. Nothing is designated without `-confirm`: the run that shows you the
+report is not the run that changes the estate.
+
+`-confirm` writes `activations.yaml` in the estate directory, carrying the
+active version, who decided it, when, and the report the decision was taken
+on. Commit that file: the review is the audit.
+
+The Schema Registry report this command shows is the version diff. Which
+Services stop passing needs a reading of landed telemetry, which this command
+takes none of, and the report says so. The console shows both halves.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-estate` | string | none, required | Estate directory holding `teams.yaml` and the authored objects. |
+| `-substrate` | string | none, required | `catalogue` or `schema-registry`. |
+| `-version` | string | none, required | The imported version to activate. |
+| `-artefacts` | string | the substrate's directory under `-estate` | Directory of installed artefacts to read the two versions from. |
+| `-by` | string | none | The Owner deciding the activation. Required with `-confirm`. |
+| `-confirm` | bool | `false` | Record the activation, after reading the report. |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The report was computed, and the version activated with `-confirm`. |
+| `1` | The activation was refused: the version is already active, is not imported, or the report is not a change from the active version. |
+| `2` | Usage error, or the estate failed to load. |
+
+```sh
+telecraft activate -estate ESTATE_DIR -substrate catalogue -version v0.159.0
+telecraft activate -estate ESTATE_DIR -substrate catalogue -version v0.159.0 \
+  -confirm -by platform-observability
 ```
 
 ## telecraft passwd

@@ -1,20 +1,24 @@
 import { Link, useSearch } from '@tanstack/react-router'
 import type { CatalogueView } from '../../router'
+import { ActivationView } from './Activation'
 import { Browse } from './Browse'
 import { GovernanceView } from './Governance'
 import { PaletteView } from './Palette'
 
 // The Catalogue & Governance Workspace (ADR-0042 §1): browse-and-request,
-// thin. Three view-switchers over one model: browse the retained
+// thin. Four view-switchers over one model: browse the retained
 // catalogues (ADR-0020 §9), a team's effective palette with total
-// provenance (ADR-0021), and the governance editor whose Allow-list and
-// Grant edits exit as PRs via the forge adapter (ADR-0042 §6). Switching
-// preserves selection, filters, and lens (rule 3.1).
+// provenance (ADR-0021), the governance editor whose Allow-list and
+// Grant edits exit as PRs via the forge adapter (ADR-0042 §6), and the
+// activation surface where an operator reads the impact report before
+// designating a version (ADR-0020 §6). Switching preserves selection,
+// filters, and lens (rule 3.1).
 
 const VIEWS: { view: CatalogueView; label: string; testid: string }[] = [
   { view: 'browse', label: 'Browse', testid: 'view-browse' },
   { view: 'palette', label: 'Effective palette', testid: 'view-palette' },
   { view: 'governance', label: 'Governance', testid: 'view-governance' },
+  { view: 'activation', label: 'Activation', testid: 'view-activation' },
 ]
 
 export function Catalogue() {
@@ -44,6 +48,7 @@ export function Catalogue() {
         {view === 'browse' && <Browse />}
         {view === 'palette' && <PaletteView />}
         {view === 'governance' && <GovernanceView />}
+        {view === 'activation' && <ActivationView />}
       </div>
     </div>
   )

@@ -96,3 +96,43 @@ func TestActionableTeamsIsTheSubtreeRootFirst(t *testing.T) {
 		t.Fatalf("ActionableTeams = %v", teams)
 	}
 }
+
+// ADR-0020 §6: activation is offered to operators, not to general console
+// users, and the operator falls out of the same tree as every other
+// permission. Activating changes judgement for the whole Estate, so the
+// actors who may do it are the ones whose horizon is the whole Estate.
+func TestOnlyAnActorAtARootOfTheTreeIsAnOperator(t *testing.T) {
+	tree := testTree()
+	cases := []struct {
+		team ownership.TeamID
+		want bool
+	}{
+		{"platform", true},   // a root: no parent above it
+		{"data-flow", false}, // one below the root
+		{"edge", false},
+		{"infosec", false},
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.team), func(t *testing.T) {
+			actor := Actor{Team: tc.team, Owner: "someone"}
+			got, err := actor.Operator(tree)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("Operator() = %v for team %q, want %v", got, tc.team, tc.want)
+			}
+		})
+	}
+}
+
+func TestAnActorOutsideTheTreeIsNotAnOperator(t *testing.T) {
+	actor := Actor{Team: "nowhere", Owner: "someone"}
+	got, err := actor.Operator(testTree())
+	if err == nil {
+		t.Fatal("an actor with no place in the tree resolved")
+	}
+	if got {
+		t.Error("an actor with no place in the tree is an operator")
+	}
+}

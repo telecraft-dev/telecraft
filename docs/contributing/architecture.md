@@ -99,6 +99,8 @@ installed.
 | `internal/substrate` | The one import pipeline: the provenance record every artefact carries, the sparse fetch parameterised by the files a substrate needs, the deterministic ref-named atomic write, and the strict load. A substrate supplies four facts (its name, its files, its artefact name, and how to build one from a materialised tree) and gets the pipeline. There is one so that a second one cannot drift from it. |
 | `internal/schemaregistry` | The Schema Registry: the versioned declaration of what the estate's telemetry is supposed to look like, imported from a custom Weaver registry held as ordinary git content. Groups, their attributes, enum members, requirement levels and deprecation notices, recorded as declared. The import reads content out of git and runs no registry toolchain, which an architecture test holds the whole repository to. |
 
+| `internal/activation` | The designation half of the pipeline: which imported version of each substrate the estate is judged against, recorded in `activations.yaml` rather than inferred from a file name or a flag, and refusing to call a version active without the impact report the activation was decided on. It also owns the two reports, and the rule that a collector is judged against the Catalogue for the version it runs rather than the active one. |
+
 `internal/catalogue`, in the table above, is the other substrate on this
 pipeline.
 

@@ -37,7 +37,7 @@ func TestSnapshotCommandUsageErrors(t *testing.T) {
 	}{
 		"no flags at all": {
 			args: []string{"snapshot"},
-			want: "snapshot: -estate, -catalogue, -library, -rows, -readings, -commit and -team are required",
+			want: "snapshot: -estate, -library, -rows, -readings, -commit and -team are required",
 		},
 		// The shelf's resting scope has no default, so a snapshot with
 		// every other flag set is still refused.

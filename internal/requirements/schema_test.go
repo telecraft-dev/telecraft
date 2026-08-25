@@ -259,3 +259,39 @@ func TestAnEmptySchemaRegistryDirectoryIsNoDirectory(t *testing.T) {
 		t.Errorf("an unnamed directory was reported as a missing file: %v", err)
 	}
 }
+
+// ADR-0020 §9: `track: head` judges against the version the estate
+// designated active. A load told which version that is resolves the
+// reference to it, so the evaluator judges against something rather than
+// reporting the requirement unknown.
+func TestATrackingReferenceResolvesToTheActiveVersion(t *testing.T) {
+	lib, err := Load(filepath.Join("testdata", "library"),
+		WithSchemaRegistries(installedRegistries(t)),
+		WithActiveSchemaRegistry(snapshotRef))
+	if err != nil {
+		t.Fatalf("the fixture library does not load: %v", err)
+	}
+	reg, ok := lib.SchemaRegistries[TrackHead]
+	if !ok || reg == nil {
+		t.Fatalf("head resolved to nothing: %v", lib.SchemaRegistries)
+	}
+	if reg.Version() != snapshotRef {
+		t.Errorf("head resolved to %q, want the active %q", reg.Version(), snapshotRef)
+	}
+}
+
+// A designation naming a version nobody imported is a load error, for the
+// same reason a pin to an uninstalled version is: the reference resolves to
+// nothing, and a library that loaded anyway would score every Service
+// against a bar nobody could read.
+func TestAnActiveVersionThatIsNotInstalledFailsTheLoad(t *testing.T) {
+	err := loadErr(t, filepath.Join("testdata", "library"),
+		WithSchemaRegistries(installedRegistries(t)),
+		WithActiveSchemaRegistry("v9.9.9"))
+	if err == nil {
+		t.Fatal("a designation naming an uninstalled version loaded")
+	}
+	if !strings.Contains(err.Error(), "tracks Schema Registry head, which is version") {
+		t.Errorf("the error does not say head is what failed: %v", err)
+	}
+}

@@ -1,0 +1,57 @@
+{
+  "format_version": 1,
+  "source": {
+    "repository": "example.com/otelcol",
+    "ref": "v1.1.0"
+  },
+  "components": [
+    {
+      "class": "exporter",
+      "type": "otlp_http",
+      "module": "example.com/otelcol/exporter/otlp_http",
+      "stability": {
+        "logs": "stable",
+        "metrics": "stable",
+        "traces": "stable"
+      }
+    },
+    {
+      "class": "extension",
+      "type": "health_check",
+      "module": "example.com/otelcol/extension/health_check",
+      "stability": {
+        "extension": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "batch",
+      "module": "example.com/otelcol/processor/batch",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "processor",
+      "type": "memory_limiter",
+      "module": "example.com/otelcol/processor/memory_limiter",
+      "stability": {
+        "logs": "beta",
+        "metrics": "beta",
+        "traces": "beta"
+      }
+    },
+    {
+      "class": "receiver",
+      "type": "otlp",
+      "module": "example.com/otelcol/receiver/otlp",
+      "stability": {
+        "logs": "stable",
+        "metrics": "stable",
+        "traces": "stable"
+      }
+    }
+  ]
+}

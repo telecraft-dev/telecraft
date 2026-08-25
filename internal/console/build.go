@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/activation"
 	"github.com/telecraft-dev/telecraft/internal/allowlist"
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
@@ -31,7 +32,10 @@ type Inputs struct {
 	Root string
 
 	// Active is the path of the active Catalogue artefact, the one
-	// authoring is judged against.
+	// authoring is judged against. Empty resolves it from the estate's own
+	// designation (ADR-0020 §9), which is where the active version is
+	// recorded; a path given here overrides it, for the caller that is
+	// judging one artefact deliberately.
 	Active string
 
 	// Catalogues are every installed Catalogue artefact, the active one
@@ -90,7 +94,15 @@ func Build(in Inputs) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	active, err := catalogue.Load(in.Active)
+	designation, err := activation.Load(in.Root)
+	if err != nil {
+		return Bundle{}, err
+	}
+	activePath, err := in.activeCatalogue(designation)
+	if err != nil {
+		return Bundle{}, err
+	}
+	active, err := catalogue.Load(activePath)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -110,7 +122,10 @@ func Build(in Inputs) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	lib, err := requirements.Load(in.Library, requirements.WithSchemaRegistries(in.SchemaRegistries))
+	activeRegistry, _ := designation.Active(activation.SchemaRegistry)
+	lib, err := requirements.Load(in.Library,
+		requirements.WithSchemaRegistries(in.SchemaRegistries),
+		requirements.WithActiveSchemaRegistry(activeRegistry))
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -186,6 +201,7 @@ func Build(in Inputs) (Bundle, error) {
 		drift:          driftReport,
 		waivers:        waivers,
 		own:            own,
+		designation:    designation,
 		renderFindings: rendered.Findings,
 		bpFindings:     bpFindings,
 		artefacts:      rendered.Artefacts,
@@ -294,6 +310,13 @@ type builder struct {
 	renderFindings []renderer.Finding
 	bpFindings     []blueprint.Finding
 
+	// designation is which version of each substrate the estate has
+	// activated, and rowEvidence is what each row was judged against.
+	// Together they are what an activation impact report is computed from:
+	// the same evidence, judged again under the version being offered.
+	designation activation.Record
+	rowEvidence []rowEvidence
+
 	// artefacts is the rendered tree this snapshot was taken over, keyed by
 	// repository-relative path. The rollout ledger reads a Tier's two
 	// artefacts out of it: their hashes are what a served collector's
@@ -376,7 +399,7 @@ func (b *builder) build() (Bundle, error) {
 			EvaluatedAt: b.now,
 		},
 		Estate: EstateDoc{
-			Me:           b.in.User,
+			Me:           b.me(),
 			Environments: b.environments(),
 			Teams:        b.teams(),
 			Cards:        cards,
@@ -399,7 +422,8 @@ func (b *builder) build() (Bundle, error) {
 			Floors:       b.floorTable(),
 			Requirements: b.requirements(),
 		},
-		Catalogues: catalogues,
+		Catalogues:  catalogues,
+		Activations: b.activations(),
 	}
 	return bundle, nil
 }
@@ -475,4 +499,50 @@ func (b *builder) serviceClass(t renderer.Tier) (renderer.ServiceClass, error) {
 		}
 	}
 	return b.floors.Strictest(classes)
+}
+
+// activeCatalogue resolves the Catalogue artefact this snapshot judges
+// authoring against: the path the caller named, or the version the estate
+// designated active (ADR-0020 §9).
+//
+// An estate that has designated nothing is a load error naming the fix
+// rather than a snapshot built over whichever artefact sorted first. Which
+// version judges an estate is the whole subject of an activation, and a
+// snapshot that picked one would be the silent auto-apply ADR-0020 §6 rules
+// out, arriving through a different door.
+func (in Inputs) activeCatalogue(designation activation.Record) (string, error) {
+	if in.Active != "" {
+		return in.Active, nil
+	}
+	version, ok := designation.Active(activation.Catalogue)
+	if !ok {
+		return "", fmt.Errorf("%s designates no active Catalogue, so nothing says which version authoring is judged against. Activate an imported version", filepath.Join(in.Root, activation.File))
+	}
+	dir := in.CataloguesDir()
+	return filepath.Join(dir, catalogue.ArtefactName(version)), nil
+}
+
+// CataloguesDir is where this estate's installed Catalogue artefacts live:
+// the directory the caller listed them from, or the estate's own.
+func (in Inputs) CataloguesDir() string {
+	if len(in.Catalogues) > 0 {
+		return filepath.Dir(in.Catalogues[0])
+	}
+	return filepath.Join(in.Root, "catalogues")
+}
+
+// me is the signed-in user the snapshot presents, with the one permission
+// the client cannot derive from the team tree alone: whether they may
+// activate an imported version (ADR-0020 §6).
+//
+// It is derived here rather than sent as a claim, from the same tree every
+// other permission comes from (ADR-0019 §2): an operator is an actor at a
+// root of the tree, because activation changes judgement for the whole
+// Estate and nothing narrower can authorise that. A user whose team is not
+// in the tree is not an operator, which is the closed answer.
+func (b *builder) me() User {
+	user := b.in.User
+	team, known := b.tree.Teams[ownership.TeamID(user.Team)]
+	user.Operator = known && team.Parent == ""
+	return user
 }

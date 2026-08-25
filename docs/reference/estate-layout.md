@@ -19,6 +19,9 @@ telemetry.yaml                        # the self-telemetry destination
 allow-lists.yaml                      # optional: every team's declared list
 grants.yaml                           # optional: every Grant
 users.yaml                            # optional: the sign-in seam
+activations.yaml                      # optional: the active Catalogue and Schema Registry
+catalogues/                           # imported Catalogue versions, retained side by side
+schema-registries/                    # imported Schema Registry versions, likewise
 teams/
   <team-id>/
     components/<name>.yaml            # shared Components
@@ -76,6 +79,41 @@ moving a team under a new parent rewrites no path and breaks no id.
 : The sign-in mapping from authenticated identities to the Owner each acts
   as. Each entry carries `email`, `name`, `owner`, and an optional `password`
   hash produced by `telecraft passwd`.
+
+`activations.yaml`
+: Which imported version of the Catalogue and of the Schema Registry your
+  estate is judged against, and every activation that has happened. Optional:
+  without it nothing is active, and a command that needs an active version
+  says so. `telecraft activate` writes it, and you commit it like any other
+  authored file. See [Activate a version](../guides/activate-a-version.md).
+
+  Each substrate carries `active` and a list of `activations`, oldest first.
+  Each activation records the `version` it designated, the `previous` version
+  it replaced, when it happened, the Owner who decided it, and the `impact`
+  report the decision was taken on. The file fails to load if the active
+  version is not the one the last activation designated, or if any activation
+  carries no report: a version is active because somebody activated it on a
+  reading of what would change.
+
+```yaml
+# activations.yaml
+catalogue:
+  active: v0.159.0
+  activations:
+    - version: v0.155.0
+      at: 2026-06-02T09:15:00Z
+      by: engineering-lead
+      impact:
+        summary: 'Catalogue v0.155.0: nothing in this estate is affected.'
+    - version: v0.159.0
+      previous: v0.155.0
+      at: 2026-07-14T11:30:00Z
+      by: engineering-lead
+      impact:
+        summary: 'Catalogue v0.155.0 to v0.159.0: 1 entry is newly deprecated.'
+        lines:
+          - 'processor/batch is deprecated for logs in this version. 1 Blueprint uses it: data-flow/gateway-standard (Data flow).'
+```
 
 ```yaml
 # teams.yaml

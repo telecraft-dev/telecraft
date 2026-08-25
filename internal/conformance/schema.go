@@ -612,6 +612,7 @@ func schemaFinding(req requirements.Requirement, level schemaregistry.Level, at 
 	for _, d := range at {
 		if !r.present[d.Attribute] {
 			missing = append(missing, d)
+			f.Missing = append(f.Missing, d.Attribute)
 		}
 	}
 
