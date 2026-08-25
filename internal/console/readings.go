@@ -3,6 +3,7 @@ package console
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -82,6 +83,36 @@ type CollectorReading struct {
 	// AppliedAt is when the running artefact went APPLIED; zero is treated
 	// as settled, so a Tier is not held pending forever (ADR-0038 §4b).
 	AppliedAt time.Time `yaml:"applied_at"`
+
+	// DeliveryStatus is what this collector has acknowledged over the
+	// serving wire. Absent is the ordinary case and stays unknown: a
+	// collector nobody has recorded an acknowledgement for has not
+	// acknowledged nothing (ADR-0008).
+	DeliveryStatus *DeliveryStatusReading `yaml:"delivery_status"`
+}
+
+// DeliveryStatusReading is one collector's declared delivery status: the
+// Intended against Effective reading per collector, in OpAMP's
+// RemoteConfigStatus vocabulary verbatim (ADR-0004).
+//
+// It is declared rather than derived because the two things it says cannot
+// be read from anywhere else in this file. Which of a staged Tier's two
+// artefacts a collector runs is what the served path answers by
+// acknowledged hash (ADR-0029 §7), and a refused apply is the halt signal a
+// rollout stops on (§6): a collector that reports FAILED has already
+// self-reverted, and no other reading here carries that.
+type DeliveryStatusReading struct {
+	// State is UNSET, APPLYING, APPLIED or FAILED. No delivery state is
+	// invented beyond the four (ADR-0004).
+	State string `yaml:"state"`
+
+	// ConfigHash is the artefact the collector acknowledged, as the hash
+	// the serving path offers it under: the hex digest of the rendered
+	// artefact, which a reading written down by hand may abbreviate.
+	ConfigHash string `yaml:"config_hash"`
+
+	// Error is the collector's failure detail; meaningful with FAILED.
+	Error string `yaml:"error"`
 }
 
 // RowReading is one (Service, Environment) arrival reading.
@@ -316,6 +347,38 @@ func (t TierReading) emitsAll() bool {
 	return false
 }
 
+// deliveryProblems validates one collector's declared delivery status. The
+// rule is the one every declared reading is held to: the declaration must
+// be a reading the seam could have taken. A state outside OpAMP's four is
+// not one, a hash that is not a hash names no artefact, and the
+// git-delivered path reports no delivery status at all, so a declaration
+// there would put an acknowledgement on a wire that carries none.
+func (c CollectorReading) deliveryProblems(ctx string) []string {
+	d := c.DeliveryStatus
+	if d == nil {
+		return nil
+	}
+	var problems []string
+	switch strings.ToUpper(d.State) {
+	case "UNSET", "APPLYING", "APPLIED", "FAILED":
+	case "":
+		problems = append(problems, ctx+" declares a delivery status with no state: use UNSET, APPLYING, APPLIED, or FAILED")
+	default:
+		problems = append(problems, fmt.Sprintf("%s declares delivery state %q: use UNSET, APPLYING, APPLIED, or FAILED", ctx, d.State))
+	}
+	if c.Delivery == "git" {
+		problems = append(problems, ctx+" is delivered by the estate's own tooling and declares a delivery status: that path acknowledges nothing over the serving wire")
+	}
+	if h := d.ConfigHash; h != "" {
+		if _, err := hex.DecodeString(strings.ToLower(h)); err != nil {
+			problems = append(problems, fmt.Sprintf("%s declares config_hash %q, which is not a hex digest of an artefact", ctx, h))
+		} else if len(h) < minStampHex {
+			problems = append(problems, fmt.Sprintf("%s declares config_hash %q, which is too short to name an artefact: give at least %d hex characters", ctx, h, minStampHex))
+		}
+	}
+	return problems
+}
+
 // silentSet indexes the withheld component ids.
 func (t TierReading) silentSet() map[string]bool {
 	out := map[string]bool{}
@@ -481,6 +544,7 @@ func LoadReadings(path string) (Readings, error) {
 		default:
 			problems = append(problems, fmt.Sprintf("%s has delivery %q: use served or git", ctx, c.Delivery))
 		}
+		problems = append(problems, c.deliveryProblems(ctx)...)
 	}
 	for _, row := range r.Rows {
 		if row.Service == "" || row.Environment == "" {

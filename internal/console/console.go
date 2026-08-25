@@ -76,6 +76,7 @@ type EstateDoc struct {
 	Drawers      map[string]CardDrawer        `json:"drawers"`
 	Collectors   []CollectorRow               `json:"collectors"`
 	Selectors    map[string]map[string]string `json:"selectors"`
+	Rollouts     []RolloutDoc                 `json:"rollouts"`
 	Topology     TopologyDoc                  `json:"topology"`
 	Services     []ServiceDoc                 `json:"services"`
 	Blueprints   []BlueprintDoc               `json:"blueprints"`
@@ -331,6 +332,109 @@ type CollectorRow struct {
 	Version     string            `json:"version"`
 	LastSeen    string            `json:"lastSeen,omitempty"`
 	Attributes  map[string]string `json:"attributes,omitempty"`
+}
+
+// The delivery path a rollout cohort member takes its config by
+// (ADR-0029 §7): served over the wire, where membership is computed per
+// connect and the acknowledgement names an artefact by hash, or foreign,
+// the estate's own tooling, which is read and never blocked on.
+const (
+	PathServed  = "served"
+	PathForeign = "foreign"
+)
+
+// A cohort's relation to the active stage: entered cohorts accumulate,
+// active is the stage the evaluation judges, and pending is the membership
+// preview a reviewer reads before the stage is reached.
+const (
+	CohortEntered = "entered"
+	CohortActive  = "active"
+	CohortPending = "pending"
+)
+
+// RolloutPathProgress is one delivery path's running split over a cohort's
+// members.
+type RolloutPathProgress struct {
+	Members int `json:"members"`
+	To      int `json:"to"`
+	From    int `json:"from"`
+	Other   int `json:"other"`
+	Unknown int `json:"unknown"`
+}
+
+// RolloutCohortProgress is one cohort's progress: the cumulative membership
+// up to and including this stage, split by delivery path.
+type RolloutCohortProgress struct {
+	Index int `json:"index"`
+
+	// Cohort is the authored cohort spec, rendered for reading.
+	Cohort string `json:"cohort"`
+
+	// Soak is the stage's authored minimum soak.
+	Soak string `json:"soak"`
+
+	State string `json:"state"`
+
+	// Widens is the members this stage admits beyond the previous stage's
+	// cohort.
+	Widens int `json:"widens"`
+
+	Served RolloutPathProgress `json:"served"`
+
+	// Foreign is advisory (ADR-0029 §7): displayed, never blocking.
+	Foreign RolloutPathProgress `json:"foreign"`
+}
+
+// RolloutHalt is one halted cohort member (ADR-0029 §6).
+type RolloutHalt struct {
+	Collector string `json:"collector"`
+	Path      string `json:"path"`
+	Condition string `json:"condition"`
+	Reason    string `json:"reason"`
+}
+
+// RolloutEvidence is what the verdict rests on, computed over the active
+// cohort.
+type RolloutEvidence struct {
+	MembersSeen  int    `json:"membersSeen"`
+	RunningTo    int    `json:"runningTo"`
+	RunningFrom  int    `json:"runningFrom"`
+	RunningOther int    `json:"runningOther"`
+	Unknown      int    `json:"unknown"`
+	Soaked       string `json:"soaked"`
+	MinSoak      string `json:"minSoak"`
+}
+
+// RolloutDoc is one active Rollout's cohort progress across both delivery
+// paths (ADR-0029): membership from the pure function, which artefact each
+// member runs from what it has acknowledged, and the verdict with its
+// evidence and every halt.
+type RolloutDoc struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Team        string `json:"team"`
+	Owner       string `json:"owner"`
+	Tier        string `json:"tier"`
+	TierName    string `json:"tierName"`
+	Environment string `json:"environment"`
+
+	// From and To are the dual bindings the Tier carries while this
+	// Rollout is active (ADR-0029 §3).
+	From string `json:"from"`
+	To   string `json:"to"`
+
+	// Stage is the active stage, 0-based.
+	Stage int `json:"stage"`
+
+	Decision string `json:"decision"`
+	Reason   string `json:"reason"`
+
+	Evidence RolloutEvidence         `json:"evidence"`
+	Cohorts  []RolloutCohortProgress `json:"cohorts"`
+	Halts    []RolloutHalt           `json:"halts"`
+
+	// Provenance is the "why?" chain for the authored facts (ADR-0041 §3).
+	Provenance []Provenance `json:"provenance"`
 }
 
 // DeliverySplit is a Tier's served vs git-delivered collector counts.

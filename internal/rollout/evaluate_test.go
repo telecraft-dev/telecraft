@@ -242,3 +242,22 @@ func TestEvaluateAcceptsExtensibleConditions(t *testing.T) {
 		t.Errorf("halted = %+v, want the added condition named", v.Evidence.Halted)
 	}
 }
+
+// A soak is a number a reader sees, on a proposal body and on the ledger
+// alike, so it reads back as the notation the stage was authored in.
+func TestFormatDurationReadsAsAuthored(t *testing.T) {
+	for _, c := range []struct {
+		in   time.Duration
+		want string
+	}{
+		{0, "0s"},
+		{26 * time.Second, "26s"},
+		{90 * time.Minute, "1h30m"},
+		{2*time.Hour + 40*time.Minute, "2h40m"},
+		{24 * time.Hour, "24h"},
+	} {
+		if got := FormatDuration(c.in); got != c.want {
+			t.Errorf("FormatDuration(%s) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}

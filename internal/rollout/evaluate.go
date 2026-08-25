@@ -154,7 +154,7 @@ type Evidence struct {
 func (e Evidence) Summary() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "stage %d of %d soaked %s of the %s minimum: %s seen, %d running the new version, %d halted",
-		e.Stage+1, e.Stages, e.Soaked.Round(time.Minute), e.MinSoak, members(e.MembersSeen), e.RunningTo, len(e.Halted))
+		e.Stage+1, e.Stages, FormatDuration(e.Soaked), FormatDuration(e.MinSoak), members(e.MembersSeen), e.RunningTo, len(e.Halted))
 	if e.RunningFrom > 0 {
 		fmt.Fprintf(&b, "; %d still on the previous version", e.RunningFrom)
 	}
@@ -274,7 +274,7 @@ func Evaluate(in Inputs) (Verdict, error) {
 	case ev.Soaked < ev.MinSoak:
 		return Verdict{
 			Decision: DecisionHold,
-			Reason:   fmt.Sprintf("The stage has soaked %s of its %s minimum.", ev.Soaked.Round(time.Minute), ev.MinSoak),
+			Reason:   fmt.Sprintf("The stage has soaked %s of its %s minimum.", FormatDuration(ev.Soaked), FormatDuration(ev.MinSoak)),
 			Evidence: ev,
 		}, nil
 	case ev.RunningTo == 0:
@@ -302,6 +302,25 @@ func silent(c estate.Collector, decl estate.Declaration, now time.Time) bool {
 	}
 	demoted := c.ForEvaluation(decl, now)
 	return !demoted.Effective.Known && !demoted.Health.Known && !demoted.DeliveryStatus.Known
+}
+
+// FormatDuration renders a soak for a reader: rounded to the minute, with
+// the empty trailing components dropped, so a stage's authored 24h reads
+// back as 24h rather than as 24h0m0s. It is exported because every surface
+// that shows a soak, the proposal bodies and the ledger alike, renders one
+// the same way.
+func FormatDuration(d time.Duration) string {
+	if d < time.Minute {
+		return d.Round(time.Second).String()
+	}
+	s := d.Round(time.Minute).String()
+	if strings.HasSuffix(s, "m0s") {
+		s = strings.TrimSuffix(s, "0s")
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = strings.TrimSuffix(s, "0m")
+	}
+	return s
 }
 
 // members renders a cohort-member count for a reader: one member is
