@@ -96,10 +96,9 @@ const (
 	// the product exists to fill and so the default.
 	Landed Placement = "landed"
 
-	// Live judges the findings an adopter-deployed tap emitted. The tap is
-	// not built yet, so the loader carries the value and refuses it: see
-	// load.go. Accepting it would produce a requirement that evaluates
-	// nothing and reads as clean.
+	// Live judges the findings an adopter-deployed tap emitted, read back
+	// through the telemetry seam with a liveness leg beside them: a tap
+	// nothing fed reads unknown, never clean (ADR-0034 §6).
 	Live Placement = "live"
 )
 

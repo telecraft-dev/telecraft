@@ -224,18 +224,15 @@ func validate(path string, r Requirement, regs *registries) []string {
 }
 
 // placementProblems collects everything wrong with a requirement's
-// placement. Placement is carried now so that the requirement shape does not
-// change again when the live tap lands (ADR-0034 §6), and `live` is refused
-// meanwhile: the tap is not built, so a live requirement would evaluate
-// nothing and a Service failing it would read as clean.
+// placement. Both placements load: `landed` is judged against backend
+// readings and `live` against the findings the live-check tap emitted
+// (ADR-0034 §6), each through its own evaluator arm.
 func placementProblems(ctx string, r Requirement) []string {
 	var p []string
 	switch {
 	case r.Placement == "":
 	case r.Schema == nil:
 		p = append(p, fmt.Sprintf("%s sets placement %q, but only a schema_conformance requirement has a placement", ctx, r.Placement))
-	case r.Placement == Live:
-		p = append(p, ctx+" asks for placement: live, which is not implemented yet. The collection-time tap it reads findings from is not built, so the requirement would evaluate nothing; write placement: landed until it is")
 	case !r.Placement.Valid():
 		p = append(p, fmt.Sprintf("%s: unknown placement %q, want one of landed or live", ctx, r.Placement))
 	}

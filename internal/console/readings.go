@@ -127,6 +127,59 @@ type RowReading struct {
 	// Known false with a stated cause: not knowing is a normal state and
 	// is reported as itself (ADR-0008), never as absence.
 	Signals map[string]SignalReading `yaml:"signals"`
+
+	// LiveCheck is the live-check reading for this row (ADR-0034 §6): the
+	// finding records the tap emitted for the Service, verbatim, with the
+	// liveness leg beside them. Absent is Known false with a cause, never a
+	// quiet stream: a clean stream and a dead tap are both silent, and a
+	// declaration nobody wrote must not be played back as either.
+	LiveCheck *LiveCheckReading `yaml:"live_check"`
+}
+
+// LiveCheckReading is one row's declared live-check reading. It mirrors the
+// seam's own shape (telemetry.LiveCheckFindings) for the reason the flow
+// declaration mirrors telemetry.Metered: a declaration the seam could not
+// have produced is not a reading, and the mirror holds the two to one shape.
+type LiveCheckReading struct {
+	// Known distinguishes "the findings could not be read" from a window
+	// with no findings in it. Absent defaults to known.
+	Known *bool  `yaml:"known"`
+	Cause string `yaml:"cause"`
+
+	// Records are the finding records, verbatim as the backend recorded
+	// them: the body and the emitted attributes. A declared empty list is
+	// the observed silence, which only the liveness leg can interpret.
+	Records []LiveCheckRecordReading `yaml:"records"`
+
+	// Truncated declares that the window holds records the list does not.
+	// Reported, never silent: an absence read off a clipped set is not
+	// knowledge.
+	Truncated bool `yaml:"truncated"`
+
+	// Liveness is what the teeing Tier's own telemetry says was sent to
+	// the tap in the window. Absent is Known false with a cause: without
+	// it, the records alone cannot say what their absence means.
+	Liveness *LiveCheckLivenessReading `yaml:"liveness"`
+}
+
+// LiveCheckRecordReading is one declared finding record, body and
+// attributes exactly as the backend recorded them. Nothing here is judged;
+// the platform's one normaliser interprets the spellings at evaluation.
+type LiveCheckRecordReading struct {
+	Body       string            `yaml:"body"`
+	Attributes map[string]string `yaml:"attributes"`
+}
+
+// LiveCheckLivenessReading is the declared liveness leg, mirroring
+// telemetry.LiveCheckLiveness.
+type LiveCheckLivenessReading struct {
+	Known *bool  `yaml:"known"`
+	Cause string `yaml:"cause"`
+
+	// Sent is items sent to the tap exporter over the window; SendFailed
+	// is items that failed to send on the same exporter.
+	Sent       int64 `yaml:"sent"`
+	SendFailed int64 `yaml:"send_failed"`
 }
 
 // SignalReading is one signal's arrival reading.
@@ -379,6 +432,34 @@ func (c CollectorReading) deliveryProblems(ctx string) []string {
 	return problems
 }
 
+// liveCheckProblems validates one row's declared live-check reading, under
+// the rule every declared reading is held to: the declaration must be a
+// reading the seam could have taken. A reading marked unknown carries no
+// records, an unknown liveness leg carries no counts, and a count is never
+// negative.
+func (row RowReading) liveCheckProblems() []string {
+	lc := row.LiveCheck
+	if lc == nil {
+		return nil
+	}
+	where := fmt.Sprintf("row %s/%s live_check", row.Service, row.Environment)
+	var problems []string
+	if lc.Known != nil && !*lc.Known && len(lc.Records) > 0 {
+		problems = append(problems, where+" is marked unknown but declares records: an unknown reading holds none")
+	}
+	live := lc.Liveness
+	if live == nil {
+		return problems
+	}
+	if live.Sent < 0 || live.SendFailed < 0 {
+		problems = append(problems, where+" declares a negative liveness count, but a count is never negative")
+	}
+	if live.Known != nil && !*live.Known && (live.Sent != 0 || live.SendFailed != 0) {
+		problems = append(problems, where+" marks its liveness unknown but carries counts: an unknown reading has no counts")
+	}
+	return problems
+}
+
 // silentSet indexes the withheld component ids.
 func (t TierReading) silentSet() map[string]bool {
 	out := map[string]bool{}
@@ -555,6 +636,7 @@ func LoadReadings(path string) (Readings, error) {
 				problems = append(problems, fmt.Sprintf("row %s/%s reads signal %q, which is not a signal: use logs, metrics, or traces", row.Service, row.Environment, name))
 			}
 		}
+		problems = append(problems, row.liveCheckProblems()...)
 	}
 	for _, tier := range r.Tiers {
 		if tier.Tier == "" {
@@ -887,19 +969,80 @@ func unique(declared []string) []string {
 	return out
 }
 
-// LiveCheckFindings answers Known false: the readings file declares no
-// live-check reading yet, and a snapshot has no tap to read, so "we never
-// looked" is said out loud rather than played back as a quiet stream. The
-// declaration grows a live-check shape when the console starts gathering
-// live evidence; until then every live-placement requirement judged over a
-// snapshot reads unknown, never clean.
+// LiveCheckFindings plays back the row's declared live-check reading: the
+// finding records verbatim, with the liveness leg beside them (ADR-0034
+// §6). A row or a leg the estate declared nothing for is Known false with
+// the cause said out loud, never a quiet stream: silence over a tap is
+// exactly what the liveness leg exists to interpret, so a fabricated one
+// would turn a dead tap into a clean stream.
 func (p *provider) LiveCheckFindings(_ context.Context, service telemetry.Service, window time.Duration) telemetry.LiveCheckFindings {
 	who := service.Name
 	if who == "" {
 		who = "an unnamed service"
 	}
-	return telemetry.LiveCheckUnknown(p.readings.AsOf, window,
-		"the estate's readings file declares no live-check reading for "+who)
+	unknown := func(cause string) telemetry.LiveCheckFindings {
+		return telemetry.LiveCheckUnknown(p.readings.AsOf, window, cause)
+	}
+	if service.Name == "" {
+		return unknown(telemetry.NotServiceScoped(service, unnamedService))
+	}
+	row, ok := p.readings.row(service.Name, service.Environment)
+	if !ok || row.LiveCheck == nil {
+		return unknown("the estate's readings file declares no live-check reading for " + who)
+	}
+
+	lc := row.LiveCheck
+	if lc.Known != nil && !*lc.Known {
+		cause := lc.Cause
+		if cause == "" {
+			cause = "the declared reading marks the live-check findings unknown"
+		}
+		reading := unknown(cause)
+		reading.Liveness = lc.liveness(who)
+		return reading
+	}
+
+	reading := telemetry.LiveCheckFindings{
+		Known:     true,
+		AsOf:      p.readings.AsOf,
+		Window:    window,
+		Truncated: lc.Truncated,
+		Liveness:  lc.liveness(who),
+	}
+	for _, rec := range lc.Records {
+		reading.Records = append(reading.Records, telemetry.LiveCheckRecord{
+			Body:       rec.Body,
+			Attributes: rec.Attributes,
+		})
+	}
+	if len(reading.Records) > telemetry.MaxLiveCheckRecords {
+		// The seam's hard cap holds on playback too, and the clip is
+		// reported rather than swallowed.
+		reading.Records = reading.Records[:telemetry.MaxLiveCheckRecords]
+		reading.Truncated = true
+	}
+	return reading
+}
+
+// liveness converts the declared liveness leg to the seam's shape. A leg
+// nobody declared is Known false: the records alone cannot say what their
+// absence means, and this is the leg that says it.
+func (lc LiveCheckReading) liveness(who string) telemetry.LiveCheckLiveness {
+	live := lc.Liveness
+	if live == nil {
+		return telemetry.LiveCheckLiveness{
+			Known: false,
+			Cause: "the estate's readings file declares no live-check liveness reading for " + who,
+		}
+	}
+	if live.Known != nil && !*live.Known {
+		cause := live.Cause
+		if cause == "" {
+			cause = "the declared reading marks the live-check liveness unknown"
+		}
+		return telemetry.LiveCheckLiveness{Known: false, Cause: cause}
+	}
+	return telemetry.LiveCheckLiveness{Known: true, Sent: live.Sent, SendFailed: live.SendFailed}
 }
 
 func (p *provider) ObserveSelf(_ context.Context, tier string, window time.Duration) telemetry.SelfObserved {

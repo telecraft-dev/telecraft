@@ -360,11 +360,32 @@ evaluates nothing and scores every Service clean.
 | Value | Meaning |
 |---|---|
 | `landed` | Telemetry that has already landed in a backend. The default. |
-| `live` | Declared and refused: a library that sets it does not load. |
+| `live` | The findings the Live-check tap emitted at collection time. |
 
-`placement: live` is a load error: nothing emits collection-time findings for
-it to read, so a `live` Requirement would evaluate nothing and every Service
-would read clean against it.
+A `live` Requirement is judged against the findings a
+`weaver registry live-check` service emitted over the sampled stream a
+teeing Tier sends it, read back from your backend as ordinary log records.
+The tap sees the stream before any backend does, which is what unlocks the
+checks a landed reading can't make: value types, metric units and
+instruments, and the naming checks. See
+[Tiers](tiers.md#live-check) for the rendered pipeline that feeds the tap
+and [Serve configurations](../guides/serve-configs.md#deploy-the-live-check-service)
+for deploying the service.
+
+The reference and the levels are judged exactly as at `landed`: a
+violation-level finding on a `required` attribute reads `misconfigured`,
+and improvement and information findings ride alongside. What differs is
+what silence means. The tap emits findings, not heartbeats, so the
+evaluation reads a liveness leg beside them: whether anything was sent to
+the tap in the window, taken from the teeing Tier's own telemetry for the
+tap exporter.
+
+- The Requirement reads `compliant` only when the tap was fed in the
+  window, nothing failed to send, and no violation arrived.
+- A tap that was fed nothing, a send failure, or a reading nobody could
+  take reads `unknown`: it counts against the Service and never passes.
+- A `live` Requirement never reads `not_delivered`. The tap samples one
+  branch of the stream, so a Service it did not see reads `unknown`.
 
 `placement` on a Requirement with no `schema_conformance` block is a load
 error. Nothing else has a placement.
@@ -402,9 +423,8 @@ for field errors the field. The load refuses on:
 - a `track: head` reference when no Schema Registry version is installed
 - a `schema_conformance` block when the load was given no Schema Registry
   directory to resolve it against
-- `placement: live`, which isn't implemented; a `placement` outside `landed`
-  and `live`; or a `placement` on a Requirement with no `schema_conformance`
-  block
+- a `placement` outside `landed` and `live`, or a `placement` on a
+  Requirement with no `schema_conformance` block
 - an empty or duplicated entry in `environments`
 
 ## Authoring findings

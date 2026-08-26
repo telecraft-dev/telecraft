@@ -595,10 +595,6 @@ func judgeSchema(req requirements.Requirement, ev Evidence) []Finding {
 	// The live placement is its own arm (ADR-0034 §6): the tap has
 	// already judged the stream against the registry, so the evaluator
 	// reads its findings rather than the backend readings this arm reads.
-	// The loader still refuses `placement: live` (issue #159: the rendered
-	// tap pattern and the activation slices are not built), so nothing
-	// reaches the live arm from a loaded library yet; it is judged here so
-	// that it is fully tested before the refusal lifts.
 	if req.Placement == requirements.Live {
 		return judgeSchemaLive(req, ev)
 	}

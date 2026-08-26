@@ -350,6 +350,7 @@ func TestSharedContractFixture(t *testing.T) {
 		violation("gateway-delivery-stalled"),
 		advisory("gateway-expectation-logs"),
 		advice("checkout-schema-coverage"),
+		live("checkout-live-shape"),
 	}, []Provenance{{
 		Key:   "band:expectation",
 		Claim: "arrival claim: logs should land for product/checkout in production (via data-flow/gateway)",
@@ -423,6 +424,19 @@ func advice(id string) Finding {
 		Remediation: "Close the coverage gap by emitting the attributes the Schema Registry declares at recommended.",
 		WhoActs:     WhoActs{Target: ObjectRef{Kind: "service", ID: "product/checkout"}, Label: "Inspect the Service in Topology"},
 		Advice:      true,
+		Placement:   "landed",
+	}
+}
+
+// live is a conformance finding drawn from the live-check tap's findings:
+// Placement is what tells its fix apart from a landed one's (ADR-0034 §6).
+func live(id string) Finding {
+	return Finding{
+		ID: id, Kind: "conformance", Severity: SeverityViolation, Dampening: DampeningNone,
+		Summary:     "checkout-spans-live: misconfigured in production (product/checkout)",
+		Remediation: "Change the instrumentation to emit what the Schema Registry declares: each finding's message names what differs.",
+		WhoActs:     WhoActs{Target: ObjectRef{Kind: "service", ID: "product/checkout"}, Label: "Inspect the Service in Topology"},
+		Placement:   "live",
 	}
 }
 

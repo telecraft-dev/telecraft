@@ -402,6 +402,44 @@ self-matching: matching would confirm the renderer's output instead of
 reading the collector. Identity stays reported, so a collector in the wrong
 place stays visible.
 
+## Deploy the live-check service
+
+A Requirement with `placement: live` is judged against the findings a
+`weaver registry live-check` service emits. That service is upstream
+Weaver's, and it is yours to deploy, the way the collectors and the
+Supervisor are: Telecraft renders the pipeline that feeds it and reads the
+findings that come home, and ships no binary of its own into your telemetry
+path.
+
+Three pieces have to line up, and each lives where you already manage its
+kind:
+
+1. **The feed.** A Tier opts in with a `live_check` block, and the renderer
+   adds a sampled pipeline beside its lanes, exporting over gRPC to the
+   endpoint `live-check.yaml` declares. [Tiers](../reference/tiers.md#live-check)
+   covers the block and
+   [Estate layout](../reference/estate-layout.md) the file. The Tier's own
+   data pipelines are unchanged: if the service is down, you lose findings,
+   never data.
+2. **The service.** Run `weaver registry live-check` wherever you run
+   workloads, from the image or binary the
+   [Weaver project](https://github.com/open-telemetry/weaver) publishes.
+   Point it at the same registry source your estate imports as its Schema
+   Registry, and have it consume OTLP over gRPC on the port the
+   `live-check.yaml` endpoint names. The command and its flags are
+   upstream's, documented by `weaver registry live-check --help`.
+3. **The way home.** Start the service with `--emit-otlp-logs`, sending its
+   findings to the same backend the rest of your telemetry lands in. The
+   platform reads them back from there like any other telemetry, so a
+   finding the backend never receives is a finding the evaluation never
+   sees.
+
+The service holds no state worth keeping: replacing it costs the findings
+it would have emitted while down, and the Requirements that read them show
+`unknown` for the window rather than a pass. See
+[Placement](../reference/requirements.md#placement) for how that verdict is
+drawn.
+
 ## Compare what was sent with what is running
 
 `telecraft delivery` crosses the Intended reading (the artefact in git) with

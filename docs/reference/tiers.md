@@ -170,6 +170,11 @@ file's, else 10. A Tier opting in while `live-check.yaml` is absent is a
 render error naming both files. A `sample_percent` of zero or below, or
 above 100, is a load error.
 
+The live-check service the branch feeds is yours to deploy:
+[Deploy the live-check service](../guides/serve-configs.md#deploy-the-live-check-service)
+covers it. A Requirement reads the findings it emits by setting
+[`placement: live`](requirements.md#placement).
+
 ## Service fields
 
 A Service is the governed unit. Its Paths decide which Tiers its Service Class
