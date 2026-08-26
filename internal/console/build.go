@@ -19,6 +19,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 	"github.com/telecraft-dev/telecraft/internal/serving"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
@@ -129,6 +130,10 @@ func Build(in Inputs) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
+	activeSchemaReg, err := in.activeSchemaRegistry(activeRegistry, lib)
+	if err != nil {
+		return Bundle{}, err
+	}
 	cEstate, err := conformance.LoadEstate(in.EstateFile)
 	if err != nil {
 		return Bundle{}, err
@@ -195,6 +200,7 @@ func Build(in Inputs) (Bundle, error) {
 		topo:           topo,
 		floors:         floors,
 		lib:            lib,
+		activeSchema:   activeSchemaReg,
 		cEstate:        cEstate,
 		readings:       readings,
 		snapshot:       snapshot,
@@ -292,14 +298,21 @@ func subtreeFunc(own ownership.Estate) func(service, team string) (bool, error) 
 // builder carries one snapshot's loaded inputs while the documents are
 // projected from them.
 type builder struct {
-	in       Inputs
-	tree     ownership.Tree
-	active   *catalogue.Catalogue
-	policy   *allowlist.Policy
-	bp       blueprint.Estate
-	topo     renderer.Topology
-	floors   renderer.FloorPolicy
-	lib      requirements.Library
+	in     Inputs
+	tree   ownership.Tree
+	active *catalogue.Catalogue
+	policy *allowlist.Policy
+	bp     blueprint.Estate
+	topo   renderer.Topology
+	floors renderer.FloorPolicy
+	lib    requirements.Library
+
+	// activeSchema is the Schema Registry version the estate designated
+	// active, which the schema drift arm judges pinned references against
+	// (ADR-0034 §2). Nil when nothing is designated or nothing references
+	// the Schema Registry; the drift arm then judges nothing.
+	activeSchema *schemaregistry.Registry
+
 	cEstate  conformance.Estate
 	readings Readings
 	snapshot *serving.Snapshot
@@ -520,6 +533,35 @@ func (in Inputs) activeCatalogue(designation activation.Record) (string, error) 
 	}
 	dir := in.CataloguesDir()
 	return filepath.Join(dir, catalogue.ArtefactName(version)), nil
+}
+
+// activeSchemaRegistry resolves the Schema Registry version the estate has
+// designated active, so the evaluation can judge each pinned
+// schema-conformance scope against it beside its pin (ADR-0034 §2). The
+// library's own resolved copy is preferred, whether a requirement pins the
+// active ref or tracks head; loading from the installed artefacts is the
+// fallback for an estate whose requirements all pin older versions.
+//
+// Nil with no error means there is nothing to judge drift against: no
+// designation, or a library that references no Schema Registry at all. A
+// designation naming a version that cannot be read is an error, not a
+// silent nil: a snapshot that shrugged it off would show pinned references
+// clean against a bar nobody could check.
+func (in Inputs) activeSchemaRegistry(ref string, lib requirements.Library) (*schemaregistry.Registry, error) {
+	if ref == "" || len(lib.SchemaRegistries) == 0 {
+		return nil, nil
+	}
+	if reg := lib.SchemaRegistries[ref]; reg != nil {
+		return reg, nil
+	}
+	if reg := lib.SchemaRegistries[requirements.TrackHead]; reg != nil {
+		return reg, nil
+	}
+	reg, err := schemaregistry.Load(filepath.Join(in.SchemaRegistries, schemaregistry.ArtefactName(ref)))
+	if err != nil {
+		return nil, fmt.Errorf("the estate designates Schema Registry version %q as active, and it cannot be read: %v. Import that version, or activate one that is installed", ref, err)
+	}
+	return reg, nil
 }
 
 // CataloguesDir is where this estate's installed Catalogue artefacts live:

@@ -319,6 +319,91 @@ func groupNamesOf(reg *schemaregistry.Registry, kind requirements.SignalKind) []
 	return out
 }
 
+// The active version travels with the evidence, filed under its own ref,
+// and the library's own map is left alone: it is the library's, and every
+// other gather reads it.
+func TestGatherSchemaCarriesTheActiveVersionWithoutTouchingTheLibrary(t *testing.T) {
+	lib := fixtureLibrary(t)
+	active := registry(t)
+	active.Source.Ref = "v1.5.0"
+
+	ev := GatherSchema(lib, "production", SchemaSource{
+		Names: func(r SchemaReading) telemetry.AttributeNames {
+			return telemetry.AttributeNames{Known: true, Window: r.Window}
+		},
+	}, WithActiveSchemaRegistry(active))
+
+	if ev.ActiveVersion != "v1.5.0" {
+		t.Errorf("ActiveVersion = %q, want v1.5.0", ev.ActiveVersion)
+	}
+	if got, _, ok := ev.ActiveRegistry(); !ok || got != active {
+		t.Errorf("ActiveRegistry() = (%v, %v), want the version the option handed over", got, ok)
+	}
+	if ev.Versions[snapshotRef] == nil {
+		t.Errorf("the pinned version fell out of the evidence: %v", ev.Versions)
+	}
+	if lib.SchemaRegistries["v1.5.0"] != nil {
+		t.Error("the gather wrote the active version into the library's map")
+	}
+
+	bare := GatherSchema(lib, "production", SchemaSource{}, WithActiveSchemaRegistry(nil))
+	if bare.ActiveVersion != "" {
+		t.Errorf("a nil registry set ActiveVersion = %q, want none: nil is no designation", bare.ActiveVersion)
+	}
+}
+
+// The value plan widens to what the active version demands of a pinned
+// scope: an enum only the active version declares, in use, buys a reading
+// the pin alone would not have, so the drift arm judges values rather than
+// reporting them unknown.
+func TestGatherSchemaWidensTheValuePlanForTheActiveVersion(t *testing.T) {
+	pinned := registry(t)
+	active := registry(t)
+	active.Source.Ref = "v1.5.0"
+	declared := false
+	for i, g := range active.Groups {
+		for j, a := range g.Attributes {
+			if a.ID == "enterprise.cost_centre" {
+				active.Groups[i].Attributes[j].Members = []schemaregistry.Member{{ID: "platform", Value: "platform"}}
+				declared = true
+			}
+		}
+	}
+	if !declared {
+		t.Fatal("the fixture registry has no enterprise.cost_centre definition to declare members for")
+	}
+
+	lib := requirements.Library{
+		Requirements: map[string]requirements.Requirement{"enterprise-attrs": {
+			ID: "enterprise-attrs", Owner: "platform-observability",
+			Schema: &requirements.SchemaAssertion{
+				RegistryVersion: snapshotRef,
+				Scope:           requirements.Scope{Namespaces: []string{"enterprise"}},
+				Signals:         []requirements.SignalKind{requirements.Traces},
+				Window:          requirements.Duration(schemaWindow),
+			},
+		}},
+		SchemaRegistries: map[string]*schemaregistry.Registry{snapshotRef: pinned},
+	}
+	src := SchemaSource{
+		Names: func(r SchemaReading) telemetry.AttributeNames {
+			return telemetry.AttributeNames{Known: true, Window: r.Window, Names: []string{"enterprise.cost_centre"}}
+		},
+		Values: func(r SchemaValueReading) telemetry.DistinctValues {
+			return telemetry.DistinctValues{Known: true, Window: r.Window, Attribute: r.Attribute}
+		},
+	}
+
+	key := SchemaValueReading{Kind: requirements.Traces, Window: schemaWindow, Attribute: "enterprise.cost_centre"}
+	if ev := GatherSchema(lib, "production", src); len(ev.Values) != 0 {
+		t.Errorf("the pin alone bought value readings %v: nothing it declares as an enum is in use", ev.Values)
+	}
+	ev := GatherSchema(lib, "production", src, WithActiveSchemaRegistry(active))
+	if _, taken := ev.Values[key]; !taken {
+		t.Errorf("the widened plan did not buy the active version's enum reading: %v", ev.Values)
+	}
+}
+
 // findingFor returns one requirement's violation-grade finding: the one
 // that is its verdict, as opposed to the improvement and information
 // findings that ride alongside it (ADR-0034 §3).

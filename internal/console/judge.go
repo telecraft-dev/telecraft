@@ -184,7 +184,9 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 		// declares as enums, each for the signals and windows this row's
 		// schema requirements cover and each scoped to the row's Service
 		// and Environment. The registry versions travel with the library,
-		// resolved when its references were validated at load.
+		// resolved when its references were validated at load; the active
+		// version travels beside them so the drift arm can judge each
+		// pinned scope against it (ADR-0034 §2).
 		ev.Schema = conformance.GatherSchema(b.lib, row.Environment, conformance.SchemaSource{
 			Names: func(r conformance.SchemaReading) telemetry.AttributeNames {
 				return prov.AttributeNames(context.Background(), svc, r.Kind, r.Window)
@@ -195,7 +197,7 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 			Values: func(r conformance.SchemaValueReading) telemetry.DistinctValues {
 				return prov.DistinctValues(context.Background(), svc, r.Kind, r.Attribute, r.Window)
 			},
-		})
+		}, conformance.WithActiveSchemaRegistry(b.activeSchema))
 		// The evidence is kept as gathered, before any waiver touches the
 		// verdict drawn from it: an activation impact report asks what the
 		// candidate version diagnoses, and a waiver answers a different

@@ -95,6 +95,26 @@ type SchemaEvidence struct {
 	// signals a requirement covers is applied at evaluation. A missing
 	// reading is unknown, never a clean stream.
 	Live map[time.Duration]telemetry.LiveCheckFindings
+
+	// ActiveVersion names the Schema Registry version the estate has
+	// designated active, by the ref it was imported at, with the version
+	// itself filed in Versions under that ref. It is what the drift arm
+	// judges a pinned scope against beside its pin (ADR-0034 §2: passing
+	// the pinned version while failing the current one is library_drift).
+	// Empty when the gather was told no designation, which the drift arm
+	// reads as nothing to judge against rather than guessing one: which
+	// version is active is an activation decision (ADR-0020 §6).
+	ActiveVersion string
+}
+
+// ActiveRegistry returns the active Schema Registry version the evidence
+// carries, with its ref, and whether it carries one at all.
+func (e SchemaEvidence) ActiveRegistry() (*schemaregistry.Registry, string, bool) {
+	if e.ActiveVersion == "" {
+		return nil, "", false
+	}
+	reg, ok := e.Versions[e.ActiveVersion]
+	return reg, e.ActiveVersion, ok && reg != nil
 }
 
 // InUse reports whether the gathered attribute-name reading for one signal
@@ -227,15 +247,7 @@ func SchemaValueReadings(lib requirements.Library, environment string, inUse fun
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Window != out[j].Window {
-			return out[i].Window < out[j].Window
-		}
-		if out[i].Kind != out[j].Kind {
-			return out[i].Kind < out[j].Kind
-		}
-		return out[i].Attribute < out[j].Attribute
-	})
+	sortValueReadings(out)
 	return out
 }
 
@@ -279,6 +291,19 @@ func sortReadings(out []SchemaReading) {
 	})
 }
 
+// sortValueReadings does the same for a value-set plan.
+func sortValueReadings(out []SchemaValueReading) {
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Window != out[j].Window {
+			return out[i].Window < out[j].Window
+		}
+		if out[i].Kind != out[j].Kind {
+			return out[i].Kind < out[j].Kind
+		}
+		return out[i].Attribute < out[j].Attribute
+	})
+}
+
 // SchemaSource is where gathered evidence comes from: one function per kind
 // of planned reading, each taking the key it answers for.
 //
@@ -306,6 +331,26 @@ type SchemaSource struct {
 	Live func(time.Duration) telemetry.LiveCheckFindings
 }
 
+// GatherOption tunes one gather beyond what the library alone asks for.
+type GatherOption func(*gather)
+
+// gather carries the option state of one GatherSchema call.
+type gather struct {
+	active *schemaregistry.Registry
+}
+
+// WithActiveSchemaRegistry hands the gather the Schema Registry version the
+// estate has designated active, resolved by the caller that knows the
+// designation. The evidence then carries the version beside the pinned ones,
+// and the grouping-key and value plans widen to what it demands of each
+// pinned scope, so the drift arm can judge that scope against the active
+// version as fully as against its pin (ADR-0034 §2: passing the pinned
+// version while failing the current one is library_drift). A nil registry is
+// no designation, and the gather is exactly what it was without the option.
+func WithActiveSchemaRegistry(reg *schemaregistry.Registry) GatherOption {
+	return func(g *gather) { g.active = reg }
+}
+
 // GatherSchema builds the evidence one row's schema-conformance
 // requirements are judged against: the Schema Registry versions the load
 // resolved, one attribute-name and grouping-key reading per signal and window
@@ -322,7 +367,11 @@ type SchemaSource struct {
 // valued, which is what a requirement of another kind is judged against
 // anyway, and reading attribute names for a library that asks about none
 // would be a round trip nobody wanted.
-func GatherSchema(lib requirements.Library, environment string, src SchemaSource) SchemaEvidence {
+func GatherSchema(lib requirements.Library, environment string, src SchemaSource, opts ...GatherOption) SchemaEvidence {
+	var g gather
+	for _, opt := range opts {
+		opt(&g)
+	}
 	plan := SchemaReadings(lib, environment)
 	livePlan := SchemaLiveReadings(lib, environment)
 	if len(plan) == 0 && len(livePlan) == 0 {
@@ -335,18 +384,33 @@ func GatherSchema(lib requirements.Library, environment string, src SchemaSource
 		Values:   map[SchemaValueReading]telemetry.DistinctValues{},
 		Live:     map[time.Duration]telemetry.LiveCheckFindings{},
 	}
+	if g.active != nil {
+		// The active version travels like the pinned ones, filed under its
+		// own ref: one copy, however it is addressed. The library's map is
+		// copied rather than written through, because it is the library's
+		// and every other gather reads it too.
+		versions := make(map[string]*schemaregistry.Registry, len(lib.SchemaRegistries)+1)
+		for ref, reg := range lib.SchemaRegistries {
+			versions[ref] = reg
+		}
+		if _, held := versions[g.active.Version()]; !held {
+			versions[g.active.Version()] = g.active
+		}
+		ev.Versions = versions
+		ev.ActiveVersion = g.active.Version()
+	}
 	if src.Names != nil {
 		for _, key := range plan {
 			ev.Names[key] = src.Names(key)
 		}
 	}
 	if src.Groups != nil {
-		for _, key := range SchemaGroupReadings(lib, environment) {
+		for _, key := range groupPlan(lib, environment, g.active) {
 			ev.Groups[key] = src.Groups(key)
 		}
 	}
 	if src.Values != nil {
-		for _, key := range SchemaValueReadings(lib, environment, ev.InUse) {
+		for _, key := range valuePlan(lib, environment, g.active, ev.InUse) {
 			ev.Values[key] = src.Values(key)
 		}
 	}
@@ -356,6 +420,95 @@ func GatherSchema(lib requirements.Library, environment string, src SchemaSource
 		}
 	}
 	return ev
+}
+
+// drifts reports whether one requirement's reference can fall behind the
+// active version at all: a pinned landed schema requirement applying in the
+// Environment, whose pin is not the active version itself. A tracking
+// reference cannot, because it is judged against the active version already
+// (ADR-0026 §1): there is no pin to fall behind.
+func drifts(req requirements.Requirement, environment string, active *schemaregistry.Registry) bool {
+	return landedSchema(req, environment) && !req.Schema.Tracking() &&
+		req.Schema.RegistryVersion != active.Version()
+}
+
+// groupPlan is the grouping-key plan, widened to the groups the active
+// version's resolution of each pinned scope reaches. The drift arm judges
+// those scopes against the active version too, and a reading that judgement
+// needs and nobody took would leave it unsure where an answer was there to
+// be had.
+func groupPlan(lib requirements.Library, environment string, active *schemaregistry.Registry) []SchemaReading {
+	out := SchemaGroupReadings(lib, environment)
+	if active == nil {
+		return out
+	}
+	seen := map[SchemaReading]bool{}
+	for _, key := range out {
+		seen[key] = true
+	}
+	for _, req := range lib.Sorted() {
+		if !drifts(req, environment, active) {
+			continue
+		}
+		a := *req.Schema
+		for _, s := range scopedGroups(active, a.Scope) {
+			kind, _, locatable := groupKeyValue(s.Group)
+			if !locatable || !a.Covers(kind) {
+				continue
+			}
+			key := SchemaReading{Kind: kind, Window: a.Window.Std()}
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, key)
+		}
+	}
+	sortReadings(out)
+	return out
+}
+
+// valuePlan is the value-set plan, widened the same way: one reading per
+// enum attribute the active version declares in a pinned scope and the
+// name reading found in use, where the pin alone would not have bought one.
+// The presence gate holds here exactly as it does for the pinned plan.
+func valuePlan(lib requirements.Library, environment string, active *schemaregistry.Registry, inUse func(SchemaReading, string) bool) []SchemaValueReading {
+	out := SchemaValueReadings(lib, environment, inUse)
+	if active == nil {
+		return out
+	}
+	seen := map[SchemaValueReading]bool{}
+	for _, key := range out {
+		seen[key] = true
+	}
+	for _, req := range lib.Sorted() {
+		if !drifts(req, environment, active) {
+			continue
+		}
+		a := *req.Schema
+		window := a.Window.Std()
+		for _, d := range demandsOf(active, a.Scope) {
+			if len(d.Members) == 0 {
+				continue
+			}
+			for _, kind := range telemetry.Signals() {
+				if !a.Covers(kind) {
+					continue
+				}
+				if inUse != nil && !inUse(SchemaReading{Kind: kind, Window: window}, d.Attribute) {
+					continue
+				}
+				key := SchemaValueReading{Kind: kind, Window: window, Attribute: d.Attribute}
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				out = append(out, key)
+			}
+		}
+	}
+	sortValueReadings(out)
+	return out
 }
 
 // RegistryFor returns the Schema Registry version this assertion is judged
@@ -457,6 +610,17 @@ func judgeSchema(req requirements.Requirement, ev Evidence) []Finding {
 			fmt.Sprintf("Import Schema Registry version %q and make it available to the evaluation, or pin this requirement to a version that is installed.", registryKey(a)))}
 	}
 
+	return schemaDrift(req, judgeSchemaAgainst(req, reg, ev), ev)
+}
+
+// judgeSchemaAgainst judges one landed schema-conformance requirement
+// against one Schema Registry version. It is the whole of the landed arm
+// apart from choosing the version, factored out because the drift arm
+// (schemadrift.go) runs it a second time with the active version answering
+// where the pin did (ADR-0034 §2): one judgement, two versions, never two
+// judgements that could disagree about what judging means.
+func judgeSchemaAgainst(req requirements.Requirement, reg *schemaregistry.Registry, ev Evidence) []Finding {
+	a := *req.Schema
 	reading := readScope(a, ev)
 
 	// Which groups arrived decides what is demanded at all: semconv states

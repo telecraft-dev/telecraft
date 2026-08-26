@@ -1,12 +1,22 @@
-// Package drift detects library_drift: config in git that passes the
-// version it claims or pins while failing the current one: "the goalposts
-// moved and you haven't caught up" (ADR-0026 §6, REQ-025). It is one
-// finding kind with two facets carried as data (ADR-0026 §7): Requirement (the bar moved, whether a versioned Requirement
-// or a raised Service Class floor) and Component (a pinned reference behind
-// the owning team's head).
-// Every finding is repo-owned: the subject is authored config, the
+// Package drift detects library_drift: a subject that passes the version it
+// claims or pins while failing the current one: "the goalposts moved and you
+// haven't caught up" (ADR-0026 §6, REQ-025). It is one finding kind with
+// three facets carried as data (ADR-0026 §7): Requirement (the bar moved,
+// whether a versioned Requirement or a raised Service Class floor),
+// Component (a pinned reference behind the owning team's head), and Registry
+// (a pinned Schema Registry reference behind the active version, ADR-0034
+// §2). This package judges the first two, from authored config alone; every
+// finding it raises is repo-owned: the subject is authored config, the
 // accountable party is the consuming object's owner, and the remedy is a
 // version-diff review and a PR, never re-instrumentation (ADR-0004).
+//
+// The Registry facet is judged in internal/conformance (schemadrift.go)
+// rather than here, because its diagnosis is drawn from Observed telemetry
+// per row, evidence this package never holds: a Service passes the pinned
+// Schema Registry version and fails the active one. It rides the row's
+// verdict as a conformance.Finding with the library_drift outcome,
+// Service-owned like every schema-conformance finding (ADR-0034 §7). The
+// facet is named here so the vocabulary stays one list.
 //
 // library_drift is deliberately distinct from the two divergences it must
 // never be conflated with. Delivery divergence (Intended × Declared, a
@@ -72,6 +82,13 @@ const (
 	// FacetComponent marks a pinned shared-Component reference behind the
 	// owning team's head: "component update available" (ADR-0026 §2).
 	FacetComponent Facet = "component"
+
+	// FacetRegistry marks a pinned Schema Registry reference behind the
+	// active version: the scope passes the pinned version and fails the
+	// active one (ADR-0034 §2). It is judged in internal/conformance,
+	// where the Observed readings live, so no Finding in this package
+	// carries it; it is declared here so the facet vocabulary is one list.
+	FacetRegistry Facet = Facet(conformance.FacetRegistry)
 )
 
 // Finding is one library_drift diagnosis. Every finding routes to the team
