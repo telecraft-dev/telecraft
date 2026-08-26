@@ -45,12 +45,9 @@ relaxes it, because a partially instrumented estate is worth distinguishing
 from an entirely uninstrumented one.
 
 **Requirements never embed a backend query language.** No such field exists in
-the model. If a requirement could carry a query string, the
-`TelemetryProvider` seam would stop being an abstraction and only one backend
-would ever really be supported. The sanctioned extension is `AttributeNames`,
+the model. The sanctioned extension is `AttributeNames`,
 the set of attribute names in use for a Service, signal, and window. It
-enables attribute-shape checking as pure string logic without widening the
-seam towards any vendor's API.
+enables attribute-shape checking as pure string logic.
 
 ### The library
 

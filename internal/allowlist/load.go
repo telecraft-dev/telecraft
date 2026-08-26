@@ -113,8 +113,10 @@ func Load(dir string, tree ownership.Tree, cat *catalogue.Catalogue) (*Policy, e
 		}
 		for _, n := range grantsDoc.Grants {
 			ctx := fmt.Sprintf("%s: grant %q", grantsPath, n.ID)
+			// The id is mandatory: it is how a team's palette traces an
+			// allowed entry back to the Grant that admitted it.
 			if n.ID == "" {
-				problems = append(problems, fmt.Sprintf("%s: a grant has no id. Every Grant needs an id, because the id is how a team's palette traces back to it", grantsPath))
+				problems = append(problems, fmt.Sprintf("%s: a grant has no id. Every Grant needs an id", grantsPath))
 			}
 			problems = append(problems, validateParty(ctx, n.Team, n.Owner, tree)...)
 

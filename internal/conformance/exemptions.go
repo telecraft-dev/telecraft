@@ -194,8 +194,10 @@ func validateExemption(path string, e Exemption) []string {
 	if e.Owner == "" {
 		p = append(p, ctx+" has no owner. Every Exemption needs someone who answers for it")
 	}
+	// The expiry is mandatory: an open-ended waiver would delete the
+	// Requirement rather than pause it.
 	if e.Expires.IsZero() {
-		p = append(p, ctx+" has no expiry. Every Exemption needs an expiry date, because an open-ended waiver would delete the Requirement")
+		p = append(p, ctx+" has no expiry. Every Exemption needs an expiry date")
 	}
 	switch {
 	case e.Service == "" && e.Team == "":

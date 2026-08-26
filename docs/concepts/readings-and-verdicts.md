@@ -55,7 +55,7 @@ situation.
 | Outcome | Effective | Observed | What it diagnoses |
 |---|---|---|---|
 | `compliant` | yes | yes | The requirement is met. |
-| `broken_pipeline` | yes | no | Somebody configured this and it is not working. This is the most valuable finding Telecraft produces, and no tool that reads configuration alone can see it. |
+| `broken_pipeline` | yes | no | Somebody configured this and it is not working. Producing it needs both readings: an Effective yes crossed with an Observed no. |
 | `not_configured` | no | no | An unmet requirement. The owner needs to instrument. |
 | `ungoverned` | no | yes | Telemetry is arriving from something nobody configured. The requirement is met, so it passes, but an estate that cannot account for its own data has a problem regardless of the score. |
 | `not_delivered` | unknown | no | Nothing arrived, and there is no Effective reading to explain why. |

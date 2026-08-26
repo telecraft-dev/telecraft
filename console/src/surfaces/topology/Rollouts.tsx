@@ -215,7 +215,7 @@ function RolloutSection({
             <th>Min soak</th>
             <th>Members</th>
             <th>Served</th>
-            <th>Foreign (lag, never failure)</th>
+            <th title="Foreign members lag, they never fail">Foreign</th>
           </tr>
         </thead>
         <tbody>

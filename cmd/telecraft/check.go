@@ -78,16 +78,21 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "check: -estate is required, unless -collectors derives each row's Effective reading instead")
 		return 2
 	}
+	// -collectors cannot stand alone: the topology decides which Tier
+	// answers for each row, and only -source carries the topology.
 	if *collectors != "" && *source == "" {
-		fmt.Fprintln(stderr, "check: -collectors needs -source, because the topology decides which Tier answers for each row")
+		fmt.Fprintln(stderr, "check: -collectors needs -source")
 		return 2
 	}
+	// -catalogue and -source come as a pair: floors judge each component
+	// and signal against the active Catalogue, and each flag is useless
+	// without the other.
 	if *artefact != "" && *source == "" {
-		fmt.Fprintln(stderr, "check: -catalogue needs -source, because floors judge each component and signal against the active Catalogue")
+		fmt.Fprintln(stderr, "check: -catalogue needs -source")
 		return 2
 	}
 	if *source != "" && *artefact == "" && *collectors == "" {
-		fmt.Fprintln(stderr, "check: -source and -catalogue go together, because floors judge each component and signal against the active Catalogue")
+		fmt.Fprintln(stderr, "check: -source and -catalogue go together")
 		return 2
 	}
 

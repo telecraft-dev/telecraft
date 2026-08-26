@@ -696,15 +696,15 @@ func TestCheckFlagCombinationsItRefuses(t *testing.T) {
 		},
 		"a derivation with no topology to read": {
 			args: []string{"-library", libDir, "-collectors", "collectors.yaml"},
-			want: "check: -collectors needs -source, because the topology decides which Tier answers for each row",
+			want: "check: -collectors needs -source",
 		},
 		"a Catalogue with no authored estate to judge": {
 			args: []string{"-library", libDir, "-estate", estate, "-catalogue", "catalogue-v1.json"},
-			want: "check: -catalogue needs -source, because floors judge each component and signal against the active Catalogue",
+			want: "check: -catalogue needs -source",
 		},
 		"an authored estate with no Catalogue to judge it against": {
 			args: []string{"-library", libDir, "-estate", estate, "-source", dir},
-			want: "check: -source and -catalogue go together, because floors judge each component and signal against the active Catalogue",
+			want: "check: -source and -catalogue go together",
 		},
 		"a flag that does not exist": {
 			args: []string{"-libraries", libDir},

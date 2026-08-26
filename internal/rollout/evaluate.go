@@ -67,7 +67,7 @@ func WentDarkAfterApply() Condition {
 		Name: "went_dark",
 		Halt: func(o Observation) (string, bool) {
 			if o.Silent && o.Running == RunningTo {
-				return "took the new version, then went silent past the staleness horizon", true
+				return "took the new version, and has not reported since", true
 			}
 			return "", false
 		},

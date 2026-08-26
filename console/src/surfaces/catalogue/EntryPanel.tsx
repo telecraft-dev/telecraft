@@ -124,7 +124,7 @@ export function EntryPanel({
         className={buttonClass('secondary', 'who-acts')}
         data-testid="entry-see-palette"
       >
-        Is this allowed? See the effective palette
+        See the effective palette
       </Link>
     </Panel>
   )

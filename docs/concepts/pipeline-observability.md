@@ -49,7 +49,7 @@ landed telemetry. Only static actions with constant values derive a claim.
 **Self-telemetry**, keyed per Tier. Each instantiated component should emit its
 own telemetry.
 
-### Literal-only, by decision
+### Literal-only
 
 The engine claims only what it can read off the artefact. It never claims what
 it believes about a component's semantics.
@@ -59,18 +59,10 @@ enrichment claim, while a component whose output depends on runtime discovery
 of its surroundings produces **no claim at all**, and therefore reads
 `unknown`, never red.
 
-A curated model of component behaviour would widen coverage, but one false
-expectation-red would cost more trust than the extra coverage is worth, so
-Telecraft does not ship one.
-
 ### Derived at evaluation time, never committed
 
 No expectations file exists. Derivation runs at evaluation time as a pure
 function of the artefact, memoised in memory by SHA, and safe to lose.
-
-A stored copy would drift from the artefact it restates, and a committed file
-would invite people to author semantics into it. The claim set never looks
-like a file, so nobody treats it as one.
 
 The change-proposal check *displays* the expectation diff, in the style of an
 impact report: "this change adds an arrival claim for traces". It is computed
@@ -121,8 +113,8 @@ window, or `unknown` when the reading behind it is not available.
   These *can* reach violation grade once dampened. An instantiated exporter at
   100% send failure is "the configuration didn't work" in its sharpest form.
 
-The asymmetry is intentional: a dead lane might be intentional, whereas a
-failing instantiated component never is.
+A dead lane might be intentional, whereas a failing instantiated component
+never is.
 
 `expectation` is its own [roll-up column](ownership.md#finding-kinds), never
 blended, and Exemptions apply to it unmodified.
@@ -235,8 +227,7 @@ confident zero.
 On-read computation scales because query cardinality follows *authored*
 objects, Tiers by components by signals, not collector count. An estate of
 22,000 collectors collapses into server-side sums. The cost is console latency
-as a function of your backend's query speed. Telecraft accepts that rather
-than building a shadow metrics store.
+as a function of your backend's query speed.
 
 ## Observability cards
 

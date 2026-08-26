@@ -133,7 +133,7 @@ const CONDITIONS = [
     name: 'went_dark',
     halt: (observation) => {
       if (observation.reading?.silent && observation.running === 'to') {
-        return 'took the new version, then went silent past the staleness horizon'
+        return 'took the new version, and has not reported since'
       }
       return undefined
     },

@@ -409,7 +409,7 @@ func advisory(id string) Finding {
 		WhoActs: WhoActs{
 			Target: ObjectRef{Kind: "blueprint", ID: "data-flow/gateway-standard"},
 			Lane:   "logs",
-			Label:  "Fix the logs lane in Compose",
+			Label:  "Open the logs lane in Compose",
 		},
 	}
 }

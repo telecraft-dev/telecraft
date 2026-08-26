@@ -103,8 +103,10 @@ enough: the argument has to go too. A surface reports, it does not defend
 itself. "Ratios never blend, and waived counts ride every level" justifies a
 design decision to a reader who never questioned it, and prose that argues
 reads as a prototype whatever it is attached to. State the reading and stop.
-The reasoning belongs in the decision record and in a comment beside the code
-that implements it, which is where a reader who wants it will look.
+A page may explain what the product does and what follows for the reader; it
+does not argue that the design is right or narrate the alternatives that
+lost. The reasoning belongs in the decision record and in a comment beside
+the code that implements it, which is where a reader who wants it will look.
 
 The rules that come up constantly:
 

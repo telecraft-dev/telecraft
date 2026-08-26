@@ -64,7 +64,7 @@ test('the abort verdict carries the went-dark evidence on the foreign path', asy
   await page.goto(`/topology?view=rollout&object=rollout%3Adata-flow%2Fgateway-staging-trial`)
   await expect(page.getByTestId('rollout-panel-title')).toHaveText('gateway-staging-trial')
   await expect(page.getByTestId('rollout-panel-decision')).toContainText('abort proposed')
-  await expect(page.getByTestId(`halt-${TRIAL}-gws-0`)).toContainText('went silent')
+  await expect(page.getByTestId(`halt-${TRIAL}-gws-0`)).toContainText('has not reported since')
   // The foreign path never reports FAILED; the halt is honest about where
   // it came from (§7).
   await expect(page.getByTestId(`halt-${TRIAL}-gws-0`)).toContainText('foreign')

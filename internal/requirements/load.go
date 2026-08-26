@@ -248,14 +248,15 @@ func schemaProblems(ctx string, s SchemaAssertion, regs *registries) []string {
 	var p []string
 
 	// The reference-not-a-copy rule, first and by name. An author who
-	// wrote an attribute list wants to know why the list is refused, not
-	// which key the decoder failed to find.
+	// wrote an attribute list wants to know that the list itself is
+	// refused, not which key the decoder failed to find. A copy is
+	// refused because a copy drifts while the registry moves on.
 	for _, field := range []struct {
 		name string
 		list []string
 	}{{"attributes", s.Attributes}, {"required_attributes", s.RequiredAttributes}} {
 		if len(field.list) > 0 {
-			p = append(p, fmt.Sprintf("%s lists %s inline under schema_conformance. A schema_conformance requirement is a reference into the Schema Registry and never a copy of it, because a copy drifts: name the groups or namespaces it demands under scope, and let the registry say which attributes they carry and at which level", ctx, field.name))
+			p = append(p, fmt.Sprintf("%s lists %s inline under schema_conformance. A schema_conformance requirement is a reference into the Schema Registry, never a copy of it: name the groups or namespaces it demands under scope, and let the registry say which attributes they carry and at which level", ctx, field.name))
 		}
 	}
 

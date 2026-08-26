@@ -191,7 +191,7 @@ checkout/payments         staging     compliant
 }
 ```
 
-This is the result Telecraft exists to produce. `storefront/catalogue-web`
+`storefront/catalogue-web`
 has an OTLP receiver wired into a traces pipeline, and no spans arrived, so
 the finding is `broken_pipeline`, not `not_configured`:
 
@@ -211,7 +211,6 @@ the finding is `broken_pipeline`, not `not_configured`:
 ```
 
 Somebody configured that pipeline on purpose, and it is silently not working.
-No tool that reads configuration alone can see that.
 
 `storefront/search` scores `compliant` while carrying one waived finding. An
 authored Exemption covers its missing metrics, and the summary keeps
