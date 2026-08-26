@@ -572,8 +572,11 @@ func TestSchemaNeverArrivedOutranksAWrongShape(t *testing.T) {
 	}
 }
 
-// A requirement placed at the live tap reads unknown rather than clean: the
-// tap is not built, and a dead tap must not read as compliant (ADR-0034 §6).
+// A live-placement requirement judged against evidence with no live-check
+// reading reads unknown rather than clean, however complete the landed
+// readings beside it are: the live arm reads the tap's findings and
+// nothing else, and a dead tap must not read as compliant (ADR-0034 §6).
+// The arm's own cases live in schemalive_test.go.
 func TestSchemaLivePlacementIsUnknown(t *testing.T) {
 	req := schemaRequirement(requirements.Scope{Groups: []string{"span.db.client"}})
 	req.Placement = requirements.Live

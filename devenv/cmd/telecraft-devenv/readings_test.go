@@ -283,6 +283,13 @@ type fakeTelemetry struct {
 	// because an empty name set is what a conformance check reads as
 	// "these attributes are not in use".
 	names map[requirements.SignalKind]telemetry.AttributeNames
+
+	// live answers the live-check primitive per Service, keyed like
+	// observed. A row it holds nothing for reads Known false rather than
+	// an empty record set, because an empty set beside a fed liveness leg
+	// is exactly what the live arm reads as clean, and this fake has
+	// looked at nothing.
+	live map[string]telemetry.LiveCheckFindings
 }
 
 func (f fakeTelemetry) Name() string { return "fake" }
@@ -313,6 +320,13 @@ func (f fakeTelemetry) DistinctValues(_ context.Context, _ telemetry.Service, _ 
 
 func (f fakeTelemetry) GroupNames(_ context.Context, _ telemetry.Service, kind requirements.SignalKind, window time.Duration) telemetry.GroupNames {
 	return telemetry.GroupNamesUnknown(base, window, kind, "the fake telemetry reading declares no group names")
+}
+
+func (f fakeTelemetry) LiveCheckFindings(_ context.Context, s telemetry.Service, window time.Duration) telemetry.LiveCheckFindings {
+	if reading, held := f.live[s.Name+"|"+s.Environment]; held {
+		return reading
+	}
+	return telemetry.LiveCheckUnknown(base, window, "the fake telemetry reading declares no live-check findings")
 }
 
 func (f fakeTelemetry) ObserveSelf(_ context.Context, tier string, _ time.Duration) telemetry.SelfObserved {
