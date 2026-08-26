@@ -222,6 +222,11 @@ func validateTier(path string, t *Tier) []string {
 			p = append(p, ctx+" has a hop with no from: every Hop names the Tier it arrives from")
 		}
 	}
+	if t.LiveCheck != nil && t.LiveCheck.SamplePercent != nil {
+		if rate := *t.LiveCheck.SamplePercent; rate <= 0 || rate > 100 {
+			p = append(p, fmt.Sprintf("%s sets live_check sample_percent %s, which is not a rate the sampler can apply: use a value above 0 and at most 100", ctx, formatRate(rate)))
+		}
+	}
 	return p
 }
 

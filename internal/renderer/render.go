@@ -7,6 +7,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/allowlist"
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
+	"github.com/telecraft-dev/telecraft/internal/livecheck"
 	"github.com/telecraft-dev/telecraft/internal/ownership"
 )
 
@@ -45,9 +46,9 @@ const UnmatchedArtefactPath = "rendered/_estate/unmatched.yaml"
 // Not-knowing is a rendered, visible state, never an absence (ADR-0030).
 const UnmatchedAttribute = "telecraft.unmatched"
 
-// Inputs is everything one render reads. Every field is required: the
-// renderer is a pure function of the authored trees, the active policy and
-// the commit under render. Nothing here is optional or discovered.
+// Inputs is everything one render reads. The renderer is a pure function
+// of the authored trees, the active policy and the commit under render:
+// nothing here is discovered, and every field but LiveCheck is required.
 type Inputs struct {
 	Estate    blueprint.Estate
 	Topology  Topology
@@ -59,6 +60,12 @@ type Inputs struct {
 	// SelfTelemetry is the estate-level destination every artefact pushes
 	// the collector's own metrics and logs to (REQ-053, ADR-0039).
 	SelfTelemetry SelfTelemetry
+
+	// LiveCheck is the estate-level live-check destination (ADR-0034 §5),
+	// nil where live-check.yaml is absent. The one optional input: the
+	// tap is opt-in per Tier, and a Tier opting in under a nil
+	// declaration refuses the render, naming both files.
+	LiveCheck *LiveCheck
 
 	// Commit is the SHA stamped into every artefact (ADR-0013).
 	Commit string
@@ -131,6 +138,15 @@ func Render(in Inputs) (Result, error) {
 	var problems []string
 
 	for _, tier := range in.Topology.SortedTiers() {
+		if tier.LiveCheck != nil && in.LiveCheck == nil {
+			// The opt-in and the destination live in two files, so only
+			// the render sees both halves; the refusal names both so the
+			// author knows which one to change.
+			problems = append(problems, fmt.Sprintf(
+				"tier %q opts in to the live-check tap in teams/%s/tiers/%s.yaml, but %s does not exist at the estate root. Declare the live-check destination there, or remove the live_check block.",
+				tier.ID(), tier.Team, tier.Name, LiveCheckFile))
+			continue
+		}
 		artefact, supervisor, exporters, findings, tierProblems := renderTier(in, tier)
 		problems = append(problems, tierProblems...)
 		res.Findings = append(res.Findings, findings...)
@@ -294,11 +310,18 @@ func resolveInstances(est blueprint.Estate, bp blueprint.Blueprint, ctx string) 
 		}
 	}
 
-	// The generated strip processor occupies its id unconditionally: an
-	// authored instance landing on it would be silently overwritten on the
-	// Tiers that need the strip, so it is reserved on every Tier.
-	if prev, seen := instances[StripProcessorID]; seen {
-		problems = append(problems, fmt.Sprintf("%s: rendered id %q is claimed by %s, but that id is reserved for the generated untrusted-Hop processor", ctx, StripProcessorID, prev.comp.ID()))
+	// The generated components occupy their ids unconditionally: an
+	// authored instance landing on one would be silently overwritten on
+	// the Tiers that render it, so each id is reserved on every Tier
+	// (ADR-0024 §5).
+	for _, r := range []struct{ id, what string }{
+		{StripProcessorID, "the generated untrusted-Hop processor"},
+		{LiveCheckSamplerID, "the generated live-check sampler"},
+		{livecheck.ExporterID, "the generated live-check exporter"},
+	} {
+		if prev, seen := instances[r.id]; seen {
+			problems = append(problems, fmt.Sprintf("%s: rendered id %q is claimed by %s, but that id is reserved for %s", ctx, r.id, prev.comp.ID(), r.what))
+		}
 	}
 	return instances, problems
 }

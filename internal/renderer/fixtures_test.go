@@ -39,6 +39,8 @@ func fixtureCatalogue(t *testing.T) *catalogue.Catalogue {
 			comp(catalogue.Processor, "batch", allBeta),
 			comp(catalogue.Processor, "attributes", allBeta),
 			comp(catalogue.Processor, "transform", map[string]catalogue.Level{"traces": catalogue.Beta, "logs": catalogue.Alpha}),
+			comp(catalogue.Processor, "probabilistic_sampler", allBeta),
+			comp(catalogue.Exporter, "otlp", allBeta),
 			comp(catalogue.Exporter, "otlphttp", allBeta),
 			comp(catalogue.Exporter, "kafka", map[string]catalogue.Level{"traces": catalogue.Beta}),
 			comp(catalogue.Extension, "health_check", map[string]catalogue.Level{"extension": catalogue.Beta}),
@@ -91,6 +93,10 @@ func estateInputs(t *testing.T, root string) Inputs {
 	if err != nil {
 		t.Fatal(err)
 	}
+	liveCheck, err := LoadLiveCheck(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return Inputs{
 		Estate:        est,
 		Topology:      topo,
@@ -99,6 +105,7 @@ func estateInputs(t *testing.T, root string) Inputs {
 		Tree:          tree,
 		Floors:        DefaultFloors(),
 		SelfTelemetry: selfTel,
+		LiveCheck:     liveCheck,
 		Commit:        fixtureCommit,
 	}
 }

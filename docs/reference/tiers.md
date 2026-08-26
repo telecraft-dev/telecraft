@@ -27,6 +27,7 @@ how strictly a Tier is judged and a Rollout dual-binds a Tier. See
 | `min_expected` | integer | no | `0` | The declared Population floor. Zero means no declared floor. |
 | `serving` | mapping | no | absent | When present, marks the Tier as served over OpAMP. Holds one field, `endpoint`. |
 | `hops` | list of mappings | no | empty | Directed edges arriving at this Tier. Each has `from` and `trusted`. |
+| `live_check` | mapping | no | absent | When present, opts the Tier in to the Live-check tap. Holds one optional field, `sample_percent`. |
 
 The Tier's team-qualified id is `<team>/<name>`, taken from the file's place
 in the layout.
@@ -143,6 +144,31 @@ namespace from arriving data, so identity comes from the receiving Tier's own
 config stamps rather than from inbound data.
 
 A Hop with no `from` is a load error.
+
+## Live-check
+
+A `live_check` block opts the Tier in to the Live-check tap: its presence
+alone is the opt-in, and an empty mapping is a complete one.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `sample_percent` | number | no | Overrides the sample rate for this Tier alone, above 0 and at most 100. Absent inherits the estate's rate. |
+
+For each signal lane the Tier's Blueprint wires, the renderer adds a
+pipeline named `<signal>/telecraft.live-check` beside it. The added
+pipeline shares the lane's receivers, samples at the resolved rate through
+a generated `probabilistic_sampler/telecraft.live-check` processor, and
+exports only through a generated `otlp/telecraft.live-check` exporter to
+the destination declared in `live-check.yaml` (see
+[Estate layout](estate-layout.md)), resolved on the Tier's Environment.
+The lanes themselves are unchanged: a Tier renders the same data pipelines
+with and without the block. Both generated ids are reserved on every Tier,
+so an authored Component landing on one is a render error.
+
+The sample rate is the Tier's `sample_percent` when set, else the estate
+file's, else 10. A Tier opting in while `live-check.yaml` is absent is a
+render error naming both files. A `sample_percent` of zero or below, or
+above 100, is a load error.
 
 ## Service fields
 
