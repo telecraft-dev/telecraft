@@ -99,7 +99,7 @@ URL the user arrived on survives the round trip.
 | `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014). The console proposes, the PR decides; the platform binary wires this to `forge.Submit` like the other proposal exits. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives: generalise-never-enumerate is enforced server-side, not assumed of the UI. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
-(`contractVersion: 2`): three bands as enum states plus worst-finding
+(`contractVersion: 6`): three bands as enum states plus worst-finding
 labels, the per-signal matrix rows, shelf summary fields, and the
 population line. Hue appears nowhere in the contract: band position and
 glyph are what distinguish the three reds, and a renderer cannot make
