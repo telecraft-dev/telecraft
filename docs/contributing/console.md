@@ -50,8 +50,9 @@ navigation.
 The code follows the same shape:
 
 - `src/surfaces/<workspace>/` holds each Workspace's surfaces.
-- `src/chrome/` holds the shell: Workspace navigation, the environment lens,
-  and jump-to-object search. `src/chrome/workspaces.ts` is the list of
+- `src/chrome/` holds the shell: Workspace navigation, jump-to-object
+  search, and the context strip that carries the environment lens
+  (ADR-0058). `src/chrome/workspaces.ts` is the list of
   Workspaces, and `console/tools/assemble-site.mjs` mirrors it.
 - `src/router.tsx` declares the routes, validates every search param, and
   loads each Workspace's component through a dynamic import, which is what

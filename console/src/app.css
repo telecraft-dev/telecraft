@@ -273,9 +273,25 @@
 
 .jump-trigger {
   white-space: nowrap;
+  /* Wide enough to read as the search affordance it is, not a button that
+     happens to mention searching; the shortcut sits at the far edge the
+     way a field's adornment does. The label is muted like a placeholder,
+     because it names what you could type, not something already chosen. */
+  min-width: 18rem;
+  color: var(--colour-text-muted);
+}
+
+/* The width is the first thing the search gives back: narrower than this,
+   holding it would push the controls beside it off the edge and the bar
+   into its scrolling fallback. */
+@media (max-width: 78rem) {
+  .jump-trigger {
+    min-width: 0;
+  }
 }
 
 .jump-trigger kbd {
+  margin-left: auto;
   color: var(--colour-text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-s);
@@ -292,11 +308,11 @@
 }
 
 .profile-trigger {
-  white-space: nowrap;
   justify-content: center;
-  /* Two initials never make a word, so the plate holds a steady width
-     instead of shrink-wrapping a narrow pair like "IL". */
+  /* An icon-only control keeps a steady square plate rather than
+     shrink-wrapping the glyph. */
   min-width: 2.25rem;
+  min-height: 2rem;
 }
 
 .profile-menu {
@@ -501,6 +517,27 @@
 
 .workspace-body {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The context strip (ADR-0058): the lens, and in time the other
+   surface-level context controls, on one line beneath the chrome. The
+   surface wrapper below is the scroll container, so the strip holds its
+   place while the surface scrolls. */
+.context-strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--colour-rule-soft);
+}
+
+.workspace-surface {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -2329,11 +2366,20 @@
    No rule below re-decides padding, border, radius or size for a chip, a
    button or a panel: those are the primitive layer's (ADR-0048 §1). */
 
+/* The page centres as one column: pinned left, a wide window is all
+   margin on one side and none on the other, and the imbalance reads as an
+   accident. Width lives here, not on `.home`, so the heading centres with
+   the readings it heads. */
+.home-page {
+  width: 100%;
+  max-width: 88rem;
+  margin-inline: auto;
+}
+
 .home {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  max-width: 78rem;
 }
 
 .home-block {
@@ -2352,7 +2398,10 @@
 
 .home-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  /* `min(22rem, 100%)` keeps the track legal when the viewport itself is
+     narrower than the floor, where a bare 22rem overflows instead of
+     stacking. */
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
   gap: var(--space-5);
   align-items: start;
 }
@@ -2362,7 +2411,7 @@
    and not a footnote to them (ADR-0035, ADR-0042 §2). */
 .standing-kinds {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
   gap: var(--space-3);
 }
 

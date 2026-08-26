@@ -17,10 +17,10 @@ export function useLens(): string {
 }
 
 /**
- * The one global chrome control for the environment lens: emphasis and
- * evaluation context, never a hard filter (ADR-0042 §4). Choosing a lens
- * writes it to the URL (so the state stays citable) and persists it as the
- * per-user preference.
+ * The one lens control, in the context strip above every Workspace
+ * (ADR-0058): emphasis and evaluation context, never a hard filter
+ * (ADR-0042 §4). Choosing a lens writes it to the URL (so the state stays
+ * citable) and persists it as the per-user preference.
  */
 export function LensControl() {
   const estate = useQuery({ queryKey: ['estate'], queryFn: api.estate })

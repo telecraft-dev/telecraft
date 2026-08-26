@@ -143,97 +143,101 @@ function Summary({ summary }: { summary: HomeSummary }) {
         </p>
       </section>
 
-      {/* Where to look first: the shelf's own worst-first order, bounded,
-          and saying what it did not draw (ADR-0056 §5). */}
-      <section className="home-block" data-testid="home-worst">
-        <div className="section-header">
-          <h2>Tiers with findings</h2>
+      {/* The two bounded lists share a row where the window affords it,
+          in the same reading order they stack in. */}
+      <div className="home-columns">
+        {/* Where to look first: the shelf's own worst-first order, bounded,
+            and saying what it did not draw (ADR-0056 §5). */}
+        <section className="home-block" data-testid="home-worst">
+          <div className="section-header">
+            <h2>Tiers with findings</h2>
+            <p className="section-summary">
+              {summary.attentionInLens === 0
+                ? `Nothing in ${lens} has a finding.`
+                : `${count(summary.attentionInLens, 'Tier')} in ${lens}, worst first.`}
+            </p>
+          </div>
+          {summary.worstTiers.length > 0 && (
+            <ul className="home-tiers">
+              {summary.worstTiers.map((card) => {
+                const standingName = cardStanding(card)
+                return (
+                  <li className="home-tier" data-testid={`home-tier-${card.tier}`} key={card.tier}>
+                    <Link
+                      to="/estate"
+                      search={(prev) => ({
+                        ...prev,
+                        view: 'shelf' as const,
+                        scope: 'estate' as const,
+                        object: formatObjectRef({ kind: 'tier', id: card.tier }),
+                      })}
+                      className="count-door"
+                    >
+                      {card.name}
+                    </Link>
+                    <Chip tone={standingName === 'violation' ? 'violation' : 'advisory'}>
+                      {standingName}
+                    </Chip>
+                    {card.serviceClass && (
+                      <Chip mono>{card.serviceClass}</Chip>
+                    )}
+                    <span className="home-tier-counts">
+                      {count(totalFindings(card), 'finding')}, {card.team}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
           <p className="section-summary">
-            {summary.attentionInLens === 0
-              ? `Nothing in ${lens} has a finding.`
-              : `${count(summary.attentionInLens, 'Tier')} in ${lens}, worst first.`}
+            {undrawn > 0 && (
+              <span data-testid="home-worst-undrawn">
+                Showing {summary.worstTiers.length} of {summary.attentionInLens}.{' '}
+              </span>
+            )}
+            {summary.attentionElsewhere > 0 && (
+              <span data-testid="home-worst-elsewhere">
+                {summary.attentionElsewhere} more in other Environments.{' '}
+              </span>
+            )}
+            <Link
+              to="/estate"
+              search={(prev) => ({ ...prev, view: 'shelf' as const, scope: 'estate' as const })}
+              className="count-door"
+              data-testid="home-to-shelf"
+            >
+              See all Tiers
+            </Link>
           </p>
-        </div>
-        {summary.worstTiers.length > 0 && (
-          <ul className="home-tiers">
-            {summary.worstTiers.map((card) => {
-              const standingName = cardStanding(card)
-              return (
-                <li className="home-tier" data-testid={`home-tier-${card.tier}`} key={card.tier}>
-                  <Link
-                    to="/estate"
-                    search={(prev) => ({
-                      ...prev,
-                      view: 'shelf' as const,
-                      scope: 'estate' as const,
-                      object: formatObjectRef({ kind: 'tier', id: card.tier }),
-                    })}
-                    className="count-door"
-                  >
-                    {card.name}
-                  </Link>
-                  <Chip tone={standingName === 'violation' ? 'violation' : 'advisory'}>
-                    {standingName}
-                  </Chip>
-                  {card.serviceClass && (
-                    <Chip mono>{card.serviceClass}</Chip>
-                  )}
-                  <span className="home-tier-counts">
-                    {count(totalFindings(card), 'finding')}, {card.team}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-        <p className="section-summary">
-          {undrawn > 0 && (
-            <span data-testid="home-worst-undrawn">
-              Showing {summary.worstTiers.length} of {summary.attentionInLens}.{' '}
-            </span>
-          )}
-          {summary.attentionElsewhere > 0 && (
-            <span data-testid="home-worst-elsewhere">
-              {summary.attentionElsewhere} more in other Environments.{' '}
-            </span>
-          )}
-          <Link
-            to="/estate"
-            search={(prev) => ({ ...prev, view: 'shelf' as const, scope: 'estate' as const })}
-            className="count-door"
-            data-testid="home-to-shelf"
-          >
-            See all Tiers
-          </Link>
-        </p>
-      </section>
+        </section>
 
-      {/* Teams: the reason this surface exists, per ADR-0056's context. */}
-      <section className="home-block" data-testid="home-teams">
-        <div className="section-header">
-          <h2>Teams</h2>
+        {/* Teams: the reason this surface exists, per ADR-0056's context. */}
+        <section className="home-block" data-testid="home-teams">
+          <div className="section-header">
+            <h2>Teams</h2>
+            <p className="section-summary">
+              Totals include every team below. Worst first.
+              {summary.teamsTotal > summary.teams.length &&
+                ` Showing ${summary.teams.length} of ${summary.teamsTotal}.`}
+            </p>
+          </div>
+          <ul className="home-teams">
+            {summary.teams.map((row) => (
+              <TeamRow key={row.team.id} row={row} />
+            ))}
+          </ul>
           <p className="section-summary">
-            Totals include every team below. Worst first.
-            {summary.teamsTotal > summary.teams.length &&
-              ` Showing ${summary.teams.length} of ${summary.teamsTotal}.`}
+            <Link
+              to="/estate"
+              search={(prev) => ({ ...prev, view: 'rollup' as const })}
+              className="count-door"
+              data-testid="home-to-rollup"
+            >
+              See every team
+            </Link>
           </p>
-        </div>
-        <ul className="home-teams">
-          {summary.teams.map((row) => (
-            <TeamRow key={row.team.id} row={row} />
-          ))}
-        </ul>
-        <p className="section-summary">
-          <Link
-            to="/estate"
-            search={(prev) => ({ ...prev, view: 'rollup' as const })}
-            className="count-door"
-            data-testid="home-to-rollup"
-          >
-            See every team
-          </Link>
-        </p>
-      </section>
+        </section>
+      </div>
 
       <div className="home-columns">
         {/* Ungoverned: a concern carrying the onboard CTA, never a failure,
@@ -345,10 +349,12 @@ export function Home() {
 
   return (
     <div className="estate-main" data-testid="home">
-      <header className="estate-header">
-        <h1>Home</h1>
-      </header>
-      <Summary summary={summary} />
+      <div className="home-page">
+        <header className="estate-header">
+          <h1>Home</h1>
+        </header>
+        <Summary summary={summary} />
+      </div>
     </div>
   )
 }

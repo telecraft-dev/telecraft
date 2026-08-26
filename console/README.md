@@ -49,8 +49,8 @@ npm run e2e                 # Playwright against dist/ and the fixture backend
   and the worst Tiers are in `estate/order.ts`'s own order, so the landing
   cannot disagree with the surface it points at (ADR-0056 §2). Nothing it
   returns is blended, and every bounded list reports what it dropped.
-- `src/chrome/`: the shell (Workspace navigation, the environment lens,
-  and jump-to-object search).
+- `src/chrome/`: the shell (Workspace navigation, jump-to-object search,
+  and the context strip that carries the environment lens, ADR-0058).
 - `src/presentation/`: the per-user presentation store, the console's
   only non-git state (ADR-0042 §7, ADR-0051 §6).
 - `src/tours/`: guided Tours (ADR-0051): the authored Steps, the one

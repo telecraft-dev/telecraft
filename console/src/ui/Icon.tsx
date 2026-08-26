@@ -1,4 +1,14 @@
-import { Command, Compass, Monitor, Moon, Search, Sun, X, type LucideIcon } from 'lucide-react'
+import {
+  CircleUserRound,
+  Command,
+  Compass,
+  Monitor,
+  Moon,
+  Search,
+  Sun,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 
 /**
  * Utility icons (ADR-0047 §6, tier three): Lucide (ISC), self-hosted with
@@ -20,6 +30,7 @@ import { Command, Compass, Monitor, Moon, Search, Sun, X, type LucideIcon } from
 const ICONS = {
   close: X,
   command: Command,
+  profile: CircleUserRound,
   search: Search,
   tour: Compass,
   'theme-system': Monitor,

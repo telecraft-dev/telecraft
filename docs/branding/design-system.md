@@ -375,8 +375,9 @@ who-acts link that happens to point at the surface the reader is already on.
 The pressed state is `selected`.
 
 The chrome is one row at every width, and it is measured rather than
-assumed (`e2e/chrome.spec.ts`). The theme control is a labelled select
-matching the environment lens beside it; it began as a three-segment
+assumed (`e2e/chrome.spec.ts`). The environment lens sits in the context
+strip beneath it, above every Workspace (ADR-0058). The theme control is a
+labelled select matching the lens; it began as a three-segment
 control and did not fit: on the demo, whose chrome carries an extra
 provenance banner, it wanted 1749px inside 1600px and wrapped
 "Catalogue & Governance" onto three lines. Hiding the segment words at a

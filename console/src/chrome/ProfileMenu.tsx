@@ -3,15 +3,17 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { demoMode } from '../api/demo'
 import { Button, buttonClass } from '../ui/Button'
+import { Icon } from '../ui/Icon'
 import { DemoBanner } from './DemoBanner'
 import { ThemeControl } from './ThemeControl'
 
 /**
  * The profile control (issue #182): one compact button at the right edge of
- * the chrome, holding what used to sit flat in the bar. Signed in, the
- * trigger shows the reader's initials and the panel holds their name, the
- * theme choice, and Sign out. On the demo there is no session to end, so
- * the trigger says what the demo is instead and the panel carries the
+ * the chrome, holding what used to sit flat in the bar. The trigger is a
+ * person icon in both modes, and the button carries the accessible name:
+ * signed in, the reader's name, with the panel holding the name in full,
+ * the theme choice, and Sign out. On the demo there is no session to end,
+ * so the button says what the demo is instead and the panel carries the
  * demo's own statement of itself (issue #50), with the theme choice beside
  * it.
  *
@@ -86,15 +88,15 @@ export function ProfileMenu() {
       <button
         type="button"
         ref={triggerRef}
-        className={buttonClass('secondary', demoMode ? 'profile-trigger demo' : 'profile-trigger')}
+        className={buttonClass('secondary', 'profile-trigger')}
         data-testid="profile-trigger"
         aria-expanded={open}
         aria-controls="profile-menu"
-        aria-label={demoMode ? undefined : `Signed in as ${name}`}
-        title={demoMode ? undefined : `Signed in as ${name}`}
+        aria-label={demoMode ? 'Read-only demo' : `Signed in as ${name}`}
+        title={demoMode ? 'Read-only demo' : `Signed in as ${name}`}
         onClick={toggle}
       >
-        {demoMode ? 'Read-only demo' : initials(name ?? '')}
+        <Icon name="profile" size={18} />
       </button>
       {open && (
         <div
@@ -117,17 +119,5 @@ export function ProfileMenu() {
         </div>
       )}
     </div>
-  )
-}
-
-/** The first letter of the first two words: "Demo user" reads DU. */
-function initials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((word) => word.charAt(0).toUpperCase())
-      .join('') || '?'
   )
 }
