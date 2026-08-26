@@ -112,6 +112,6 @@ func (c Count) ForEvaluation(d Declaration, now time.Time) Count {
 		return c
 	}
 	return Count{Known: false, AsOf: c.AsOf,
-		Cause: fmt.Sprintf("stale: counted %s ago, past the %s staleness horizon (declared cadence %s × tolerance %d), so it cannot set a floor",
+		Cause: fmt.Sprintf("stale: last counted %s ago, and a count older than %s cannot set a floor (declared cadence %s × tolerance %d)",
 			age.Round(time.Second), horizon, d.RefreshCadence, StaleTolerance)}
 }

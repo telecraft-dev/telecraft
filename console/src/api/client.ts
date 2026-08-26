@@ -58,8 +58,14 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     throw new UnauthenticatedError(path)
   }
   if (!res.ok) {
+    // A server-worded error passes through as it is; the bare status line
+    // gains a plain first sentence, because it lands in an error slot a
+    // reader sees verbatim.
     const payload = (await res.json().catch(() => undefined)) as { error?: string } | undefined
-    throw new Error(payload?.error ?? `${path}: ${res.status} ${res.statusText}`)
+    throw new Error(
+      payload?.error ??
+        `The server could not complete this request. ${path}: ${res.status} ${res.statusText}`,
+    )
   }
   if (res.status === 204) {
     return undefined as T
@@ -125,7 +131,9 @@ export const liveApi: PlatformApi = {
       return { problems: body.problems ?? ['the claim was refused'] }
     }
     if (!res.ok) {
-      throw new Error(`/api/v1/claims: ${res.status} ${res.statusText}`)
+      throw new Error(
+        `The server could not complete this request. /api/v1/claims: ${res.status} ${res.statusText}`,
+      )
     }
     return { proposal: (await res.json()) as Proposal }
   },
@@ -149,7 +157,9 @@ export const liveApi: PlatformApi = {
       return { problems: body.problems ?? ['the proposal was refused'] }
     }
     if (!res.ok) {
-      throw new Error(`/api/v1/governance/proposals: ${res.status} ${res.statusText}`)
+      throw new Error(
+        `The server could not complete this request. /api/v1/governance/proposals: ${res.status} ${res.statusText}`,
+      )
     }
     return { proposal: (await res.json()) as ProposalRef }
   },
@@ -173,7 +183,9 @@ export const liveApi: PlatformApi = {
       return { problems: body.problems ?? ['the activation was refused'] }
     }
     if (!res.ok) {
-      throw new Error(`/api/v1/activations/proposals: ${res.status} ${res.statusText}`)
+      throw new Error(
+        `The server could not complete this request. /api/v1/activations/proposals: ${res.status} ${res.statusText}`,
+      )
     }
     return { proposal: (await res.json()) as ProposalRef }
   },

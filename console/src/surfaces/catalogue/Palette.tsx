@@ -4,10 +4,18 @@ import { useState } from 'react'
 import { api } from '../../api/client'
 import type { TeamNode } from '../../api/types'
 import { formatCatalogueKey } from '../../api/types'
+import type { PaletteOrigin } from '../../api/types'
 import type { PaletteRow } from '../../governance/effective'
 import { effectivePalette } from '../../governance/effective'
 import { Button, buttonClass } from '../../ui/Button'
 import { chipClass } from '../../ui/Chip'
+
+// The wire enum stays as it is; the chip shows the glossary casing.
+const ORIGIN_LABEL: Record<PaletteOrigin, string> = {
+  'default-allow': 'default allow',
+  'allow-list': 'Allow-list',
+  grant: 'Grant',
+}
 
 function flattenTeams(node: TeamNode, out: { id: string; name: string }[] = []) {
   out.push({ id: node.id, name: node.name })
@@ -162,7 +170,7 @@ export function PaletteView() {
                     })}
                     data-testid={`origin-${key}`}
                   >
-                    {row.allowed ? row.origin : 'not allowed'}
+                    {row.allowed && row.origin ? ORIGIN_LABEL[row.origin] : 'not allowed'}
                   </span>
                 </td>
                 <td className="why-cell">

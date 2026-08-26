@@ -75,13 +75,13 @@ test('the effective palette resolves provenance to the Grant or ancestor Allow-l
   await expect(page.getByTestId('palette-summary')).toContainText('8 of 13')
   // A Grant admits the Kafka exporter that both lists exclude: union
   // after intersection, overriding the target's own declared list.
-  await expect(page.getByTestId('origin-exporter/kafka')).toHaveText('grant')
+  await expect(page.getByTestId('origin-exporter/kafka')).toHaveText('Grant')
   await page.getByTestId('palette-why-exporter/kafka').click()
   const popover = page.getByTestId('palette-popover')
   await expect(popover).toContainText('kafka-egress-for-data-flow')
   await expect(popover).toContainText('Granted by platform to data-flow')
   // A list-admitted component names the ancestor chain it survived.
-  await expect(page.getByTestId('origin-processor/batch')).toHaveText('allow-list')
+  await expect(page.getByTestId('origin-processor/batch')).toHaveText('Allow-list')
   await page.getByTestId('palette-why-processor/batch').click()
   await expect(popover).toContainText('Survives every declared Allow-list')
   await expect(popover).toContainText('platform')
@@ -92,7 +92,7 @@ test('the effective palette resolves provenance to the Grant or ancestor Allow-l
   // A team with no list on its chain gets the default posture (§4).
   await page.getByTestId('palette-team').selectOption('product')
   await expect(page).toHaveURL(/team=product/)
-  await expect(page.getByTestId('origin-receiver/otlp')).toHaveText('default-allow')
+  await expect(page.getByTestId('origin-receiver/otlp')).toHaveText('default allow')
   await expect(page.getByTestId('palette-summary')).toContainText('13 of 13')
 })
 

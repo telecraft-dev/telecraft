@@ -34,7 +34,7 @@ func staleCause(d Declaration, now, asOf time.Time) (string, bool) {
 	if age <= horizon {
 		return "", false
 	}
-	return fmt.Sprintf("stale: read %s ago, past the %s staleness horizon (declared cadence %s × tolerance %d), so it cannot feed a verdict",
+	return fmt.Sprintf("stale: last read %s ago, and a reading older than %s cannot feed a verdict (declared cadence %s × tolerance %d)",
 		age.Round(time.Second), horizon, d.RefreshCadence, StaleTolerance), true
 }
 

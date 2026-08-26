@@ -162,7 +162,7 @@ describe('the fixture staging trial: abort at the threshold (ADR-0029 §6)', () 
         collector: 'gws-0',
         path: 'foreign',
         condition: 'went_dark',
-        reason: expect.stringContaining('went silent') as unknown as string,
+        reason: expect.stringContaining('has not reported since') as unknown as string,
       },
     ])
   })
