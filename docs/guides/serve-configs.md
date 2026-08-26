@@ -398,17 +398,9 @@ job:
 The renderer knows the identifying attributes: they are the Tier's selector,
 authored a few lines away. It does not write them into the artefact, because
 an artefact that carries the attributes its own selector matches is
-self-matching. Matching would then confirm the renderer's output instead of
-reading the collector. Telecraft's delivery model rests on reported identity:
-you never author a collector, it connects and says what it is. A collector
-that could never be wrong about which Tier it belongs to would hide one of the
-things Telecraft exists to show you. Rendering the attributes would not remove
-the overlay either, because `agent.executable` and anything unique per
-collector still come from the install.
-
-The artefact doesn't carry the keys as commented placeholders either. The
-renderer writes `rendered/`, nobody edits it by hand, and a placeholder is an
-invitation to edit it there.
+self-matching: matching would confirm the renderer's output instead of
+reading the collector. Identity stays reported, so a collector in the wrong
+place stays visible.
 
 ## Compare what was sent with what is running
 

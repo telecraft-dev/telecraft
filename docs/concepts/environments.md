@@ -17,9 +17,7 @@ how sensitive its data is.
 deployment, aligned to the semantic-convention attribute
 `deployment.environment.name`.
 
-One Service has one identity and one owner across many Environments. A
-separate Service per environment would double the inventory, split ownership
-of one logical thing, and fight the convention.
+One Service has one identity and one owner across many Environments.
 
 The vocabulary is yours and open. Use `production`, `staging`, `dev`, or
 whatever your estate already says. `production` is the one distinguished

@@ -46,9 +46,7 @@ straight to a gateway Tier.
 ## Blueprints
 
 A **Blueprint** is a named, integer-versioned composition of Components. It is
-a document in its own schema, never annotated collector configuration: otelcol
-YAML has no reference mechanism, so annotating it would force copy semantics
-into a file that looks standard.
+a document in its own schema, never annotated collector configuration.
 
 The document holds per-signal lanes under the upstream signal names
 (`traces`, `metrics`, `logs`, `profiles`), each an explicitly ordered list of
@@ -59,8 +57,7 @@ A Blueprint can route `profiles`, but a Requirement cannot assert on it. The
 signal is alpha upstream, so a requirement written against it could not be
 judged reliably. Conformance covers logs, metrics, and traces.
 
-There is no phase concept. With one Blueprint bound per Tier, there is no
-stacking of Blueprints for phases to arbitrate. Ordering advice, such as
+There is no phase concept. Ordering advice, such as
 putting `memory_limiter` first and `batch` last, ships as evaluator rules
 keyed on Catalogue types. Those rules raise ordering findings that advise;
 they never reorder.
@@ -74,8 +71,7 @@ the author meant, and the verdict says what is true.
 A **Component** is a configured instance of a Catalogue type: a receiver,
 processor, exporter, connector, or extension. It is named, integer-versioned,
 and ownable. Every lane entry is a Component. Raw inline otelcol blocks are
-not a second kind of lane entry, because ownership, routing, and the
-evaluator could not see them.
+not a second kind of lane entry.
 
 A Component lives in one of two places:
 

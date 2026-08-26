@@ -44,7 +44,7 @@ Every authored object carries an owner. The authored set is:
 - Exemption
 
 Ownership is an attribute of each object, not a parallel hierarchy. That is
-finer-grained than "a team owns a collector", on purpose. A gateway Tier (a
+finer-grained than "a team owns a collector". A gateway Tier (a
 position in the collection topology) run by the data-flow team can contain a
 redaction processor that the security team governs, and an exporter whose
 endpoint is the gateway team's concern even when it renders into a downstream
@@ -79,7 +79,7 @@ A Team's roll-up is the set of findings routed to owners anywhere in its
 subtree. That set is larger than the sum of its Services: it includes the
 delivery findings on Tiers the team owns and the component findings on
 Components it owns. A parent Team's view is bigger than its children's
-combined service verdicts, and that is the point.
+combined service verdicts.
 
 Aggregation is **ratio plus worst, per finding kind, never blended**. For each
 kind you get:
