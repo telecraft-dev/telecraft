@@ -1,6 +1,6 @@
 {
   "face": {
-    "contractVersion": 5,
+    "contractVersion": 6,
     "tier": "data-flow/gateway",
     "name": "gateway",
     "team": "data-flow",
@@ -128,7 +128,7 @@
     }
   },
   "drawer": {
-    "contractVersion": 5,
+    "contractVersion": 6,
     "tier": "data-flow/gateway",
     "findings": [
       {
@@ -145,6 +145,22 @@
           },
           "label": "Inspect delivery in Topology"
         }
+      },
+      {
+        "id": "checkout-live-shape",
+        "kind": "conformance",
+        "severity": "violation",
+        "dampening": "none",
+        "summary": "checkout-spans-live: misconfigured in production (product/checkout)",
+        "remediation": "Change the instrumentation to emit what the Schema Registry declares: each finding's message names what differs.",
+        "whoActs": {
+          "target": {
+            "kind": "service",
+            "id": "product/checkout"
+          },
+          "label": "Inspect the Service in Topology"
+        },
+        "placement": "live"
       },
       {
         "id": "gateway-expectation-logs",
@@ -176,7 +192,8 @@
           },
           "label": "Inspect the Service in Topology"
         },
-        "advice": true
+        "advice": true,
+        "placement": "landed"
       }
     ],
     "provenance": [

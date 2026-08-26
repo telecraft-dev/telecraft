@@ -26,7 +26,7 @@ test('ungoverned collectors surface with the onboard CTA, outside every denomina
   // existed (P2's denominator discipline, ADR-0017/0031).
   await page.goto('/estate?view=rollup&lens=production')
   const dataFlow = page.getByTestId('rollup-data-flow')
-  await expect(dataFlow.locator('[data-kind="conformance"] .rollup-ratio')).toHaveText('1/2')
+  await expect(dataFlow.locator('[data-kind="conformance"] .rollup-ratio')).toHaveText('0/2')
   // The CTA is a door to the flat list, pre-filtered to the ungoverned.
   await page.goto('/estate')
   await page.getByTestId('onboard-cta').click()

@@ -38,8 +38,12 @@ import (
 // the canvas had no field to read. v5 marks the drawer findings that ride
 // alongside a verdict (Advice), so improvement and information findings
 // can be shown and counted without a consumer mistaking them for findings
-// that feed a band (ADR-0034 §3).
-const ContractVersion = 5
+// that feed a band (ADR-0034 §3). v6 gives conformance drawer findings
+// their Placement, absent meaning landed, so a reader can tell a verdict
+// drawn from landed telemetry from one drawn from the live-check tap's
+// findings (ADR-0034 §6): the fix differs, and until the field existed the
+// two rendered identically.
+const ContractVersion = 6
 
 // Meta stamps a snapshot with what it was built from, so a stale demo is
 // visibly stale rather than quietly wrong (ADR-0013's discipline applied
@@ -307,6 +311,13 @@ type Finding struct {
 	// Severity alone cannot say this: an advisory finding that counts and
 	// an advisory one that rides carry the same severity.
 	Advice bool `json:"advice,omitempty"`
+
+	// Placement says which reading a conformance finding's verdict was
+	// drawn from: landed telemetry, or the live-check tap's findings
+	// (ADR-0034 §6). Set only on conformance findings judged from a
+	// requirement; absent means landed, so payloads that predate the field
+	// keep their meaning.
+	Placement string `json:"placement,omitempty"`
 }
 
 // ProvenanceLine is one config line implying a derived value.

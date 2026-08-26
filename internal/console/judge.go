@@ -197,6 +197,13 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 			Values: func(r conformance.SchemaValueReading) telemetry.DistinctValues {
 				return prov.DistinctValues(context.Background(), svc, r.Kind, r.Attribute, r.Window)
 			},
+			// The live leg: the finding records the live-check tap
+			// emitted for this row's Service, with the liveness leg
+			// beside them, gathered only for the windows a
+			// live-placement requirement covers (ADR-0034 §6).
+			Live: func(window time.Duration) telemetry.LiveCheckFindings {
+				return prov.LiveCheckFindings(context.Background(), svc, window)
+			},
 		}, conformance.WithActiveSchemaRegistry(b.activeSchema))
 		// The evidence is kept as gathered, before any waiver touches the
 		// verdict drawn from it: an activation impact report asks what the
@@ -256,6 +263,10 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 					Label:  "Inspect the Service in Topology",
 				},
 				Advice: !f.Scored(),
+				// Only a schema-conformance requirement carries a
+				// placement, so every other finding leaves the field
+				// absent, which the contract reads as landed.
+				Placement: string(f.Requirement.Placement),
 			}
 			for _, v := range targets {
 				v.findings = append(v.findings, finding)

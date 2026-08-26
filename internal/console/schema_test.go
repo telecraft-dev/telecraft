@@ -10,7 +10,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/telecraft-dev/telecraft/internal/console"
+	"github.com/telecraft-dev/telecraft/internal/livecheck/livechecktest"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
+	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
 // The schema-conformance requirement the fixture Service is judged by: a
@@ -188,6 +190,9 @@ func TestSnapshotJudgesSchemaConformanceAgainstTheReading(t *testing.T) {
 	// the registry version reached the evaluation (ADR-0034 §7).
 	if !strings.Contains(f.Remediation, "server.address") {
 		t.Errorf("remediation does not name the missing attribute: %q", f.Remediation)
+	}
+	if f.Placement != "landed" {
+		t.Errorf("placement = %q, want landed: a schema finding says which reading its verdict was drawn from", f.Placement)
 	}
 }
 
@@ -551,6 +556,175 @@ func TestSnapshotPassesAServiceMeetingTheActiveVersion(t *testing.T) {
 	}
 	if f, found := schemaFinding(t, b); found {
 		t.Errorf("a Service meeting both versions produced %q: %v", f.Summary, f.Remediation)
+	}
+}
+
+// liveRequirement is the fixture schema requirement at placement live: the
+// same reference, judged against the live-check tap's findings instead of
+// the backend readings.
+const liveRequirement = `
+- id: db-spans-conform-live
+  title: Database spans conform at the tap
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  environments: [production]
+  schema_conformance:
+    registry_version: v1.4.0
+    scope:
+      groups: [span.db.client]
+    signals: [traces]
+    window: 24h
+  placement: live
+  remediation: Change the instrumentation to emit what the Schema Registry declares.
+`
+
+// liveEstate is schemaEstateWith over the live requirement, with the row's
+// live-check reading declared: the console gathers it through the same seam
+// every other reading comes through, so these tests cover the loader, the
+// gather and the evaluator end to end.
+func liveEstate(t *testing.T, lc *console.LiveCheckReading) console.Inputs {
+	t.Helper()
+	in := schemaEstateWith(t, liveRequirement, nil, nil)
+
+	readings, err := console.LoadReadings(in.ReadingsFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readings.Rows[0].LiveCheck = lc
+	body, err := yaml.Marshal(readings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(in.ReadingsFile, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return in
+}
+
+// liveRecord renders one tap finding through the shared kit, in the
+// declared-reading shape the readings file holds.
+func liveRecord(rec telemetry.LiveCheckRecord) console.LiveCheckRecordReading {
+	return console.LiveCheckRecordReading{Body: rec.Body, Attributes: rec.Attributes}
+}
+
+// liveDrawerFinding finds the drawer finding for the live requirement, and
+// names the Tier whose drawer carries it.
+func liveDrawerFinding(t *testing.T, b console.Bundle) (string, console.Finding, bool) {
+	t.Helper()
+	for tier, drawer := range b.Estate.Drawers {
+		for _, f := range drawer.Findings {
+			if strings.Contains(f.Summary, "db-spans-conform-live") {
+				return tier, f, true
+			}
+		}
+	}
+	return "", console.Finding{}, false
+}
+
+// A live requirement loads and evaluates end to end: the refusal that held
+// while nothing could read the tap's findings is lifted, the console
+// gathers the live reading beside the landed ones, and a violation the tap
+// reported reaches the drawer as a misconfigured finding carrying its
+// placement.
+func TestSnapshotJudgesALiveRequirementAgainstTheTap(t *testing.T) {
+	in := liveEstate(t, &console.LiveCheckReading{
+		Records: []console.LiveCheckRecordReading{liveRecord(livechecktest.Violation(
+			"type_mismatch", "span", "checkout.settle", "product/checkout",
+			"db.namespace has type Int, expected string"))},
+		Liveness: &console.LiveCheckLivenessReading{Sent: 41_020},
+	})
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	_, f, found := liveDrawerFinding(t, b)
+	if !found {
+		t.Fatal("no live-placement finding in any drawer: the tap's verdict never reached the card")
+	}
+	if !strings.Contains(f.Summary, "misconfigured") {
+		t.Errorf("summary = %q, want misconfigured: the sampled telemetry reached the tap and is the wrong shape", f.Summary)
+	}
+	if f.Severity != console.SeverityViolation {
+		t.Errorf("severity = %q, want %q", f.Severity, console.SeverityViolation)
+	}
+	if f.Placement != "live" {
+		t.Errorf("placement = %q, want live: the drawer says which reading the verdict was drawn from", f.Placement)
+	}
+	if !strings.Contains(f.Remediation, "instrumentation") {
+		t.Errorf("remediation = %q, want the live arm's instrumentation-side fix", f.Remediation)
+	}
+	if f.WhoActs.Target.Kind != "service" {
+		t.Errorf("who-acts target = %+v, want the Service: placement changes the fix, never who acts", f.WhoActs.Target)
+	}
+}
+
+// A dead tap reads unknown, advisory on the card, and the conformance band
+// carries the finding rather than green: a tap nothing fed is not a clean
+// stream (ADR-0034 §6).
+func TestSnapshotShowsADeadTapAsUnknownNeverGreen(t *testing.T) {
+	in := liveEstate(t, &console.LiveCheckReading{
+		Liveness: &console.LiveCheckLivenessReading{Sent: 0},
+	})
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	tier, f, found := liveDrawerFinding(t, b)
+	if !found {
+		t.Fatal("a dead tap produced no finding, which reads as clean")
+	}
+	if !strings.Contains(f.Summary, "unknown") {
+		t.Errorf("summary = %q, want unknown: silence over an unfed tap is not a verdict", f.Summary)
+	}
+	if f.Severity != console.SeverityAdvisory {
+		t.Errorf("severity = %q, want %q", f.Severity, console.SeverityAdvisory)
+	}
+	if f.Placement != "live" {
+		t.Errorf("placement = %q, want live", f.Placement)
+	}
+
+	// The finding is not advice, so it feeds the band: whatever else the
+	// Tier carries, the band reads finding rather than ok.
+	band := cardFor(t, b, tier).Bands["conformance"]
+	if band.State != console.BandFinding {
+		t.Errorf("conformance band = %+v, want a finding: a dead tap never shows green", band)
+	}
+}
+
+// A fed tap over a quiet stream is compliant, and a passing finding is not
+// filed: the liveness leg is what tells this silence from a dead tap's.
+func TestSnapshotPassesAFedQuietTap(t *testing.T) {
+	in := liveEstate(t, &console.LiveCheckReading{
+		Liveness: &console.LiveCheckLivenessReading{Sent: 41_020},
+	})
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	if _, f, found := liveDrawerFinding(t, b); found {
+		t.Errorf("a fed, quiet tap produced %q: %v", f.Summary, f.Remediation)
+	}
+}
+
+// A row with no declared live-check reading is unknown too: "we never
+// looked" said out loud, never played back as a quiet stream.
+func TestSnapshotReportsAnUndeclaredLiveReadingAsUnknown(t *testing.T) {
+	in := liveEstate(t, nil)
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	_, f, found := liveDrawerFinding(t, b)
+	if !found {
+		t.Fatal("a live requirement nobody could judge produced no finding, which reads as a pass")
+	}
+	if !strings.Contains(f.Summary, "unknown") {
+		t.Errorf("summary = %q, want unknown: no reading, so no verdict", f.Summary)
 	}
 }
 

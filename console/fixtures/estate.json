@@ -36,7 +36,7 @@
   },
   "cards": [
     {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "tier": "data-flow/edge",
       "name": "edge",
       "team": "data-flow",
@@ -52,11 +52,14 @@
           "worstSeverity": "none"
         },
         "conformance": {
-          "state": "ok",
-          "worstSeverity": "none"
+          "state": "finding",
+          "worstSeverity": "advisory",
+          "worstFinding": "req-live-log-shape: unknown in production (checkout)"
         }
       },
-      "findingCounts": {},
+      "findingCounts": {
+        "conformance": 1
+      },
       "population": {
         "matched": 21614,
         "floor": 21000,
@@ -130,7 +133,7 @@
       }
     },
     {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "tier": "data-flow/gateway",
       "name": "gateway",
       "team": "data-flow",
@@ -154,7 +157,7 @@
       },
       "findingCounts": {
         "expectation": 1,
-        "conformance": 1
+        "conformance": 2
       },
       "waivedCounts": {
         "conformance": 1
@@ -254,7 +257,7 @@
       }
     },
     {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "tier": "data-flow/gateway-staging",
       "name": "gateway-staging",
       "team": "data-flow",
@@ -371,7 +374,7 @@
       }
     },
     {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "tier": "product/storefront-edge",
       "name": "storefront-edge",
       "team": "product",
@@ -466,7 +469,7 @@
   ],
   "drawers": {
     "data-flow/gateway": {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "tier": "data-flow/gateway",
       "findings": [
         {
@@ -513,6 +516,22 @@
               "id": "infosec/pii-redaction"
             },
             "label": "Request renewal in Governance"
+          }
+        },
+        {
+          "id": "checkout-live-span-shape",
+          "kind": "conformance",
+          "severity": "violation",
+          "dampening": "none",
+          "placement": "live",
+          "summary": "req-live-span-shape: misconfigured in production (checkout)",
+          "remediation": "Change the instrumentation to emit what the Schema Registry declares: each finding's message names what differs. The fix is a change in the Service's code or SDK setup, not in collector configuration.",
+          "whoActs": {
+            "target": {
+              "kind": "service",
+              "id": "product/checkout"
+            },
+            "label": "Inspect the Service in Topology"
           }
         }
       ],
@@ -584,9 +603,26 @@
       ]
     },
     "data-flow/edge": {
-      "contractVersion": 5,
+      "contractVersion": 6,
       "tier": "data-flow/edge",
-      "findings": [],
+      "findings": [
+        {
+          "id": "checkout-live-dead-tap",
+          "kind": "conformance",
+          "severity": "advisory",
+          "dampening": "none",
+          "placement": "live",
+          "summary": "req-live-log-shape: unknown in production (checkout)",
+          "remediation": "Check that the live-check service is running, that the teeing Tier's branch reaches it, and that its findings land in the telemetry backend the platform reads. This requirement judges itself again once the tap is fed and its findings can be read.",
+          "whoActs": {
+            "target": {
+              "kind": "service",
+              "id": "product/checkout"
+            },
+            "label": "Inspect the Service in Topology"
+          }
+        }
+      ],
       "provenance": [
         {
           "key": "service-class",

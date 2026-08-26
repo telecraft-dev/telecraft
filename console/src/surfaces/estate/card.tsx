@@ -382,6 +382,17 @@ export function CardPanel({ card }: { card: CardFace }) {
                     <Mark name={markFor('finding', finding.severity)} />
                     <span className="finding-kind">{finding.kind}</span>
                     <span className="finding-severity">{severityLabel(finding.severity)}</span>
+                    {/* Placement is a glossary term, so the token itself is
+                        the chip's text: landed or live, absent meaning
+                        landed on payloads that predate the field. */}
+                    {finding.placement && (
+                      <Chip
+                        className="placement"
+                        data-testid={`placement-${finding.id}`}
+                      >
+                        {finding.placement}
+                      </Chip>
+                    )}
                     {finding.dampening !== 'none' && (
                       <Chip
                         className={`dampening dampening-${finding.dampening}`}

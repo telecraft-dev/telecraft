@@ -212,19 +212,20 @@ export interface Population {
  * per-signal matrix rows, the population state and the churn reading; v3
  * gave each of those rows a lane state and dropped its readings when that
  * state is `not_applicable`; v5 marked the drawer findings that ride
- * alongside a verdict (`advice`). The bump is the visible, reviewable
- * event the ADR asks for, and both sides are held to
+ * alongside a verdict (`advice`); v6 gave conformance drawer findings
+ * their `placement`, absent meaning `landed`. The bump is the visible,
+ * reviewable event the ADR asks for, and both sides are held to
  * console/fixtures/card-contract.json, which the engine writes and
  * `tests/card-contract.test.ts` reads.
  */
-export const CARD_CONTRACT_VERSION = 5
+export const CARD_CONTRACT_VERSION = 6
 
 /**
  * The card face: the card unit is the Tier, and the shelf groups and
  * sorts from these fields alone (ADR-0041, ADR-0042 §2).
  */
 export interface CardFace {
-  contractVersion: 5
+  contractVersion: 6
   /** Tier id: the contract keys on Tier id, never on a pair. */
   tier: string
   name: string
@@ -284,6 +285,13 @@ export interface Finding {
    * same severity.
    */
   advice?: boolean
+  /**
+   * Which reading a conformance finding's verdict was drawn from: landed
+   * telemetry, or the Live-check tap's findings (ADR-0034 §6). Set only
+   * on conformance findings judged from a Requirement; absent means
+   * `landed`, so payloads that predate the field keep their meaning.
+   */
+  placement?: 'landed' | 'live'
 }
 
 /** One config line implying a derived value (ADR-0041 §3). */
@@ -310,7 +318,7 @@ export interface Provenance {
 
 /** GET /api/v1/drawer?tier= returns the on-demand drawer payload (ADR-0041 §3). */
 export interface CardDrawer {
-  contractVersion: 5
+  contractVersion: 6
   tier: string
   findings: Finding[]
   provenance: Provenance[]

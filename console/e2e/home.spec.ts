@@ -30,8 +30,9 @@ test('shows ratio-plus-worst per kind, and no blended score anywhere', async ({ 
   await expect(page.getByTestId('standing-neutral')).toBeVisible()
 
   // The fixture estate has three production Tiers; `data-flow/gateway`
-  // carries the violation, so conformance passes two of the three.
-  await expect(page.getByTestId('standing-conformance')).toContainText('2/3')
+  // carries the violation and `data-flow/edge` the dead tap's advisory
+  // finding, so conformance passes one of the three.
+  await expect(page.getByTestId('standing-conformance')).toContainText('1/3')
 
   // ADR-0056 §3: a single health score is the one thing this surface must
   // not grow, and a percentage is how one would arrive.
@@ -96,7 +97,7 @@ test('Rollouts waiting on a person lead, and each is a door to the ledger', asyn
 
 test('the lens re-judges Home and names what it is not judging', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByTestId('home-worst')).toContainText('1 Tier in production')
+  await expect(page.getByTestId('home-worst')).toContainText('2 Tiers in production')
 
   await page.getByTestId('lens-control').selectOption('staging')
   await expect(page.getByTestId('home-lens')).toHaveText('staging')
@@ -105,5 +106,5 @@ test('the lens re-judges Home and names what it is not judging', async ({ page }
   // counted rather than dropped: the lens is emphasis, never a place to
   // hide (ADR-0042 §4, ADR-0056 §6).
   await expect(page.getByTestId('home-worst')).toContainText('Nothing in staging has a finding')
-  await expect(page.getByTestId('home-worst-elsewhere')).toContainText('1 more in other')
+  await expect(page.getByTestId('home-worst-elsewhere')).toContainText('2 more in other')
 })

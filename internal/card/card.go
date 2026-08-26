@@ -55,7 +55,11 @@ import (
 // band's state and everything fed from it are decided by violations
 // alone (ADR-0034 §3), and until the marker existed a consumer could not
 // tell an advisory finding that counts from one that rides.
-const Version = 5
+// v6 gives conformance drawer findings their Placement, absent meaning
+// landed: a landed verdict's fix may be enrichable at collection, a live
+// one's is always an instrumentation change (ADR-0034 §6), and until the
+// field existed the two rendered identically.
+const Version = 6
 
 // BandName is one of the three reading bands. The order is fixed and the
 // same on every card, so band position is load-bearing where hue is not.
@@ -629,6 +633,13 @@ type Finding struct {
 	// advisory finding that counts and an advisory one that rides carry the
 	// same severity.
 	Advice bool `json:"advice,omitempty"`
+
+	// Placement says which reading a conformance finding's verdict was
+	// drawn from: landed telemetry, or the live-check tap's findings
+	// (ADR-0034 §6). Set only on conformance findings judged from a
+	// requirement; absent means landed, so payloads that predate the
+	// field keep their meaning.
+	Placement string `json:"placement,omitempty"`
 }
 
 // ProvenanceLine is one config line implying a derived value.

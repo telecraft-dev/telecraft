@@ -117,7 +117,6 @@ func TestSchemaConformanceRefusals(t *testing.T) {
 		"no-version.yaml":                 "names no Schema Registry version",
 		"pinned-and-tracking.yaml":        "both pins a Schema Registry version and tracks head",
 		"unknown-track-mode.yaml":         "is not a tracking mode",
-		"live-placement.yaml":             "not implemented yet",
 		"unknown-placement.yaml":          "unknown placement",
 		"placement-without-schema.yaml":   "only a schema_conformance requirement has a placement",
 		"empty-scope.yaml":                "empty schema_conformance scope",
@@ -139,6 +138,41 @@ func TestSchemaConformanceRefusals(t *testing.T) {
 				t.Errorf("error does not name the file: %v", err)
 			}
 		})
+	}
+}
+
+// The live placement loads: the evaluator's live arm judges it against the
+// tap's emitted findings (ADR-0034 §6), so the refusal that held while
+// nothing could read those findings is gone. The reference is still
+// validated like any landed one: a live requirement whose scope resolves to
+// nothing would demand nothing, whichever reading judges it.
+func TestLivePlacementLoads(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "live.yaml", `
+id: db-spans-conform-live
+title: Database spans conform at the tap
+version: 1
+requirement_level: required
+owner: platform-observability
+schema_conformance:
+  registry_version: v1.4.0
+  scope:
+    groups: [span.db.client]
+  signals: [traces]
+  window: 24h
+placement: live
+remediation: Change the instrumentation to emit what the Schema Registry declares.
+`)
+	lib, err := Load(dir, WithSchemaRegistries(installedRegistries(t)))
+	if err != nil {
+		t.Fatalf("a live-placement requirement does not load: %v", err)
+	}
+	req := lib.Requirements["db-spans-conform-live"]
+	if req.Placement != Live {
+		t.Errorf("placement = %q, want live", req.Placement)
+	}
+	if req.Schema == nil || req.Schema.RegistryVersion != snapshotRef {
+		t.Errorf("the live requirement's reference did not load: %+v", req.Schema)
 	}
 }
 

@@ -16,7 +16,7 @@ test('the card panel opens in place with the drawer findings, waivers visible', 
   await expect(page.getByTestId('panel-title')).toHaveText('gateway')
   // The drawer is fetched on demand and lists every finding with its
   // mandatory remediation (ADR-0041 §3).
-  await expect(page.getByTestId('panel-findings').locator('.finding')).toHaveCount(3)
+  await expect(page.getByTestId('panel-findings').locator('.finding')).toHaveCount(4)
   // A waiver waives the count, never the diagnosis (ADR-0037): the waived
   // finding stays listed, its dampening state visible.
   await expect(page.getByTestId('dampening-gateway-grant-redaction')).toHaveText('waived')
@@ -84,7 +84,7 @@ test('the roll-up shows ratio-plus-worst per kind with exempt counts visible', a
 }) => {
   await page.goto('/estate?view=rollup&lens=production')
   const dataFlow = page.getByTestId('rollup-data-flow')
-  await expect(dataFlow.locator('[data-kind="conformance"] .rollup-ratio')).toHaveText('1/2')
+  await expect(dataFlow.locator('[data-kind="conformance"] .rollup-ratio')).toHaveText('0/2')
   await expect(dataFlow.locator('[data-kind="conformance"] .rollup-waived')).toHaveText(
     '1 exempt',
   )
@@ -101,7 +101,40 @@ test('the roll-up shows ratio-plus-worst per kind with exempt counts visible', a
   await expect(teamRows).toHaveCount(before)
   await expect(
     page.getByTestId('rollup-all-data-flow'),
-  ).toHaveText('2 findings, 1 exempt')
+  ).toHaveText('4 findings, 1 exempt')
+})
+
+// The issue #159 acceptance criteria: a live requirement beside the landed
+// ones, its placement visible on the drawer finding, and a dead tap
+// reading as an advisory unknown finding rather than green.
+
+test('a live finding carries its placement as a chip beside the landed ones', async ({
+  page,
+}) => {
+  await page.goto(`/estate?${GATEWAY}`)
+  const finding = page.getByTestId('finding-checkout-live-span-shape')
+  await expect(finding).toContainText('misconfigured')
+  // The chip carries the glossary token, and the landed findings beside it
+  // carry none: absent means landed.
+  await expect(page.getByTestId('placement-checkout-live-span-shape')).toHaveText('live')
+  await expect(page.getByTestId('placement-gateway-conformance-floor')).toHaveCount(0)
+})
+
+test('a dead tap shows the advisory unknown finding, never green', async ({ page }) => {
+  await page.goto('/estate?object=tier%3Adata-flow%2Fedge')
+
+  // The card's conformance band carries the finding: an unfed tap is not
+  // a clean stream, so the band never reads ok.
+  const bands = page.getByTestId('card-data-flow/edge').locator('.card-bands .band')
+  await expect(bands.nth(2)).toContainText('finding')
+  await expect(bands.nth(2).locator('.mark')).toHaveAttribute('data-mark', 'advisory')
+
+  // The drawer says what the platform could not see, with the placement
+  // chip and the remediation naming the tap.
+  const finding = page.getByTestId('finding-checkout-live-dead-tap')
+  await expect(finding).toContainText('unknown')
+  await expect(page.getByTestId('placement-checkout-live-dead-tap')).toHaveText('live')
+  await expect(finding).toContainText('live-check service')
 })
 
 test('the "why?" popover shows provenance and its trace action lights the canvas', async ({
