@@ -148,7 +148,7 @@ worst first, and every badge and every roll-up sorts on the same order.
 | `ungoverned` | 1 | Observed yes, configured no. Passes, but shown: telemetry is arriving from something nobody configured. |
 | `compliant` | 0 | Met. |
 
-`broken_pipeline` leads because no configuration-only tool can produce it:
+`broken_pipeline` carries the highest severity:
 
 ```json
 {

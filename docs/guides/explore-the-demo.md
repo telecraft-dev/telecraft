@@ -198,7 +198,7 @@ checking your own estate against.
 | State | Where to look |
 |---|---|
 | A healthy Tier, all three bands green | `edge-ops/edge`, 24 node agents at their declared floor |
-| A requirement violation | `storefront/catalogue-web` stopped delivering traces: configured and not working, the finding configuration-only tooling cannot see |
+| A requirement violation | `storefront/catalogue-web` stopped delivering traces: configured and not working |
 | A waived finding | `storefront/search` misses `metrics-delivered` under an authored Exemption. The count is waived, the diagnosis is not |
 | `library_drift` | `data-flow/gateway-standard` pins `infosec/pii-redaction@2` while its owner is at v3 |
 | A stability-floor breach | `storefront/mobile-collector` routes metrics through a processor upstream rates alpha, below the C2 production floor |

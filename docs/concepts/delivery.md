@@ -24,8 +24,7 @@ adopting serving is a migration, not an addition.
 controller, configuration management, a cloud agent, or a person with an
 editor. Foreign is legitimate, not lesser. Telecraft serves everything, and
 GitOps is an alternative rather than a fallback. Mixed substrates are the
-default mode, because half of large estates span both container orchestration
-and virtual machines.
+default mode.
 
 Both paths get identical verdicts. Continuous evaluation judges every
 Effective configuration by the same rules, so a foreign configuration using a
@@ -53,9 +52,8 @@ into the collector's own telemetry resource as `telecraft.commit`, next to
 both back, so Telecraft reads "which commit is this running" *from* the
 collector rather than remembering it *about* the collector.
 
-That one decision is what makes the server stateless, and it works the same
-on both delivery paths: a foreign collector reports the same stamp, so it gets
-the same identity and the same claim evaluation for free.
+The stamp works the same on both delivery paths: a foreign collector reports
+the same stamp, so it gets the same identity and the same claim evaluation.
 
 The stamp rides on the collector's self-telemetry resource only. Telecraft
 never writes anything into your telemetry data.
