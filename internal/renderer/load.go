@@ -292,8 +292,10 @@ func loadObjectFile(path string, out any, kind string) error {
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 {
 		return fmt.Errorf("%s: the file is empty; it should hold one %s", path, kind)
 	}
+	// One object per file, as a mapping: the file name gives the object
+	// its id, so a list would leave every object but one unnamed.
 	if doc.Content[0].Kind != yaml.MappingNode {
-		return fmt.Errorf("%s: the file should hold one %s as a mapping, not a list, because the file name gives the object its id", path, kind)
+		return fmt.Errorf("%s: the file should hold one %s as a mapping, not a list", path, kind)
 	}
 
 	dec := yaml.NewDecoder(bytes.NewReader(raw))

@@ -168,8 +168,10 @@ func loadTeams(path string) (Tree, error) {
 			return
 		}
 		id := TeamID(n.ID)
+		// A duplicate id would give the team two parents, and every
+		// roll-up would double-count its findings.
 		if _, dup := tree.Teams[id]; dup {
-			problems = append(problems, fmt.Sprintf("%s: team %q appears twice. A Team has at most one parent, or every roll-up would double-count", path, n.ID))
+			problems = append(problems, fmt.Sprintf("%s: team %q appears twice. A Team has at most one parent", path, n.ID))
 			return
 		}
 		team := Team{ID: id, Name: n.Name, Parent: parent}

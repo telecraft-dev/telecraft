@@ -343,8 +343,10 @@ function governanceProblems(request) {
   const seenGrants = new Set()
   for (const grant of request.grants ?? []) {
     const ctx = `grant "${grant.id}"`
+    // The id is mandatory: every allowed entry traces to the root list or
+    // to a named Grant, and an unnamed Grant breaks the trace.
     if (!grant.id) {
-      problems.push('a grant has no id. Every Grant needs one, so that every allowed entry traces to the root list or a named Grant')
+      problems.push('a grant has no id. Every Grant needs an id')
     }
     problems.push(...partyProblems(ctx, grant.team, grant.owner, teams, owners))
     const author = owners.get(grant.owner)
