@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/activation"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 )
@@ -537,9 +541,10 @@ pipelines:
 		t.Fatalf("exit %d, want 1: the behind-head pin is a counting failure\nstderr: %s", code, msg)
 	}
 
-	// The rows are untouched: drift is the repo's, never a row's.
+	// The rows are untouched: the requirement and component facets are the
+	// repo's, never a row's.
 	if len(report.Rows) != 1 || report.Rows[0].Worst != "compliant" || report.Summary.FailingRows != 0 {
-		t.Errorf("rows = %+v: library_drift must never appear as a row outcome", report.Rows)
+		t.Errorf("rows = %+v: repo-owned drift must never land on a row", report.Rows)
 	}
 	if len(report.LibraryDrift) != 1 {
 		t.Fatalf("library_drift = %+v, want exactly the pinned-reference finding", report.LibraryDrift)
@@ -1028,5 +1033,271 @@ func TestCheckJudgesASchemaRequirementWithTheRegistryDirectory(t *testing.T) {
 	}
 	if !strings.Contains(detail, "attribute-name reading unavailable") {
 		t.Errorf("detail does not carry the reading's own cause, so no reading was asked for:\n%s", detail)
+	}
+}
+
+// activeSchemaRef is the ref the drifted fixture version stands at: one
+// ahead of the v1.4.0 the schema library pins.
+const activeSchemaRef = "v1.5.0"
+
+// driftedRegistries installs the pinned fixture version and, beside it, the
+// drifted one: at v1.5.0 span.db.client additionally demands
+// enterprise.owner_email at required, mirroring the conformance fixtures.
+func driftedRegistries(t *testing.T) string {
+	t.Helper()
+	dir := installedRegistries(t)
+	reg, _, err := schemaregistry.Import(
+		filepath.Join("..", "..", "internal", "schemaregistry", "testdata", "registry-v1.4.0"),
+		schemaregistry.Source{
+			Repository: "git.example.test/estate/registry",
+			Ref:        activeSchemaRef,
+			Commit:     "5c4b3a2d1e0f9081726354a5b6c7d8e9f0a1b2c3",
+		})
+	if err != nil {
+		t.Fatalf("importing the fixture Schema Registry: %v", err)
+	}
+	for i, g := range reg.Groups {
+		if g.ID == "span.db.client" {
+			reg.Groups[i].Attributes = append(reg.Groups[i].Attributes, schemaregistry.Attribute{
+				Ref:   "enterprise.owner_email",
+				Level: schemaregistry.Required,
+			})
+		}
+	}
+	if _, _, err := reg.Write(dir); err != nil {
+		t.Fatalf("installing the drifted Schema Registry: %v", err)
+	}
+	return dir
+}
+
+// designatedSource writes an authored estate root whose activation record
+// designates the named version as the active Schema Registry. The blueprint
+// is deliberately clean: every component stands in the active Catalogue at
+// beta, so the run's only drift can be the registry facet under test.
+func designatedSource(t *testing.T, dir, active string) string {
+	t.Helper()
+	source := driftSource(t, dir, map[string]string{
+		"teams/pipelines/blueprints/flow.yaml": `
+name: flow
+version: 1
+owner: pipelines-lead
+components:
+  - name: otlp-in
+    class: receiver
+    type: otlp
+    version: 1
+  - name: to-out
+    class: exporter
+    type: otlphttp
+    version: 1
+pipelines:
+  traces:
+    - component: otlp-in
+    - component: to-out
+`,
+	})
+	rec := activation.Record{SchemaRegistry: &activation.Designation{
+		Active: active,
+		Activations: []activation.Activation{{
+			Version: active,
+			At:      time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC),
+			By:      "pipelines-lead",
+			Impact:  activation.Impact{Summary: "no pinned row moves on activation"},
+		}},
+	}}
+	if err := activation.Save(source, rec); err != nil {
+		t.Fatal(err)
+	}
+	return source
+}
+
+// schemaBackend fakes the telemetry backend for a Service whose database
+// spans carry exactly the named attributes: the attribute-name reading comes
+// back whole and untruncated, and each enum attribute among them carries one
+// declared value.
+func schemaBackend(t *testing.T, inUse ...string) *httptest.Server {
+	t.Helper()
+	fields := map[string]any{}
+	for _, name := range inUse {
+		fields["attributes."+name] = []string{"x"}
+	}
+	names, err := json.Marshal(map[string]any{
+		"hits": map[string]any{
+			"total": map[string]any{"value": 1},
+			"hits":  []any{map[string]any{"fields": fields}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	distinct := func(value string) string {
+		return `{"aggregations":{"values_0":{"buckets":[{"key":"` + value + `"}],"sum_other_doc_count":0}}}`
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		req := string(body)
+		switch {
+		case strings.Contains(r.URL.Path, "_msearch"):
+			io.WriteString(w, `{"responses":[{"status":200,"hits":{"total":{"value":1}}},{"status":200,"hits":{"total":{"value":1}}},{"status":200,"hits":{"total":{"value":1}}}]}`)
+		case strings.Contains(req, `"fields"`):
+			w.Write(names)
+		case strings.Contains(req, "db.system.name"):
+			io.WriteString(w, distinct("postgresql"))
+		case strings.Contains(req, "enterprise.criticality_tier"):
+			io.WriteString(w, distinct("gold"))
+		default:
+			io.WriteString(w, `{"aggregations":{"groups":{"buckets":[{"key":"db-query"}],"sum_other_doc_count":0}}}`)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// scoredSchemaFinding is the db-spans-conform row's violation-grade finding.
+func scoredSchemaFinding(t *testing.T, report checkReport) findingReport {
+	t.Helper()
+	if len(report.Rows) != 1 {
+		t.Fatalf("rows = %+v, want the one judged row", report.Rows)
+	}
+	for _, f := range report.Rows[0].Findings {
+		if f.Requirement == "db-spans-conform" && f.Level == "required" && f.Severity > 0 {
+			return f
+		}
+	}
+	t.Fatalf("no scored db-spans-conform finding in %+v", report.Rows[0].Findings)
+	return findingReport{}
+}
+
+// The follow-up wired in from the console side: with -source carrying the
+// activation designation, a scope passing the version its requirement pins
+// while provably failing the active one reads library_drift with the
+// registry facet on its row, the same reading the console files onto cards.
+func TestCheckRaisesTheRegistryFacetWherePinPassesAndActiveFails(t *testing.T) {
+	libDir, estate := schemaCheckEstate(t)
+	srv := schemaBackend(t, "db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port")
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-schema-registries", driftedRegistries(t),
+		"-source", designatedSource(t, t.TempDir(), activeSchemaRef),
+		"-catalogue", renderCatalogue(t),
+		"-endpoint", srv.URL)
+
+	if code != 1 {
+		t.Fatalf("exit %d, want 1: drift is a counting failure\nstderr: %s", code, msg)
+	}
+	f := scoredSchemaFinding(t, report)
+	if f.Outcome != "library_drift" || f.Facet != "registry" {
+		t.Fatalf("finding = (%q, facet %q), want (library_drift, registry): %+v", f.Outcome, f.Facet, f)
+	}
+	detail := strings.Join(f.Detail, "\n")
+	if !strings.Contains(detail, "v1.4.0") || !strings.Contains(detail, activeSchemaRef) {
+		t.Errorf("detail does not name both versions:\n%s", detail)
+	}
+	if !strings.Contains(f.Remediation, "pin from Schema Registry version v1.4.0 to "+activeSchemaRef) {
+		t.Errorf("remediation does not carry the pin move: %q", f.Remediation)
+	}
+	if report.Rows[0].Worst != "library_drift" || report.Summary.FailingRows != 1 {
+		t.Errorf("roll-up = %s worst, %d failing rows, want library_drift and 1",
+			report.Rows[0].Worst, report.Summary.FailingRows)
+	}
+	if report.Summary.LibraryDrift != 1 || report.Summary.CountingFailures != 1 {
+		t.Errorf("summary = %+v, want the drift finding counted once, in both tallies", report.Summary)
+	}
+}
+
+// A tracking reference resolves to the active version and is judged against
+// it directly: failing it is the ordinary failure, never drift, because
+// there is no pin to fall behind.
+func TestCheckJudgesATrackingReferenceAgainstTheActiveVersion(t *testing.T) {
+	dir := t.TempDir()
+	libDir := filepath.Join(dir, "library")
+	writeLibraryFile(t, libDir, "schema.yaml", `
+- id: db-spans-conform
+  title: Database spans carry what the registry demands
+  version: 1
+  requirement_level: required
+  owner: platform-observability
+  schema_conformance:
+    track: head
+    scope:
+      groups: [span.db.client]
+    signals: [traces]
+    window: 24h
+  remediation: add the missing attributes to the database instrumentation
+`)
+	estate := writeLibraryFile(t, dir, "estate.yaml", `
+services:
+  - name: checkout
+    environments:
+      - name: production
+        pipelines: []
+`)
+	srv := schemaBackend(t, "db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port")
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-schema-registries", driftedRegistries(t),
+		"-source", designatedSource(t, t.TempDir(), activeSchemaRef),
+		"-catalogue", renderCatalogue(t),
+		"-endpoint", srv.URL)
+
+	if code != 1 {
+		t.Fatalf("exit %d, want 1\nstderr: %s", code, msg)
+	}
+	f := scoredSchemaFinding(t, report)
+	if f.Outcome != "misconfigured" || f.Facet != "" {
+		t.Errorf("finding = (%q, facet %q), want (misconfigured, none)", f.Outcome, f.Facet)
+	}
+	if report.Summary.LibraryDrift != 0 {
+		t.Errorf("summary.library_drift = %d, want 0", report.Summary.LibraryDrift)
+	}
+}
+
+// A Service failing its pin keeps the existing diagnosis, unchanged: fails
+// both versions is the ordinary failure, never drift.
+func TestCheckAServiceFailingItsPinIsNotDrift(t *testing.T) {
+	libDir, estate := schemaCheckEstate(t)
+	// server.address is demanded at required by the pinned version too, so
+	// this scope fails both versions.
+	srv := schemaBackend(t, "db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.port")
+
+	code, report, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-schema-registries", driftedRegistries(t),
+		"-source", designatedSource(t, t.TempDir(), activeSchemaRef),
+		"-catalogue", renderCatalogue(t),
+		"-endpoint", srv.URL)
+
+	if code != 1 {
+		t.Fatalf("exit %d, want 1\nstderr: %s", code, msg)
+	}
+	f := scoredSchemaFinding(t, report)
+	if f.Outcome != "misconfigured" || f.Facet != "" {
+		t.Errorf("finding = (%q, facet %q), want (misconfigured, none)", f.Outcome, f.Facet)
+	}
+	if report.Summary.LibraryDrift != 0 {
+		t.Errorf("summary.library_drift = %d, want 0", report.Summary.LibraryDrift)
+	}
+}
+
+// A designation naming a version that cannot be read fails closed before any
+// backend is touched, naming the version and the fix: judging pinned
+// references clean against a bar nobody could check is the lie the failure
+// exists to prevent.
+func TestCheckFailsClosedOnAnUnreadableActiveSchemaRegistry(t *testing.T) {
+	libDir, estate := schemaCheckEstate(t)
+
+	code, _, msg := runCheckCmd(t, "-library", libDir, "-estate", estate,
+		"-schema-registries", installedRegistries(t),
+		"-source", designatedSource(t, t.TempDir(), "v9.9.9"),
+		"-catalogue", renderCatalogue(t),
+		"-endpoint", "http://127.0.0.1:1", "-timeout", "5s")
+
+	if code != 2 {
+		t.Fatalf("exit %d, want 2\nstderr: %s", code, msg)
+	}
+	if !strings.Contains(msg, "v9.9.9") || !strings.Contains(msg, "cannot be read") {
+		t.Errorf("stderr does not name the unreadable version:\n%s", msg)
 	}
 }

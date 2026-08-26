@@ -130,7 +130,7 @@ func Build(in Inputs) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	activeSchemaReg, err := in.activeSchemaRegistry(activeRegistry, lib)
+	activeSchemaReg, err := conformance.ActiveSchemaRegistry(activeRegistry, in.SchemaRegistries, lib)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -533,35 +533,6 @@ func (in Inputs) activeCatalogue(designation activation.Record) (string, error) 
 	}
 	dir := in.CataloguesDir()
 	return filepath.Join(dir, catalogue.ArtefactName(version)), nil
-}
-
-// activeSchemaRegistry resolves the Schema Registry version the estate has
-// designated active, so the evaluation can judge each pinned
-// schema-conformance scope against it beside its pin (ADR-0034 §2). The
-// library's own resolved copy is preferred, whether a requirement pins the
-// active ref or tracks head; loading from the installed artefacts is the
-// fallback for an estate whose requirements all pin older versions.
-//
-// Nil with no error means there is nothing to judge drift against: no
-// designation, or a library that references no Schema Registry at all. A
-// designation naming a version that cannot be read is an error, not a
-// silent nil: a snapshot that shrugged it off would show pinned references
-// clean against a bar nobody could check.
-func (in Inputs) activeSchemaRegistry(ref string, lib requirements.Library) (*schemaregistry.Registry, error) {
-	if ref == "" || len(lib.SchemaRegistries) == 0 {
-		return nil, nil
-	}
-	if reg := lib.SchemaRegistries[ref]; reg != nil {
-		return reg, nil
-	}
-	if reg := lib.SchemaRegistries[requirements.TrackHead]; reg != nil {
-		return reg, nil
-	}
-	reg, err := schemaregistry.Load(filepath.Join(in.SchemaRegistries, schemaregistry.ArtefactName(ref)))
-	if err != nil {
-		return nil, fmt.Errorf("the estate designates Schema Registry version %q as active, and it cannot be read: %v. Import that version, or activate one that is installed", ref, err)
-	}
-	return reg, nil
 }
 
 // CataloguesDir is where this estate's installed Catalogue artefacts live:
