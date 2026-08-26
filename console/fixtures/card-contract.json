@@ -159,7 +159,7 @@
             "id": "data-flow/gateway-standard"
           },
           "lane": "logs",
-          "label": "Fix the logs lane in Compose"
+          "label": "Open the logs lane in Compose"
         }
       },
       {

@@ -23,7 +23,7 @@ export function YamlFlyout({
       testId="yaml-flyout"
       className="yaml-flyout"
       initialWidth={420}
-      title="Rendered artefact"
+      title="Rendered configuration"
       closeTestId="yaml-close"
       onClose={onClose}
     >

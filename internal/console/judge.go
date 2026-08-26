@@ -138,7 +138,7 @@ func (b *builder) judgeTiers(views map[string]*tierView, set expectation.Set) er
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "blueprint", ID: v.tier.Binding().ID()},
 					Lane:   laneOf(b.bp, v.tier.Binding().ID(), claim.Claim.Component),
-					Label:  "Fix the lane in Compose",
+					Label:  "Open the lane in Compose",
 				},
 			})
 		}
@@ -302,7 +302,7 @@ func (b *builder) judgeRows(views map[string]*tierView, set expectation.Set) err
 				if lane := string(claim.Claim.Signal); lane != "" {
 					finding.WhoActs.Lane = lane
 					finding.WhoActs.Target = ObjectRef{Kind: "blueprint", ID: v.tier.Binding().ID()}
-					finding.WhoActs.Label = "Fix the " + lane + " lane in Compose"
+					finding.WhoActs.Label = "Open the " + lane + " lane in Compose"
 				}
 				v.findings = append(v.findings, finding)
 			}
@@ -361,7 +361,7 @@ func (b *builder) fileRenderFindings(views map[string]*tierView) {
 			WhoActs: WhoActs{
 				Target: ObjectRef{Kind: "blueprint", ID: f.Blueprint},
 				Lane:   f.Lane,
-				Label:  "Fix the lane in Compose",
+				Label:  "Open the lane in Compose",
 			},
 		})
 	}
@@ -390,7 +390,7 @@ func (b *builder) fileBlueprintFindings(views map[string]*tierView) {
 				WhoActs: WhoActs{
 					Target: ObjectRef{Kind: "blueprint", ID: f.Blueprint},
 					Lane:   f.Lane,
-					Label:  "Fix the " + f.Lane + " lane in Compose",
+					Label:  "Open the " + f.Lane + " lane in Compose",
 				},
 			})
 		}

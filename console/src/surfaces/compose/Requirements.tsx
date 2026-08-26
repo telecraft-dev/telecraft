@@ -37,8 +37,8 @@ export function Requirements({
         <thead>
           <tr>
             <th>Requirement</th>
-            <th>Claim (intent)</th>
-            <th>Verdict (fact)</th>
+            <th>Claim</th>
+            <th>Verdict</th>
             <th>Action</th>
           </tr>
         </thead>
