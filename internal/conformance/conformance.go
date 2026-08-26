@@ -19,10 +19,13 @@
 // diagnosis, never instead of it: a waived finding keeps its outcome and its
 // detail and gives up only its count.
 //
-// One outcome in the vocabulary never comes from the cross: library_drift is
-// judged from the Intended reading (the config in git) by internal/drift
-// (ADR-0004, ADR-0026). It lives here so every finding, whichever reading
-// produced it, ranks on one severity ordering.
+// One outcome in the vocabulary never comes from the cross: library_drift
+// (ADR-0004, ADR-0026). Its requirement and component facets are judged from
+// the Intended reading (the config in git) by internal/drift; its registry
+// facet is judged by this package's schema arm, from the Observed readings a
+// pinned scope passes under its pin and fails under the active Schema
+// Registry version (ADR-0034 §2, schemadrift.go). It lives here so every
+// finding, whichever reading produced it, ranks on one severity ordering.
 package conformance
 
 import (
@@ -67,13 +70,18 @@ const (
 	// state, and it is reported as itself).
 	Unknown Outcome = "unknown"
 
-	// LibraryDrift: the config in git passes the requirement version it
-	// claims or pins but fails the current one: the goalposts moved and
-	// the subject has not caught up (ADR-0026 §6). The one per-requirement
-	// outcome the Effective × Observed cross never produces: it is judged
-	// from the Intended reading by the drift detection (internal/drift,
-	// ADR-0004), owned by the repo, and its remediation is the version
-	// diff: review what moved and open a PR, never re-instrument.
+	// LibraryDrift: the subject passes the version it claims or pins but
+	// fails the current one: the goalposts moved and the subject has not
+	// caught up (ADR-0026 §6). The one per-requirement outcome the
+	// Effective × Observed cross never produces. Its requirement and
+	// component facets are judged from the Intended reading by the drift
+	// detection (internal/drift, ADR-0004), owned by the repo, and remedied
+	// by a version-diff review and a PR, never re-instrumentation. Its
+	// registry facet is judged here by the schema arm (schemadrift.go,
+	// ADR-0034 §2): a Service passing a pinned Schema Registry version and
+	// failing the active one, Service-owned like every schema-conformance
+	// finding (ADR-0034 §7), with the instrumentation gap and the pin move
+	// both named in the remediation.
 	LibraryDrift Outcome = "library_drift"
 )
 
@@ -158,6 +166,14 @@ const (
 type Finding struct {
 	Requirement requirements.Requirement
 	Outcome     Outcome
+
+	// Facet is set on a library_drift finding alone: the referenced-object
+	// kind the drift is about, carried as data so one finding kind slices
+	// by facet (ADR-0026 §7). FacetRegistry is the only value this package
+	// writes, because the registry facet is the one facet judged from
+	// Observed readings; the requirement and component facets are judged
+	// from the authored trees by internal/drift, on findings of its own.
+	Facet string
 
 	// Grade is the weight the finding carries, in the one grade vocabulary
 	// the platform has (ownership.Grade). It answers a different question

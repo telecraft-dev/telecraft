@@ -164,12 +164,15 @@ func (b *builder) catalogueReport(dir, active, candidate string) (activation.Rep
 
 // registryReport computes a Schema Registry candidate's report, including
 // the estate half: the same evidence every row was judged against, judged
-// again with the candidate version answering for head.
+// again with the candidate version answering for head and for the active
+// designation.
 //
-// Only a requirement that tracks head moves. A pinned reference names its
-// own version and goes on naming it (ADR-0026 §1), which is what pinning is
-// for: activating a registry version must not silently move the score of a
-// Service whose requirement pinned a different one.
+// A tracking requirement moves outright: it is judged against whichever
+// version is active (ADR-0026 §1). A pinned reference goes on naming its
+// own version, which is what pinning is for, and moves only as far as the
+// drift arm moves it (ADR-0034 §2): a Service passing its pin and failing
+// the candidate would read library_drift after the activation, and the
+// report shows that before anyone decides.
 func (b *builder) registryReport(dir, active, candidate string) (activation.Report, error) {
 	to, err := schemaregistry.Load(filepath.Join(dir, schemaregistry.ArtefactName(candidate)))
 	if err != nil {
@@ -210,17 +213,24 @@ func (b *builder) estateUnder(from, to *schemaregistry.Registry) *activation.Est
 	return &reading
 }
 
-// judgeUnder judges one row with a given version answering for head,
-// leaving the row's own evidence untouched: the versions map is copied
-// rather than written through, because it is the library's and every other
-// row is judged against it.
+// judgeUnder judges one row with a given version answering for head and
+// for the active designation, leaving the row's own evidence untouched: the
+// versions map is copied rather than written through, because it is the
+// library's and every other row is judged against it. A nil version judges
+// the estate as it stood before anything was active: head unresolved, and
+// no active version for a pinned reference to drift behind.
 func (b *builder) judgeUnder(r rowEvidence, reg *schemaregistry.Registry) conformance.Verdict {
 	ev := r.evidence
-	versions := make(map[string]*schemaregistry.Registry, len(ev.Schema.Versions)+1)
+	versions := make(map[string]*schemaregistry.Registry, len(ev.Schema.Versions)+2)
 	for ref, v := range ev.Schema.Versions {
 		versions[ref] = v
 	}
 	versions[requirements.TrackHead] = reg
+	ev.Schema.ActiveVersion = ""
+	if reg != nil {
+		versions[reg.Version()] = reg
+		ev.Schema.ActiveVersion = reg.Version()
+	}
 	ev.Schema.Versions = versions
 	return conformance.Evaluate(r.row, b.lib, ev, b.now)
 }

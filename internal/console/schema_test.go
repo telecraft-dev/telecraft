@@ -441,6 +441,119 @@ func TestSnapshotShowsAConditionallyRequiredMissAsAdvice(t *testing.T) {
 	}
 }
 
+// driftedEstate is schemaEstate with the estate a version ahead of the
+// requirement's pin: a second Schema Registry version is installed whose
+// span.db.client additionally demands enterprise.owner_email at required,
+// and the estate's designation names it active.
+func driftedEstate(t *testing.T, namesInUse []string, values map[string][]string) console.Inputs {
+	t.Helper()
+	in := schemaEstate(t, namesInUse, values)
+
+	active, _, err := schemaregistry.Import(
+		filepath.Join("..", "schemaregistry", "testdata", "registry-v1.4.0"),
+		schemaregistry.Source{
+			Repository: "git.example.test/estate/registry",
+			Ref:        "v1.5.0",
+			Commit:     "4a3b2c1d6e8f9057b2d3e4f5a6172839405b6c7d",
+		})
+	if err != nil {
+		t.Fatalf("importing the drifted Schema Registry: %v", err)
+	}
+	tightened := false
+	for i, g := range active.Groups {
+		if g.ID != "span.db.client" {
+			continue
+		}
+		active.Groups[i].Attributes = append(active.Groups[i].Attributes, schemaregistry.Attribute{
+			Ref:   "enterprise.owner_email",
+			Level: schemaregistry.Required,
+		})
+		tightened = true
+	}
+	if !tightened {
+		t.Fatal("the fixture registry has no span.db.client group to tighten")
+	}
+	if _, _, err := active.Write(in.SchemaRegistries); err != nil {
+		t.Fatalf("installing the drifted Schema Registry: %v", err)
+	}
+
+	activations := `catalogue:
+  active: v1.0.0
+  activations:
+    - version: v1.0.0
+      at: 2026-08-01T09:00:00Z
+      by: engineering-lead
+      impact:
+        summary: 'Catalogue v1.0.0: nothing in this estate is affected.'
+schema_registry:
+  active: v1.5.0
+  activations:
+    - version: v1.5.0
+      at: 2026-08-20T09:00:00Z
+      by: engineering-lead
+      impact:
+        summary: 'Schema Registry v1.5.0: span.db.client tightens.'
+`
+	if err := os.WriteFile(filepath.Join(in.Root, "activations.yaml"), []byte(activations), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return in
+}
+
+// conformingSpanNames is every attribute span.db.client demands at v1.4.0,
+// at every level: the reading of a Service that fully meets its pin.
+func conformingSpanNames() []string {
+	return []string{
+		"db.namespace", "db.operation.name", "db.system.name",
+		"enterprise.criticality_tier", "server.address", "server.port",
+	}
+}
+
+// A Service passing the Schema Registry version its requirement pins while
+// failing the active one reaches the card as library_drift: the finding the
+// last clause of the schema-conformance decision names, judged in the
+// evaluator and filed like every other conformance finding.
+func TestSnapshotRaisesRegistryDriftOnAPinnedReference(t *testing.T) {
+	in := driftedEstate(t, conformingSpanNames(), conformingValues())
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	f, found := schemaFinding(t, b)
+	if !found {
+		t.Fatal("no finding in the snapshot: a pinned reference behind the active version reads as clean")
+	}
+	if !strings.Contains(f.Summary, "library drift") {
+		t.Errorf("summary = %q, want library drift", f.Summary)
+	}
+	if f.Severity != console.SeverityViolation {
+		t.Errorf("severity = %q, want %q", f.Severity, console.SeverityViolation)
+	}
+	if f.WhoActs.Target.Kind != "service" {
+		t.Errorf("who-acts target = %+v, want the Service that owns the instrumentation", f.WhoActs.Target)
+	}
+	for _, want := range []string{"enterprise.owner_email", "v1.4.0", "v1.5.0", "pin"} {
+		if !strings.Contains(f.Remediation, want) {
+			t.Errorf("remediation does not carry %q: %q", want, f.Remediation)
+		}
+	}
+}
+
+// A Service meeting the active version too raises nothing: nothing has
+// fallen behind anything, however far ahead of the pin the estate moves.
+func TestSnapshotPassesAServiceMeetingTheActiveVersion(t *testing.T) {
+	in := driftedEstate(t, append(conformingSpanNames(), "enterprise.owner_email"), conformingValues())
+
+	b, err := console.Build(in)
+	if err != nil {
+		t.Fatalf("building the snapshot: %v", err)
+	}
+	if f, found := schemaFinding(t, b); found {
+		t.Errorf("a Service meeting both versions produced %q: %v", f.Summary, f.Remediation)
+	}
+}
+
 // A reading nobody declared is not an empty one. A schema requirement over a
 // signal the estate has said nothing about is unknown with a cause, never a
 // pass and never a breach invented out of a blank.
