@@ -1,10 +1,14 @@
 import { expect, test } from '@playwright/test'
 
-// The two controls ADR-0047 adds to the chrome: the theme, resolved in
-// three states, and the panel width, which belongs to the reader.
+// The two controls ADR-0047 adds: the theme, resolved in three states and
+// offered from the profile menu since the chrome compaction (issue #182),
+// and the panel width, which belongs to the reader.
 
 test('the theme resolves in three states and survives a reload', async ({ page }) => {
   await page.goto('/estate')
+
+  // The select sits in the profile menu, still three states as three words.
+  await page.getByTestId('profile-trigger').click()
 
   // Dark and light are stamped on the root element, which is what every
   // colour in tokens.css is selected by.
@@ -22,6 +26,7 @@ test('the theme resolves in three states and survives a reload', async ({ page }
 
   // `system` is a third state, not the absence of a choice: it follows the
   // machine, which this context reports as light.
+  await page.getByTestId('profile-trigger').click()
   await theme.selectOption('system')
   await expect(theme).toHaveValue('system')
   await expect(page.locator('html')).toHaveAttribute('data-theme', /light|dark/)

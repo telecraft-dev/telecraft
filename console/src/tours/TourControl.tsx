@@ -13,6 +13,12 @@ import { useTour } from './useTour'
  * where it is relevant (beside the claim panel, beside the composer's
  * save gate), not from a menu of every Tour the console owns, which is a
  * museum rather than an affordance.
+ *
+ * Icon only since the chrome compaction (issue #182): of the compact
+ * controls this is the one allowed to lose its word, because it changes
+ * nothing about what the page shows. The button stays the whole carrier of
+ * meaning, so it keeps its accessible name and says the same words in its
+ * tooltip.
  */
 export function TourControl() {
   const { tour, start } = useTour()
@@ -21,13 +27,13 @@ export function TourControl() {
     <Button
       data-testid="tour-trigger"
       aria-label="Take the tour of the console"
+      title="Take the tour of the console"
       // Restarting mid-Tour is what the control means while one is
       // running, and it is the same gesture: go back to the first Step.
       onClick={() => start(WELCOME_TOUR)}
       className={tour === undefined ? 'tour-trigger' : 'tour-trigger running'}
     >
       <Icon name="tour" />
-      Tour
     </Button>
   )
 }

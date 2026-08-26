@@ -1,15 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet } from '@tanstack/react-router'
-import { api } from '../api/client'
-import { demoMode } from '../api/demo'
-import { DemoBanner } from './DemoBanner'
 import { JumpToObject } from './JumpToObject'
 import { LensControl } from './LensControl'
-import { ThemeControl } from './ThemeControl'
+import { ProfileMenu } from './ProfileMenu'
 import { WORKSPACES } from './workspaces'
 import { TourControl } from '../tours/TourControl'
 import { TourRunner } from '../tours/TourRunner'
-import { Button } from '../ui/Button'
 
 // Navigation is activity-first: the five Workspaces are the only top-level
 // entries (ADR-0042 §1, amended by ADR-0056 §1). Switching Workspaces keeps
@@ -20,15 +15,6 @@ import { Button } from '../ui/Button'
 // must not drift.
 
 export function AppShell() {
-  const me = useQuery({ queryKey: ['me'], queryFn: api.me })
-  const queryClient = useQueryClient()
-  const signOut = useMutation({
-    mutationFn: api.logout,
-    // Dropping the me query flips the auth gate back to the sign-in
-    // surface; everything else is stale with it.
-    onSuccess: () => queryClient.resetQueries(),
-  })
-
   return (
     <div className="shell">
       <header className="chrome">
@@ -52,25 +38,16 @@ export function AppShell() {
             </Link>
           ))}
         </nav>
+        {/* Search leads the cluster, then the compact controls, then the
+            profile button (issue #182). The lens keeps its word at every
+            width: it changes what every number on the page means, where the
+            theme only changes how the page is drawn, so the theme rides in
+            the profile menu and the lens does not (issue #183). */}
         <div className="chrome-controls">
-          <LensControl />
-          <ThemeControl />
           <JumpToObject />
+          <LensControl />
           <TourControl />
-          {me.data && (
-            <span className="chrome-user" data-testid="chrome-user">
-              {me.data.name}
-            </span>
-          )}
-          {/* The demo has no session to end, so it says what it is
-              instead (issue #50). */}
-          {demoMode ? (
-            <DemoBanner />
-          ) : (
-            <Button data-testid="sign-out" onClick={() => signOut.mutate()}>
-              Sign out
-            </Button>
-          )}
+          <ProfileMenu />
         </div>
       </header>
       <main className="workspace-body">

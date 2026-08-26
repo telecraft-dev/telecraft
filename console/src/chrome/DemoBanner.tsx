@@ -4,10 +4,12 @@ import { Chip } from '../ui/Chip'
 
 /**
  * The demo's own statement of what it is (issue #50): a build-time
- * snapshot of one estate, not a live instance. It stands where the
- * sign-out control does on an instance, because in the demo there is no
- * session to end. It names the estate and the commit the snapshot was
- * taken at, so what is on screen is traceable to a reviewable tree.
+ * snapshot of one estate, not a live instance. It lives in the profile
+ * menu, where the session controls live on an instance, because in the
+ * demo there is no session to end (issue #182); the menu's trigger carries
+ * the read-only wording, so the statement is still one glance away. It
+ * names the estate and the commit the snapshot was taken at, so what is on
+ * screen is traceable to a reviewable tree.
  *
  * The repository is shown as text, never as a link: the bundle references
  * no external host at all (ADR-0045 §5), and that rule does not bend for a
