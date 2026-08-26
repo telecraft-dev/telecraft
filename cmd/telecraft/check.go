@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/telecraft-dev/telecraft/internal/activation"
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
 	"github.com/telecraft-dev/telecraft/internal/conformance"
@@ -19,6 +20,7 @@ import (
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
@@ -52,6 +54,15 @@ import (
 // counts toward the exit code at library_drift's severity. Floors come from
 // the shipped ADR-0023 §3 defaults until the authored floor-policy file
 // exists.
+//
+// -source also carries the estate's activation designation. Told it, the
+// run resolves tracking Schema Registry references to the active version
+// and judges each pinned schema-conformance scope against that version
+// beside its pin (ADR-0034 §2): a scope passing its pin while provably
+// failing the active version reads library_drift with the registry facet on
+// its row, the same reading the console files onto cards. A designation
+// naming a version that cannot be read fails closed, before any backend is
+// touched.
 func runCheck(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -61,7 +72,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	collectors := fs.String("collectors", "", "recorded collector estate reading: derives each row's Effective reading from the collectors that report it, with -estate as the override (needs -source)")
 	exemptionsDir := fs.String("exemptions", "", "exemptions directory holding authored waivers (optional)")
 	ownershipDir := fs.String("ownership", "", "estate ownership directory holding teams.yaml and the authored objects (needed only to resolve team-scoped exemptions)")
-	source := fs.String("source", "", "authored estate root holding teams/ and rendered/: enables library_drift detection (needs -catalogue)")
+	source := fs.String("source", "", "authored estate root holding teams/, rendered/ and the estate's activations: enables library_drift detection, including pinned Schema Registry references judged against the active version (needs -catalogue)")
 	artefact := fs.String("catalogue", "", "path to the active Catalogue artefact: enables library_drift detection (needs -source)")
 	endpoint := fs.String("endpoint", envOr("TELECRAFT_TELEMETRY_ENDPOINT", "http://localhost:9200"), "telemetry backend base URL")
 	apiKey := fs.String("api-key", os.Getenv("TELECRAFT_TELEMETRY_API_KEY"), "telemetry backend API key (optional)")
@@ -96,7 +107,31 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	lib, err := requirements.Load(*library, requirements.WithSchemaRegistries(*schemaRegistries))
+	// The activation designation rides -source, the estate's own record of
+	// which version of each substrate is active (ADR-0020 §9). It is read
+	// before the library loads, because the load resolves tracking
+	// references to the active Schema Registry version, and the evaluation
+	// judges each pinned schema-conformance scope against that version
+	// beside its pin, exactly as the console does (ADR-0034 §2). Without
+	// -source there is nothing to read it from, and neither happens.
+	var activeRegistry string
+	if *source != "" {
+		designation, err := activation.Load(*source)
+		if err != nil {
+			fmt.Fprintf(stderr, "check: %v\n", err)
+			return 2
+		}
+		activeRegistry, _ = designation.Active(activation.SchemaRegistry)
+	}
+
+	lib, err := requirements.Load(*library,
+		requirements.WithSchemaRegistries(*schemaRegistries),
+		requirements.WithActiveSchemaRegistry(activeRegistry))
+	if err != nil {
+		fmt.Fprintf(stderr, "check: %v\n", err)
+		return 2
+	}
+	activeSchema, err := conformance.ActiveSchemaRegistry(activeRegistry, *schemaRegistries, lib)
 	if err != nil {
 		fmt.Fprintf(stderr, "check: %v\n", err)
 		return 2
@@ -214,11 +249,16 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	}
 
 	for _, row := range rows {
-		ev := gatherEvidence(ctx, tel, row, lib, attrs)
+		ev := gatherEvidence(ctx, tel, row, lib, attrs, activeSchema)
 		verdict := conformance.Evaluate(row.Row, lib, ev, report.EvaluatedAt)
 		if err := waivers.Apply(&verdict, row, report.EvaluatedAt); err != nil {
 			fmt.Fprintf(stderr, "check: %v\n", err)
 			return 2
+		}
+		for _, f := range verdict.Findings {
+			if f.Outcome == conformance.LibraryDrift && f.Failing() {
+				report.Summary.LibraryDrift++
+			}
 		}
 		if row.Overridden {
 			// An override is visible or it is worthless: the whole point
@@ -343,8 +383,9 @@ func resolveEstate(estatePath, collectors, source string, now time.Time) (confor
 // registry's groups arrived, and the value sets of the attributes the
 // registry declares as enums. All are taken through the same seam and scoped
 // to the same Service. The registry versions come with the library, resolved
-// when its references were validated.
-func gatherEvidence(ctx context.Context, tel telemetry.Provider, row conformance.EstateRow, lib requirements.Library, attrs []string) conformance.Evidence {
+// when its references were validated; the active version travels beside them
+// so the drift arm can judge each pinned scope against it (ADR-0034 §2).
+func gatherEvidence(ctx context.Context, tel telemetry.Provider, row conformance.EstateRow, lib requirements.Library, attrs []string, active *schemaregistry.Registry) conformance.Evidence {
 	ev := conformance.Evidence{Effective: row.Effective, Observed: map[time.Duration]telemetry.Observed{}}
 	svc := telemetry.Service{Name: row.Service, Environment: row.Environment}
 	for _, w := range conformance.Windows(lib, row.Environment) {
@@ -360,7 +401,7 @@ func gatherEvidence(ctx context.Context, tel telemetry.Provider, row conformance
 		Values: func(r conformance.SchemaValueReading) telemetry.DistinctValues {
 			return tel.DistinctValues(ctx, svc, r.Kind, r.Attribute, r.Window)
 		},
-	})
+	}, conformance.WithActiveSchemaRegistry(active))
 	return ev
 }
 
@@ -424,9 +465,11 @@ type checkReport struct {
 	Rows              []rowReport       `json:"rows"`
 	AuthoringFindings []authoringReport `json:"authoring_findings,omitempty"`
 
-	// LibraryDrift is the repo's own section (REQ-025): library_drift
-	// findings are owned by authored config, never by a row, and share
-	// nothing with delivery divergence (ADR-0004, ADR-0026). Housekeeping
+	// LibraryDrift is the repo's own section (REQ-025): the requirement and
+	// component facets are owned by authored config, never by a row, and
+	// share nothing with delivery divergence (ADR-0004, ADR-0026). The
+	// registry facet is the exception: it is Service-owned (ADR-0034 §7),
+	// so it lands in its row's findings above, not here. Housekeeping
 	// carries the stale-but-passing claim nudges: visible, never counted.
 	LibraryDrift []driftFindingReport `json:"library_drift,omitempty"`
 	Housekeeping []housekeepingReport `json:"housekeeping,omitempty"`
@@ -488,12 +531,17 @@ type scoreReport struct {
 	Ratio   float64 `json:"ratio"`
 }
 
+// Facet is set on a library_drift finding alone: the referenced-object kind
+// the drift is about, sliced from the one finding kind (ADR-0026 §7). On a
+// row it is always the registry facet, a pinned Schema Registry reference
+// whose scope passes its pin and fails the active version (ADR-0034 §2).
 type findingReport struct {
 	Requirement  string   `json:"requirement"`
 	Title        string   `json:"title"`
 	Level        string   `json:"requirement_level"`
 	Owner        string   `json:"owner"`
 	Outcome      string   `json:"outcome"`
+	Facet        string   `json:"facet,omitempty"`
 	Severity     int      `json:"severity"`
 	Waived       string   `json:"waived,omitempty"`
 	WaiverReason string   `json:"waiver_reason,omitempty"`
@@ -514,7 +562,8 @@ type authoringReport struct {
 // The summary carries the waived total beside the failure counts, so a gate
 // green on exemptions is visibly green on exemptions (ADR-0017, ADR-0037).
 // library_drift findings ride counting_failures and are broken out beside
-// it, so a gate red on drift alone is visibly red on drift.
+// it, so a gate red on drift alone is visibly red on drift; the tally spans
+// both places the finding kind lands, the repo section and the rows.
 type summaryReport struct {
 	Rows             int `json:"rows"`
 	FailingRows      int `json:"failing_rows"`
@@ -543,17 +592,25 @@ func renderRow(v conformance.Verdict) rowReport {
 		},
 	}
 	for _, f := range v.Findings {
+		// The evaluator's remediation wins where it wrote one: a
+		// schema-conformance finding names the gap only the evaluation
+		// could see, and the authored line is the fallback (ADR-0034 §7).
+		remediation := f.Remediation
+		if remediation == "" {
+			remediation = f.Requirement.Remediation
+		}
 		rr.Findings = append(rr.Findings, findingReport{
 			Requirement:  f.Requirement.ID,
 			Title:        f.Requirement.Title,
 			Level:        string(f.Requirement.Level),
 			Owner:        f.Requirement.Owner,
 			Outcome:      string(f.Outcome),
+			Facet:        f.Facet,
 			Severity:     f.Outcome.Severity(),
 			Waived:       string(f.Waived),
 			WaiverReason: f.WaiverReason,
 			Detail:       f.Detail,
-			Remediation:  f.Requirement.Remediation,
+			Remediation:  remediation,
 		})
 	}
 	return rr
