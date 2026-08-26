@@ -255,6 +255,13 @@ type Tier struct {
 	Serving *Serving `yaml:"serving"`
 	Hops    []Hop    `yaml:"hops"`
 
+	// LiveCheck opts the Tier in to the live-check tap (ADR-0034 §5):
+	// presence alone is the opt-in, and the render adds the teed
+	// live-check pipelines beside the Tier's lanes. Absent on every Tier
+	// authored before the block existed, which is the whole compatibility
+	// story: no block, no tap.
+	LiveCheck *LiveCheckOptIn `yaml:"live_check"`
+
 	// Team is the owning team's directory segment, derived from the layout
 	// (ADR-0027), never authored.
 	Team string `yaml:"-"`

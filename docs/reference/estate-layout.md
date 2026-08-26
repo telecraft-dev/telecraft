@@ -16,6 +16,7 @@ place in the tree gives it the id every reference uses.
 ```
 teams.yaml                            # the Team-tree seam
 telemetry.yaml                        # the self-telemetry destination
+live-check.yaml                       # optional: the live-check destination
 allow-lists.yaml                      # optional: every team's declared list
 grants.yaml                           # optional: every Grant
 users.yaml                            # optional: the sign-in seam
@@ -69,6 +70,21 @@ moving a team under a new parent rewrites no path and breaks no id.
   `/v1/metrics`, `/v1/logs`, or `/v1/traces` is a load error: declare the base
   endpoint instead. Over `grpc` there is no request path, so the endpoint
   renders exactly as you wrote it.
+
+`live-check.yaml`
+: The estate-level live-check destination, under a `live_check:` key.
+  Optional: the file only matters once a Tier opts in to the Live-check
+  tap with a `live_check` block in its own file, and a Tier opting in
+  while this file is absent is a render error naming both files. Fields are `endpoint` (required), `protocol` (`grpc`,
+  the default and the only accepted value), `environments` (a map from
+  Environment name to an overriding endpoint), and `sample_percent` (the
+  default sample rate for every opted-in Tier, 10 unless set, above 0 and
+  at most 100).
+
+  `endpoint` is the base OTLP endpoint of the live-check service, host and
+  port. An endpoint or an override that ends in `/v1/metrics`, `/v1/logs`,
+  or `/v1/traces` is a load error: declare the base endpoint. See
+  [Tiers](tiers.md) for what opting in renders.
 
 `allow-lists.yaml`, `grants.yaml`
 : The Allow-list policy. Both are optional. Without them, every team can use
@@ -224,7 +240,7 @@ line:
 
 | Path | Written by |
 |---|---|
-| `teams.yaml`, `telemetry.yaml`, `allow-lists.yaml`, `grants.yaml`, `users.yaml` | you |
+| `teams.yaml`, `telemetry.yaml`, `live-check.yaml`, `allow-lists.yaml`, `grants.yaml`, `users.yaml` | you |
 | `teams/**` | you |
 | `rendered/**` | `telecraft render` |
 | `CODEOWNERS` | `telecraft render` |

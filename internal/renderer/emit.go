@@ -10,6 +10,7 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
+	"github.com/telecraft-dev/telecraft/internal/livecheck"
 )
 
 // emitCollector builds one Tier's plain otelcol YAML (REQ-032): component
@@ -39,10 +40,33 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 		pipelines[s] = p
 	}
 
+	// The live-check branch (ADR-0034 §5): an opted-in Tier tees one
+	// pipeline per wired lane, sharing the lane's receivers, sampling at
+	// the resolved rate, exporting only to the live-check destination.
+	// The branch sits beside the lanes, never inside them, so the main
+	// pipelines are identical with and without it and the tap dying costs
+	// findings, never data (REQ-002). Profiles are not teed: the tap
+	// assesses spans, metrics and logs, and a profile finding has no
+	// place in the platform's signal vocabulary (livecheck.SignalFor).
+	var teedSignals []blueprint.Signal
+	if tier.LiveCheck != nil && in.LiveCheck != nil {
+		for _, s := range blueprint.Signals {
+			if s == blueprint.Profiles {
+				continue
+			}
+			if _, wired := pipelines[s]; wired {
+				teedSignals = append(teedSignals, s)
+			}
+		}
+	}
+
 	// Record the exporter side while it is being decided (ADR-0040 §1).
 	// The record is taken before the untrusted-Hop strip is prepended,
 	// because the strip is a generated processor and changes nothing about
-	// where the lane's data leaves.
+	// where the lane's data leaves. The teed live-check pipelines are
+	// recorded like any other wired pipeline: their out-rate is a real
+	// per-exporter reading, and the record's contract is to describe every
+	// pipeline the artefact wires.
 	var exporters LaneExporters
 	for _, s := range blueprint.Signals {
 		p, wired := pipelines[s]
@@ -53,6 +77,9 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 			exporters = LaneExporters{}
 		}
 		exporters[string(s)] = append([]string(nil), p.exporters...)
+	}
+	for _, s := range teedSignals {
+		exporters[liveCheckPipelineName(string(s))] = []string{livecheck.ExporterID}
 	}
 
 	// The untrusted-Hop strip (REQ-034, ADR-0007): any untrusted arrival
@@ -130,6 +157,34 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 		// the section too, keeping the artefact legible top to bottom.
 		prependPair(section, key, def)
 	}
+	if len(teedSignals) > 0 {
+		rate := in.LiveCheck.SampleRate(tier)
+		section, ok := sections[catalogue.Processor]
+		if !ok {
+			section = mapping()
+			sections[catalogue.Processor] = section
+		}
+		def, err := configNode(map[string]any{"sampling_percentage": rate})
+		if err != nil {
+			return nil, nil, []string{fmt.Sprintf("%s: %v", ctx, err)}
+		}
+		key := scalar(LiveCheckSamplerID)
+		key.HeadComment = fmt.Sprintf("Generated: samples %s per cent of each lane's intake for the\nlive-check service.", formatRate(rate))
+		appendPair(section, key, def)
+
+		section, ok = sections[catalogue.Exporter]
+		if !ok {
+			section = mapping()
+			sections[catalogue.Exporter] = section
+		}
+		def, err = configNode(map[string]any{"endpoint": in.LiveCheck.Resolve(tier.Environment)})
+		if err != nil {
+			return nil, nil, []string{fmt.Sprintf("%s: %v", ctx, err)}
+		}
+		key = scalar(livecheck.ExporterID)
+		key.HeadComment = "Generated: carries the live-check sample. Only the live-check\npipelines export through it; the data lanes do not."
+		appendPair(section, key, def)
+	}
 	for _, class := range []struct {
 		class   catalogue.Class
 		section string
@@ -165,6 +220,25 @@ func emitCollector(in Inputs, tier Tier, bp blueprint.Blueprint, instances map[s
 			}
 			appendPair(laneNode, scalar("exporters"), sequence(p.exporters))
 			appendPair(pipelinesNode, scalar(string(s)), laneNode)
+		}
+		for i, s := range teedSignals {
+			// The teed branch shares the lane's receivers only: the lane's
+			// own processors stay out of it, and the strip stays in, because
+			// nothing may observe the platform namespace on inbound data
+			// before the strip, the live-check exporter included (ADR-0007).
+			processors := []string{LiveCheckSamplerID}
+			if strip {
+				processors = []string{StripProcessorID, LiveCheckSamplerID}
+			}
+			laneNode := mapping()
+			appendPair(laneNode, scalar("receivers"), sequence(pipelines[s].receivers))
+			appendPair(laneNode, scalar("processors"), sequence(processors))
+			appendPair(laneNode, scalar("exporters"), sequence([]string{livecheck.ExporterID}))
+			key := scalar(liveCheckPipelineName(string(s)))
+			if i == 0 {
+				key.HeadComment = "Generated: the live-check pipelines. Each shares its lane's\nreceivers and exports only to the live-check service."
+			}
+			appendPair(pipelinesNode, key, laneNode)
 		}
 		appendPair(service, scalar("pipelines"), pipelinesNode)
 	}

@@ -74,6 +74,11 @@ func runRender(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "render: %v\n", err)
 		return 2
 	}
+	liveCheck, err := renderer.LoadLiveCheck(*estate)
+	if err != nil {
+		fmt.Fprintf(stderr, "render: %v\n", err)
+		return 2
+	}
 
 	res, err := renderer.Render(renderer.Inputs{
 		Estate:        est,
@@ -83,6 +88,7 @@ func runRender(args []string, stdout, stderr io.Writer) int {
 		Tree:          tree,
 		Floors:        renderer.DefaultFloors(),
 		SelfTelemetry: selfTel,
+		LiveCheck:     liveCheck,
 		Commit:        *commit,
 	})
 	if err != nil {
