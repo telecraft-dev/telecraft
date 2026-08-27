@@ -10,6 +10,10 @@
     "production",
     "staging"
   ],
+  "settings": {
+    "opampEndpoint": "https://opamp.estate.internal:4320",
+    "selfTelemetryEndpoint": "https://otlp.estate.internal:4317"
+  },
   "teams": {
     "id": "engineering",
     "name": "Engineering",
@@ -465,6 +469,55 @@
         "asOf": "2026-08-18T11:59:00Z",
         "incarnations": 12
       }
+    },
+    {
+      "contractVersion": 6,
+      "tier": "data-flow/payments-gateway",
+      "name": "payments-gateway",
+      "team": "data-flow",
+      "environment": "production",
+      "serviceClass": "C2",
+      "bands": {
+        "delivery": {
+          "state": "unknown",
+          "worstSeverity": "none"
+        },
+        "expectation": {
+          "state": "unknown",
+          "worstSeverity": "none"
+        },
+        "conformance": {
+          "state": "unknown",
+          "worstSeverity": "none"
+        }
+      },
+      "findingCounts": {},
+      "population": {
+        "matched": 0,
+        "floorSource": "absent",
+        "state": "never_seen",
+        "since": "2026-08-24T09:00:00Z"
+      },
+      "signals": [
+        {
+          "signal": "logs",
+          "lane": "unknown"
+        },
+        {
+          "signal": "metrics",
+          "lane": "unknown"
+        },
+        {
+          "signal": "traces",
+          "lane": "unknown"
+        }
+      ],
+      "churn": {
+        "known": false,
+        "asOf": "2026-08-24T09:00:00Z",
+        "cause": "no collector has ever matched this Tier",
+        "incarnations": 0
+      }
     }
   ],
   "drawers": {
@@ -880,6 +933,11 @@
     "product/storefront-edge": {
       "telecraft.tier": "edge",
       "k8s.namespace": "storefront"
+    },
+    "data-flow/payments-gateway": {
+      "deployment.environment": "production",
+      "service.namespace": "payments",
+      "telecraft.tier": "payments-gateway"
     }
   },
   "rollouts": [
@@ -1272,6 +1330,19 @@
       "version": 4,
       "team": "data-flow",
       "tier": "data-flow/gateway",
+      "fits": {
+        "substrates": [
+          "kubernetes"
+        ],
+        "environments": [
+          "production",
+          "staging"
+        ],
+        "serviceClasses": [
+          "C1",
+          "C2"
+        ]
+      },
       "locals": {
         "otlp-in": {
           "class": "receiver",
@@ -1351,6 +1422,18 @@
       "version": 2,
       "team": "data-flow",
       "tier": "data-flow/edge",
+      "fits": {
+        "substrates": [
+          "kubernetes",
+          "linux"
+        ],
+        "environments": [
+          "production"
+        ],
+        "serviceClasses": [
+          "C1"
+        ]
+      },
       "locals": {
         "otlp-in": {
           "class": "receiver",
@@ -1395,8 +1478,22 @@
     {
       "id": "infosec/audit-standard",
       "name": "audit-standard",
-      "version": 1,
+      "version": 2,
       "team": "infosec",
+      "fits": {
+        "substrates": [
+          "linux",
+          "windows"
+        ],
+        "environments": [
+          "production"
+        ],
+        "serviceClasses": [
+          "C1",
+          "C2",
+          "C3"
+        ]
+      },
       "locals": {
         "otlp-in": {
           "class": "receiver",
@@ -1430,6 +1527,20 @@
           "type": "batch"
         }
       }
+    }
+  ],
+  "endorsements": [
+    {
+      "blueprint": "data-flow/gateway-standard",
+      "version": 4,
+      "owner": "engineering-lead",
+      "team": "engineering"
+    },
+    {
+      "blueprint": "infosec/audit-standard",
+      "version": 1,
+      "owner": "engineering-lead",
+      "team": "engineering"
     }
   ],
   "catalogue": [

@@ -29,9 +29,11 @@ test('shows ratio-plus-worst per kind, and no blended score anywhere', async ({ 
   await expect(page.getByTestId('standing-conformance')).toBeVisible()
   await expect(page.getByTestId('standing-neutral')).toBeVisible()
 
-  // The fixture estate has three production Tiers; `data-flow/gateway`
-  // carries the violation and `data-flow/edge` the dead tap's advisory
-  // finding, so conformance passes one of the three.
+  // The fixture estate has four production Tiers, and the never_seen
+  // `data-flow/payments-gateway` is neutral, so it joins no denominator
+  // (ADR-0030). Of the three with verdicts, `data-flow/gateway` carries
+  // the violation and `data-flow/edge` the dead tap's advisory finding,
+  // so conformance passes one of the three.
   await expect(page.getByTestId('standing-conformance')).toContainText('1/3')
 
   // ADR-0056 §3: a single health score is the one thing this surface must

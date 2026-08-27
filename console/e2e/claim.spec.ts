@@ -87,7 +87,7 @@ test('attach exits as a user-attributed PR widening the closest candidate Tier',
   )
 })
 
-test('draft opens Compose with the selector pre-filled and proposes the Tier binding', async ({
+test('draft hands off to the Add a Tier panel with the selector pre-filled', async ({
   page,
 }) => {
   await page.goto('/estate?view=list&ungoverned=true&herd=pay-edge-7f3a%2Cpay-edge-b41c')
@@ -99,19 +99,15 @@ test('draft opens Compose with the selector pre-filled and proposes the Tier bin
     'teams/data-flow/tiers/payments-edge.yaml',
   )
   await page.getByTestId('claim-draft').click()
-  // Compose opens on a fresh draft bound to the new Tier, selector
-  // pre-filled: generalised, never a list of instance ids.
-  await expect(page).toHaveURL(/\/compose\?/)
-  await expect(page).toHaveURL(/tier=data-flow%2Fpayments-edge/)
-  const banner = page.getByTestId('claim-banner')
-  await expect(banner).toBeVisible()
-  await expect(page.getByTestId('claim-banner-selector')).toContainText('k8s.namespace=payments')
-  await expect(page.getByTestId('claim-banner-selector')).not.toContainText('pay-edge')
-  // The exit is the composer's own PR, now authoring the Tier binding too.
-  await page.getByTestId('save-button').click()
-  await expect(page.getByTestId('proposal')).toBeVisible()
-  await expect(page.getByTestId('proposal-branch')).toHaveText('claim/data-flow/payments-edge')
-  await expect(page.getByTestId('proposal-attribution')).toContainText('Demo user')
+  // The Add-a-Tier panel opens in place (ADR-0060 §1: one Tier-authoring
+  // flow, two doors), the typed name and the suggested selector carried
+  // over: generalised, never a list of instance ids.
+  await expect(page.getByTestId('add-tier-panel')).toBeVisible()
+  await expect(page.getByTestId('tier-name')).toHaveValue('payments-edge')
+  const selector = page.getByTestId('tier-selector')
+  await expect(selector).toHaveValue(/k8s\.namespace=payments/)
+  await expect(selector).toHaveValue(/telecraft\.tier=edge/)
+  await expect(selector).not.toHaveValue(/pay-edge-/)
 })
 
 test('served-Unmatched and foreign collectors enter the same flow', async ({ page }) => {

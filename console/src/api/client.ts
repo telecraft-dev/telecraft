@@ -14,6 +14,7 @@ import type {
   ClaimRequest,
   CollectorRow,
   ComposeVerdict,
+  EndorsementDoc,
   EstatePayload,
   GovernancePayload,
   GovernanceProposalRequest,
@@ -24,6 +25,8 @@ import type {
   ProposalOutcome,
   ProposalRef,
   RolloutProgress,
+  SetupGuidance,
+  TierProposalRequest,
   TopologyPayload,
 } from './types'
 import { demoApi, demoMode } from './demo'
@@ -185,6 +188,39 @@ export const liveApi: PlatformApi = {
     if (!res.ok) {
       throw new Error(
         `The server could not complete this request. /api/v1/activations/proposals: ${res.status} ${res.statusText}`,
+      )
+    }
+    return { proposal: (await res.json()) as ProposalRef }
+  },
+
+  /** Every Endorsement held on this estate (ADR-0061 §2). */
+  endorsements: () => get<EndorsementDoc[]>('/api/v1/endorsements'),
+
+  /** The never_seen card's setup guidance, generated on view (ADR-0060 §4). */
+  setup: (tier: string) =>
+    get<SetupGuidance>(`/api/v1/setup?tier=${encodeURIComponent(tier)}`),
+
+  /**
+   * The Tier-first flow's PR exit through the forge adapter (ADR-0060 §2).
+   * A 422 is the fail-closed shape of refusal: the problems come back as
+   * data for the flow to show, never as a thrown error.
+   */
+  proposeTier: async (request: TierProposalRequest): Promise<ProposalOutcome> => {
+    const res = await fetch('/api/v1/tiers/proposals', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+    if (res.status === 401) {
+      throw new UnauthenticatedError('/api/v1/tiers/proposals')
+    }
+    if (res.status === 422) {
+      const body = (await res.json()) as { problems?: string[] }
+      return { problems: body.problems ?? ['the Tier proposal was refused'] }
+    }
+    if (!res.ok) {
+      throw new Error(
+        `The server could not complete this request. /api/v1/tiers/proposals: ${res.status} ${res.statusText}`,
       )
     }
     return { proposal: (await res.json()) as ProposalRef }

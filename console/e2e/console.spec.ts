@@ -64,7 +64,7 @@ test('jump-to-object reaches a Service and traces its Paths on the canvas', asyn
   // Tiers off the traced Paths dim; the traced ones stay lit (ADR-0044 §4).
   await expect(
     page.getByTestId('topology-canvas').locator('.canvas-node.kind-tier.dimmed'),
-  ).toHaveCount(1)
+  ).toHaveCount(2)
 })
 
 test('a deep-link URL restores workspace, object, and lens state', async ({ page }) => {

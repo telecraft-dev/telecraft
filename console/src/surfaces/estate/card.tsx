@@ -15,6 +15,7 @@ import type { CardStanding } from '../../estate/order'
 import { totalFindings } from '../../estate/order'
 import {
   errorReadings,
+  formatAge,
   formatChurn,
   formatFreshness,
   formatItems,
@@ -28,6 +29,14 @@ import {
   NO_READINGS_YET,
   readingTitle,
 } from '../../estate/readings'
+import {
+  defaultImage,
+  foreignRun,
+  identityBlock,
+  kubernetesManifest,
+  packagesNotes,
+  supervisorYaml,
+} from '../../estate/setup'
 import { deepLinkFor } from '../../objectref'
 import { buttonClass, Button } from '../../ui/Button'
 import { Chip } from '../../ui/Chip'
@@ -44,6 +53,18 @@ const BAND_LABEL: Record<BandName, string> = {
   delivery: 'Delivery',
   expectation: 'Expectation',
   conformance: 'Conformance',
+}
+
+/**
+ * The population line for a Tier whose selector has never matched a
+ * collector: a normal Tuesday, never a severity hue (ADR-0030, ADR-0060
+ * §3). The age doubles as how long the setup guidance has gone
+ * unfollowed.
+ */
+function neverSeenLine(population: CardFace['population']): string {
+  const since = population.since === undefined ? Number.NaN : Date.parse(population.since)
+  if (Number.isNaN(since)) return 'no collectors yet'
+  return `no collectors yet, watching ${formatAge((Date.now() - since) / 1000)}`
 }
 
 /**
@@ -74,7 +95,9 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
       <p
         className="matrix-quiet"
         data-testid={`matrix-${tier}-quiet`}
-        title={readingTitle(firstLane.volume)}
+        // A never_seen Tier's lanes carry no readings at all, not unknown
+        // ones (ADR-0060 §3), so there is no as-of to put in the title.
+        title={firstLane.volume !== undefined ? readingTitle(firstLane.volume) : undefined}
       >
         {NO_READINGS_YET}
       </p>
@@ -189,15 +212,24 @@ export function CardFaceView({
         <SignalMatrix tier={card.tier} signals={card.signals ?? []} />
       </button>
       <footer className="card-foot">
-        {/* A collector count is a door to the flat list, pre-filtered (ADR-0042 §3.4). */}
-        <Link
-          to="/estate"
-          search={(prev) => ({ ...prev, view: 'list' as const, tier: card.tier })}
-          className="count-door"
-          data-testid={`card-collectors-${card.tier}`}
-        >
-          {formatCount(card.population.matched)} matched
-        </Link>
+        {/* A collector count is a door to the flat list, pre-filtered
+            (ADR-0042 §3.4). A never_seen population has no count to door
+            on: the line says the Tier is waiting, in the neutral voice
+            ADR-0030 gives the state (ADR-0060 §3). */}
+        {card.population.state === 'never_seen' ? (
+          <span className="population-quiet" data-testid={`card-collectors-${card.tier}`}>
+            {neverSeenLine(card.population)}
+          </span>
+        ) : (
+          <Link
+            to="/estate"
+            search={(prev) => ({ ...prev, view: 'list' as const, tier: card.tier })}
+            className="count-door"
+            data-testid={`card-collectors-${card.tier}`}
+          >
+            {formatCount(card.population.matched)} matched
+          </Link>
+        )}
         <span>{count(totalFindings(card), 'finding')}</span>
       </footer>
     </div>
@@ -288,6 +320,171 @@ function WhoActsChip({ finding }: { finding: Finding }) {
   )
 }
 
+type DeliveryPath = 'served' | 'foreign'
+type Substrate = 'kubernetes' | 'linux' | 'windows'
+
+/** A copy control: says what it does, then that it happened, in the same words. */
+function CopyButton({ text, testId }: { text: string; testId: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <Button
+      tone="quiet"
+      className="setup-copy"
+      data-testid={testId}
+      onClick={() => {
+        void navigator.clipboard.writeText(text)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 2000)
+      }}
+    >
+      {copied ? 'Copied' : 'Copy'}
+    </Button>
+  )
+}
+
+/** One copyable snippet: a label naming what it is, the text, a copy control. */
+function SetupBlock({ label, testId, text }: { label: string; testId: string; text: string }) {
+  return (
+    <div className="setup-block" data-testid={testId}>
+      <p className="setup-block-label">
+        <span>{label}</span>
+        <CopyButton text={text} testId={`${testId}-copy`} />
+      </p>
+      <pre>{text}</pre>
+    </div>
+  )
+}
+
+/**
+ * Setup guidance on the never_seen card (ADR-0060 §3 to §6): the waiting
+ * room's content, generated on view and never committed (§4). The
+ * delivery-path and substrate choices are transient presentation, so they
+ * live here rather than in the URL. The snippet text itself comes from
+ * `estate/setup.ts`, pure and unit-tested.
+ */
+function SetupSection({ tier }: { tier: string }) {
+  // Hooks first, before any pending or error rendering.
+  const guidance = useQuery({
+    queryKey: ['setup', tier],
+    queryFn: () => api.setup(tier),
+  })
+  const [path, setPath] = useState<DeliveryPath>('served')
+  const [substrate, setSubstrate] = useState<Substrate>('kubernetes')
+  // On Served for Kubernetes the image is the adopter's to supply, never
+  // a default (ADR-0060 §5); on Foreign the upstream image pre-fills and
+  // stays editable (§6). Two fields, so switching paths forgets nothing.
+  const [servedImage, setServedImage] = useState('')
+  const [foreignImage, setForeignImage] = useState<string>()
+
+  const pathChoice = (value: DeliveryPath, label: string) => (
+    <button
+      type="button"
+      data-testid={`setup-${value}`}
+      className={buttonClass('secondary', path === value ? 'setup-choice selected' : 'setup-choice')}
+      aria-pressed={path === value}
+      onClick={() => setPath(value)}
+    >
+      {label}
+    </button>
+  )
+  const substrateChoice = (value: Substrate, label: string) => (
+    <button
+      type="button"
+      data-testid={`setup-${value}`}
+      className={buttonClass(
+        'secondary',
+        substrate === value ? 'setup-choice selected' : 'setup-choice',
+      )}
+      aria-pressed={substrate === value}
+      onClick={() => setSubstrate(value)}
+    >
+      {label}
+    </button>
+  )
+
+  const g = guidance.data
+  const foreignValue = g === undefined ? '' : (foreignImage ?? defaultImage(g.collectorRelease))
+
+  return (
+    <section className="panel-setup" data-testid="panel-setup">
+      <h3>Setup</h3>
+      {guidance.isPending && <p className="surface-status">Loading the setup guidance…</p>}
+      {guidance.isError && <p className="surface-status">The setup guidance failed to load.</p>}
+      {g && (
+        <>
+          <div className="setup-toggle" role="group" aria-label="Delivery path">
+            {pathChoice('served', 'Served')}
+            {pathChoice('foreign', 'Foreign')}
+          </div>
+          {path === 'served' && (
+            <div className="setup-toggle" role="group" aria-label="Substrate">
+              {substrateChoice('kubernetes', 'Kubernetes')}
+              {substrateChoice('linux', 'Linux server')}
+              {substrateChoice('windows', 'Windows server')}
+            </div>
+          )}
+          {path === 'served' && substrate === 'kubernetes' && (
+            <>
+              <label className="setup-field">
+                <span>Image</span>
+                <input
+                  data-testid="setup-image"
+                  value={servedImage}
+                  placeholder="YOUR_IMAGE"
+                  onChange={(event) => setServedImage(event.target.value)}
+                />
+              </label>
+              <p className="setup-note">
+                The image must contain both the collector and the Supervisor. OpenTelemetry
+                publishes no combined image, so supply your own.
+              </p>
+            </>
+          )}
+          {path === 'foreign' && (
+            <label className="setup-field">
+              <span>Image</span>
+              <input
+                data-testid="setup-image"
+                value={foreignValue}
+                onChange={(event) => setForeignImage(event.target.value)}
+              />
+            </label>
+          )}
+          <SetupBlock
+            label="Identity the selector matches"
+            testId="block-identity"
+            text={identityBlock(g)}
+          />
+          {path === 'served' && (
+            <SetupBlock label="supervisor.yaml" testId="block-supervisor" text={supervisorYaml(g)} />
+          )}
+          {path === 'served' && substrate === 'kubernetes' && (
+            <SetupBlock
+              label="Kubernetes manifest template"
+              testId="block-manifest"
+              text={kubernetesManifest(g, servedImage.trim() === '' ? undefined : servedImage.trim())}
+            />
+          )}
+          {path === 'served' && substrate !== 'kubernetes' && (
+            <SetupBlock
+              label="Packages and units"
+              testId="block-packages"
+              text={packagesNotes(g, substrate)}
+            />
+          )}
+          {path === 'foreign' && (
+            <SetupBlock
+              label="Rendered artefact"
+              testId="block-artefact"
+              text={foreignRun(g, foreignValue)}
+            />
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 /**
  * The card panel: face facts plus the on-demand drawer (ADR-0041 §3):
  * findings with who-acts chips and mandatory remediation, dampening state
@@ -348,21 +545,31 @@ export function CardPanel({ card }: { card: CardFace }) {
         )}
         <dt>Population</dt>
         <dd>
-          <Link
-            to="/estate"
-            search={(prev) => ({ ...prev, view: 'list' as const, tier: card.tier })}
-            className="count-door"
-            data-testid={`panel-collectors-${card.tier}`}
-          >
-            {formatCount(card.population.matched)} matched
-          </Link>
-          {card.population.floor !== undefined && (
+          {card.population.state === 'never_seen' ? (
+            // No door: the flat list has no rows for this Tier yet, and a
+            // door to an empty room says less than the line does
+            // (ADR-0060 §3). Neutral, never a severity hue (ADR-0030).
+            <span className="population-quiet">{neverSeenLine(card.population)}</span>
+          ) : (
             <>
-              , floor {card.population.floor} ({card.population.floorSource}) {why('floor')}
+              <Link
+                to="/estate"
+                search={(prev) => ({ ...prev, view: 'list' as const, tier: card.tier })}
+                className="count-door"
+                data-testid={`panel-collectors-${card.tier}`}
+              >
+                {formatCount(card.population.matched)} matched
+              </Link>
+              {card.population.floor !== undefined && (
+                <>
+                  , floor {card.population.floor} ({card.population.floorSource}) {why('floor')}
+                </>
+              )}
             </>
           )}
         </dd>
       </dl>
+      {card.population.state === 'never_seen' && <SetupSection tier={card.tier} />}
       <ul className="panel-bands">
         {BAND_ORDER.map((band) => {
           const { state, worstSeverity, worstFinding } = card.bands[band]

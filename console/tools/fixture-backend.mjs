@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url'
 import { claimContextProblems, previewClaim, submitClaim, ungovernedSummary } from './claims.mjs'
 import { propose, validate } from './evaluator.mjs'
 import { rolloutProgress } from './rollout.mjs'
+import { setupGuidance, tierProblems } from './tiers.mjs'
 
 const args = process.argv.slice(2)
 const argValue = (flag) => {
@@ -146,6 +147,9 @@ const api = {
     // Ungoverned collectors in view (ADR-0031 §2): the dedicated band's
     // counts: concern, never failure, in no compliance denominator.
     ungoverned: ungovernedSummary(estate),
+    // The declared estate settings setup guidance fills itself in from
+    // (ADR-0060 §4).
+    settings: estate.settings,
   }),
   // The on-demand drawer (ADR-0041 §3): findings with who-acts routing and
   // why-provenance. A Tier without a seeded drawer answers empty, honestly.
@@ -211,6 +215,14 @@ const api = {
     allowLists: estate.allowLists,
     grants: estate.grants,
   }),
+  // Every Endorsement held on this estate (ADR-0061 §2): a governance act
+  // naming a Blueprint at a pinned version, authored at the top of the tree.
+  '/api/v1/endorsements': () => estate.endorsements ?? [],
+  // Setup guidance for a never_seen Tier (ADR-0060 §4): generated on view
+  // from the Tier, the activated Catalogue version, and the estate
+  // settings. An unknown Tier falls through to the 404, never invented.
+  '/api/v1/setup': (url) =>
+    setupGuidance(estate, catalogues.active, url.searchParams.get('tier') ?? ''),
 }
 
 // activationProblems holds the rules an activation proposal is refused on,
@@ -369,6 +381,7 @@ function governanceProblems(request) {
 }
 
 let proposalCount = 0
+let tierProposalCount = 0
 
 async function handleProposal(req, res) {
   const request = await readBody(req)
@@ -452,6 +465,29 @@ const server = createServer(async (req, res) => {
       return
     }
     await handleProposal(req, res)
+    return
+  }
+
+  // The Tier-first onboarding flow's exit (ADR-0060 §2): a PR authoring
+  // the new Tier via the forge seam, fail closed with the problems named
+  // (422), session-gated like every governed endpoint.
+  if (url.pathname === '/api/v1/tiers/proposals' && req.method === 'POST') {
+    if (!sessionOf(req)) {
+      sendJSON(res, 401, { error: 'sign in to use this API' })
+      return
+    }
+    const body = await readBody(req)
+    const problems = tierProblems(estate, body)
+    if (problems.length > 0) {
+      sendJSON(res, 422, { problems })
+      return
+    }
+    tierProposalCount += 1
+    sendJSON(res, 200, {
+      id: `tier-${tierProposalCount}`,
+      url: `https://forge.example/estate/pull/${200 + tierProposalCount}`,
+      branch: `telecraft/tier-${tierProposalCount}`,
+    })
     return
   }
 

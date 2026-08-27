@@ -2657,3 +2657,209 @@
   margin: var(--space-2) 0 0;
   font-size: var(--text-s);
 }
+
+/* Blueprints browse view (ADR-0061). Styles land here; the marker keeps
+   parallel edits apart. */
+
+.compose-list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.blueprint-browse {
+  flex: 1;
+  min-width: 0;
+}
+
+.browse-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.browse-filters label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-muted);
+}
+
+.browse-filters select {
+  font: inherit;
+}
+
+.browse-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.browse-entry {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--colour-rule);
+}
+
+.browse-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.browse-entry-head h2 {
+  font-size: var(--text-base);
+  margin: 0;
+}
+
+.browse-fits {
+  margin: var(--space-2) 0 0;
+}
+
+.browse-fits div {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-s);
+}
+
+.browse-fits dt {
+  color: var(--colour-text-muted);
+}
+
+.browse-fits dd {
+  margin: 0;
+}
+
+.browse-satisfies {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-s);
+  color: var(--colour-text-muted);
+}
+
+.browse-doors {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Add-a-Tier flow (ADR-0060 §1, §2). Styles land here; the marker keeps
+   parallel edits apart. */
+
+.estate-header .add-tier-door {
+  margin-left: auto;
+}
+
+.add-tier-section {
+  margin-bottom: var(--space-4);
+}
+
+.add-tier-section h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.add-tier-section label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-m);
+}
+
+.add-tier-section .section-summary {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-s);
+}
+
+.add-tier-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.add-tier-panel textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--text-s);
+}
+
+.add-tier-panel .item-meta {
+  margin: var(--space-1) 0 0;
+}
+
+/* Setup guidance on the never_seen card (ADR-0060 §3 to §6). Styles land
+   here; the marker keeps parallel edits apart. */
+
+/* The waiting population line: neutral words, muted like every other
+   quiet reading, never a severity hue (ADR-0030). */
+.population-quiet {
+  color: var(--colour-text-muted);
+}
+
+.panel-setup h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--text-m);
+}
+
+.setup-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+}
+
+.setup-toggle .setup-choice {
+  font-size: var(--text-s);
+}
+
+.setup-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-s);
+}
+
+.setup-field input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-s);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text);
+}
+
+.setup-note {
+  margin: 0 0 var(--space-2);
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+.setup-block {
+  margin: 0 0 var(--space-3);
+}
+
+.setup-block-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-s);
+}
+
+.setup-block pre {
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface-raised);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+}

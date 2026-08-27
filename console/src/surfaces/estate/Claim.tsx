@@ -20,7 +20,8 @@ import { Panel } from '../../ui/Panel'
  * constrains it by removing pairs, and no gesture can add an instance id.
  * After owning team + Environment (defaulted), two paths one question
  * apart: attach to an existing Tier (candidates ranked by selector
- * proximity) or draft a new Tier (opens Compose, selector pre-filled).
+ * proximity) or draft a new Tier (opens the Add-a-Tier panel pre-filled,
+ * ADR-0060 §1: one Tier-authoring flow, two doors).
  * Exit is always a PR via the forge adapter, user-attributed (ADR-0014),
  * carrying the rendered impact preview. The console proposes, the PR
  * decides. Quarantine routing stays a Compose concern (ADR-0031).
@@ -95,19 +96,23 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
     })
   }
 
-  // The draft path opens Compose with the selector pre-filled (ADR-0042
-  // §6); its Save proposes the Tier binding beside the drafted Blueprint.
+  // The draft path is the claim flow's door into the Add-a-Tier panel
+  // (ADR-0060 §1): one Tier-authoring flow, pre-filled from the herd's
+  // shared attributes, the two never forking. The Compose claim handoff
+  // stays URL-reachable; this branch no longer routes there.
   const draft = () => {
     if (draftTier === undefined) return
     void navigate({
-      to: '/compose',
-      search: {
-        lens: chosenEnvironment,
-        claim: formatSelector(selector),
-        tier: draftTier,
+      to: '.',
+      search: (prev) => ({
+        ...prev,
+        herd: undefined,
+        add: true,
+        name: name.trim() || undefined,
+        selector: formatSelector(selector),
         team: chosenTeam,
         env: chosenEnvironment,
-      },
+      }),
     })
   }
 
@@ -318,7 +323,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
             disabled={terms === 0 || draftTier === undefined}
             onClick={draft}
           >
-            Draft in Compose with this selector
+            Draft the Tier with this selector
           </Button>
         )}
         {claim.isError && (

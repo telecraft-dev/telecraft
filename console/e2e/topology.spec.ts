@@ -12,9 +12,9 @@ const CANVAS = 'topology-canvas'
 test('the P3-scale topology renders counts and zero per-collector nodes', async ({ page }) => {
   await page.goto('/topology')
   const canvas = page.getByTestId(CANVAS)
-  // ~22k matched collectors, five authored nodes: 4 Tiers + 1 ungoverned
+  // ~22k matched collectors, six authored nodes: 5 Tiers + 1 ungoverned
   // source. Scale lives in the counts only (ADR-0007).
-  await expect(canvas.locator('.canvas-node')).toHaveCount(5)
+  await expect(canvas.locator('.canvas-node')).toHaveCount(6)
   await expect(page.getByTestId('node-collectors-data-flow/edge')).toHaveText('21,614 matched')
   // The served/git split is visible per Tier (delivery path is a visible
   // collector property, ADR-0007).
@@ -114,8 +114,9 @@ test('multiple Paths per Service render distinctly', async ({ page }) => {
   await expect(
     canvas.locator('[data-id="data-flow/gateway-staging"] .canvas-node.on-trace.trace-path-1'),
   ).toBeVisible()
-  // Tracing dims everything not on the Paths (P3): storefront-edge.
-  await expect(canvas.locator('.canvas-node.kind-tier.dimmed')).toHaveCount(1)
+  // Tracing dims everything not on the Paths (P3): storefront-edge and
+  // the never-seen payments-gateway.
+  await expect(canvas.locator('.canvas-node.kind-tier.dimmed')).toHaveCount(2)
   // The view-switcher rule in miniature: tracing another Service swaps
   // the overlays, still URL-addressable.
   await page.getByTestId('trace-product/storefront').click()

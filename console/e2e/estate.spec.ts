@@ -172,7 +172,7 @@ test('the "why?" popover shows provenance and its trace action lights the canvas
   await expect(page).toHaveURL(/\/topology\?.*object=service%3Aproduct%2Fcheckout/)
   await expect(
     page.getByTestId('topology-canvas').locator('.canvas-node.kind-tier.dimmed'),
-  ).toHaveCount(1)
+  ).toHaveCount(2)
 })
 
 // The issue #35 acceptance criteria: the per-signal matrix under the

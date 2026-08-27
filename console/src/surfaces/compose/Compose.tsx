@@ -14,6 +14,7 @@ import { useLens } from '../../chrome/LensControl'
 import { formatSelector, parseSelector } from '../../estate/claim'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import type { ComposeSurface } from '../../router'
+import { Blueprints } from './Blueprints'
 import { Composer } from './Composer'
 import { NodeCanvas } from './NodeCanvas'
 import { Requirements } from './Requirements'
@@ -44,6 +45,10 @@ export function Compose() {
 
   if (blueprints.isPending) return <p className="surface-status">Loading Blueprints…</p>
   if (blueprints.isError) return <p className="surface-status">Blueprints failed to load.</p>
+
+  // The browse view (ADR-0061 §3) replaces the list and the workspace: it
+  // is discovery over every Blueprint, and its doors land back here.
+  if (search.browse) return <Blueprints />
 
   const selected = parseObjectRef(search.object)
   const chosen =
@@ -83,8 +88,19 @@ export function Compose() {
         <h1>Compose</h1>
         {/* The list needs its noun: three bare cards read as unlabelled
             navigation, and Blueprint is the glossary's word for what they
-            are. */}
-        <h2 className="compose-list-label">Blueprints</h2>
+            are. The browse door beside it opens the discovery view
+            (ADR-0061 §3). */}
+        <div className="compose-list-header">
+          <h2 className="compose-list-label">Blueprints</h2>
+          <Link
+            to="/compose"
+            search={(prev) => ({ ...prev, browse: true })}
+            className={buttonClass('quiet')}
+            data-testid="browse-blueprints"
+          >
+            Browse Blueprints
+          </Link>
+        </div>
         <ul>
           {blueprints.data.map((bp) => (
             <li key={bp.id}>

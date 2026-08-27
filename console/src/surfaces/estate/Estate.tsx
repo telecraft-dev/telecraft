@@ -3,6 +3,8 @@ import { Link, useSearch } from '@tanstack/react-router'
 import { api } from '../../api/client'
 import type { EstateView } from '../../router'
 import { parseObjectRef } from '../../objectref'
+import { buttonClass } from '../../ui/Button'
+import { AddTierPanel } from './AddTier'
 import { CardPanel } from './card'
 import { ClaimPanel } from './Claim'
 import { FlatList, herdIds } from './FlatList'
@@ -59,12 +61,27 @@ export function Estate() {
               </Link>
             ))}
           </nav>
+          {/* The governance-first door into the Add-a-Tier flow (ADR-0060
+              §1); the claim flow's draft branch is the other door. */}
+          <Link
+            from="/estate"
+            to="/estate"
+            search={(prev) => ({ ...prev, add: true })}
+            className={buttonClass('secondary', 'add-tier-door')}
+            data-testid="add-tier"
+          >
+            Add a Tier
+          </Link>
         </header>
         {view === 'shelf' && <Shelf payload={payload} selectedTier={selectedCard?.tier} />}
         {view === 'rollup' && <RollUp payload={payload} />}
         {view === 'list' && <FlatList payload={payload} selectedTier={selectedCard?.tier} />}
       </div>
-      {herd.length > 0 ? (
+      {/* One panel at a time: the Add-a-Tier flow first (ADR-0060 §1),
+          then the claim flow's herd, then the card. */}
+      {search.add ? (
+        <AddTierPanel payload={payload} />
+      ) : herd.length > 0 ? (
         <ClaimPanel payload={payload} herd={herd} />
       ) : (
         selectedCard && <CardPanel card={selectedCard} />

@@ -65,8 +65,15 @@ const teams: TeamNode = {
   ],
 }
 
+// The declared estate settings (ADR-0060 §4): the summary never reads
+// them, but the payload carries them.
+const settings = {
+  opampEndpoint: 'https://opamp.example.internal:4320',
+  selfTelemetryEndpoint: 'https://otlp.example.internal:4317',
+}
+
 function payload(cards: CardFace[], ungoverned = { served: 0, foreign: 0 }): EstatePayload {
-  return { environments: ['production', 'staging'], teams, cards, ungoverned }
+  return { environments: ['production', 'staging'], teams, cards, ungoverned, settings }
 }
 
 function rollout(id: string, decision: RolloutDecision, name = id): RolloutProgress {
@@ -239,7 +246,7 @@ describe('summarise: Teams', () => {
   it('falls back to the root when the tree has no children', () => {
     const flat: TeamNode = { id: 'solo', name: 'Solo' }
     const summary = summarise(
-      { environments: ['production'], teams: flat, cards: [], ungoverned: { served: 0, foreign: 0 } },
+      { environments: ['production'], teams: flat, cards: [], ungoverned: { served: 0, foreign: 0 }, settings },
       [],
       'production',
     )

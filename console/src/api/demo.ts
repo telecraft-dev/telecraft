@@ -1,5 +1,6 @@
 import { previewClaim, ungovernedSummary } from '../../tools/claims'
 import { validate } from '../../tools/evaluator'
+import { setupGuidance } from '../../tools/tiers'
 import type {
   ActivationProposalRequest,
   ActivationsPayload,
@@ -14,8 +15,10 @@ import type {
   ClaimPreviewRequest,
   CollectorRow,
   ComposeVerdict,
+  EndorsementDoc,
   Environment,
   EstatePayload,
+  EstateSettings,
   Finding,
   GovernancePayload,
   IndexedObject,
@@ -25,7 +28,9 @@ import type {
   Proposal,
   ProposalOutcome,
   RolloutProgress,
+  SetupGuidance,
   TeamNode,
+  TierProposalRequest,
   TopologyPayload,
 } from './types'
 import { CARD_CONTRACT_VERSION } from './types'
@@ -106,6 +111,8 @@ interface Snapshot {
     owners: GovernancePayload['owners']
     allowLists: GovernancePayload['allowLists']
     grants: GovernancePayload['grants']
+    settings?: EstateSettings
+    endorsements?: EndorsementDoc[]
     floors: Record<string, Record<string, string>>
     requirements: unknown[]
   }
@@ -166,6 +173,15 @@ function subtree(teams: TeamNode, teamId: string): string[] {
   }
   walk(rooted)
   return out
+}
+
+/**
+ * The declared estate settings (ADR-0060 §4). A snapshot taken before the
+ * estate declared them carries none, which is undeclared endpoints rather
+ * than a failure: the guidance shows the gap instead of inventing values.
+ */
+function settingsOf(s: Snapshot): EstateSettings {
+  return s.estate.settings ?? { opampEndpoint: '', selfTelemetryEndpoint: '' }
 }
 
 /** The active catalogue's entries: what authoring is judged against. */
@@ -250,6 +266,7 @@ export const demoApi: PlatformApi = {
       teams: s.estate.teams,
       cards: s.estate.cards,
       ungoverned: ungovernedSummary(s.estate),
+      settings: settingsOf(s),
     }
   },
 
@@ -361,5 +378,34 @@ export const demoApi: PlatformApi = {
 
   proposeActivation: async (_request: ActivationProposalRequest): Promise<ProposalOutcome> => ({
     problems: refusal('activating this version'),
+  }),
+
+  /**
+   * The Endorsement ledger (ADR-0061 §2). A snapshot taken before the
+   * estate endorsed anything carries none, which is an empty ledger
+   * rather than a failure.
+   */
+  endorsements: async (): Promise<EndorsementDoc[]> =>
+    (await snapshot()).estate.endorsements ?? [],
+
+  /** Setup guidance, generated on view from the snapshot's documents
+   * exactly as the server generates it from its own (ADR-0060 §4). */
+  setup: async (tier: string): Promise<SetupGuidance> => {
+    const s = await snapshot()
+    const guidance = setupGuidance(
+      { ...s.estate, settings: settingsOf(s) },
+      s.catalogues.active,
+      tier,
+    )
+    if (!guidance) {
+      // Say "cannot know", never fabricate: an unknown Tier is an error,
+      // not invented guidance.
+      throw new Error(`no Tier ${tier} is on this estate`)
+    }
+    return guidance
+  },
+
+  proposeTier: async (_request: TierProposalRequest): Promise<ProposalOutcome> => ({
+    problems: refusal('proposing this Tier'),
   }),
 }

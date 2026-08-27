@@ -377,6 +377,17 @@ export interface UngovernedSummary {
   foreign: number
 }
 
+/**
+ * The estate settings setup guidance fills itself in from (ADR-0060 §4):
+ * the endpoints the estate declares, not values any surface invents.
+ */
+export interface EstateSettings {
+  /** Where a Served collector's Supervisor connects for its artefact. */
+  opampEndpoint: string
+  /** Where a collector reports its own telemetry. */
+  selfTelemetryEndpoint: string
+}
+
 /** GET /api/v1/estate: the shelf's bulk face payload (ADR-0041 §2). */
 export interface EstatePayload {
   /** Production leads (ADR-0033). */
@@ -384,6 +395,8 @@ export interface EstatePayload {
   teams: TeamNode
   cards: CardFace[]
   ungoverned: UngovernedSummary
+  /** The declared estate settings (ADR-0060 §4). */
+  settings: EstateSettings
 }
 
 /** The served vs git-delivered split: delivery path is a visible property
@@ -599,6 +612,18 @@ export const SIGNAL_ORDER = ['traces', 'logs', 'metrics', 'profiles'] as const
 export type Signal = (typeof SIGNAL_ORDER)[number]
 
 /**
+ * The owner-declared suitability facets on a Blueprint (ADR-0061 §1):
+ * the substrates, Environments, and Service Classes the Blueprint is
+ * declared suitable for. Advisory metadata for discovery, never judged.
+ * An absent facet means undeclared, never "fits everything".
+ */
+export interface BlueprintFits {
+  substrates?: string[]
+  environments?: Environment[]
+  serviceClasses?: string[]
+}
+
+/**
  * GET /api/v1/blueprints: Blueprint schema v1 documents (ADR-0024), the
  * domain document the Compose Workspace opens and edits. Lane entries are
  * Component references: a bare name is a local Component, `team/name@pin`
@@ -629,6 +654,25 @@ export interface BlueprintDoc {
    * (ADR-0042 §1).
    */
   components?: Record<string, CatalogueKey>
+  /** The declared suitability facets (ADR-0061 §1): absent means undeclared. */
+  fits?: BlueprintFits
+}
+
+/**
+ * GET /api/v1/endorsements: one Endorsement, a governance act naming a
+ * Blueprint id at a pinned version, authored in endorsements.yaml by a
+ * Team at the top of the team tree (ADR-0061 §2). A pin behind the
+ * Blueprint's current version stays visible and says so.
+ */
+export interface EndorsementDoc {
+  /** The endorsed Blueprint's id. */
+  blueprint: string
+  /** The pinned Blueprint version the Endorsement holds at. */
+  version: number
+  /** The authoring Owner's id. */
+  owner: string
+  /** The authoring top-of-tree team's id. */
+  team: string
 }
 
 /** How the evaluator judged one palette entry's presence (ADR-0021 §3). */
@@ -1005,6 +1049,49 @@ export interface ClaimContext {
 }
 
 /**
+ * POST /api/v1/tiers/proposals: the Tier-first onboarding flow's PR exit
+ * (ADR-0060 §1, §2), through the forge adapter like every other change.
+ * The Tier id the proposal authors becomes `<team>/<name>`. The server
+ * validates fail-closed and answers 422 with the problems named.
+ */
+export interface TierProposalRequest {
+  title: string
+  /** The Tier's name segment; the id becomes `<team>/<name>`. */
+  name: string
+  /** The owning team's id. */
+  team: string
+  /** The owning Owner's id: every authored object needs one (ADR-0016). */
+  owner: string
+  environment: Environment
+  /** The Blueprint id the new Tier binds to, at this exact version. */
+  blueprint: string
+  blueprintVersion: number
+  /** The draft selector over identity attributes (ADR-0007). */
+  selector: Record<string, string>
+  /** The optional declared population floor (ADR-0035). */
+  minExpected?: number
+}
+
+/**
+ * GET /api/v1/setup?tier=: the never_seen card's setup guidance
+ * (ADR-0060 §3, §4). Documentation generated on view from the Tier, the
+ * activated Catalogue version, and the estate settings; never committed,
+ * never rendered, never judged.
+ */
+export interface SetupGuidance {
+  tier: string
+  environment: Environment
+  /** The rendered artefact's stable repository path. */
+  artefactPath: string
+  opampEndpoint: string
+  selfTelemetryEndpoint: string
+  /** The identity attributes a collector must report to match the selector. */
+  identityAttributes: Record<string, string>
+  /** The activated Catalogue version, for example `v0.158.0` (ADR-0060 §6). */
+  collectorRelease: string
+}
+
+/**
  * The platform API as one type: what every surface consumes, and what any
  * client must implement in full. The live client speaks HTTP to an
  * instance; the demo client answers from a build-time snapshot (issue
@@ -1035,4 +1122,10 @@ export interface PlatformApi {
   claim(request: ClaimRequest): Promise<ClaimOutcome>
   proposeGovernance(request: GovernanceProposalRequest): Promise<ProposalOutcome>
   proposeActivation(request: ActivationProposalRequest): Promise<ProposalOutcome>
+  /** Every Endorsement held on this estate (ADR-0061 §2). */
+  endorsements(): Promise<EndorsementDoc[]>
+  /** The named Tier's setup guidance, generated on view (ADR-0060 §4). */
+  setup(tier: string): Promise<SetupGuidance>
+  /** The Tier-first flow's PR exit (ADR-0060 §2): fail closed as data. */
+  proposeTier(request: TierProposalRequest): Promise<ProposalOutcome>
 }

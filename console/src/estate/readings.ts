@@ -48,8 +48,16 @@ export function laneReads(row: SignalRow): row is SignalRow & {
  */
 export function laneUnread(row: SignalRow): boolean {
   if (!laneReads(row)) return false
+  // A wired lane's readings can be absent outright, not merely unknown: a
+  // never_seen Tier's payload carries rows with no readings at all,
+  // because no collector has ever taken one (ADR-0060 §3). An absent
+  // reading is as unread as an unknown one, so the card still collapses
+  // to the one quiet line and keeps the card-grain height (ADR-0042 §2).
+  const { volume, freshness, shape } = row as SignalRow
   return (
-    !row.volume.known && readingState(row.freshness) === 'unknown' && !row.shape.known
+    volume?.known !== true &&
+    (freshness === undefined || readingState(freshness) === 'unknown') &&
+    shape?.known !== true
   )
 }
 

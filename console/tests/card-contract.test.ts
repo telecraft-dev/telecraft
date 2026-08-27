@@ -149,6 +149,18 @@ describe('the fixture estate', () => {
 
   it('gives every row a lane state, and only unwired lanes drop their readings', () => {
     for (const card of cards) {
+      // A never_seen Tier has never had a collector to read (ADR-0030,
+      // ADR-0060 §3): every lane is unknown and carries no readings,
+      // because a reading nobody could take is not a reading of nothing.
+      if (card.population.state === 'never_seen') {
+        for (const row of card.signals) {
+          expect(row.lane).toBe('unknown')
+          expect(row.volume).toBeUndefined()
+          expect(row.freshness).toBeUndefined()
+          expect(row.shape).toBeUndefined()
+        }
+        continue
+      }
       for (const row of card.signals) {
         expect(LANE_STATES).toContain(row.lane)
         expect(row.volume === undefined).toBe(row.lane === 'not_applicable')

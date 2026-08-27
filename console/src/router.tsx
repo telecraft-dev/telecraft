@@ -124,6 +124,14 @@ export interface EstateSearch {
    * (ADR-0042 §6). Console selection state, never a selector: the produced
    * selector generalises and enumerates nothing. */
   herd?: string
+  /** The Add-a-Tier flow (ADR-0060 §1): `add` opens the panel; the rest are
+   * its pre-fills from the Blueprints view door or the claim flow's draft
+   * branch. `blueprint` rides as `id@version`; `selector` reuses the claim
+   * handoff's `key=value,key=value` shape; `name` seeds the Tier name. */
+  add?: boolean
+  blueprint?: string
+  name?: string
+  selector?: string
 }
 
 const estateRoute = createRoute({
@@ -141,6 +149,10 @@ const estateRoute = createRoute({
     env: typeof search.env === 'string' ? search.env : undefined,
     ungoverned: search.ungoverned === true || search.ungoverned === 'true' ? true : undefined,
     herd: typeof search.herd === 'string' ? search.herd : undefined,
+    add: search.add === true || search.add === 'true' ? true : undefined,
+    blueprint: typeof search.blueprint === 'string' ? search.blueprint : undefined,
+    name: typeof search.name === 'string' ? search.name : undefined,
+    selector: typeof search.selector === 'string' ? search.selector : undefined,
   }),
 })
 
@@ -180,6 +192,16 @@ export interface ComposeSearch {
   tier?: string
   team?: string
   env?: string
+  /** The Blueprints browse view (ADR-0061 §3). `browse` opens it, not a
+   * `view` key: other routes' `view` unions would collide in functional
+   * search updates. Its filters are explicit and URL-addressable like the
+   * flat list's; the lens never filters. The shared `env` above doubles as
+   * the browse Environment filter, since the claim handoff and the browse
+   * view are never on screen together. */
+  browse?: boolean
+  substrate?: string
+  serviceClass?: string
+  endorsed?: boolean
 }
 
 const composeRoute = createRoute({
@@ -196,6 +218,10 @@ const composeRoute = createRoute({
         : undefined,
     yaml: search.yaml === true || search.yaml === 'true' ? true : undefined,
     claim: typeof search.claim === 'string' ? search.claim : undefined,
+    browse: search.browse === true || search.browse === 'true' ? true : undefined,
+    substrate: typeof search.substrate === 'string' ? search.substrate : undefined,
+    serviceClass: typeof search.serviceClass === 'string' ? search.serviceClass : undefined,
+    endorsed: search.endorsed === true || search.endorsed === 'true' ? true : undefined,
     tier: typeof search.tier === 'string' ? search.tier : undefined,
     team: typeof search.team === 'string' ? search.team : undefined,
     env: typeof search.env === 'string' ? search.env : undefined,
