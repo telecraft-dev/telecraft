@@ -4,6 +4,7 @@ import { useLens } from '../../chrome/LensControl'
 import { type KindRollup, rollupTree } from '../../estate/rollup'
 import { formatObjectRef } from '../../objectref'
 import { Mark } from '../../ui/Mark'
+import { count } from '../../ui/text'
 
 // The tree-table roll-up (ADR-0042 §1, ADR-0017): ratio-plus-worst per
 // finding kind, never blended, waived counts always alongside. The lens is
@@ -84,8 +85,7 @@ export function RollUp({ payload }: { payload: EstatePayload }) {
               ))}
               <td>{row.neutral}</td>
               <td className="rollup-all" data-testid={`rollup-all-${row.team.id}`}>
-                {row.findingsAllEnvironments} finding
-                {row.findingsAllEnvironments === 1 ? '' : 's'}, {row.waivedAllEnvironments}{' '}
+                {count(row.findingsAllEnvironments, 'finding')}, {row.waivedAllEnvironments}{' '}
                 exempt
               </td>
             </tr>

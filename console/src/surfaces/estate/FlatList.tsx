@@ -2,16 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { api } from '../../api/client'
 import type { CollectorRow, EstatePayload, TeamNode } from '../../api/types'
-import { useLens } from '../../chrome/LensControl'
+import { formatAge } from '../../estate/readings'
 import { formatObjectRef } from '../../objectref'
 import { Chip } from '../../ui/Chip'
 
 // The flat filter-first estate list (ADR-0042 §1): the InfoSec workflow
 // and the only home of per-collector detail (rule 3.4): collector counts
 // elsewhere are doors that land here pre-filtered. Filters are explicit
-// and URL-addressable; the lens only emphasises its Environment's rows,
-// it never filters (§4). Clicking a governed row summons the Tier's card
-// panel in place (rule 3.2).
+// and URL-addressable; the lens does not touch the rows at all (ADR-0059
+// §3): the Environment filter is this surface's tool. Clicking a governed
+// row summons the Tier's card panel in place (rule 3.2).
 //
 // Ungoverned collectors appear here too (ADR-0031 §2): concern, never
 // failure: no Tier, no team, an explicit onboard affordance instead. The
@@ -35,6 +35,16 @@ export function herdIds(herd: string | undefined): string[] {
   return (herd ?? '').split(',').filter(Boolean)
 }
 
+// Age in the cell, the exact instant on the title (ADR-0040 §6): the
+// reader scanning the column wants staleness, and the InfoSec reader who
+// wants the instant hovers for it.
+function LastSeen({ lastSeen }: { lastSeen: string | undefined }) {
+  if (lastSeen === undefined) return <>never</>
+  const takenAt = new Date(lastSeen)
+  if (Number.isNaN(takenAt.getTime())) return <>{lastSeen}</>
+  return <span title={lastSeen}>{formatAge((Date.now() - takenAt.getTime()) / 1000)} ago</span>
+}
+
 export function FlatList({
   payload,
   selectedTier,
@@ -45,7 +55,6 @@ export function FlatList({
   const collectors = useQuery({ queryKey: ['collectors'], queryFn: api.collectors })
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
-  const lens = useLens()
 
   if (collectors.isPending) return <p className="surface-status">Loading collectors…</p>
   if (collectors.isError) return <p className="surface-status">Collectors failed to load.</p>
@@ -182,8 +191,10 @@ export function FlatList({
             <tr
               key={row.id}
               data-testid={`collector-${row.id}`}
+              // No lens styling on rows (ADR-0059 §3): the Environment
+              // filter above is the list's explicit tool, and dimming rows
+              // a visible filter did not remove reads as a second filter.
               className={[
-                row.environment === lens ? 'lens-leading' : 'lens-muted',
                 row.tier !== undefined && row.tier === selectedTier ? 'selected' : '',
                 row.ungoverned !== undefined ? 'ungoverned-row' : '',
                 herd.includes(row.id) ? 'in-herd' : '',
@@ -220,7 +231,9 @@ export function FlatList({
               <td>{row.environment}</td>
               <td>{row.state.replace('_', ' ')}</td>
               <td>{row.version}</td>
-              <td>{row.lastSeen ?? 'never'}</td>
+              <td>
+                <LastSeen lastSeen={row.lastSeen} />
+              </td>
             </tr>
           ))}
           {rows.length === 0 && (

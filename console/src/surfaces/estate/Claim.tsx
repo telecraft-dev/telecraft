@@ -7,6 +7,7 @@ import { useLens } from '../../chrome/LensControl'
 import { formatSelector, suggestSelector } from '../../estate/claim'
 import { usePresentation } from '../../presentation/usePresentation'
 import { Button } from '../../ui/Button'
+import { count } from '../../ui/text'
 import { Panel } from '../../ui/Panel'
 
 /**
@@ -116,7 +117,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
       testId="claim-panel"
       className="claim-panel"
       initialWidth={400}
-      title={`Claim ${rows.length} collectors`}
+      title={`Claim ${count(rows.length, 'collector')}`}
       titleTestId="claim-title"
       closeTestId="claim-close"
       onClose={close}
@@ -221,7 +222,7 @@ export function ClaimPanel({ payload, herd }: { payload: EstatePayload; herd: st
             <ul className="claim-overlaps" data-testid="claim-overlaps">
               {preview.data.overlaps.map((overlap) => (
                 <li key={overlap.tier}>
-                  May also reach {overlap.matched} collectors matched today by{' '}
+                  May also reach {count(overlap.matched, 'collector')} matched today by{' '}
                   <span className="mono">{overlap.tier}</span>. The pull request review
                   judges that reach.
                 </li>

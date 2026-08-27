@@ -79,6 +79,25 @@ test('the lens changes emphasis and evaluation context without removing rows', a
   await expect(rows).toHaveCount(before)
 })
 
+test('an Environment row outside the lens rests as its counts and expands in place', async ({
+  page,
+}) => {
+  await page.goto('/estate?lens=production&scope=estate')
+
+  // The staging row is one line carrying the counts and no cards
+  // (ADR-0059 §1): the lens hides nothing, it summarises it.
+  const summary = page.getByTestId('env-summary-data-flow-staging')
+  await expect(summary).toContainText('staging')
+  await expect(summary).toContainText('1 Tier, no findings')
+  await expect(page.getByTestId('card-data-flow/gateway-staging')).toHaveCount(0)
+
+  // Expanding draws the cards where the line stood; the URL does not
+  // change, because the expansion is transient presentation (§2).
+  await page.getByTestId('env-expand-data-flow-staging').click()
+  await expect(page.getByTestId('card-data-flow/gateway-staging')).toBeVisible()
+  expect(page.url()).not.toContain('staging')
+})
+
 test('the roll-up shows ratio-plus-worst per kind with exempt counts visible', async ({
   page,
 }) => {
@@ -185,12 +204,15 @@ test('every card carries the per-signal matrix under its reading bands', async (
 
 test('an unread lane is last-known-plus-age, never a metered zero', async ({ page }) => {
   await page.goto('/estate?scope=estate')
+  await page.getByTestId('env-expand-data-flow-staging').click()
 
   // The staging Tier has reported no self-telemetry at its serving SHA:
-  // every lane says so, and none of them says nothing flowed.
-  const staging = page.getByTestId('matrix-data-flow/gateway-staging-logs')
-  await expect(staging.locator('.cell-volume')).toHaveText('no reading')
-  await expect(staging.locator('.cell-volume')).toHaveAttribute(
+  // every lane is wired and unread, so the card says so once (ADR-0059),
+  // and the line's title still carries the last-known-plus-age story the
+  // cells would have carried.
+  const staging = page.getByTestId('matrix-data-flow/gateway-staging-quiet')
+  await expect(staging).toHaveText('no readings yet')
+  await expect(staging).toHaveAttribute(
     'title',
     /no self-telemetry has reported at the serving SHA yet/,
   )
@@ -222,11 +244,13 @@ test('a lane the artefact never wired does not read as a stopped one', async ({ 
   await expect(stopped.locator('.cell-volume')).toContainText('0 → 0')
   await expect(stopped.locator('.cell-lane')).toHaveCount(0)
 
-  // And a lane nobody could read is the third: last-known-plus-age, with
-  // the numbers withheld rather than the lane denied.
-  const unread = page.getByTestId('matrix-data-flow/gateway-staging-metrics')
-  await expect(unread).not.toHaveClass(/lane-absent/)
-  await expect(unread.locator('.cell-volume')).toHaveText('no reading')
+  // And a card nobody could read at all is the third: the numbers are
+  // withheld rather than fabricated, said once for the whole matrix
+  // because every lane is wired and unread (ADR-0059).
+  await page.getByTestId('env-expand-data-flow-staging').click()
+  await expect(page.getByTestId('matrix-data-flow/gateway-staging-quiet')).toHaveText(
+    'no readings yet',
+  )
 })
 
 test('the three reds stay distinct by band position and mark, not by hue', async ({ page }) => {
@@ -256,6 +280,7 @@ test('the three reds stay distinct by band position and mark, not by hue', async
 
 test('the four honest neutrals each render their own mark (ADR-0047 §7)', async ({ page }) => {
   await page.goto('/estate')
+  await page.getByTestId('env-expand-data-flow-staging').click()
 
   // gateway-staging is the fixture's neutral card: pending settle, then
   // unknown, then not applicable. Before this pass all three drew the same

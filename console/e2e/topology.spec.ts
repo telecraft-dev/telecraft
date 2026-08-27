@@ -18,7 +18,7 @@ test('the P3-scale topology renders counts and zero per-collector nodes', async 
   await expect(page.getByTestId('node-collectors-data-flow/edge')).toHaveText('21,614 matched')
   // The served/git split is visible per Tier (delivery path is a visible
   // collector property, ADR-0007).
-  await expect(canvas.locator('.canvas-node', { hasText: '21,608 served · 6 git' })).toBeVisible()
+  await expect(canvas.locator('.canvas-node', { hasText: '21,608 served · 6 from git' })).toBeVisible()
 })
 
 test('edges derive from the model; no gesture draws or redraws one', async ({ page }) => {

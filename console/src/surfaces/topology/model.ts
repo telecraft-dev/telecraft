@@ -8,17 +8,24 @@ import type { EngineModel } from '../../engine/types'
 // ADR-0007). Nothing here, and nothing in the rendering shell, accepts a
 // hand-drawn edge.
 
-/** Compiles the topology payload to the engine model at authored grain. */
+/** Compiles the topology payload to the engine model at authored grain.
+ * A lens names the Environment whose band leads (ADR-0059 §4); the rest
+ * keep the payload's order, and an unknown lens changes nothing. */
 export function buildTopologyModel(
   payload: TopologyPayload,
   arrangement?: Record<string, number>,
+  lens?: string,
 ): EngineModel {
+  const environments =
+    lens !== undefined && payload.environments.includes(lens)
+      ? [lens, ...payload.environments.filter((env) => env !== lens)]
+      : payload.environments
   return {
     bands: [
       ...(payload.sources.length > 0
         ? [{ id: 'ungoverned', kind: 'ungoverned' as const, label: 'ungoverned arrivals' }]
         : []),
-      ...payload.environments.map((env) => ({
+      ...environments.map((env) => ({
         id: env,
         kind: 'environment' as const,
         label: env,

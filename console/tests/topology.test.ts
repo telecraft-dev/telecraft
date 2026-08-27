@@ -65,6 +65,19 @@ describe('the fixture topology at P3-verdict scale', () => {
       expect(tier.delivery.served + tier.delivery.git).toBe(tier.matched)
     }
   })
+
+  it('orders the Environment bands lens-first, and ignores a lens it does not know', () => {
+    // ADR-0059 §4: lead position is the canvas's whole lens treatment.
+    const environmentBands = (lens?: string) =>
+      buildTopologyModel(payload, undefined, lens)
+        .bands.filter((band) => band.kind === 'environment')
+        .map((band) => band.id)
+    expect(environmentBands('staging')[0]).toBe('staging')
+    expect(environmentBands('production')[0]).toBe('production')
+    expect(environmentBands('nowhere')).toEqual(environmentBands())
+    // The ungoverned band still leads the canvas regardless of the lens.
+    expect(buildTopologyModel(payload, undefined, 'staging').bands[0]?.kind).toBe('ungoverned')
+  })
 })
 
 describe("each edge carries its own Hop's reading", () => {

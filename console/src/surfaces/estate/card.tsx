@@ -22,13 +22,16 @@ import {
   formatShape,
   formatVolume,
   laneReads,
+  laneUnread,
   NO_LANE,
   NO_LANE_TITLE,
+  NO_READINGS_YET,
   readingTitle,
 } from '../../estate/readings'
 import { deepLinkFor } from '../../objectref'
 import { buttonClass, Button } from '../../ui/Button'
 import { Chip } from '../../ui/Chip'
+import { count, formatCount } from '../../ui/text'
 import { BandMark, Mark, markFor, stateLabel } from '../../ui/Mark'
 import { Panel } from '../../ui/Panel'
 
@@ -54,6 +57,28 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
     // A conforming payload with no lanes is a card with no matrix, not a
     // broken card: the console renders what the contract carries.
     return null
+  }
+  const firstLane = signals[0]
+  if (
+    firstLane !== undefined &&
+    laneReads(firstLane) &&
+    signals.every((row) => laneReads(row) && laneUnread(row))
+  ) {
+    // Every lane is wired and waiting for its first reading: one line,
+    // not a grid of cells all carrying the same words. A card with any
+    // reading anywhere, or any unwired lane, keeps the full matrix, so a
+    // partly-broken pipeline and a missing lane can never hide behind the
+    // quiet line. The title keeps the last-known-plus-age story the cells
+    // would have carried (ADR-0041 §2); the lanes share it.
+    return (
+      <p
+        className="matrix-quiet"
+        data-testid={`matrix-${tier}-quiet`}
+        title={readingTitle(firstLane.volume)}
+      >
+        {NO_READINGS_YET}
+      </p>
+    )
   }
   return (
     // The matrix is the one part of a card whose height the payload
@@ -171,9 +196,9 @@ export function CardFaceView({
           className="count-door"
           data-testid={`card-collectors-${card.tier}`}
         >
-          {card.population.matched} matched
+          {formatCount(card.population.matched)} matched
         </Link>
-        <span>{totalFindings(card)} findings</span>
+        <span>{count(totalFindings(card), 'finding')}</span>
       </footer>
     </div>
   )
@@ -329,7 +354,7 @@ export function CardPanel({ card }: { card: CardFace }) {
             className="count-door"
             data-testid={`panel-collectors-${card.tier}`}
           >
-            {card.population.matched} matched
+            {formatCount(card.population.matched)} matched
           </Link>
           {card.population.floor !== undefined && (
             <>

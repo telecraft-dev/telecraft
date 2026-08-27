@@ -630,17 +630,33 @@
   margin-bottom: var(--space-3);
 }
 
-/* The lens emphasises its Environment's row and never filters the rest
- * (ADR-0042 §4): muted rows stay fully present and readable. */
-
-.environment-row.lens-muted,
-.collector-table tr.lens-muted td {
-  opacity: 0.6;
-}
+/* The lens's emphasis is lead position plus collapse, never opacity
+ * (ADR-0059): the leading row draws in full, the rest rest as one line
+ * carrying their counts. Reduced opacity on this surface meant nothing a
+ * reader could name, so no rule here uses it. */
 
 .environment-row.lens-leading .environment-label {
   color: var(--colour-text);
   font-weight: 600;
+}
+
+.environment-row.env-collapsed {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.environment-row.env-collapsed .environment-label,
+.env-summary {
+  margin: 0;
+}
+
+.env-worst.severity-violation .mark {
+  color: var(--severity-violation);
+}
+
+.env-worst.severity-advisory .mark {
+  color: var(--severity-advisory);
 }
 
 .environment-label {
@@ -781,6 +797,15 @@
   border-collapse: collapse;
   font-size: var(--text-xs);
   color: var(--colour-text-muted);
+}
+
+/* The one line a card shows while every wired lane awaits its first
+   reading; it stands where the matrix would and keeps the card's shape. */
+.matrix-quiet {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--colour-text-muted);
+  font-style: italic;
 }
 
 .signal-matrix th {
@@ -1047,6 +1072,19 @@
 
 /* Roll-up (ADR-0017) */
 
+/* Content-sized, the table used barely half a wide workspace; stretched to
+   the viewport, team names drift too far from their readings. Full width
+   under a cap keeps the columns breathing and the row scannable. */
+.rollup-table {
+  width: 100%;
+  max-width: 70rem;
+}
+
+.rollup-table th:not(:first-child),
+.rollup-table td:not(:first-child) {
+  white-space: nowrap;
+}
+
 .rollup-kind .mark {
   margin-left: var(--space-1);
 }
@@ -1312,6 +1350,13 @@
   gap: var(--space-5);
   padding: var(--space-4) var(--space-5);
   height: 100%;
+}
+
+.compose-list-label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-s);
+  font-weight: var(--weight-medium);
+  color: var(--colour-text-muted);
 }
 
 .compose-list ul {

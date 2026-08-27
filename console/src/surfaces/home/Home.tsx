@@ -9,6 +9,7 @@ import { summarise, teamStanding, ungovernedTotal, type HomeSummary } from '../.
 import { formatObjectRef } from '../../objectref'
 import { Chip } from '../../ui/Chip'
 import { Mark } from '../../ui/Mark'
+import { count } from '../../ui/text'
 
 // The Home Workspace (ADR-0056): the console's landing, and the one entry
 // named for a place, because the activity it serves is choosing which
@@ -34,13 +35,6 @@ const KIND_LABEL: Record<BandName, string> = {
   conformance: 'Conformance',
 }
 
-/**
- * `1 Tiers carry a finding` reads as a defect in the page rather than a
- * count of one, and every number on Home can legitimately be one.
- */
-function count(n: number, one: string, many = `${one}s`): string {
-  return `${n} ${n === 1 ? one : many}`
-}
 
 /** The tone a Rollout's verdict earns; the word beside it carries the meaning. */
 const DECISION_TONE: Record<RolloutDecision, 'violation' | 'advisory' | 'neutral'> = {

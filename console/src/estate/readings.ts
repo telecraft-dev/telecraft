@@ -40,6 +40,19 @@ export function laneReads(row: SignalRow): row is SignalRow & {
   return row.lane !== 'not_applicable'
 }
 
+/**
+ * Whether a wired lane has produced any reading at all yet. A card whose
+ * every lane answers false is waiting for its first readings, and nine
+ * cells of "no reading" say that worse than one line does (ADR-0041 §2
+ * still holds: the one line is words, never a fabricated number).
+ */
+export function laneUnread(row: SignalRow): boolean {
+  if (!laneReads(row)) return false
+  return (
+    !row.volume.known && readingState(row.freshness) === 'unknown' && !row.shape.known
+  )
+}
+
 /** What a row says in place of the readings it has no lane to take. */
 export const NO_LANE = 'no lane on this Tier'
 
@@ -49,6 +62,9 @@ export const NO_LANE_TITLE = 'The configuration has no pipeline for this signal.
 
 /** The words a card shows where a number would be a fabrication. */
 export const NO_READING = 'no reading'
+
+/** The one line a card shows while every wired lane awaits its first reading. */
+export const NO_READINGS_YET = 'no readings yet'
 
 /** Item counts, short enough for a card row. Items are the unit (ADR-0040 §2). */
 export function formatItems(items: number): string {

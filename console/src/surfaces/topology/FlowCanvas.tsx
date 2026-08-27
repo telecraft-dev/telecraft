@@ -22,8 +22,10 @@ import {
   layout,
   routeChain,
 } from '../../engine/layout'
+import { useLens } from '../../chrome/LensControl'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
+import { formatCount } from '../../ui/text'
 import { CardPanel } from '../estate/card'
 import { buildTopologyModel, pathHopPairs, pathTierIds, servicePaths } from './model'
 import { TopologyViewSwitcher } from './switcher'
@@ -42,10 +44,6 @@ import { chipClass } from '../../ui/Chip'
 /** The distinct trace-overlay palette cycle; tokens carry the colours. */
 const TRACE_COLOURS = 4
 
-/** Fixed-locale count formatting so a large population reads at a glance. */
-function formatCount(n: number): string {
-  return n.toLocaleString('en-US')
-}
 
 type CanvasNode = Node<{
   label: string
@@ -109,7 +107,7 @@ function EngineNodeView({ data }: NodeProps<CanvasNode>) {
           </Link>
           <span className="canvas-node-split">
             {formatCount(data.tier.delivery.served)} served ·{' '}
-            {formatCount(data.tier.delivery.git)} git
+            {formatCount(data.tier.delivery.git)} from git
           </span>
         </div>
       )}
@@ -200,6 +198,9 @@ export function FlowCanvas() {
   const [simulate, setSimulate] = useState(demoMode)
   // Bumped after a drag persists, so the engine re-derives from the store.
   const [, setArrangementVersion] = useState(0)
+  // The lens leads the Environment bands (ADR-0059 §4): lead position is
+  // the whole treatment here, dimming stays the traced-Paths word alone.
+  const lens = useLens()
 
   if (topology.isPending) return <p className="surface-status">Loading the topology…</p>
   if (topology.isError) return <p className="surface-status">The topology payload failed to load.</p>
@@ -210,7 +211,7 @@ export function FlowCanvas() {
   const chosenTier = selected?.kind === 'tier' ? selected.id : undefined
 
   const arrangement = store.load().arrangement['topology']
-  const model = buildTopologyModel(payload, arrangement)
+  const model = buildTopologyModel(payload, arrangement, lens)
   const geometry = layout(model)
 
   const tracedPaths = tracedService ? servicePaths(payload, tracedService) : []

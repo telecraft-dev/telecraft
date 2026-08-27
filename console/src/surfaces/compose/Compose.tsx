@@ -81,6 +81,10 @@ export function Compose() {
     <div className="compose-layout">
       <section className="compose-list" data-tour="compose">
         <h1>Compose</h1>
+        {/* The list needs its noun: three bare cards read as unlabelled
+            navigation, and Blueprint is the glossary's word for what they
+            are. */}
+        <h2 className="compose-list-label">Blueprints</h2>
         <ul>
           {blueprints.data.map((bp) => (
             <li key={bp.id}>

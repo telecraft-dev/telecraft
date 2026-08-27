@@ -6,6 +6,8 @@ import { cardStanding, orderCards, sectionAllHealthy, totalFindings } from '../.
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
 import { Button, buttonClass } from '../../ui/Button'
+import { Mark } from '../../ui/Mark'
+import { count } from '../../ui/text'
 import { CardFaceView } from './card'
 
 interface Section {
@@ -25,6 +27,15 @@ function sections(root: TeamNode, cards: CardFace[]): Section[] {
   return out
 }
 
+/** The worst standing across a row of cards, for the collapsed line's mark. */
+function rowWorst(row: CardFace[]): ReturnType<typeof cardStanding> {
+  const standings = row.map(cardStanding)
+  if (standings.includes('violation')) return 'violation'
+  if (standings.includes('advisory')) return 'advisory'
+  if (standings.includes('ok')) return 'ok'
+  return 'neutral'
+}
+
 /** The subtree rooted at a team id, or undefined when absent. */
 function subtree(root: TeamNode, id: string): TeamNode | undefined {
   if (root.id === id) return root
@@ -39,8 +50,10 @@ function subtree(root: TeamNode, id: string): TeamNode | undefined {
  * The Estate landing surface (ADR-0042 §2): team-subtree sections crossed
  * with aligned Environment rows, cards ordered worst-severity-first from
  * face summary fields alone. Scope rests on the signed-in user's team
- * subtree; one click widens to the estate. The lens leads and emphasises
- * its row: emphasis, never a filter, so every row stays visible (§4).
+ * subtree; one click widens to the estate. The lens leads and draws its
+ * row in full; every other Environment row collapses to a line carrying
+ * its counts and worst mark (ADR-0059): emphasis, never a filter, so
+ * nothing leaves the page.
  */
 export function Shelf({
   payload,
@@ -156,6 +169,10 @@ function ShelfSection({
     store.load().collapsedSections[team.id],
   )
   const collapsed = override ?? allHealthy
+  // Environment rows outside the lens rest collapsed (ADR-0059 §1); an
+  // expansion is transient presentation (§2), so it lives here and not in
+  // the store or the URL.
+  const [expandedEnvs, setExpandedEnvs] = useState<Record<string, boolean>>({})
   const navigate = useNavigate()
 
   const toggle = () => {
@@ -174,17 +191,52 @@ function ShelfSection({
       </header>
       {collapsed ? (
         <p className="section-summary" data-testid={`section-summary-${team.id}`}>
-          {cards.length} {cards.length === 1 ? 'Tier' : 'Tiers'},{' '}
-          {allHealthy ? 'all healthy' : `${cards.reduce((n, c) => n + totalFindings(c), 0)} findings`}
+          {count(cards.length, 'Tier')},{' '}
+          {allHealthy
+            ? 'all healthy'
+            : count(
+                cards.reduce((n, c) => n + totalFindings(c), 0),
+                'finding',
+              )}
         </p>
       ) : (
         environments.map((env) => {
           const row = orderCards(cards.filter((card) => card.environment === env))
           if (row.length === 0) return null
+          if (env !== lens && !expandedEnvs[env]) {
+            const findings = row.reduce((n, c) => n + totalFindings(c), 0)
+            const worst = rowWorst(row)
+            return (
+              <div
+                key={env}
+                className="environment-row env-collapsed"
+                data-environment={env}
+                data-testid={`env-summary-${team.id}-${env}`}
+              >
+                <h3 className="environment-label">{env}</h3>
+                <p className="section-summary env-summary">
+                  {worst !== 'ok' && worst !== 'neutral' && (
+                    <span className={`env-worst severity-${worst}`}>
+                      <Mark name={worst} />
+                    </span>
+                  )}
+                  {count(row.length, 'Tier')},{' '}
+                  {findings === 0 ? 'no findings' : count(findings, 'finding')}
+                </p>
+                <Button
+                  tone="quiet"
+                  data-testid={`env-expand-${team.id}-${env}`}
+                  onClick={() => setExpandedEnvs((was) => ({ ...was, [env]: true }))}
+                >
+                  Expand
+                </Button>
+              </div>
+            )
+          }
           return (
             <div
               key={env}
-              className={env === lens ? 'environment-row lens-leading' : 'environment-row lens-muted'}
+              className={env === lens ? 'environment-row lens-leading' : 'environment-row'}
               data-environment={env}
             >
               <h3 className="environment-label">{env}</h3>
