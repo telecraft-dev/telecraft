@@ -8,11 +8,11 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ | ADR / session | Build phase |
 |---|---|---|
 | REQ-001 three rungs, separately adoptable | ADR-0002, ADR-0003, ADR-0013 | P1 to P5 |
-| REQ-002 nothing in the telemetry path | ADR-0002 | all |
+| REQ-002 nothing in the telemetry path | ADR-0002, ADR-0070 (a licence state never changes what a collector receives) | all |
 | REQ-003 configs never binaries | ADR-0002 | P2 |
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
 | REQ-005 unique branding | G0 | P0 |
-| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check), ADR-0067 (the Instance server carries its console and reaches nothing beyond its estate) | all |
+| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check), ADR-0067 (the Instance server carries its console and reaches nothing beyond its estate), ADR-0070 (the licence verifies offline against keys in the binary) | all |
 | REQ-010 component Catalogue | ADR-0020 | P2 |
 | REQ-011 team-scoped Allow-lists | ADR-0021 | P2 |
 | REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017, ADR-0035, ADR-0042 (roll-up surfaces) | P1/P4 |

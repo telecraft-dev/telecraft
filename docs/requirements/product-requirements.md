@@ -1,6 +1,6 @@
 # Product requirements
 
-**Telecraft**: an open-source fleet and policy management platform for
+**Telecraft**: a source-available fleet and policy management platform for
 OpenTelemetry (named 2026-08-12, `docs/branding/naming.md`). Carried from the
 prior shaping effort (`docs/research/2026-08-11-compiled-requirements-original.md`)
 under neutral terminology, extended with four new requirement areas, and
