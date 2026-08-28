@@ -204,6 +204,7 @@ func Build(in Inputs) (Bundle, error) {
 		policy:         policy,
 		bp:             bpEstate,
 		topo:           topo,
+		selfTel:        selfTel,
 		floors:         floors,
 		lib:            lib,
 		activeSchema:   activeSchemaReg,
@@ -304,14 +305,15 @@ func subtreeFunc(own ownership.Estate) func(service, team string) (bool, error) 
 // builder carries one snapshot's loaded inputs while the documents are
 // projected from them.
 type builder struct {
-	in     Inputs
-	tree   ownership.Tree
-	active *catalogue.Catalogue
-	policy *allowlist.Policy
-	bp     blueprint.Estate
-	topo   renderer.Topology
-	floors renderer.FloorPolicy
-	lib    requirements.Library
+	in      Inputs
+	tree    ownership.Tree
+	active  *catalogue.Catalogue
+	policy  *allowlist.Policy
+	bp      blueprint.Estate
+	topo    renderer.Topology
+	selfTel renderer.SelfTelemetry
+	floors  renderer.FloorPolicy
+	lib     requirements.Library
 
 	// activeSchema is the Schema Registry version the estate designated
 	// active, which the schema drift arm judges pinned references against
@@ -440,6 +442,7 @@ func (b *builder) build() (Bundle, error) {
 			Grants:       b.grants(),
 			Floors:       b.floorTable(),
 			Requirements: b.requirements(),
+			Settings:     b.settings(),
 		},
 		Catalogues:  catalogues,
 		Activations: b.activations(),

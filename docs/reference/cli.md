@@ -276,6 +276,15 @@ curl -X POST -H "Authorization: Bearer $(cat /run/secrets/refresh-key)" \
   https://telecraft.example/api/v1/refresh
 ```
 
+Change proposals leave through the forge adapter, so the console's write
+surfaces need one wired. Name the estate repository with `-forge-repo`, which
+defaults to `-repo`, and place either the adapter's own private key beside the
+two identifiers it authenticates with, or a token something else mints and
+rewrites in place before it expires. The token stands in place of the key and
+the identifiers, and both are read at the moment they are used, so rotating
+one is rewriting its file. Nothing placed serves the whole reading half and
+answers every write endpoint by saying no forge credential was placed.
+
 The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 
 | Flag | Type | Default | Description |
@@ -297,6 +306,12 @@ The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 | `-basic-auth` | bool | `true` | Offer basic auth where the estate declares it. `false` refuses it whatever the estate says, and an estate that declares it then stops the start. |
 | `-refresh-key-file` | string | `refresh-key` under `-secrets-dir` | File holding the key a refresh request presents. Nothing placed takes no bare refresh request. |
 | `-push-secret-file` | string | `push-secret` under `-secrets-dir` | File holding the secret the estate's git host signs its push notifications with. Nothing placed takes no push notification. |
+| `-forge-repo` | string | the `-repo` URL | URL of the estate repository change proposals are opened against. |
+| `-forge-app-id` | string | empty | The identifier the forge adapter authenticates as. |
+| `-forge-installation-id` | string | empty | The identifier of that adapter's installation on the estate repository. |
+| `-forge-key-file` | string | `forge-key` under `-secrets-dir` | File holding the forge adapter's private key. |
+| `-forge-token-file` | string | `forge-token` under `-secrets-dir` | File holding a forge credential something else mints and keeps current. It stands in place of the key and the two identifiers. |
+| `-forge-api-base` | string | empty | API endpoint of a self-hosted forge. Empty means the repository host's own. |
 
 | Exit code | Meaning |
 |---|---|

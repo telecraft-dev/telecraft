@@ -129,9 +129,11 @@ server:
   # `telemetry-key` where a telemetry endpoint is set below; and, where
   # the deployment wants the estate fetched on being told rather than on
   # the poll alone, `refresh-key` for a bare refresh request and
-  # `push-secret` for a notification the estate's git host signed. A file
-  # nobody placed is an absence, and what needed it says it is
-  # unavailable.
+  # `push-secret` for a notification the estate's git host signed. Where
+  # the console is to propose changes, `forge-key` or `forge-token` is the
+  # credential a proposal is opened with, and the repository and the two
+  # identifiers go in extraArgs below. A file nobody placed is an absence,
+  # and what needed it says it is unavailable.
   secrets:
     secretName: ""
     mountPath: /etc/telecraft/secrets

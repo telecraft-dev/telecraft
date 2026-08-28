@@ -1,15 +1,12 @@
 package rollout
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
-
+	"github.com/telecraft-dev/telecraft/internal/authored"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
@@ -67,7 +64,7 @@ func AdvanceChange(root string, r renderer.Rollout, tier renderer.Tier, v Verdic
 		if err != nil {
 			return forge.Change{}, err
 		}
-		rebound, err := setTopLevel(tierRaw, "blueprint", r.To)
+		rebound, err := authored.SetTopLevel(tierRaw, "blueprint", r.To)
 		if err != nil {
 			return forge.Change{}, fmt.Errorf("%s: %w", tierFilePath(tier), err)
 		}
@@ -78,7 +75,7 @@ func AdvanceChange(root string, r renderer.Rollout, tier renderer.Tier, v Verdic
 		return change, nil
 	}
 
-	bumped, err := setTopLevel(rolloutRaw, "stage", r.Stage+1)
+	bumped, err := authored.SetTopLevel(rolloutRaw, "stage", r.Stage+1)
 	if err != nil {
 		return forge.Change{}, fmt.Errorf("%s: %w", RolloutFilePath(r), err)
 	}
@@ -137,46 +134,4 @@ func Propose(ctx context.Context, f forge.Forge, render forge.RenderFunc, retry 
 		return forge.Proposal{}, true, err
 	}
 	return p, true, nil
-}
-
-// setTopLevel replaces (or appends) one top-level key's value in an
-// authored YAML document, preserving the rest of the document, comments
-// included, through a node round-trip: the platform edits one field of a
-// human-owned file, never rewrites it.
-func setTopLevel(raw []byte, key string, value any) ([]byte, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(raw, &doc); err != nil {
-		return nil, err
-	}
-	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, errors.New("the file does not hold one mapping document")
-	}
-	encoded := &yaml.Node{}
-	if err := encoded.Encode(value); err != nil {
-		return nil, err
-	}
-	m := doc.Content[0]
-	for i := 0; i+1 < len(m.Content); i += 2 {
-		if m.Content[i].Value == key {
-			m.Content[i+1] = encoded
-			return marshalIndented(&doc)
-		}
-	}
-	keyNode := &yaml.Node{}
-	keyNode.SetString(key)
-	m.Content = append(m.Content, keyNode, encoded)
-	return marshalIndented(&doc)
-}
-
-func marshalIndented(doc *yaml.Node) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(2)
-	if err := enc.Encode(doc); err != nil {
-		return nil, err
-	}
-	if err := enc.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }

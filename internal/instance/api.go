@@ -49,8 +49,8 @@ func (s *Server) routes() http.Handler {
 	for path, answer := range documentRoutes() {
 		api.Handle("GET "+path, s.document(answer))
 	}
-	for path, method := range unanswered {
-		api.Handle(method+" "+path, http.HandlerFunc(s.refuse))
+	for path, route := range writeRoutes() {
+		api.Handle(route.method+" "+path, s.write(route.handle))
 	}
 	api.HandleFunc("/api/v1/", notFound)
 	mux.Handle("/api/v1/", s.require(api))
@@ -80,20 +80,11 @@ func documentRoutes() map[string]func(*console.Bundle, url.Values) (any, bool) {
 	}
 }
 
-// unanswered is every documented endpoint this build routes but does not
-// answer: the change proposals, which leave through the forge adapter, and
-// the three evaluators the composing surfaces call. They are routed rather
-// than left to the not-found answer, so a caller reaching one is told what
-// this instance does not do rather than that the path does not exist.
-var unanswered = map[string]string{
-	"/api/v1/validate":              http.MethodPost,
-	"/api/v1/proposals":             http.MethodPost,
-	"/api/v1/claims/preview":        http.MethodPost,
-	"/api/v1/claims":                http.MethodPost,
-	"/api/v1/governance/proposals":  http.MethodPost,
-	"/api/v1/tiers/proposals":       http.MethodPost,
-	"/api/v1/activations/proposals": http.MethodPost,
-	"/api/v1/setup":                 http.MethodGet,
+// write mounts one endpoint of the write half (write.go). They are
+// methods rather than projections because each of them reads the acting
+// human off the request as well as the documents.
+func (s *Server) write(handle func(*Server, http.ResponseWriter, *http.Request)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { handle(s, w, r) })
 }
 
 // editionPayload is what /api/v1/edition answers: the Edition this
@@ -269,12 +260,6 @@ func placed(read func() (string, error)) (string, bool) {
 		return "", false
 	}
 	return value, true
-}
-
-// refuse says what this instance does not answer, in the words the console
-// puts in front of a reader.
-func (s *Server) refuse(w http.ResponseWriter, r *http.Request) {
-	writeError(w, http.StatusNotImplemented, "this instance does not answer "+r.URL.Path+" yet")
 }
 
 func (s *Server) healthz(w http.ResponseWriter, _ *http.Request) {

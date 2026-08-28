@@ -61,6 +61,12 @@ import (
 // accepts (ADR-0073 §5). Neither placed takes no refresh request, and the
 // poll runs either way: a refresh is a shortcut and never a dependency.
 //
+// The -forge-* flags are where a change proposal leaves through
+// (ADR-0028 §5): the estate repository, the two identifiers, and either the
+// adapter's own key or a token something else mints and keeps current
+// (ADR-0072 §8). Nothing placed serves the whole read surface and answers
+// every exit with what is missing.
+//
 // Exit codes: 0 after a clean signal-driven shutdown; 1 the server could
 // not start or stop; 2 usage.
 func runServe(args []string, stdout, stderr io.Writer) int {
@@ -83,6 +89,12 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	basicAuth := fs.Bool("basic-auth", true, "offer basic auth where the estate declares it; false refuses it whatever the estate says")
 	refreshKey := fs.String("refresh-key-file", "", "file holding the key a refresh request presents (default: "+refreshKeyName+" under -secrets-dir; absent takes no bare refresh request)")
 	pushSecret := fs.String("push-secret-file", "", "file holding the secret the estate's git host signs its push notifications with (default: "+pushSecretName+" under -secrets-dir; absent takes no push notification)")
+	forgeRepo := fs.String("forge-repo", "", "URL of the estate repository change proposals are opened against (default: -repo)")
+	forgeApp := fs.String("forge-app-id", "", "the identifier the forge adapter authenticates as")
+	forgeInstallation := fs.String("forge-installation-id", "", "the identifier of that adapter's installation on the estate repository")
+	forgeKey := fs.String("forge-key-file", "", "file holding the forge adapter's private key (default: "+forgeKeyName+" under -secrets-dir)")
+	forgeToken := fs.String("forge-token-file", "", "file holding a forge credential something else mints and keeps current (default: "+forgeTokenName+" under -secrets-dir); it stands in place of the key and the two identifiers")
+	forgeAPI := fs.String("forge-api-base", "", "API endpoint of a self-hosted forge; empty means the repository host's own")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -155,6 +167,31 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// Where a change proposal leaves through (ADR-0028 §4, §5): the estate
+	// repository plus the adapter credential layered on the git transport
+	// floor. Nothing placed is an Instance whose read surface is complete
+	// and whose exits say what is missing.
+	proposalRepo := *forgeRepo
+	if proposalRepo == "" {
+		proposalRepo = *repo
+	}
+	forgeKeyPath, forgeKeyNamed := secretFile(*forgeKey, named["forge-key-file"], dir, forgeKeyName)
+	forgeTokenPath, forgeTokenNamed := secretFile(*forgeToken, named["forge-token-file"], dir, forgeTokenName)
+	adapter, err := openForge(forgeConfig{
+		repo:           proposalRepo,
+		appID:          *forgeApp,
+		installationID: *forgeInstallation,
+		keyPath:        forgeKeyPath,
+		keyNamed:       forgeKeyNamed,
+		tokenPath:      forgeTokenPath,
+		tokenNamed:     forgeTokenNamed,
+		apiBase:        *forgeAPI,
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "serve: %v\n", err)
+		return 2
+	}
+
 	var tel telemetry.Provider
 	if *endpoint != "" {
 		telemetryKeyPath, telemetryKeyNamed := secretFile(*telemetryKey, named["telemetry-key-file"], dir, telemetryKeyName)
@@ -183,6 +220,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		Secrets:       dir,
 		LicenceFile:   *licenceFile,
 		Telemetry:     tel,
+		Forge:         adapter,
 		Logf:          logf,
 
 		RefuseBasicAuth: !*basicAuth,
@@ -235,7 +273,60 @@ const (
 	telemetryKeyName = "telemetry-key"
 	refreshKeyName   = "refresh-key"
 	pushSecretName   = "push-secret"
+	forgeKeyName     = "forge-key"
+	forgeTokenName   = "forge-token"
 )
+
+// forgeConfig is what one deployment placed for the forge adapter: the
+// repository proposals target, the identifiers, and the two credential
+// shapes.
+type forgeConfig struct {
+	repo           string
+	appID          string
+	installationID string
+	keyPath        string
+	keyNamed       bool
+	tokenPath      string
+	tokenNamed     bool
+	apiBase        string
+}
+
+// openForge builds the forge adapter a change proposal leaves through, or
+// returns nothing where the deployment placed no credential. An absence
+// declares the capability unavailable rather than failing (ADR-0071 §4):
+// the Instance serves its whole read surface either way, and the exits say
+// what is missing.
+//
+// A token file stands in place of the key and the two identifiers, for a
+// deployment that holds no key of its own: it is read at each use, so
+// rewriting the file before it expires is the whole of keeping it current
+// (ADR-0072 §8, ADR-0071 §5).
+func openForge(cfg forgeConfig) (seam.Forge, error) {
+	token, err := readSecretFile(cfg.tokenPath, cfg.tokenNamed)
+	if err != nil {
+		return nil, err
+	}
+	key, err := readSecretFile(cfg.keyPath, cfg.keyNamed)
+	if err != nil {
+		return nil, err
+	}
+	if len(token) == 0 && len(key) == 0 {
+		return nil, nil
+	}
+	if cfg.repo == "" {
+		return nil, fmt.Errorf("a forge credential was placed and no estate repository is named. Name the repository change proposals are opened against with -forge-repo")
+	}
+	adapter := forgeprovider.Config{Repo: cfg.repo, APIBase: cfg.apiBase}
+	if len(token) > 0 {
+		adapter.TokenFrom = func() (string, error) { return readSecretValue(cfg.tokenPath, cfg.tokenNamed) }
+	} else {
+		if cfg.appID == "" || cfg.installationID == "" {
+			return nil, fmt.Errorf("a forge key was placed and the identifiers it authenticates with are missing. Name them with -forge-app-id and -forge-installation-id")
+		}
+		adapter.AppID, adapter.InstallationID, adapter.PrivateKeyPEM = cfg.appID, cfg.installationID, key
+	}
+	return forgeprovider.New(adapter)
+}
 
 // applyEnvironment fills the flags nobody passed from the environment, so a
 // container configures the process without an entrypoint that rewrites

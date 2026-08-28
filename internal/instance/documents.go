@@ -68,21 +68,12 @@ type ungovernedCounts struct {
 	Foreign int `json:"foreign"`
 }
 
-// estateSettings is what the estate declares about the endpoints setup
-// guidance fills itself in from. The document computation carries none
-// yet, so both come back undeclared and the guidance shows the gap rather
-// than inventing values.
-type estateSettings struct {
-	OpAMPEndpoint         string `json:"opampEndpoint"`
-	SelfTelemetryEndpoint string `json:"selfTelemetryEndpoint"`
-}
-
 type estatePayload struct {
-	Environments []string           `json:"environments"`
-	Teams        console.TeamNode   `json:"teams"`
-	Cards        []console.CardFace `json:"cards"`
-	Ungoverned   ungovernedCounts   `json:"ungoverned"`
-	Settings     estateSettings     `json:"settings"`
+	Environments []string               `json:"environments"`
+	Teams        console.TeamNode       `json:"teams"`
+	Cards        []console.CardFace     `json:"cards"`
+	Ungoverned   ungovernedCounts       `json:"ungoverned"`
+	Settings     console.EstateSettings `json:"settings"`
 }
 
 func estateDoc(b *console.Bundle, _ url.Values) (any, bool) {
@@ -108,7 +99,7 @@ func estateDoc(b *console.Bundle, _ url.Values) (any, bool) {
 		Teams:        b.Estate.Teams,
 		Cards:        cards,
 		Ungoverned:   ungoverned,
-		Settings:     estateSettings{},
+		Settings:     b.Estate.Settings,
 	}, true
 }
 

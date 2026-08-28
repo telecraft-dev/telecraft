@@ -307,6 +307,12 @@ type mePayload struct {
 	Name          string   `json:"name"`
 	Team          string   `json:"team"`
 	EditableTeams []string `json:"editableTeams"`
+
+	// Operator says whether this actor may activate an imported version.
+	// It is derived from the tree like every other permission (ADR-0019
+	// §2): an operator is an actor at a root, whose horizon is the whole
+	// Estate, because that is what an activation changes.
+	Operator bool `json:"operator"`
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
@@ -324,6 +330,9 @@ func (h *Handler) mePayload(actor Actor) mePayload {
 		Name:          actor.Identity.Name,
 		Team:          string(actor.Team),
 		EditableTeams: []string{},
+	}
+	if team, known := h.cfg.Tree.Teams[actor.Team]; known {
+		payload.Operator = team.Parent == ""
 	}
 	teams, err := actor.ActionableTeams(h.cfg.Tree)
 	if err != nil {

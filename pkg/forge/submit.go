@@ -80,11 +80,35 @@ func Submit(ctx context.Context, f Forge, change Change, render RenderFunc, retr
 		return Proposal{}, err
 	}
 	change.Files = merged
+
+	// The authored half was validated above, before the render put files
+	// under the rendered tree that only the renderer may write to.
+	return propose(ctx, f, change)
+}
+
+// Open proposes an authored change without rendering it: the exit for a
+// caller that authors and does not render, which is the Instance server
+// (ADR-0067 §1). The rendered tree still travels with the proposal,
+// because the bot re-renders on every push to the branch (ADR-0028 §1);
+// what changes is which process runs the render, never whether the
+// reviewer sees one.
+//
+// The checks Submit makes before it renders are made here too: an
+// unattributable change is refused (ADR-0014), and so is an authored file
+// under the rendered tree, which only the renderer writes to.
+func Open(ctx context.Context, f Forge, change Change) (Proposal, error) {
+	if err := validate(change); err != nil {
+		return Proposal{}, err
+	}
+	return propose(ctx, f, change)
+}
+
+// propose stamps the attribution footer and hands the change to the forge.
+func propose(ctx context.Context, f Forge, change Change) (Proposal, error) {
 	change.Body = withAttribution(change.Body, change.Author, f.Name())
 	if change.Message == "" {
 		change.Message = change.Title
 	}
-
 	return f.Propose(ctx, change)
 }
 

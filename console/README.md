@@ -32,6 +32,17 @@ npm run check:bundle-budget # the entry chunk within its gzipped ceiling
 npm run e2e                 # Playwright against dist/ and the fixture backend
 ```
 
+The Playwright suite runs against the fixture backend, over the fixture
+estate, and not against `telecraft serve`. That is the gap, stated rather
+than hidden: the flows it covers are exercised against one of the two
+implementations of the contract. What holds the other one is Go: the route
+set is held against this file and the fixture backend from inside
+`internal/instance`, and the same package drives every read and write
+endpoint over a real estate checkout, including each proposal exit and what
+it authors, read back by the loaders that read the estate itself. Pointing
+the browser suite at an Instance as well needs an estate that reproduces the
+fixture's own content, which nothing authors yet.
+
 ## Layout
 
 - `src/engine/`: the canvas engine, a pure library (model in, geometry
@@ -69,12 +80,15 @@ backend (`tools/fixture-backend.mjs`) implements this contract over the
 fixture estate and stays the console's dev and test backend.
 
 `telecraft serve` (`internal/instance`) is the other implementation: the
-Instance server, which answers every read endpoint below from
-`internal/console`'s document computation over a live estate, behind
-`pkg/auth`'s `Require` (ADR-0067). The endpoints that propose a
-change, plus `validate`, `claims/preview` and `setup`, are routed there
-and answer that this instance does not answer them yet. The route set is
-held from both sides: `TestTheRouteSetAgreesWithTheFixtureBackendAndTheContract`
+Instance server, which answers every endpoint below from `internal/console`'s
+document computation over a live estate, behind `pkg/auth`'s `Require`
+(ADR-0067). The evaluators the composing surfaces call are ported there
+beside the read projections, and the endpoints that propose a change exit
+through the forge adapter as pull requests, attributed to the signed-in
+human (ADR-0014, ADR-0028). An Instance with no forge credential answers
+those endpoints by saying that none was placed, and serves the whole reading
+half unchanged. The route set is held from both sides:
+`TestTheRouteSetAgreesWithTheFixtureBackendAndTheContract`
 reads this table and the fixture backend, and fails when either names an
 endpoint the Go server does not.
 
@@ -103,12 +117,17 @@ URL the user arrived on survives the round trip.
 | `/api/v1/catalogue/versions` | The installed catalogue versions (ADR-0020 §9: retained, never replaced), each with its entry count and source, and which one is active. |
 | `/api/v1/catalogue/entries?version=` | One retained catalogue version's entries: `(class, type)` identity with the `deprecated_type` alias, display name, source (`upstream` or `adopter`), per-signal stability, and per-signal deprecation notices. An unknown version is a 404, never an empty list. |
 | `/api/v1/governance` | The authored, git-resident Allow-list policy (ADR-0021 §5): Owners, Allow-lists and Grants in their authored shapes. The console derives each team's effective palette, with total provenance, from this plus the active catalogue (`src/governance/effective.ts`, the same derived-presentation pattern as the roll-up). |
-| `POST /api/v1/governance/proposals` | A governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal (opaque id, URL, branch) mirroring the forge seam (`pkg/forge`). The console proposes, the PR decides; the platform binary wires this to `forge.Submit`. |
+| `POST /api/v1/governance/proposals` | A governance edit exiting as a PR via the forge adapter (ADR-0042 §6). The body carries the complete edited policy plus a title; the server validates fail-closed exactly as loading does (ADR-0021, REQ-011) and answers 422 with the problems named, or the opened proposal (opaque id, URL, branch) mirroring the forge seam (`pkg/forge`). The console proposes, the PR decides. |
 | `POST /api/v1/validate` | The one evaluator (ADR-0022 §1): the open draft plus its Environment in; findings, palette verdicts (show, grey with reason, hidden-with-count), requirement verdicts (claimed beside met, never blended), the save gate, and the rendered-artefact preview out. Stateless; the composer calls it on every interaction, judging with the same authored governance policy and active catalogue the endpoints above serve. |
 | `POST /api/v1/proposals` | The composer exit (ADR-0043 §6): the draft becomes a change proposal through the forge adapter, render-in-PR and user-attributed (ADR-0028, ADR-0014). Enforcement is on: an allow-list violation answers 409 and no proposal opens, fail closed. An optional `claim` context (the claim flow's draft-new-Tier path, ADR-0042 §6) makes this the PR authoring the Tier binding beside the Blueprint; it is judged by the claim rulebook first and refused 422 with the problems named. |
 | `POST /api/v1/claims/preview` | The claim flow's continuous impact evaluation (ADR-0042 §6): the constrained selector plus Environment in (with `mode` and `tier` once the one question, attach or draft, is answered) and the impact out: matched ungoverned collectors split by referent, governed populations the selector does not contradict (blast radius, reported, never hidden), attach candidates ranked by selector proximity with the widened selector each implies, and the rendered Tier binding the PR would carry. For attach the judged selector is the widened one: what merge would actually serve. |
 | `POST /api/v1/refresh` | Fetch the estate now, rather than at the next poll. It is asked for by machines and not by the console: a push notification the git host signed, or a bare request carrying the key the deployment placed. The poll never stops, so this is a shortcut and never a dependency; the payload is not read, because what changed is git's to say. Answers 202 with what it did, 401 when the request carries neither credential, and 501 where the deployment placed neither. |
-| `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014). The console proposes, the PR decides; the platform binary wires this to `forge.Submit` like the other proposal exits. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives: generalise-never-enumerate is enforced server-side, not assumed of the UI. |
+| `POST /api/v1/claims` | The claim flow's attach exit: a PR widening the chosen Tier's selector via the forge adapter, user-attributed (ADR-0014). The console proposes, the PR decides. Fail closed, 422 with the problems named; a selector key that names one instance (`service.instance.id` and kin) is refused however it arrives: generalise-never-enumerate is enforced server-side, not assumed of the UI. |
+| `/api/v1/activations` | Which imported version of each substrate the estate judges against, what activating each retained version would change, and every activation so far (ADR-0020 §6, §9). |
+| `POST /api/v1/activations/proposals` | Activating a version, as the change to the estate that it is: `{kind, version}` in, a PR designating it out, carrying the impact report the operator decided on so the review reads what they read. It is refused for anybody but an operator, and for a version already active or never imported. |
+| `/api/v1/endorsements` | Every Endorsement held on this estate (ADR-0061 §2): a Blueprint id at a pinned version, the authoring Owner, and the top-of-tree team that authored it. |
+| `/api/v1/setup?tier=` | The `never_seen` card's setup guidance (ADR-0060 §4): the rendered artefact's stable path, the endpoints the estate declares, the identity attributes a collector must report for the selector to match it, and the activated Catalogue version. Generated on view, committed nowhere, judged never. An unknown Tier is a 404. |
+| `POST /api/v1/tiers/proposals` | The Tier-first onboarding flow's exit (ADR-0060 §2): a PR authoring `teams/<team>/tiers/<name>.yaml`, fail closed with the problems named. |
 
 Card faces follow the ADR-0041 contract, integer-versioned
 (`contractVersion: 6`): three bands as enum states plus worst-finding

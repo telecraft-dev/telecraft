@@ -38,6 +38,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/telecraft-dev/telecraft/internal/authored"
+
 	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
@@ -227,18 +229,10 @@ func Save(dir string, rec Record) error {
 	if err := rec.validate(path); err != nil {
 		return err
 	}
-	// Two-space indentation, as every other authored file in an estate
-	// uses: this one is reviewed in a pull request beside them.
-	var buf bytes.Buffer
-	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(2)
-	if err := enc.Encode(rec); err != nil {
+	encoded, err := Encode(rec)
+	if err != nil {
 		return err
 	}
-	if err := enc.Close(); err != nil {
-		return err
-	}
-	encoded := buf.Bytes()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -255,6 +249,17 @@ func Save(dir string, rec Record) error {
 		return err
 	}
 	return os.Rename(tmp.Name(), path)
+}
+
+// Encode marshals a record as the authored activations.yaml: validated
+// first, so a record this package would refuse to load is one it also
+// refuses to write, and indented like every other authored file in an
+// estate, because this one is reviewed in a pull request beside them.
+func Encode(rec Record) ([]byte, error) {
+	if err := rec.validate(File); err != nil {
+		return nil, err
+	}
+	return authored.Encode(rec)
 }
 
 // validate collects everything wrong with a record. The rules are the two
@@ -372,18 +377,42 @@ func Apply(rec Record, kind Kind, rep Report, by ownership.OwnerID, at time.Time
 		return Record{}, fmt.Errorf("%s %s is already active", kind.Name(), rep.To)
 	}
 
+	return Designate(rec, kind, rep.To, Impact{Summary: rep.Summary(), Lines: rep.Lines()}, by, at)
+}
+
+// Designate returns the record one activation would leave: the version
+// designated active, and the impact report the decision was taken on
+// appended to that substrate's history.
+//
+// It takes the report as a reading rather than recomputing one, because
+// the caller that offered the version to an operator is the caller that
+// computed what activating it would change, and the record has to carry
+// the report the decision was actually taken on. Apply is this with the
+// report's own consistency checked first; a caller holding a report it did
+// not compute checks what it can and calls this.
+func Designate(rec Record, kind Kind, version string, impact Impact, by ownership.OwnerID, at time.Time) (Record, error) {
+	if !kind.Valid() {
+		return Record{}, fmt.Errorf("%q is not a substrate on the import pipeline", kind)
+	}
+	if version == "" {
+		return Record{}, fmt.Errorf("no version to activate")
+	}
+	if by == "" {
+		return Record{}, fmt.Errorf("activating %s %s needs the owner deciding it", kind.Name(), version)
+	}
+	current, _ := rec.Active(kind)
 	out := rec
 	d := Designation{}
 	if existing, ok := rec.For(kind); ok {
 		d.Activations = append([]Activation(nil), existing.Activations...)
 	}
-	d.Active = rep.To
+	d.Active = version
 	d.Activations = append(d.Activations, Activation{
-		Version:  rep.To,
+		Version:  version,
 		Previous: current,
 		At:       at.UTC().Truncate(time.Second),
 		By:       by,
-		Impact:   Impact{Summary: rep.Summary(), Lines: rep.Lines()},
+		Impact:   impact,
 	})
 	out.set(kind, &d)
 	if err := out.validate(File); err != nil {
