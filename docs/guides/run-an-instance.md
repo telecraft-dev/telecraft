@@ -144,17 +144,50 @@ deployment projects a Secret as a read-only volume. Whatever writes the
 files, filling the directory is the whole interface: rotating a secret is
 rewriting its file, with nothing to restart and nothing to renew.
 
-Two files have documented names, and both are optional:
+These files have documented names, and all of them are optional:
 
 | File | What it holds |
 |---|---|
 | `session-key` | The session signing key, at least 32 bytes. |
 | `telemetry-key` | The credential for the telemetry backend. |
+| `refresh-key` | The key a bare refresh request presents. |
+| `push-secret` | The secret your git host signs its push notifications with. |
+| `forge-key` | The private key the forge adapter authenticates with. |
+| `forge-token` | A forge credential something else mints and keeps current. |
 
-Point either somewhere else with `-session-key-file` or
-`-telemetry-key-file`. A path you name and the process cannot read stops the
-start; a file you never placed is an absence, and an absence means the
-capability is unavailable rather than broken.
+Point any of them somewhere else with the matching `-*-file` flag. A path you
+name and the process cannot read stops the start; a file you never placed is
+an absence, and an absence means the capability is unavailable rather than
+broken.
+
+## Let the console propose changes
+
+The console never writes to your estate. Composing a Blueprint, editing the
+governance policy, adding a Tier, claiming ungoverned collectors and
+activating a version all end the same way: a pull request against the estate
+repository, attributed to the person who asked for it, which your reviewers
+decide on.
+
+That needs somewhere for a proposal to go. Name the estate repository and
+place the credential:
+
+```sh
+./telecraft serve -estate ../estate-demo \
+  -forge-repo https://forge.example/acme/estate \
+  -forge-app-id 123456 -forge-installation-id 7654321 \
+  -secrets-dir /run/secrets
+```
+
+with the private key in `/run/secrets/forge-key`. Where something else mints
+a short-lived token and rewrites it in place, place that instead, as
+`/run/secrets/forge-token`, and leave the two identifiers out: the file is
+read at the moment it is used, so a rewritten token is picked up by the next
+proposal with nothing to restart.
+
+Without a credential the Instance serves everything there is to read, and
+every write endpoint answers that no forge credential was placed. Nothing
+else changes: collectors are served, the probes answer, and the shelf,
+topology and drawers all read as usual.
 
 ## Name a licence, if you have one
 

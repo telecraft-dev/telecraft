@@ -121,7 +121,9 @@ describe('previewClaim (ADR-0042 §6)', () => {
       tier: 'data-flow/payments-edge',
     })
     expect(preview.rendered).toContain('teams/data-flow/tiers/payments-edge.yaml')
-    expect(preview.rendered).toContain('blueprint: data-flow/payments-edge-standard@1')
+    // The Blueprint is chosen in the flow this hands off to, so the preview
+    // names none rather than naming one nobody authored.
+    expect(preview.rendered).not.toContain('blueprint:')
     expect(preview.rendered).toContain('k8s.namespace: payments')
     // The binding names a population, never an instance.
     expect(preview.rendered).not.toContain('service.instance.id')

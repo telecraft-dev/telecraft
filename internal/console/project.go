@@ -447,6 +447,32 @@ func (b *builder) environments() []string {
 	return out
 }
 
+// settings projects the endpoints the estate declares, which is what
+// setup guidance fills itself in from (ADR-0060 §4).
+//
+// The self-telemetry destination is estate-wide by construction. The OpAMP
+// endpoint is authored per Tier, so it is estate-wide only where the
+// estate made it so: where every served Tier names the same endpoint, that
+// endpoint is the estate's declaration; where they differ, or where
+// nothing is served, there is no one answer and the setting stays empty
+// rather than picking one.
+func (b *builder) settings() EstateSettings {
+	out := EstateSettings{SelfTelemetryEndpoint: b.selfTel.Endpoint}
+	for _, t := range b.topo.SortedTiers() {
+		if t.Serving == nil {
+			continue
+		}
+		if out.OpAMPEndpoint == "" {
+			out.OpAMPEndpoint = t.Serving.Endpoint
+			continue
+		}
+		if out.OpAMPEndpoint != t.Serving.Endpoint {
+			return EstateSettings{SelfTelemetryEndpoint: b.selfTel.Endpoint}
+		}
+	}
+	return out
+}
+
 // teams projects the team tree the shelf groups by.
 func (b *builder) teams() TeamNode {
 	var roots []ownership.TeamID

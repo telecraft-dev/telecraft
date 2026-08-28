@@ -145,7 +145,9 @@ function renderBinding(estate, body) {
       `# teams/${body.team}/tiers/${name}.yaml: authored by the claim flow`,
       `owner: ${body.team}`,
       `environment: ${body.environment}`,
-      `blueprint: ${body.tier}-standard@1`,
+      // No blueprint line: the Blueprint the drafted Tier binds is chosen
+      // in the flow this preview hands off to, and naming one here would
+      // be naming an object nobody has authored.
       'selector:',
       renderSelector(body.selector),
       '',

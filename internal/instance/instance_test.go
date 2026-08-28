@@ -22,6 +22,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/consoleassets"
 	"github.com/telecraft-dev/telecraft/internal/serving"
 	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // The storage audit, held over this process the way it is held over the
@@ -175,32 +176,6 @@ func TestAnInstanceServesTheEstateBehindASignIn(t *testing.T) {
 	}
 }
 
-// Every documented endpoint this build does not answer says so, rather than
-// reading as a path that does not exist or failing with a 500.
-func TestUnansweredEndpointsSayWhatTheyAreNot(t *testing.T) {
-	_, base := start(t, estateCheckout(t))
-	client := signedIn(t, base)
-
-	for path, method := range unanswered {
-		req, err := http.NewRequest(method, base+path, strings.NewReader("{}"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		res, err := client.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		body, _ := io.ReadAll(res.Body)
-		res.Body.Close()
-		if res.StatusCode != http.StatusNotImplemented {
-			t.Errorf("%s %s = %d, want 501", method, path, res.StatusCode)
-		}
-		if !strings.Contains(string(body), path) {
-			t.Errorf("%s %s does not name itself in its refusal: %s", method, path, body)
-		}
-	}
-}
-
 // The one combination that would put a password on a network in clear text
 // is refused, and saying it is meant admits it.
 func TestTheExternalURLFailsClosedOnPlainHTTPAcrossANetwork(t *testing.T) {
@@ -240,10 +215,13 @@ func TestCookiesAreSecureExactlyWhenTheOutsideIsHTTPS(t *testing.T) {
 	}
 }
 
-// The bootstrap credential the test signs in with.
+// The credentials the tests sign in with. The first acts as an owner
+// partway down the tree, which is what most of the estate's authoring is
+// done by; the second acts at the root, which is what an activation needs.
 const (
-	user   = "operator@example.com"
-	secret = "correct-horse-battery-staple"
+	user     = "operator@example.com"
+	secret   = "correct-horse-battery-staple"
+	rootUser = "lead@example.com"
 )
 
 // estateCheckout copies the small estate the snapshot generator's tests use,
@@ -263,6 +241,10 @@ func estateCheckout(t *testing.T) string {
 		"  - email: " + user + "\n" +
 		"    name: The operator\n" +
 		"    owner: gateway-owners\n" +
+		"    password: " + hash + "\n" +
+		"  - email: " + rootUser + "\n" +
+		"    name: The lead\n" +
+		"    owner: engineering-lead\n" +
 		"    password: " + hash + "\n"
 	if err := os.WriteFile(filepath.Join(root, auth.UsersFile), []byte(users), 0o644); err != nil {
 		t.Fatal(err)
@@ -274,9 +256,17 @@ func estateCheckout(t *testing.T) string {
 // start runs one server over a checkout and waits for its first documents.
 func start(t *testing.T, root string) (*Server, string) {
 	t.Helper()
+	return startWith(t, root, nil)
+}
+
+// startWith runs one server over a checkout, with or without somewhere for
+// a change proposal to leave through.
+func startWith(t *testing.T, root string, adapter forge.Forge) (*Server, string) {
+	t.Helper()
 	srv, err := New(Config{
 		Source:       serving.DirSource{Root: root},
 		Root:         root,
+		Forge:        adapter,
 		HTTPEndpoint: "127.0.0.1:0",
 		// The OpAMP endpoint is closed here: this test is about the half
 		// humans reach, and closing it is a shape the ADR admits.
@@ -325,12 +315,18 @@ func sessions(t *testing.T) auth.Sessions {
 // the session cookie.
 func signedIn(t *testing.T, base string) *http.Client {
 	t.Helper()
+	return signedInAs(t, base, user)
+}
+
+// signedInAs signs one of the estate's users in.
+func signedInAs(t *testing.T, base, email string) *http.Client {
+	t.Helper()
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	client := &http.Client{Jar: jar}
-	body := `{"provider":"basic","username":"` + user + `","secret":"` + secret + `"}`
+	body := `{"provider":"basic","username":"` + email + `","secret":"` + secret + `"}`
 	res, err := client.Post(base+"/api/v1/auth/login", "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatal(err)

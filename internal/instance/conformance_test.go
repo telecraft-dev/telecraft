@@ -41,14 +41,14 @@ func TestTheRouteSetAgreesWithTheFixtureBackendAndTheContract(t *testing.T) {
 	}
 }
 
-// served is every path this server routes: the read endpoints, the ones it
-// routes and does not answer, and the auth slice it mounts the handler for.
+// served is every path this server routes: the read endpoints, the write
+// half, and the auth slice it mounts the handler for.
 func served() []string {
-	out := make([]string, 0, len(documentRoutes())+len(unanswered))
+	out := make([]string, 0, len(documentRoutes())+len(writeRoutes()))
 	for path := range documentRoutes() {
 		out = append(out, path)
 	}
-	for path := range unanswered {
+	for path := range writeRoutes() {
 		out = append(out, path)
 	}
 	// The auth slice, mounted whole. The two redirect round trips are the

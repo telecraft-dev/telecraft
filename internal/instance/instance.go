@@ -131,6 +131,12 @@ type Config struct {
 	// notification.
 	PushSecret func() (string, error)
 
+	// Forge is where a change proposal leaves through (ADR-0028 §4). Nil
+	// is an Instance with no forge credential: the read surface is
+	// unaffected and every exit that would propose a change says what is
+	// missing rather than failing (ADR-0067 §1).
+	Forge forge.Forge
+
 	// Notifications judges a delivery: whether it is a genuine push from
 	// the forge this estate is read from. Nil is an estate with no forge
 	// behind it, such as a repository reached over the git transport

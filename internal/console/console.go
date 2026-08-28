@@ -94,6 +94,26 @@ type EstateDoc struct {
 	Grants       []GrantDoc                   `json:"grants"`
 	Floors       map[string]map[string]string `json:"floors"`
 	Requirements []RequirementDoc             `json:"requirements"`
+	Settings     EstateSettings               `json:"settings"`
+}
+
+// EstateSettings is what the estate declares about the endpoints a
+// collector is pointed at, which is what setup guidance fills itself in
+// from (ADR-0060 §4). Both are declarations, never values a surface
+// invents: an estate that has not declared one carries it empty, and the
+// guidance shows the gap.
+type EstateSettings struct {
+	// OpAMPEndpoint is where a Served collector's Supervisor connects for
+	// its artefact. It is estate-wide only where the estate is: it is
+	// carried when every served Tier names the same endpoint, and empty
+	// when they differ or when nothing is served.
+	OpAMPEndpoint string `json:"opampEndpoint"`
+
+	// SelfTelemetryEndpoint is the base endpoint every collector reports
+	// its own telemetry to, from telemetry.yaml. Per-Environment
+	// overrides are the renderer's to apply, so the base is what is
+	// carried here.
+	SelfTelemetryEndpoint string `json:"selfTelemetryEndpoint"`
 }
 
 // User is the signed-in user the demo presents. editableTeams is derived
