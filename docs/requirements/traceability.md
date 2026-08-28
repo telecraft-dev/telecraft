@@ -12,7 +12,7 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-003 configs never binaries | ADR-0002 | P2 |
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
 | REQ-005 unique branding | G0 | P0 |
-| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check), ADR-0067 (the Instance server carries its console and reaches nothing beyond its estate), ADR-0070 (the licence verifies offline against keys in the binary), ADR-0071 (secrets are files a deployment places; no secret manager is ever a dependency) | all |
+| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check), ADR-0067 (the Instance server carries its console and reaches nothing beyond its estate), ADR-0069 (many Organisations reconcile from git into the adopter's own substrate, fetching nothing), ADR-0070 (the licence verifies offline against keys in the binary), ADR-0071 (secrets are files a deployment places; no secret manager is ever a dependency) | all |
 | REQ-010 component Catalogue | ADR-0020 | P2 |
 | REQ-011 team-scoped Allow-lists | ADR-0021 | P2 |
 | REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017, ADR-0035, ADR-0042 (roll-up surfaces) | P1/P4 |
@@ -20,7 +20,7 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-014 exemptions, grace | ADR-0004, ADR-0037 | P1 |
 | REQ-015 universal ownership, finding routing | ADR-0016 | P1/P4 |
 | REQ-016 Components first-class, inherit by reference | ADR-0016, ADR-0024, ADR-0026 | P2 |
-| REQ-017 pluggable auth, ownership-derived authz | ADR-0017, ADR-0019, ADR-0067 (the process that mounts them), ADR-0071 (how a provider's client secret reaches the process) | P0/P4 |
+| REQ-017 pluggable auth, ownership-derived authz | ADR-0017, ADR-0019, ADR-0067 (the process that mounts them), ADR-0069 (the Organisation is the scope they run in), ADR-0071 (how a provider's client secret reaches the process) | P0/P4 |
 | REQ-020 the cross, seven outcomes + delivery status | ADR-0004, ADR-0033 | P1/P3 |
 | REQ-021 library layout, strict load | (prior built code; port) | P1 |
 | REQ-022 Weaver/semconv vocabulary | ADR-0009, ADR-0034 | P1/P5 |
