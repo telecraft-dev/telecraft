@@ -79,6 +79,7 @@ release, or hand someone a build to test, without moving what the world sees.
 | `telecraft-<version>-linux-amd64` and `telecraft-<version>-linux-arm64` | The same binaries the image holds, for a pipeline that has neither a container runtime nor a Go toolchain. |
 | `telecraft-design-<version>.tar.gz` | The design system: `tokens.css`, `base.css` once it exists, `fonts/` holding `fonts.css`, the `.woff2` faces and the two OFL licence texts, and `icons/` holding the brand mark in the five formats a browser is offered. `LICENSE`, `VERSION` and a `README.md` describing each file travel with them. |
 | `SHA256SUMS` | The checksums of every file attached above. |
+| The chart, at `oci://ghcr.io/telecraft-dev/charts/telecraft` | The Helm chart in `charts/telecraft`, packaged and pushed on the same tag push. Its `version` is the release version without the leading `v`, because Helm requires SemVer without one, and its `appVersion` is the tag verbatim, so the chart and the image it deploys carry one number. |
 
 The image is addressed by digest rather than by a checksum file, which is the
 same discipline in the form a registry takes: the release notes carry the
@@ -135,7 +136,18 @@ embedded in, so the image carries it.
    resolves to the digest the notes name;
    `git ls-remote --tags origin release` resolves to the commit you tagged;
    and the demo run in `estate-demo` finishes green.
-7. **Verify that a known-good licence still verifies**, against the binary
+7. **Verify the chart resolves and renders**, from a directory with no
+   checkout of this repository in it:
+
+   ```bash
+   helm pull oci://ghcr.io/telecraft-dev/charts/telecraft --version 0.3.0
+   helm show chart oci://ghcr.io/telecraft-dev/charts/telecraft --version 0.3.0
+   ```
+
+   The `appVersion` it prints is the tag you pushed. An adopter's first
+   install is the first thing that reads either number, and a chart pushed
+   with the wrong one installs an image from another release.
+8. **Verify that a known-good licence still verifies**, against the binary
    the release built:
 
    ```bash
@@ -148,7 +160,7 @@ embedded in, so the image carries it.
    licence to test with, and the keys themselves, live in the private
    `telecraft-dev/licensing` repository; a signing key never enters this
    repository, its CI, an image, or a release artefact.
-8. **Trust the checks over an open tab.** The demo serves behind a cache
+9. **Trust the checks over an open tab.** The demo serves behind a cache
    that can hold the previous build for some minutes after the deployment
    finishes, so a page that still looks old is not evidence the release
    failed. Hard-refresh, and compare the version the console names in its

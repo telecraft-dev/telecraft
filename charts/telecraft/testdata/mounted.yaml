@@ -1,0 +1,26 @@
+# The air-gapped shape: every image reference re-pointed at a mirror, the
+# checkout supplied in a volume something outside the pod keeps current, and
+# the OpAMP endpoint closed because these collectors are read through a
+# vendor's own control plane.
+image:
+  repository: mirror.internal.example/telecraft-dev/telecraft
+  digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+imagePullSecrets:
+  - name: mirror-credentials
+estate:
+  sync:
+    enabled: false
+  volume:
+    persistentVolumeClaim:
+      claimName: estate-checkout
+server:
+  externalUrl: https://telecraft.internal.example
+  opamp:
+    enabled: false
+  secrets:
+    secretName: telecraft-secrets
+  licence:
+    configMapName: telecraft-licence
+serviceAccount:
+  create: false
+  name: telecraft-runner

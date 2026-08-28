@@ -1,0 +1,149 @@
+---
+# Source: telecraft/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: telecraft
+  labels:
+    helm.sh/chart: telecraft-0.0.0
+    app.kubernetes.io/name: telecraft
+    app.kubernetes.io/instance: telecraft
+    app.kubernetes.io/version: "v0.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: telecraft
+    app.kubernetes.io/instance: telecraft
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+# Source: telecraft/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telecraft
+  labels:
+    helm.sh/chart: telecraft-0.0.0
+    app.kubernetes.io/name: telecraft
+    app.kubernetes.io/instance: telecraft
+    app.kubernetes.io/version: "v0.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telecraft
+      app.kubernetes.io/instance: telecraft
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: telecraft
+        app.kubernetes.io/instance: telecraft
+    spec:
+      serviceAccountName: telecraft-runner
+      # The Instance server reads no Kubernetes API, so nothing in this pod
+      # needs a token for one.
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: mirror-credentials
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: telecraft
+          image: mirror.internal.example/telecraft-dev/telecraft@sha256:1111111111111111111111111111111111111111111111111111111111111111
+          imagePullPolicy: IfNotPresent
+          # The image's entrypoint is the binary and its default command is
+          # `serve`, which these arguments replace, so `serve` is named
+          # again here. Both addresses are set rather than inherited: what
+          # this pod listens on is the chart's statement, and the lint
+          # checks the ports against the command's own flag defaults.
+          args:
+            - serve
+            - -estate
+            - "/estate"
+            - -http
+            - 0.0.0.0:4321
+            - -listen
+            - ""
+            - -fetch-interval
+            - "30s"
+            - -external-url
+            - "https://telecraft.internal.example"
+            - -secrets-dir
+            - "/etc/telecraft/secrets"
+            - -licence-file
+            - "/etc/telecraft/licence/licence"
+          ports:
+            - name: http
+              containerPort: 4321
+              protocol: TCP
+          # Two probes and no third. The HTTP endpoint carries both, and
+          # the OpAMP endpoint gets none of its own: it is up when the
+          # process is (ADR-0067 §6).
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 60
+          volumeMounts:
+            - name: estate
+              mountPath: "/estate"
+              readOnly: true
+            # The root filesystem is read-only, so the process is given the
+            # one writable directory the Go runtime and its dependencies
+            # reach for.
+            - name: tmp
+              mountPath: /tmp
+            - name: secrets
+              mountPath: "/etc/telecraft/secrets"
+              readOnly: true
+            - name: licence
+              mountPath: "/etc/telecraft/licence"
+              readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        # A checkout the sidecar keeps is rebuildable, so it never outlives
+        # the pod: a volume that did would be the first durable thing this
+        # product keeps (ADR-0032 §1). A checkout the operator supplies is
+        # theirs, and they say what it lives in.
+        - name: estate
+          persistentVolumeClaim:
+            claimName: estate-checkout
+        - name: secrets
+          secret:
+            secretName: "telecraft-secrets"
+        - name: licence
+          configMap:
+            name: "telecraft-licence"

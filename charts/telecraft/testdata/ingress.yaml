@@ -1,0 +1,36 @@
+# The whole surface: TLS terminated at the ingress, collectors on a host of
+# their own, a secret directory, a licence, and a telemetry backend.
+image:
+  digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+estate:
+  sync:
+    image:
+      repository: registry.example/git
+      tag: "2.45"
+    repo: git@forge.example:acme/estate.git
+    ref: release
+    intervalSeconds: 15
+    credentialSecret: estate-credential
+server:
+  secrets:
+    secretName: telecraft-secrets
+  licence:
+    secretName: telecraft-licence
+  telemetry:
+    endpoint: https://telemetry.example
+  window: 30m
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+ingress:
+  enabled: true
+  className: nginx
+  host: telecraft.example
+  tls:
+    secretName: telecraft-tls
+  opamp:
+    enabled: true
+    host: opamp.telecraft.example
+    tls:
+      secretName: opamp-telecraft-tls

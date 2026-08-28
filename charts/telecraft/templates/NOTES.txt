@@ -1,0 +1,32 @@
+{{ .Release.Name }} is installed in namespace {{ .Release.Namespace }}.
+
+The console and the platform API answer at {{ include "telecraft.externalURL" . }}.
+{{- if .Values.server.opamp.enabled }}
+{{- if .Values.ingress.opamp.enabled }}
+Collectors reach the OpAMP endpoint at https://{{ .Values.ingress.opamp.host }}/v1/opamp.
+{{- else }}
+The OpAMP endpoint answers inside the cluster at
+http://{{ include "telecraft.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.opampPort }}/v1/opamp.
+{{- end }}
+{{- else }}
+The OpAMP endpoint is closed.
+{{- end }}
+
+Watch the Instance come ready:
+
+  kubectl rollout status deployment/{{ include "telecraft.fullname" . }} -n {{ .Release.Namespace }}
+
+The server is ready once it holds a snapshot of the estate. Read the head
+it is serving, and the age of that snapshot, from the console.
+{{ if not .Values.server.secrets.secretName }}
+No secret directory is set, so the session signing key is drawn at start and
+a restart signs everybody out. Create a Secret holding a `session-key` and
+name it in `server.secrets.secretName`.
+{{- end }}
+{{- if .Values.estate.sync.enabled }}
+
+The estate is cloned from {{ .Values.estate.sync.repo }} at {{ .Values.estate.sync.ref }} and pulled
+every {{ .Values.estate.sync.intervalSeconds }} seconds. Read what the sync container is doing:
+
+  kubectl logs deployment/{{ include "telecraft.fullname" . }} -n {{ .Release.Namespace }} -c estate-sync
+{{- end }}

@@ -1,0 +1,28 @@
+apiVersion: v2
+name: telecraft
+type: application
+
+description: >-
+  Telecraft: the console, the platform API and the OpAMP endpoint served
+  from one process over one estate.
+
+home: https://telecraft.dev
+sources:
+  - https://github.com/telecraft-dev/telecraft
+
+# The chart uses the networking.k8s.io/v1 Ingress and its ingressClassName
+# field, and nothing newer.
+kubeVersion: ">=1.23.0-0"
+
+# Both numbers are placeholders in the source tree. The tag that publishes
+# the chart sets them: version is the release version without its leading
+# v, because Helm requires SemVer without one, and appVersion is the tag as
+# written. One number then answers what to deploy.
+#
+# Installing from a checkout needs image.tag set, because there is no
+# v0.0.0 in the registry to pull.
+version: 0.0.0
+appVersion: "v0.0.0"
+
+# The chart has no dependencies, so an install resolves no second chart
+# repository and reaches nothing.

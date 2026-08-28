@@ -318,3 +318,6 @@ TELECRAFT_IMAGE=ghcr.io/telecraft-dev/telecraft@sha256:DIGEST
   changes, and what happens without one.
 - [Run the container image](run-the-container-image.md) is the same image
   without Compose, and the whole CLI from the same artefact.
+- [Deploy on Kubernetes](deploy-on-kubernetes.md) is the same image on a
+  cluster, where the pull that keeps the checkout current runs in a sidecar
+  rather than on a timer.

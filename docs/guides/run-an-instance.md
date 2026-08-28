@@ -329,6 +329,8 @@ the estate does.
 
 ## What next
 
+- [Deploy on Kubernetes](deploy-on-kubernetes.md) installs this same process
+  from a chart, with the estate checkout kept current beside it.
 - [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a
   new Blueprint version in cohorts.
 - [Activate a version](activate-a-version.md) moves the estate onto a new

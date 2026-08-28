@@ -1,0 +1,30 @@
+{{/*
+Humans and collectors arrive on separate ports, so a deployment can expose
+one and not the other (ADR-0067 §1). The hosted service routes the console
+and not /v1/opamp (ADR-0072 §3), which is that separation used.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "telecraft.fullname" . }}
+  labels:
+    {{- include "telecraft.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "telecraft.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    {{- if .Values.server.opamp.enabled }}
+    - name: opamp
+      port: {{ .Values.service.opampPort }}
+      targetPort: opamp
+      protocol: TCP
+    {{- end }}

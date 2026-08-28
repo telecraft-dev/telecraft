@@ -1,0 +1,8 @@
+# Files the packaged chart does not carry. The golden fixtures are the
+# repository's own check on this chart, not part of what an operator
+# installs.
+.DS_Store
+.git/
+.gitignore
+*.tmproj
+testdata/
