@@ -53,3 +53,11 @@ __pycache__/
 # embed has something to point at on a checkout where npm has never run.
 internal/consoleassets/dist/*
 !internal/consoleassets/dist/.gitkeep
+
+# Claude Code's per-checkout settings, which record whatever the person
+# working in this copy allowed locally and which nobody else can use. The
+# tracked `.claude/settings.json` beside it is the project's own
+# configuration and stays in the tree: it is what stops a session that
+# never sees a user-level configuration from stamping attribution trailers
+# on this repository's commits.
+.claude/settings.local.json
