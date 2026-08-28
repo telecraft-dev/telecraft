@@ -1,7 +1,7 @@
 ---
 title: Stage a Rollout
 description: Move one Tier's collector population onto a new Blueprint version in Cohorts, advancing and aborting by pull request.
-order: 7
+order: 8
 ---
 
 # Stage a Rollout

@@ -75,22 +75,32 @@ release, or hand someone a build to test, without moving what the world sees.
 | Artefact | What it is |
 |---|---|
 | The source at the tag | The ref `estate-demo` builds the demo from, and the ref to build the CLI from with `go build -o telecraft ./cmd/telecraft`. GitHub attaches the source archives itself. |
+| `ghcr.io/telecraft-dev/telecraft:<version>` | The container image (ADR-0068): the `telecraft` binary with the console inside it, the Catalogue baseline and `LICENSE`, as one index over `linux/amd64` and `linux/arm64`. A stable release also moves the `release` tag. |
+| `telecraft-<version>-linux-amd64` and `telecraft-<version>-linux-arm64` | The same binaries the image holds, for a pipeline that has neither a container runtime nor a Go toolchain. |
 | `telecraft-design-<version>.tar.gz` | The design system: `tokens.css`, `base.css` once it exists, `fonts/` holding `fonts.css`, the `.woff2` faces and the two OFL licence texts, and `icons/` holding the brand mark in the five formats a browser is offered. `LICENSE`, `VERSION` and a `README.md` describing each file travel with them. |
-| `SHA256SUMS` | The checksum of the archive above. |
+| `SHA256SUMS` | The checksums of every file attached above. |
 
-Three things are deliberately absent:
+The image is addressed by digest rather than by a checksum file, which is the
+same discipline in the form a registry takes: the release notes carry the
+digest, and a deployment pins it.
 
-- **Prebuilt binaries.** The documented way to get the CLI is to build it
-  from source, which the [quickstart](../guides/quickstart.md) does in one
-  command. Publishing binaries buys a platform matrix and an upgrade path
-  that nothing has asked for yet.
-- **The console bundle.** The console is built per deployment: demo mode
-  reads a snapshot beside it, instance mode calls a server (ADR-0045). A
-  single prebuilt bundle would be the wrong one for at least one consumer.
-- **A Catalogue.** ADR-0020 §5 says a release embeds the Catalogue for its
-  pinned collector version. There is no installable instance yet for it to
-  be embedded in, so that clause has nothing to attach to. It is the first
-  thing this release scheme grows when there is.
+What is still absent, and why:
+
+- **Every platform but Linux.** ADR-0068 §4 amended ADR-0049 §3 in one
+  direction only. The two Linux binaries are attached because the image pays
+  for building them already; macOS, Windows and any other architecture are
+  built for nothing else, and building them is the platform matrix ADR-0049
+  declined. The [quickstart](../guides/quickstart.md) builds from source in
+  one command, and that stays the way to get the CLI on a workstation.
+- **An SBOM.** The binary carries its own module inventory, which `go version
+  -m` prints from the file the release attaches, and the base image
+  contributes no package manager to enumerate. Raised as OQ-26 rather than
+  dropped.
+
+Two earlier absences have closed. The console bundle is inside the binary
+(ADR-0067 §3), so there is no separate artefact left to refuse; and the
+Catalogue baseline of ADR-0020 §5 now has an installable instance to be
+embedded in, so the image carries it.
 
 ## How to cut a release
 
@@ -114,12 +124,16 @@ Three things are deliberately absent:
    ```
 
 5. **Watch the two workflows the push starts.** `release.yml` validates the
-   tag, packs the design artefacts, checks the palette floors over the
-   `tokens.css` it is about to ship, and creates the release.
+   tag, builds the console and both binaries, assembles and pushes the image
+   index, starts the image it has just built with networking disabled and
+   requires it to serve, packs the design artefacts, checks the palette
+   floors over the `tokens.css` it is about to ship, and creates the release.
    `demo-dispatch.yml` moves the `release` pointer and asks `estate-demo` to
    rebuild.
-6. **Verify.** The release page lists the archive and `SHA256SUMS`,
-   `git ls-remote --tags origin release` resolves to the commit you tagged,
+6. **Verify.** The release page lists the binaries, the archive and
+   `SHA256SUMS`; `docker pull ghcr.io/telecraft-dev/telecraft:<version>`
+   resolves to the digest the notes name;
+   `git ls-remote --tags origin release` resolves to the commit you tagged;
    and the demo run in `estate-demo` finishes green.
 7. **Verify that a known-good licence still verifies**, against the binary
    the release built:
@@ -172,6 +186,13 @@ gh workflow run demo-dispatch.yml
 
 The version tags are untouched by any of this. `release` is the only ref in
 this repository that moves.
+
+The image carries a tag of the same name, for the same reason, and it moves
+at the same moment: `ghcr.io/telecraft-dev/telecraft:release` is whatever the
+current stable version is. There is no `latest`, and no rolling `v0` or
+`v0.7`: a floating minor tag promises a compatibility surface, and being
+pre-1.0 is the statement that there is not one yet. A pre-release publishes
+its version tag and moves neither pointer.
 
 ## Consuming the design artefacts
 

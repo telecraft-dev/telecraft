@@ -1,7 +1,7 @@
 ---
 title: Write an Exemption
 description: Waive a finding's count with a named owner and an expiry, without hiding the diagnosis.
-order: 8
+order: 9
 ---
 
 # Write an Exemption

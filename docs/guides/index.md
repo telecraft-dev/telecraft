@@ -63,7 +63,9 @@ keeps flowing.
    local estate or a git URL, and installs a collector against it.
 3. [Run an Instance](run-an-instance.md) opens the second address on the same
    process: the console, the API behind it, and sign-in.
-4. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
+4. [Run the container image](run-the-container-image.md) is that same process
+   as an image you pull, configure, and carry across an air gap.
+5. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
    Blueprint version in cohorts, advancing and aborting by pull request.
 
 ## See it running first

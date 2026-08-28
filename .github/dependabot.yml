@@ -75,6 +75,26 @@ updates:
     commit-message:
       prefix: deps
 
+  # The image's base (ADR-0068 §2). It is pinned by digest, which is what
+  # keeps the image a function of the release tag and what stops the base
+  # moving under a rebuild; the cost of the pin is that nothing refreshes it
+  # on its own, and a base nobody refreshes is the one place this project
+  # ships somebody else's unpatched packages. So it is watched the way the
+  # modules and the actions are, and the refresh arrives as an ordinary pull
+  # request that ci.yml builds the image over.
+  #
+  # `directory: /` is where the Dockerfile is. There is one, deliberately:
+  # devenv/collector/Dockerfile is the development environment's collector
+  # (ADR-0052) and takes its versions from devenv/.env, which this ecosystem
+  # cannot read and should not guess at.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: packaging
+
   # The actions the workflows use. They are pinned by major version, which
   # moves them within a major on its own and never across one, so this entry
   # is the only thing that will ever propose the next major. `directory: /`

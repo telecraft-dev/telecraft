@@ -1,0 +1,8 @@
+# The image is assembled from a staged context (ADR-0068 §2), so the context
+# is the staged directory and nothing else. Everything is excluded and
+# dist/image is admitted back, which keeps a source tree, a node_modules and
+# a .git out of every build and makes a missing staged file fail loudly
+# instead of resolving to something stale.
+*
+!dist/image
+!dist/image/**

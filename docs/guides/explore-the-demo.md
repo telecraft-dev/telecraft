@@ -1,7 +1,7 @@
 ---
 title: Explore the demo
 description: Tour the live read-only console and learn what the demo estate deliberately contains.
-order: 9
+order: 10
 ---
 
 # Explore the demo
