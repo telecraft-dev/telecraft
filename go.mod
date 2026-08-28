@@ -3,7 +3,7 @@ module github.com/telecraft-dev/telecraft
 go 1.26.1
 
 require (
-	github.com/beevik/etree v1.7.0
+	github.com/beevik/etree v1.7.1
 	github.com/russellhaering/gosaml2 v0.12.0
 	github.com/russellhaering/goxmldsig v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
