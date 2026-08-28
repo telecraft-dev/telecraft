@@ -72,6 +72,14 @@ type Config struct {
 	// close, the way the OpAMP-direct EstateProvider reads through
 	// (ADR-0008). The serving decision is unaffected by it.
 	Tap Tap
+
+	// OnSnapshot, when non-nil, is called with every snapshot this server
+	// takes: the initial one from Start and each successful refresh. It is
+	// how a second reader over the same estate stays on the head the
+	// server is serving without polling the source a second time
+	// (ADR-0067 §2: one source, one fetch, one poll, one pointer). It runs
+	// on the refresh goroutine, so it returns promptly or the poll waits.
+	OnSnapshot func(*Snapshot)
 }
 
 // Server is the stateless OpAMP server (REQ-040): wiring plus the two
@@ -86,6 +94,7 @@ type Server struct {
 	interval    time.Duration
 	logf        func(format string, args ...any)
 	tap         Tap
+	onSnapshot  func(*Snapshot)
 	opamp       server.OpAMPServer
 	stopRefresh context.CancelFunc
 	refreshDone chan struct{}
@@ -115,12 +124,14 @@ func New(cfg Config) (*Server, error) {
 		cfg.Logf = func(string, ...any) {}
 	}
 	s := &Server{
-		source:   cfg.Source,
-		listen:   cfg.ListenEndpoint,
-		interval: cfg.FetchInterval,
-		logf:     cfg.Logf,
-		tap:      cfg.Tap,
+		source:     cfg.Source,
+		listen:     cfg.ListenEndpoint,
+		interval:   cfg.FetchInterval,
+		logf:       cfg.Logf,
+		tap:        cfg.Tap,
+		onSnapshot: cfg.OnSnapshot,
 	}
+
 	s.opamp = server.New(opampLogger{s.logf})
 	return s, nil
 }
@@ -134,6 +145,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("initial repo snapshot: %w", err)
 	}
 	s.snapshot.Store(snap)
+	s.announce(snap)
 
 	err = s.opamp.Start(server.StartSettings{
 		Settings: server.Settings{
@@ -201,7 +213,15 @@ func (s *Server) refreshLoop(ctx context.Context) {
 			if prev := s.snapshot.Swap(snap); prev == nil || prev.Commit != snap.Commit {
 				s.logf("repo snapshot now at head %s", headName(snap))
 			}
+			s.announce(snap)
 		}
+	}
+}
+
+// announce hands the snapshot to the configured reader, if there is one.
+func (s *Server) announce(snap *Snapshot) {
+	if s.onSnapshot != nil {
+		s.onSnapshot(snap)
 	}
 }
 

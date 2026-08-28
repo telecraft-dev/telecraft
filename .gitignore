@@ -45,3 +45,11 @@ __pycache__/
 /docslint
 /fmtlint
 /vendorlint
+
+# The console bundle staged for the binary to embed (ADR-0067 §3). It is
+# build output that happens to live under internal/, because an embed
+# pattern cannot reach outside its own package; `npm run bundle` in console/
+# puts it here. The placeholder inside the directory is tracked, so the
+# embed has something to point at on a checkout where npm has never run.
+internal/consoleassets/dist/*
+!internal/consoleassets/dist/.gitkeep

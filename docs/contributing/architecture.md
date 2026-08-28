@@ -110,6 +110,7 @@ pipeline.
 |---|---|
 | `internal/renderer` | Compiles bound Blueprints to rendered artefacts, one plain collector YAML per Tier at `rendered/<team>/<tier>.yaml`, plus a supervisor config where the Tier is served. Deterministic: identical inputs produce byte-identical artefacts, which is what lets CI recompute `rendered/` and fail on mismatch. |
 | `internal/serving` | The stateless OpAMP serving path: a collector reports identifying attributes, the server matches them against the selectors held in git and serves the artefact at that path, remembering nothing. Holds a closed list of three rebuildable things and no durable state. |
+| `internal/readings` | One reading of the two live seams, composed into the readings document the console documents are computed over. It decides nothing: every field is something a seam returned, plus the clocks that let a judgement date a gap. |
 | `internal/rollout` | Staged rollouts: cohort membership as a pure function, the advisory reading of the foreign population, the halt and advance evaluation, and the platform-proposed advance and abort changes. Nothing is persisted. |
 | `internal/normalise` | The three-layer drift normaliser. Layer 1 digests raw bytes, layer 2 digests the normalised form under one delivery path's Mutation profile, and layer 3 computes the structural diff only when layer 2 disagrees. |
 | `internal/delivery` | Intended against Effective, judged per collector, producing the delivery status that sits beside the conformance verdict and never blends into it. |
@@ -130,6 +131,9 @@ pipeline.
 |---|---|
 | `internal/card` | The card data contract: the face payload, cheap and bulk-fetchable for a whole shelf, and the drawer payload, fetched per card on demand. Integer-versioned, and the only thing a card surface may consume. |
 | `internal/console` | Assembles the console API snapshot: the JSON documents the platform API serves, computed by the real evaluators over a real estate checkout. Nothing here fabricates a verdict. |
+| `internal/instance` | The Instance server: one process serving the console, the platform API behind the authentication gate, the two probes, and the OpAMP endpoint, over one estate. Holds the head, one loseable memo of the documents, and the authentication wiring at that head. |
+| `internal/consoleassets` | The built console, embedded in the binary. A build with nothing staged answers the console route with a page saying so, so the tree compiles where npm has never run. |
+| `internal/secrets` | Resolving the material an estate names against the directory the deployment filled. A name is letters, digits and hyphens, so it can never describe a path, and a value is read at the point of use rather than held. |
 
 ### Provider implementations
 

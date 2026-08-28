@@ -1,4 +1,4 @@
-package main
+package readings
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
-// The composer turning two live seams into a readings file. Every assertion
+// The Composer turning two live seams into a readings file. Every assertion
 // below is about it carrying what a seam returned, and, at least as often,
 // about it refusing to carry what no seam said.
 
 var base = time.Date(2026, 8, 21, 9, 0, 0, 0, time.UTC)
 
 func TestComposeCarriesTheCollectorEstate(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{collectors: []seam.Collector{{
 			Identity: map[string]string{
 				"telecraft.tier":      "gateway",
@@ -32,7 +32,7 @@ func TestComposeCarriesTheCollectorEstate(t *testing.T) {
 		Now:       func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background())
+	got := c.Compose(context.Background())
 
 	if len(got.Collectors) != 1 {
 		t.Fatalf("got %d collectors, want 1", len(got.Collectors))
@@ -51,12 +51,12 @@ func TestComposeCarriesTheCollectorEstate(t *testing.T) {
 		t.Errorf("state %q: every collector in this reading is on a live connection to the platform's own server", col.State)
 	}
 	if !col.LastSeen.Equal(base.Add(-2 * time.Second)) {
-		t.Errorf("last seen %v: the reading's own instant, not the composer's", col.LastSeen)
+		t.Errorf("last seen %v: the reading's own instant, not the Composer's", col.LastSeen)
 	}
 }
 
 func TestComposeCarriesTheDeliveryPathTheWireShowed(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{collectors: []seam.Collector{{
 			Identity: map[string]string{"telecraft.tier": "appliance", "service.instance.id": "appliance-1"},
 		}}, asOf: base},
@@ -69,7 +69,7 @@ func TestComposeCarriesTheDeliveryPathTheWireShowed(t *testing.T) {
 		Now:       func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background()).Collectors[0]
+	got := c.Compose(context.Background()).Collectors[0]
 
 	if got.Delivery != "git" {
 		t.Errorf("delivery %q: the reading did not carry the path the wire showed", got.Delivery)
@@ -78,14 +78,14 @@ func TestComposeCarriesTheDeliveryPathTheWireShowed(t *testing.T) {
 
 func TestComposeNamesAnIdentityWithNoInstanceIDByItsWholeIdentity(t *testing.T) {
 	identity := map[string]string{"telecraft.tier": "gateway", "deployment.environment": "production"}
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{collectors: []seam.Collector{{Identity: identity}}, asOf: base},
 		Delivery:   fakeDelivery("served"),
 		Telemetry:  fakeTelemetry{},
 		Now:        func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background()).Collectors[0]
+	got := c.Compose(context.Background()).Collectors[0]
 
 	// A truncation would read as a name and be ambiguous; the whole set
 	// never is.
@@ -95,7 +95,7 @@ func TestComposeNamesAnIdentityWithNoInstanceIDByItsWholeIdentity(t *testing.T) 
 }
 
 func TestComposeCarriesArrivalsPerRow(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{observed: map[string]telemetry.Observed{
 			"shop/checkout|production": {Signals: map[requirements.SignalKind]telemetry.SignalObservation{
@@ -103,11 +103,11 @@ func TestComposeCarriesArrivalsPerRow(t *testing.T) {
 					AttributeCoverage: map[string]float64{"service.namespace": 1}},
 			}},
 		}},
-		Rows: []row{{Service: "shop/checkout", Environment: "production"}},
+		Rows: []Row{{Service: "shop/checkout", Environment: "production"}},
 		Now:  func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background())
+	got := c.Compose(context.Background())
 
 	if len(got.Rows) != 1 {
 		t.Fatalf("got %d rows, want 1", len(got.Rows))
@@ -131,16 +131,16 @@ func TestComposeHoldsTheSilenceStartStillWhileTheGapPersists(t *testing.T) {
 		}},
 	}}
 	now := base
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{asOf: base},
 		Telemetry:  tel,
-		Rows:       []row{{Service: "shop/checkout", Environment: "production"}},
+		Rows:       []Row{{Service: "shop/checkout", Environment: "production"}},
 		Now:        func() time.Time { return now },
 	}
 
-	first := c.compose(context.Background()).Rows[0].Signals["traces"].Since
+	first := c.Compose(context.Background()).Rows[0].Signals["traces"].Since
 	now = base.Add(10 * time.Minute)
-	second := c.compose(context.Background()).Rows[0].Signals["traces"].Since
+	second := c.Compose(context.Background()).Rows[0].Signals["traces"].Since
 
 	if first.IsZero() {
 		t.Fatal("an observed gap carries no silence start, so no judgement can tell a new gap from an old one")
@@ -159,20 +159,20 @@ func TestComposeClearsTheSilenceWhenTheSignalReturns(t *testing.T) {
 			requirements.Traces: {Known: true, Present: false},
 		}},
 	}}
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{asOf: base},
 		Telemetry:  tel,
-		Rows:       []row{{Service: "shop/checkout", Environment: "production"}},
+		Rows:       []Row{{Service: "shop/checkout", Environment: "production"}},
 		Now:        func() time.Time { return base },
 	}
-	c.compose(context.Background())
+	c.Compose(context.Background())
 
 	tel.observed["shop/checkout|production"] = telemetry.Observed{
 		Signals: map[requirements.SignalKind]telemetry.SignalObservation{
 			requirements.Traces: {Known: true, Present: true, Volume: 1},
 		}}
 	c.Telemetry = tel
-	got := c.compose(context.Background()).Rows[0].Signals["traces"]
+	got := c.Compose(context.Background()).Rows[0].Signals["traces"]
 
 	if !got.Since.IsZero() {
 		t.Error("a signal that came back still carries a silence start")
@@ -180,18 +180,18 @@ func TestComposeClearsTheSilenceWhenTheSignalReturns(t *testing.T) {
 }
 
 func TestComposeGivesAnUnknownReadingNoSilence(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{observed: map[string]telemetry.Observed{
 			"shop/checkout|production": {Signals: map[requirements.SignalKind]telemetry.SignalObservation{
 				requirements.Traces: {Known: false, Cause: "backend unreachable"},
 			}},
 		}},
-		Rows: []row{{Service: "shop/checkout", Environment: "production"}},
+		Rows: []Row{{Service: "shop/checkout", Environment: "production"}},
 		Now:  func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background()).Rows[0].Signals["traces"]
+	got := c.Compose(context.Background()).Rows[0].Signals["traces"]
 
 	if got.Known == nil || *got.Known {
 		t.Fatal("an unknown reading was carried as known")
@@ -207,7 +207,7 @@ func TestComposeGivesAnUnknownReadingNoSilence(t *testing.T) {
 }
 
 func TestComposeCarriesSelfTelemetryComponentsVerbatim(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{self: map[string]telemetry.SelfObserved{
 			"platform/gateway": {Signals: map[requirements.SignalKind]telemetry.SelfSignal{
@@ -222,7 +222,7 @@ func TestComposeCarriesSelfTelemetryComponentsVerbatim(t *testing.T) {
 		Now:   func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background())
+	got := c.Compose(context.Background())
 
 	if len(got.Tiers) != 1 {
 		t.Fatalf("got %d Tier readings, want 1", len(got.Tiers))
@@ -242,7 +242,7 @@ func TestAttributeNamesIsTheUnionTheLibraryAsksAbout(t *testing.T) {
 		"c": {Config: &requirements.ConfigAssertion{HasReceiver: []string{"otlp"}}},
 	}}
 
-	got := attributeNames(lib)
+	got := AttributeNames(lib)
 
 	want := []string{"deployment.environment.name", "service.namespace"}
 	if len(got) != len(want) {
@@ -271,7 +271,7 @@ type fakeDelivery string
 
 func (f fakeDelivery) Path(map[string]string) string { return string(f) }
 
-// fakeTelemetry answers the TelemetryProvider seam from a map. A row it was
+// fakeTelemetry answers the TelemetryProvider seam from a map. A Row it was
 // not given reads as an empty observation, which is what a backend holding
 // nothing for that Service would say.
 type fakeTelemetry struct {
@@ -285,7 +285,7 @@ type fakeTelemetry struct {
 	names map[requirements.SignalKind]telemetry.AttributeNames
 
 	// live answers the live-check primitive per Service, keyed like
-	// observed. A row it holds nothing for reads Known false rather than
+	// observed. A Row it holds nothing for reads Known false rather than
 	// an empty record set, because an empty set beside a fed liveness leg
 	// is exactly what the live arm reads as clean, and this fake has
 	// looked at nothing.
@@ -341,14 +341,14 @@ var _ telemetry.Provider = fakeTelemetry{}
 
 func TestObservePopulationsClocksATierBelowItsFloor(t *testing.T) {
 	floor := 2
-	c := &composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
+	c := &Composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{}, Now: func() time.Time { return base }}
 
-	c.observePopulations([]console.CardFace{{
+	c.ObservePopulations([]console.CardFace{{
 		Tier:       "platform/gateway",
 		Population: console.Population{Matched: 1, Floor: &floor},
 	}}, base)
-	got := c.compose(context.Background()).Tiers[0]
+	got := c.Compose(context.Background()).Tiers[0]
 
 	if got.ShortfallSince.IsZero() {
 		t.Fatal("a Tier below its floor carries no shortfall start, so the finding can never age past its grace window")
@@ -361,12 +361,12 @@ func TestObservePopulationsClocksATierBelowItsFloor(t *testing.T) {
 func TestObservePopulationsHoldsTheShortfallStartStill(t *testing.T) {
 	floor := 2
 	card := []console.CardFace{{Tier: "platform/gateway", Population: console.Population{Matched: 1, Floor: &floor}}}
-	c := &composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
+	c := &Composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{}, Now: func() time.Time { return base }}
 
-	c.observePopulations(card, base)
-	c.observePopulations(card, base.Add(5*time.Minute))
-	got := c.compose(context.Background()).Tiers[0]
+	c.ObservePopulations(card, base)
+	c.ObservePopulations(card, base.Add(5*time.Minute))
+	got := c.Compose(context.Background()).Tiers[0]
 
 	if !got.ShortfallSince.Equal(base) {
 		t.Errorf("the shortfall start moved to %v: the gap would never age past its grace window", got.ShortfallSince)
@@ -375,14 +375,14 @@ func TestObservePopulationsHoldsTheShortfallStartStill(t *testing.T) {
 
 func TestObservePopulationsClearsWhenTheFloorIsMetAgain(t *testing.T) {
 	floor := 2
-	c := &composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
+	c := &Composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{}, Now: func() time.Time { return base }}
 
-	c.observePopulations([]console.CardFace{{Tier: "platform/gateway",
+	c.ObservePopulations([]console.CardFace{{Tier: "platform/gateway",
 		Population: console.Population{Matched: 1, Floor: &floor}}}, base)
-	c.observePopulations([]console.CardFace{{Tier: "platform/gateway",
+	c.ObservePopulations([]console.CardFace{{Tier: "platform/gateway",
 		Population: console.Population{Matched: 2, Floor: &floor}}}, base.Add(time.Minute))
-	got := c.compose(context.Background()).Tiers[0]
+	got := c.Compose(context.Background()).Tiers[0]
 
 	if !got.ShortfallSince.IsZero() {
 		t.Error("a Tier back at its floor still carries a shortfall start")
@@ -390,15 +390,15 @@ func TestObservePopulationsClearsWhenTheFloorIsMetAgain(t *testing.T) {
 }
 
 func TestObservePopulationsIgnoresATierWithNoFloor(t *testing.T) {
-	c := &composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
+	c := &Composer{Tiers: []string{"platform/gateway"}, Collectors: fakeEstate{asOf: base},
 		Telemetry: fakeTelemetry{}, Now: func() time.Time { return base }}
 
 	// With no floor there are no teeth (ADR-0035): dating a shortfall
 	// against a floor nobody declared would invent the only input the
 	// finding needs.
-	c.observePopulations([]console.CardFace{{Tier: "platform/gateway",
+	c.ObservePopulations([]console.CardFace{{Tier: "platform/gateway",
 		Population: console.Population{Matched: 0, Floor: nil}}}, base)
-	got := c.compose(context.Background()).Tiers[0]
+	got := c.Compose(context.Background()).Tiers[0]
 
 	if !got.ShortfallSince.IsZero() {
 		t.Error("a Tier with no declared floor was given a shortfall start")
@@ -409,10 +409,10 @@ func TestObservePopulationsIgnoresATierWithNoFloor(t *testing.T) {
 // requirement is judged on, and carried into the readings file so the
 // snapshot judges the same reading the backend gave (ADR-0034 §4).
 func TestComposeCarriesTheAttributeNameReading(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors:    fakeEstate{asOf: base},
 		Delivery:      fakeDelivery("served"),
-		Rows:          []row{{Service: "checkout", Environment: "production"}},
+		Rows:          []Row{{Service: "checkout", Environment: "production"}},
 		SchemaSignals: []requirements.SignalKind{requirements.Traces},
 		Telemetry: fakeTelemetry{
 			observed: map[string]telemetry.Observed{
@@ -435,7 +435,7 @@ func TestComposeCarriesTheAttributeNameReading(t *testing.T) {
 		Now:    func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background())
+	got := c.Compose(context.Background())
 
 	if len(got.Rows) != 1 {
 		t.Fatalf("got %d rows, want 1", len(got.Rows))
@@ -465,10 +465,10 @@ func TestComposeCarriesTheAttributeNameReading(t *testing.T) {
 // written as an empty name set: an empty set is what a schema verdict reads
 // as attributes nobody sets.
 func TestComposeDeclaresNoNamesWhenTheBackendCannotSee(t *testing.T) {
-	c := &composer{
+	c := &Composer{
 		Collectors:    fakeEstate{asOf: base},
 		Delivery:      fakeDelivery("served"),
-		Rows:          []row{{Service: "checkout", Environment: "production"}},
+		Rows:          []Row{{Service: "checkout", Environment: "production"}},
 		SchemaSignals: []requirements.SignalKind{requirements.Traces},
 		Telemetry: fakeTelemetry{observed: map[string]telemetry.Observed{
 			"checkout|production": {Signals: map[requirements.SignalKind]telemetry.SignalObservation{
@@ -479,7 +479,7 @@ func TestComposeDeclaresNoNamesWhenTheBackendCannotSee(t *testing.T) {
 		Now:    func() time.Time { return base },
 	}
 
-	got := c.compose(context.Background())
+	got := c.Compose(context.Background())
 
 	if got.Rows[0].Signals["traces"].AttributeNames != nil {
 		t.Error("a reading the backend could not give was written as one it could")
@@ -499,7 +499,7 @@ func TestSchemaSignalsAreTheSignalsTheLibraryJudges(t *testing.T) {
 		"c": {ID: "c", Signal: &requirements.SignalAssertion{Kind: requirements.Metrics}},
 	}}
 
-	got := schemaSignals(lib)
+	got := SchemaSignals(lib)
 
 	want := []requirements.SignalKind{requirements.Logs, requirements.Traces}
 	if len(got) != len(want) {
@@ -511,7 +511,7 @@ func TestSchemaSignalsAreTheSignalsTheLibraryJudges(t *testing.T) {
 		}
 	}
 
-	if signals := schemaSignals(requirements.Library{Requirements: map[string]requirements.Requirement{
+	if signals := SchemaSignals(requirements.Library{Requirements: map[string]requirements.Requirement{
 		"c": {ID: "c", Signal: &requirements.SignalAssertion{Kind: requirements.Metrics}},
 	}}); len(signals) != 0 {
 		t.Errorf("a library referencing no registry asks for %v", signals)

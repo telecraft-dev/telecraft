@@ -1,4 +1,18 @@
-package main
+// Package readings takes one reading of the two live seams and composes
+// the readings document the console snapshot builder loads: the collector
+// estate through the EstateProvider seam (ADR-0008) and the telemetry
+// arrivals through the TelemetryProvider one.
+//
+// It decides nothing. Every field it writes is something a seam returned,
+// and the one thing it adds (how long a signal has been silent, how long a
+// Tier has been short) is bookkeeping a single-instant reading cannot have
+// and every judgement over it needs (ADR-0035 §3).
+//
+// The Instance server composes here on every refresh (ADR-0067), and the
+// development environment writes the result to a file beside its snapshot
+// (ADR-0052). One composition, so the two cannot read the seams
+// differently.
+package readings
 
 import (
 	"context"
@@ -11,46 +25,50 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 )
 
-// estateReader is the half of the EstateProvider seam this tool uses. It is
-// named here rather than taken as seam.Provider so the composer can be
-// tested against a fabricated reading with no server in the way.
-type estateReader interface {
+// EstateReader is the half of the EstateProvider seam a composition uses.
+// It is named here rather than taken as seam.Provider so the Composer can
+// be tested against a fabricated reading with no server in the way.
+type EstateReader interface {
 	Estate(context.Context) seam.Estate
 }
 
-// deliveryReader answers how one collector came by its configuration
+// DeliveryReader answers how one collector came by its configuration
 // (REQ-041). It is a second reader rather than part of the estate one
 // because the EstateProvider seam carries what a collector reports about
 // its running state, never where that state came from. See delivery.go.
-type deliveryReader interface {
+type DeliveryReader interface {
 	Path(identity map[string]string) string
 }
 
-// row is one (Service, Environment) the arrivals are read for. The pairs
-// come from the authored conformance estate, which is the devenv's one
-// declared reading (ADR-0052 §2).
-type row struct {
+// Row is one (Service, Environment) the arrivals are read for. The pairs
+// come from the authored conformance estate.
+type Row struct {
 	Service     string
 	Environment string
 }
 
-// composer turns the two live seams into the readings file the snapshot
-// builder loads. It decides nothing: every field it writes is something a
-// seam returned, and the one thing it adds (how long a signal has been
-// silent) is bookkeeping the production path gets from a Damper and a
-// single-instant reading cannot have.
-type composer struct {
-	Collectors estateReader
-	Telemetry  telemetry.Provider
+// Composer turns the two live seams into one readings document. A Composer
+// is reused across refreshes: the silence and shortfall clocks it keeps are
+// what let a judgement date a gap, and they die with the process like every
+// other in-memory holding (ADR-0032).
+type Composer struct {
+	Collectors EstateReader
+
+	// Telemetry is the arrivals seam. Nil takes no arrival reading at all,
+	// which is the shape of an Instance with no telemetry backend
+	// configured yet: the rows and Tiers come back undeclared, and the
+	// console renders them as not known with the cause said out loud
+	// rather than as nothing arriving (ADR-0008).
+	Telemetry telemetry.Provider
 
 	// Delivery is how each collector came by its configuration. It is
 	// required: REQ-041's reading has two values and no third one for not
-	// having looked, so a composer without it would be back to asserting
+	// having looked, so a Composer without it would be back to asserting
 	// one path for every collector.
-	Delivery deliveryReader
+	Delivery DeliveryReader
 
 	// Rows and Tiers are what to read for, taken from the estate.
-	Rows  []row
+	Rows  []Row
 	Tiers []string
 
 	// Attributes are the attribute names to measure coverage for: the
@@ -62,7 +80,7 @@ type composer struct {
 	// the library is judged on, and so the signals the attribute-name
 	// reading is taken for (ADR-0034 §4). Empty takes none: a library that
 	// references no Schema Registry has nothing to judge the names
-	// against, and an aggregation per signal per row would buy a reading
+	// against, and an aggregation per signal per Row would buy a reading
 	// nobody reads.
 	SchemaSignals []requirements.SignalKind
 
@@ -91,8 +109,8 @@ type silenceKey struct {
 	signal      string
 }
 
-// compose takes one reading of everything.
-func (c *composer) compose(ctx context.Context) console.Readings {
+// Compose takes one reading of everything.
+func (c *Composer) Compose(ctx context.Context) console.Readings {
 	now := c.Now()
 	out := console.Readings{
 		AsOf:   now,
@@ -102,6 +120,10 @@ func (c *composer) compose(ctx context.Context) console.Readings {
 	est := c.Collectors.Estate(ctx)
 	for _, col := range est.Collectors {
 		out.Collectors = append(out.Collectors, collectorReading(col, est.AsOf, c.Delivery.Path(col.Identity)))
+	}
+
+	if c.Telemetry == nil {
+		return out
 	}
 
 	for _, r := range c.Rows {
@@ -130,14 +152,14 @@ func (c *composer) compose(ctx context.Context) console.Readings {
 	return out
 }
 
-// observePopulations feeds the shortfall clock from the snapshot the last
+// ObservePopulations feeds the shortfall clock from the documents the last
 // refresh produced. A Tier below its floor starts a clock; one back at or
 // above it stops one.
 //
 // The judgement this feeds refuses to raise a toothed finding from a single
 // instant (ADR-0035 §3), so without this every Tier would read ok however
-// long it had been short, and `devenv scenario shrink` would show nothing.
-func (c *composer) observePopulations(cards []console.CardFace, now time.Time) {
+// long it had been short, and no shortfall would ever become visible.
+func (c *Composer) ObservePopulations(cards []console.CardFace, now time.Time) {
 	if c.shortfallSince == nil {
 		c.shortfallSince = map[string]time.Time{}
 	}
@@ -166,7 +188,7 @@ func collectorReading(col seam.Collector, asOf time.Time, delivery string) conso
 		lastSeen = asOf
 	}
 	return console.CollectorReading{
-		ID:         collectorID(col.Identity),
+		ID:         CollectorID(col.Identity),
 		Attributes: col.Identity,
 		State:      "reporting",
 		Version:    col.Identity["service.version"],
@@ -175,17 +197,17 @@ func collectorReading(col seam.Collector, asOf time.Time, delivery string) conso
 	}
 }
 
-// collectorID picks the readable name for a collector. It is presentation
+// CollectorID picks the readable name for a collector. It is presentation
 // only: identity for matching is the attribute set (ADR-0013), and the
 // fallback is the whole set rather than a truncation of it.
-func collectorID(identity map[string]string) string {
+func CollectorID(identity map[string]string) string {
 	if id := identity["service.instance.id"]; id != "" {
 		return id
 	}
 	return seam.Fingerprint(identity)
 }
 
-// signalsOf projects one row's arrival reading, one entry per signal the
+// signalsOf projects one Row's arrival reading, one entry per signal the
 // backend was asked about.
 //
 // The attribute-name reading rides along where one was taken and the
@@ -193,7 +215,7 @@ func collectorID(identity map[string]string) string {
 // give is left undeclared rather than written as an empty name set: the
 // console plays an undeclared reading back as Known false with a cause, and
 // an empty set would be read by a schema verdict as attributes nobody sets.
-func (c *composer) signalsOf(r row, observed telemetry.Observed, names map[requirements.SignalKind]telemetry.AttributeNames, now time.Time) map[string]console.SignalReading {
+func (c *Composer) signalsOf(r Row, observed telemetry.Observed, names map[requirements.SignalKind]telemetry.AttributeNames, now time.Time) map[string]console.SignalReading {
 	out := make(map[string]console.SignalReading, len(observed.Signals))
 	for kind, obs := range observed.Signals {
 		known := obs.Known
@@ -220,12 +242,12 @@ func (c *composer) signalsOf(r row, observed telemetry.Observed, names map[requi
 	return out
 }
 
-// schemaSignals is every signal a schema-conformance requirement in the
+// SchemaSignals is every signal a schema-conformance requirement in the
 // library is judged on, in the seam's stable signal order. The reading is
-// taken for those signals on every row rather than per Environment: which
-// requirement applies where is the evaluator's business, and a file that
+// taken for those signals on every Row rather than per Environment: which
+// requirement applies where is the evaluator's business, and a reading that
 // depended on it would be a second copy of that judgement.
-func schemaSignals(lib requirements.Library) []requirements.SignalKind {
+func SchemaSignals(lib requirements.Library) []requirements.SignalKind {
 	var out []requirements.SignalKind
 	for _, kind := range telemetry.Signals() {
 		for _, req := range lib.Sorted() {
@@ -242,7 +264,7 @@ func schemaSignals(lib requirements.Library) []requirements.SignalKind {
 // the current silence began. A signal that is arriving, or one the backend
 // cannot see at all, has no silence to report: an unknown reading is not an
 // observed gap (ADR-0008).
-func (c *composer) trackSilence(r row, signal string, obs telemetry.SignalObservation, now time.Time) (time.Time, bool) {
+func (c *Composer) trackSilence(r Row, signal string, obs telemetry.SignalObservation, now time.Time) (time.Time, bool) {
 	key := silenceKey{service: r.Service, environment: r.Environment, signal: signal}
 	if c.silentSince == nil {
 		c.silentSince = map[silenceKey]time.Time{}
@@ -294,11 +316,11 @@ func sortComponents(comps []map[string]string) {
 	})
 }
 
-// attributeNames is the union of every attribute name the library asks
-// about coverage for, sorted. Asking for all of them on every row costs one
+// AttributeNames is the union of every attribute name the library asks
+// about coverage for, sorted. Asking for all of them on every Row costs one
 // aggregation each and keeps the reading independent of which requirement
 // happens to apply to which Service.
-func attributeNames(lib requirements.Library) []string {
+func AttributeNames(lib requirements.Library) []string {
 	seen := map[string]bool{}
 	for _, req := range lib.Sorted() {
 		if req.Signal == nil {

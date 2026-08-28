@@ -66,6 +66,12 @@ type Inputs struct {
 	// hold. See Readings.
 	ReadingsFile string
 
+	// Taken is those same two readings already in hand, taken from the
+	// live seams rather than read from a file. It is what the Instance
+	// server passes on every refresh; when it is set ReadingsFile is not
+	// read.
+	Taken *Readings
+
 	// Commit is the estate head the snapshot is taken at (ADR-0013).
 	Commit string
 
@@ -138,7 +144,7 @@ func Build(in Inputs) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	readings, err := LoadReadings(in.ReadingsFile)
+	readings, err := in.readings()
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -533,6 +539,15 @@ func (in Inputs) activeCatalogue(designation activation.Record) (string, error) 
 	}
 	dir := in.CataloguesDir()
 	return filepath.Join(dir, catalogue.ArtefactName(version)), nil
+}
+
+// readings resolves the runtime readings: the ones the caller took, or the
+// ones the declared file holds.
+func (in Inputs) readings() (Readings, error) {
+	if in.Taken != nil {
+		return *in.Taken, nil
+	}
+	return LoadReadings(in.ReadingsFile)
 }
 
 // CataloguesDir is where this estate's installed Catalogue artefacts live:

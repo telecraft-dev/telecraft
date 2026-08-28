@@ -23,6 +23,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/console"
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
 	telemetryprovider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
+	"github.com/telecraft-dev/telecraft/internal/readings"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/serving"
@@ -83,13 +84,13 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 
 	direct := estateprovider.NewOpAMPDirect(estateprovider.OpAMPDirectConfig{})
 	configs := &reportedConfigs{dir: filepath.Join(*out, "effective")}
-	delivery := &deliveryPaths{}
+	delivery := &readings.DeliveryPaths{}
 	srv, err := serving.New(serving.Config{
 		Source:         serving.DirSource{Root: *estateRoot},
 		ListenEndpoint: *listen,
 		FetchInterval:  *interval,
 		Logf:           logf,
-		Tap:            taps{direct, configs, delivery},
+		Tap:            serving.Taps{direct, configs, delivery},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "run: %v\n", err)
@@ -105,7 +106,7 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "OpAMP on %s\n", srv.Addr())
 
-	comp := &composer{
+	comp := &readings.Composer{
 		Collectors:    direct,
 		Delivery:      delivery,
 		Telemetry:     tel,
@@ -154,7 +155,7 @@ func runLoop(args []string, stdout, stderr io.Writer) int {
 // environment runs.
 type inputs struct {
 	console    console.Inputs
-	rows       []row
+	rows       []readings.Row
 	tiers      []string
 	attributes []string
 
@@ -181,7 +182,7 @@ func loadInputs(root, team string) (inputs, error) {
 		return in, err
 	}
 	for _, r := range est.Rows {
-		in.rows = append(in.rows, row{Service: r.Service, Environment: r.Environment})
+		in.rows = append(in.rows, readings.Row{Service: r.Service, Environment: r.Environment})
 	}
 
 	topo, err := renderer.LoadTopology(root)
@@ -217,8 +218,8 @@ func loadInputs(root, team string) (inputs, error) {
 	if err != nil {
 		return in, err
 	}
-	in.attributes = attributeNames(lib)
-	in.schemaSignals = schemaSignals(lib)
+	in.attributes = readings.AttributeNames(lib)
+	in.schemaSignals = readings.SchemaSignals(lib)
 
 	in.console = console.Inputs{
 		Root:             root,
@@ -241,10 +242,10 @@ func loadInputs(root, team string) (inputs, error) {
 }
 
 // refresh takes one reading of everything and rebuilds the snapshot.
-func refresh(ctx context.Context, comp *composer, in inputs, out string, snapshot *snapshotFile) error {
-	readings := comp.compose(ctx)
+func refresh(ctx context.Context, comp *readings.Composer, in inputs, out string, snapshot *snapshotFile) error {
+	taken := comp.Compose(ctx)
 
-	body, err := yaml.Marshal(readings)
+	body, err := yaml.Marshal(taken)
 	if err != nil {
 		return err
 	}
@@ -268,7 +269,7 @@ func refresh(ctx context.Context, comp *composer, in inputs, out string, snapsho
 	// The populations this refresh computed become the next one's
 	// shortfall clock: the matcher's own answer, fed back rather than
 	// recomputed here.
-	comp.observePopulations(bundle.Estate.Cards, readings.AsOf)
+	comp.ObservePopulations(bundle.Estate.Cards, taken.AsOf)
 
 	encoded, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {

@@ -18,9 +18,11 @@
 // tree (REQ-032, ADR-0025): the call the render-in-PR bot and the CI
 // recompute both make (ADR-0028). See render.go.
 //
-// serve runs the stateless OpAMP server (REQ-040, ADR-0013): rendered
-// artefacts from git to connected collectors, matched by Tier selector,
-// never an empty config map. See serve.go.
+// serve runs the Instance server (ADR-0067): one process serving one
+// estate, with the console and the platform API on one address and the
+// OpAMP endpoint on another. The serving path is unchanged (REQ-040,
+// ADR-0013): rendered artefacts from git to connected collectors, matched
+// by Tier selector, never an empty config map. See serve.go.
 //
 // snapshot writes the console API snapshot: the JSON documents the platform
 // API would serve, computed by the real evaluators over one estate checkout.
@@ -99,7 +101,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
-	fmt.Fprintln(stderr, "       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]")
+	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-fetch-interval 30s] [-session-key-file path] [-telemetry-endpoint URL] [-secret name=value]")
 	fmt.Fprintln(stderr, "       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
 	fmt.Fprintln(stderr, "       telecraft activate -estate <dir> -substrate (catalogue|schema-registry) -version <ref> [-artefacts dir] [-confirm -by <owner>]")
