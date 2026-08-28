@@ -6,16 +6,19 @@ order: 2
 
 # Command line reference
 
-Telecraft ships four binaries: `telecraft`, the main command line;
+Telecraft ships five binaries: `telecraft`, the main command line;
 `catalogue-import` and `schema-registry-import`, the two substrates of the one
-import pipeline; and `blueprint-check`, the strict Blueprint and Component
-loader. All four build from this repository with the Go toolchain:
+import pipeline; `blueprint-check`, the strict Blueprint and Component
+loader; and `register-check`, the strict loader for the register a deployment
+serving several Organisations reads. All five build from this repository with
+the Go toolchain:
 
 ```sh
 go build ./cmd/telecraft
 go build ./cmd/catalogue-import
 go build ./cmd/schema-registry-import
 go build ./cmd/blueprint-check
+go build ./cmd/register-check
 ```
 
 You can also run them without installing:
@@ -507,4 +510,34 @@ no findings
 |---|---|
 | `0` | The sources loaded, with or without findings. |
 | `1` | The load refused. |
+| `2` | An unknown flag was given. |
+
+## register-check
+
+Loads the register of Organisations and prints what it holds: every
+Organisation, its state, the address its Instance is reached at, and where
+its estate comes from. Run it on the pull request that changes a register.
+
+The argument is the directory of records, one file per Organisation. With no
+argument, it reads the current directory. Every field and every rule is in
+[the register format](organisations.md).
+
+A register that does not load exits `1` with every problem in every file on
+stderr. An empty directory loads and reports nothing.
+
+```sh
+register-check REGISTER_DIR
+```
+
+```
+loaded 3 Organisations, 2 active
+  acme         active   https://acme.telecraft.example         hosted estate
+  beacon-rail  active   https://beacon-rail.telecraft.example  https://git.example.com/beacon-rail/estate.git
+  corvid       retired
+```
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The register loaded. |
+| `1` | The register did not load. |
 | `2` | An unknown flag was given. |

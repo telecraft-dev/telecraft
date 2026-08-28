@@ -26,8 +26,8 @@ exactly what the glossary says, on every page.
 Command line
 : [Command line reference](cli.md) covers `telecraft` and its subcommands
   (`observe`, `check`, `palette`, `render`, `serve`, `snapshot`, `delivery`,
-  `passwd`), plus `catalogue-import` and `blueprint-check`: what each does,
-  its flags, defaults, and exit codes.
+  `passwd`), plus `catalogue-import`, `blueprint-check` and `register-check`:
+  what each does, its flags, defaults, and exit codes.
 
 Repository layout
 : [Estate layout](estate-layout.md) covers the estate repository: the root
@@ -39,6 +39,12 @@ Authored formats
   [Requirements](requirements.md), [Allow-lists and Grants](allow-lists.md),
   and [Exemptions](exemptions.md) each document one file format: every field,
   its type, whether it's required, its default, and what the loader rejects.
+
+Running several Organisations
+: [Organisation register format](organisations.md) covers the register a
+  deployment reads to run several Organisations: the record, the rules the
+  loader applies, and `register-check`. A deployment running one Organisation
+  needs none of it.
 
 Catalogue
 : [Catalogue](catalogue.md) covers the versioned inventory of otelcol
