@@ -108,6 +108,23 @@ echo "kind.sh: loading $image and $git_image"
 docker pull --quiet "$git_image" >/dev/null
 kind load docker-image --name "$cluster" "$image" "$git_image"
 
+# What a failed install leaves behind. `helm install --wait` reports only
+# that the Deployment never became available, and the reason is always in a
+# container that is not the one named: an init container that could not
+# clone, a kubelet that refused a security context, an image that is not on
+# the node. Printing all of it is the difference between one run and three.
+diagnose() {
+  local release=$1
+  echo "kind.sh: $release did not come up" >&2
+  kubectl get pods --namespace "$release" -o wide >&2 || true
+  kubectl describe pods --namespace "$release" >&2 || true
+  for container in estate-clone estate-sync telecraft; do
+    echo "--- $release/$container ---" >&2
+    kubectl logs --namespace "$release" --selector app.kubernetes.io/instance="$release" \
+      -c "$container" --tail=50 >&2 || true
+  done
+}
+
 # The two installs. Each answers on a loopback external URL, which is what
 # a port-forward makes true and what the fail-closed guard of ADR-0067 §5
 # admits without being told to.
@@ -121,21 +138,42 @@ install() {
     --set image.pullPolicy=Never \
     --set server.externalUrl="http://localhost:$port" \
     "$@" \
-    --wait --timeout 180s
+    --wait --timeout 150s || { diagnose "$release"; exit 1; }
 }
 
+# The source repository is mounted from the node, so it belongs to a user
+# the estate containers are not, and git refuses a repository it thinks
+# somebody else owns. That is a property of this fixture rather than of the
+# chart, so it goes in through the values seam any operator has, and the
+# chart's own defaults stay as an adopter meets them.
+cat > "$work/synced.yaml" <<VALUES
+estate:
+  sync:
+    image:
+      repository: ${git_image%%:*}
+      tag: "${git_image##*:}"
+      pullPolicy: Never
+    repo: /source/estate.git
+    intervalSeconds: 5
+    env:
+      - name: GIT_CONFIG_COUNT
+        value: "1"
+      - name: GIT_CONFIG_KEY_0
+        value: safe.directory
+      - name: GIT_CONFIG_VALUE_0
+        value: "*"
+    extraVolumeMounts:
+      - name: source
+        mountPath: /source
+extraVolumes:
+  - name: source
+    hostPath:
+      path: /estate
+      type: Directory
+VALUES
+
 echo "kind.sh: installing the synced shape"
-install synced 18321 \
-  --set estate.sync.image.repository="${git_image%%:*}" \
-  --set estate.sync.image.tag="${git_image##*:}" \
-  --set estate.sync.image.pullPolicy=Never \
-  --set estate.sync.repo=/source/estate.git \
-  --set estate.sync.intervalSeconds=5 \
-  --set estate.sync.extraVolumeMounts[0].name=source \
-  --set estate.sync.extraVolumeMounts[0].mountPath=/source \
-  --set extraVolumes[0].name=source \
-  --set extraVolumes[0].hostPath.path=/estate \
-  --set extraVolumes[0].hostPath.type=Directory
+install synced 18321 --values "$work/synced.yaml"
 
 echo "kind.sh: installing the mounted shape"
 install mounted 18322 \
