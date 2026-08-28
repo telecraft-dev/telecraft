@@ -13,7 +13,7 @@ they build from has moved.
 | Workflow | Fires on | Does |
 |---|---|---|
 | `ci.yml` | every pull request, and every push to `main` | Builds, tests and lints: the checks review waits for |
-| `release.yml` | a `v*` tag | Publishes the release and the design artefacts |
+| `release.yml` | a `v*` tag | Publishes the release: the image, the Linux binaries and the design artefacts |
 | `demo-dispatch.yml` | a `v*` tag, or a manual run | Moves the `release` pointer and asks the demo to rebuild |
 | `docs-dispatch.yml` | a push to `main` touching `docs/**` | Asks telecraft.dev to rebuild the documentation |
 
@@ -32,6 +32,7 @@ them.
 |---|---|
 | `code` | anything that is not `docs/**`, `README.md`, or `docs-dispatch.yml` |
 | `console` | `console/**`, `internal/console/**`, or `ci.yml` itself, and otherwise inherits `code` |
+| `image` | `Dockerfile`, `.dockerignore`, `tools/image/**`, or `ci.yml` itself |
 
 The reason is cost rather than tidiness. The live suites stand up a real
 Elasticsearch and open real pull requests against a fixture repository;
@@ -84,6 +85,7 @@ Two details worth knowing before you rely on this:
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
 | Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling |
 | Demo snapshot and bundle | `build:demo`, `check:zero-cdn`, `telecraft snapshot`, the entry-document check | The public demo's two halves keep working: the snapshot the real evaluators produce, and the console bundle that reads it |
+| Container image (ADR-0068) | `tools/image/stage.sh`, a two-architecture `docker buildx build`, then `tools/image/offline.sh` over the loaded image | The image assembles for both architectures, and the one it built serves the console and the OpAMP endpoint with networking disabled |
 
 Seven of those guard rules that are otherwise unenforceable in review.
 
@@ -146,6 +148,21 @@ method and the expected values, and the documented palette turned out not
 to clear its own floors, which is precisely the failure a document cannot
 catch.
 
+**The image job** builds and never pushes. A pull request cannot publish,
+and the thing worth catching before a tag is not whether a registry accepts
+an upload: it is whether the image assembles at all, and whether what it
+assembled runs. So the job stages the context, builds the index for both
+architectures, loads one of them, and starts it on no network. An image that
+needed one fetch to become ready fails there rather than in somebody's air
+gap.
+
+The properties that need no daemon are checked without one. `go run
+./tools/imagelint` reads the Dockerfile and reports an image that grew a
+build stage, lost its digest pin, started running as root, or drifted from
+the address flags it mirrors. It carries a self-test over this repository's
+own Dockerfile, so `go test ./...` fails on the drift before a runner does,
+and it needs no job of its own.
+
 **`check:bundle-budget`** exists because a code split is easy to undo by
 accident. The console loads each Workspace's code on navigation (issue
 #125), and an ordinary-looking import in the wrong file pulls a Workspace
@@ -184,12 +201,22 @@ go run ./tools/vendorlint
 go run ./tools/docslint
 go run ./tools/binlint
 go run ./tools/fmtlint
+go run ./tools/imagelint
 
 cd console
 npm ci
 npm run typecheck && npm test && npm run check:palette
 npm run build && npm run check:zero-cdn && npm run check:bundle-budget
 npm run e2e
+```
+
+The image needs a container runtime, so it is the one check that is not
+simply a command:
+
+```sh
+tools/image/stage.sh
+PLATFORMS=linux/amd64 LOAD=1 STAGED=1 IMAGE=telecraft VERSION=local tools/image/build.sh
+tools/image/offline.sh telecraft:local
 ```
 
 If `npm run e2e` fails on a missing browser, `npx playwright install

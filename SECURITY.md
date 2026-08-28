@@ -22,6 +22,12 @@ never a new commit under an old name.
 | An earlier tag | Upgrade to the current release. There is no backport. |
 | A fork, or a build you have patched | Yours to carry, though the advisory tells you what changed and where |
 
+The container image follows the same rule, and it widens what "a fix" covers.
+A flaw in the base the image is built on is fixed here, as the next tag
+carrying a refreshed base, rather than by every operator rebuilding. Pin the
+image by digest in a deployment: a tag is a name a registry resolves, and a
+digest is the bytes you are running.
+
 "The current release" means the tag that `release` points at, which
 `git ls-remote --tags origin release` resolves. There are no long-term
 support lines, and there will not be any before v1.0.0: the project would

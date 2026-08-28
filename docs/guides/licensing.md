@@ -1,7 +1,7 @@
 ---
 title: Place a licence
 description: "Where the licence file goes, what telecraft licence prints, and what an Instance does in each of the four states a licence can be in."
-order: 11
+order: 12
 ---
 
 # Place a licence

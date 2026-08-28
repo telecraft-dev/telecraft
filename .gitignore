@@ -61,3 +61,9 @@ internal/consoleassets/dist/*
 # never sees a user-level configuration from stamping attribution trailers
 # on this repository's commits.
 .claude/settings.local.json
+
+# The staged container image context (ADR-0068 §2). tools/image/stage.sh
+# builds the console, cross-compiles both Linux binaries and copies the
+# licence and the Catalogue baseline here, and the Dockerfile copies from
+# here and from nowhere else.
+/dist/

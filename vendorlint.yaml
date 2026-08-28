@@ -8,11 +8,15 @@
 # "Fleet" within it; a bare "Fleet" stays an error).
 
 # Never scanned: the lint's own seeded fixtures, and gitignored local trees.
+# dist/ is the staged container image context (ADR-0068 §2): built binaries
+# and a copy of the generated Catalogue artefact, which the devenv's own copy
+# is already excluded from the prose rule for.
 exclude:
   - tools/vendorlint/testdata/**
   - .proto/**
   - .teach/**
   - .playwright-mcp/**
+  - dist/**
 
 scopes:
   # The neutral core: every platform code path except the provider tree.
