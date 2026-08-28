@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	seam "github.com/telecraft-dev/telecraft/internal/forge"
@@ -55,6 +56,13 @@ type GitHubApp struct {
 	installationID string
 	key            *rsa.PrivateKey
 
+	// tokenFrom, when set, is the credential mode of a deployment that
+	// does not hold the App key: a token something else minted and
+	// rewrites in the file before it expires (ADR-0072 §8). It is read at
+	// each use and never held, so a rewritten file is picked up by the
+	// next call with no restart and no coordination (ADR-0071 §5).
+	tokenFrom func() (string, error)
+
 	apiBase string
 	client  *http.Client
 	now     func() time.Time
@@ -62,6 +70,12 @@ type GitHubApp struct {
 	mu       sync.Mutex
 	token    string
 	tokenExp time.Time
+
+	// granted is what the last minted token said the installation allows.
+	// It is a reading of the credential, replaced at each mint, so the
+	// declaration is at most one token's life behind what the customer
+	// set (ADR-0073 §3).
+	granted atomic.Pointer[seam.Capabilities]
 }
 
 // GitHubAppConfig wires one GitHubApp to one repository. The credential
@@ -80,6 +94,17 @@ type GitHubAppConfig struct {
 	// PrivateKeyPEM is the App's RSA signing key (PKCS#1 or PKCS#8 PEM).
 	PrivateKeyPEM []byte
 
+	// TokenFrom reads an installation token something else minted, for a
+	// deployment that holds no App key: one App's key mints tokens for
+	// every installation it holds, so a deployment serving many
+	// Organisations keeps the key in one place and hands each Instance a
+	// token in a file (ADR-0072 §8). It is read at each call, so the file
+	// being rewritten before it expires needs nothing here.
+	//
+	// It replaces the credential triple rather than adding to it: a
+	// process either mints its own tokens or is given them.
+	TokenFrom func() (string, error)
+
 	// APIBase overrides the REST endpoint: GitHub Enterprise Server, or
 	// a test double. Empty means https://api.github.com.
 	APIBase string
@@ -97,12 +122,17 @@ func NewGitHubApp(cfg GitHubAppConfig) (*GitHubApp, error) {
 	if cfg.Owner == "" || cfg.Repo == "" {
 		return nil, errors.New("github: owner and repo are required")
 	}
-	if cfg.AppID == "" || cfg.InstallationID == "" {
-		return nil, errors.New("github: app id and installation id are required")
-	}
-	key, err := parsePrivateKey(cfg.PrivateKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("github: private key: %w", err)
+	var key *rsa.PrivateKey
+	if cfg.TokenFrom == nil {
+		if cfg.AppID == "" || cfg.InstallationID == "" {
+			return nil, errors.New("github: app id and installation id are required")
+		}
+		var err error
+		if key, err = parsePrivateKey(cfg.PrivateKeyPEM); err != nil {
+			return nil, fmt.Errorf("github: private key: %w", err)
+		}
+	} else if cfg.AppID != "" || cfg.InstallationID != "" || len(cfg.PrivateKeyPEM) > 0 {
+		return nil, errors.New("github: a token file and an app credential were both given; a process either mints its own tokens or is given them")
 	}
 	timeout := cfg.Timeout
 	if timeout <= 0 {
@@ -118,6 +148,7 @@ func NewGitHubApp(cfg GitHubAppConfig) (*GitHubApp, error) {
 		appID:          cfg.AppID,
 		installationID: cfg.InstallationID,
 		key:            key,
+		tokenFrom:      cfg.TokenFrom,
 		apiBase:        apiBase,
 		client:         &http.Client{Timeout: timeout},
 		now:            time.Now,
@@ -147,13 +178,72 @@ func parsePrivateKey(pemBytes []byte) (*rsa.PrivateKey, error) {
 // runtime data (ADR-0001).
 func (g *GitHubApp) Name() string { return "GitHub App" }
 
-// Capabilities: GitHub sits on the full rung of the ADR-0028 §4 ladder.
+// Capabilities: GitHub sits on the full rung of the ADR-0028 §4 ladder,
+// narrowed by what the installation grants this repository.
+//
+// The narrowing is read from the token response at each mint, so it costs
+// no call of its own and is at most one token's life out of date
+// (ADR-0073 §3). Two states declare the full rung: before the first token
+// has been minted, and where the token was minted by something else and
+// this process was handed it. Neither is a claim that the grant is wide:
+// it is the honest reading of a grant nothing here has seen, and a call
+// the forge then refuses is a fault rather than a declaration.
 func (g *GitHubApp) Capabilities() seam.Capabilities {
+	if granted := g.granted.Load(); granted != nil {
+		return *granted
+	}
+	return fullRung
+}
+
+// fullRung is what GitHub is, before any narrowing.
+var fullRung = seam.Capabilities{
+	Proposals:           true,
+	ReviewRouting:       true,
+	Annotations:         true,
+	VerifiedAttribution: true,
+}
+
+// The permissions the App asks for, and nothing else (ADR-0073 §3). The
+// names are GitHub's own, which is why they live here and not in the seam.
+const (
+	permissionContents = "contents"
+	permissionPulls    = "pull_requests"
+	levelWrite         = "write"
+)
+
+// grantedBy reads one token response into the ladder: what the App may do
+// on this repository, and the sentence to show where it may not.
+//
+// Contents and pull requests both at write is the whole of what proposing
+// takes: the commit each proposal carries, and the proposal itself with
+// its review comments. Anything narrower is a declared "cannot" naming
+// what is missing and where the person reading can change it, never a
+// write that fails halfway through.
+func grantedBy(permissions map[string]string) seam.Capabilities {
+	var missing []string
+	if permissions[permissionContents] != levelWrite {
+		missing = append(missing, "write files")
+	}
+	if permissions[permissionPulls] != levelWrite {
+		missing = append(missing, "open change proposals")
+	}
+	if len(missing) == 0 {
+		return fullRung
+	}
 	return seam.Capabilities{
-		Proposals:           true,
-		ReviewRouting:       true,
-		Annotations:         true,
-		VerifiedAttribution: true,
+		Withheld: "Telecraft may not " + strings.Join(missing, " or ") +
+			" in this repository. Grant it where Telecraft is installed on the repository.",
+	}
+}
+
+// unreachable is what this repository declares when the installation does
+// not cover it. The remedy is at the git host rather than here, and the
+// rest of an estate is unaffected: a satellite outside the installation
+// makes one subtree unreadable and nothing else (ADR-0073 §3).
+func unreachable(owner, repo string) seam.Capabilities {
+	return seam.Capabilities{
+		Withheld: "Telecraft cannot reach " + owner + "/" + repo +
+			". Add it to the repositories Telecraft is installed on.",
 	}
 }
 
@@ -379,8 +469,33 @@ func (g *GitHubApp) appJWT() (string, error) {
 }
 
 // installationToken exchanges the App JWT for the installation token,
-// caching it until shortly before expiry.
+// caching it until shortly before expiry, and reads the grant the response
+// reports into the capability declaration.
+//
+// The token is minted scoped to this repository and never to the whole
+// installation. An installation may cover repositories that have nothing
+// to do with Telecraft, and may legitimately serve two Organisations, so
+// minting at installation scope would put a token in one Instance's hands
+// that opens somebody else's repository. Scoping at mint time makes the
+// boundary a property of the credential rather than a rule somebody has to
+// remember (ADR-0073 §4).
+//
+// A deployment that holds no App key reads a token from the file something
+// else rewrites, and reads no grant: what it was handed was minted
+// elsewhere, and claiming to know its shape would be a claim about a call
+// this process never made.
 func (g *GitHubApp) installationToken(ctx context.Context) (string, error) {
+	if g.tokenFrom != nil {
+		token, err := g.tokenFrom()
+		if err != nil {
+			return "", fmt.Errorf("github: reading the installation token: %w", err)
+		}
+		if token == "" {
+			return "", errors.New("github: the installation token file is empty")
+		}
+		return token, nil
+	}
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.token != "" && g.now().Before(g.tokenExp.Add(-time.Minute)) {
@@ -392,13 +507,25 @@ func (g *GitHubApp) installationToken(ctx context.Context) (string, error) {
 		return "", err
 	}
 	var minted struct {
-		Token     string    `json:"token"`
-		ExpiresAt time.Time `json:"expires_at"`
+		Token       string            `json:"token"`
+		ExpiresAt   time.Time         `json:"expires_at"`
+		Permissions map[string]string `json:"permissions"`
 	}
 	path := "/app/installations/" + g.installationID + "/access_tokens"
-	if err := g.do(ctx, http.MethodPost, path, jwt, nil, &minted); err != nil {
+	scope := map[string]any{"repositories": []string{g.repo}}
+	if err := g.do(ctx, http.MethodPost, path, jwt, scope, &minted); err != nil {
+		// A repository the installation does not cover is a declared
+		// "cannot" naming the repository, not a fault: the customer chose
+		// what to install on, and the remedy is theirs.
+		var apiErr *apiError
+		if errors.As(err, &apiErr) && (apiErr.Status == http.StatusUnprocessableEntity || apiErr.Status == http.StatusNotFound) {
+			declared := unreachable(g.owner, g.repo)
+			g.granted.Store(&declared)
+		}
 		return "", fmt.Errorf("github: minting installation token: %w", err)
 	}
+	granted := grantedBy(minted.Permissions)
+	g.granted.Store(&granted)
 	g.token, g.tokenExp = minted.Token, minted.ExpiresAt
 	return g.token, nil
 }
