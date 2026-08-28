@@ -302,3 +302,84 @@ test('the card panel shows the flow readings and the restart rate', async ({ pag
   await expect(flow).toBeVisible()
   await expect(flow).toContainText('Restarts: 4 incarnations')
 })
+
+// The ADR-0063 density pass: the switchers share the title row, the
+// Environment segments of a section flow side by side lens-first, the
+// Collectors band reflects the shelf's scope and selection under the
+// cards, and the waiting card doors into its setup guidance.
+
+test('the view and scope switchers share the title row', async ({ page }) => {
+  await page.goto('/estate')
+  const header = page.locator('.estate-header')
+  await expect(header.getByTestId('view-shelf')).toBeVisible()
+  await expect(header.getByTestId('scope-team')).toBeVisible()
+  await expect(header.getByTestId('add-tier')).toBeVisible()
+  const title = await header.locator('h1').boundingBox()
+  const scope = await header.getByTestId('scope-estate').boundingBox()
+  expect(scope!.y).toBeLessThan(title!.y + title!.height)
+  // The scope belongs to the shelf alone (ADR-0042 §2): the other views
+  // do not show it.
+  await page.getByTestId('view-list').click()
+  await expect(page.getByTestId('scope-team')).toHaveCount(0)
+})
+
+test('a collapsed Environment segment sits beside the lens cards, not under them', async ({
+  page,
+}) => {
+  await page.goto('/estate?lens=production')
+  const gateway = page.getByTestId('card-data-flow/gateway')
+  await expect(gateway).toBeVisible()
+  const summary = page.getByTestId('env-summary-data-flow-staging')
+  await expect(summary).toBeVisible()
+  const cardBox = await gateway.boundingBox()
+  const summaryBox = await summary.boundingBox()
+  // Same stream, to the side: the segment starts within the lens row's
+  // vertical range and to the right of the leading card.
+  expect(summaryBox!.y).toBeLessThan(cardBox!.y + cardBox!.height)
+  expect(summaryBox!.x).toBeGreaterThan(cardBox!.x + cardBox!.width)
+})
+
+test('the Collectors band is bounded, names its truncation, and doors to the flat list', async ({
+  page,
+}) => {
+  await page.goto('/estate')
+  const band = page.getByTestId('collectors-band')
+  await expect(band).toBeVisible()
+  // My-team scope: the team subtree's eight collectors, six drawn.
+  await expect(band.locator('tbody tr')).toHaveCount(6)
+  await expect(page.getByTestId('collectors-band-truncation')).toContainText('Showing 6 of 8.')
+  // Widening the scope widens the reflection, the ungoverned included in
+  // the count: they belong to nobody, so only the whole estate holds them.
+  await page.getByTestId('scope-estate').click()
+  await expect(page.getByTestId('collectors-band-truncation')).toContainText('Showing 6 of 15.')
+  // The door lands on the flat list, pre-filtered to what the band
+  // reflected (rule 3.4); the filters themselves live there (ADR-0042 §4).
+  await page.goto('/estate')
+  await page.getByTestId('collectors-band-door').click()
+  await expect(page).toHaveURL(/view=list/)
+  await expect(page).toHaveURL(/team=data-flow/)
+  await expect(page.getByTestId('collector-table').locator('tbody tr')).toHaveCount(8)
+})
+
+test('a selected Tier leads the Collectors band, then the rest of the scope', async ({
+  page,
+}) => {
+  await page.goto(`/estate?${GATEWAY}`)
+  await expect(page.getByTestId('collectors-band-context')).toContainText(
+    'gateway is selected: its 3 matched collectors first, then the rest of the team.',
+  )
+  const first = page.getByTestId('collectors-band').locator('tbody tr').first()
+  await expect(first).toHaveAttribute('data-testid', 'band-collector-gw-0')
+})
+
+test("the waiting card's door opens its setup guidance", async ({ page }) => {
+  await page.goto('/estate')
+  const door = page.getByTestId('setup-door-data-flow/payments-gateway')
+  await expect(door).toHaveText('Set up its first collector')
+  await door.click()
+  await expect(page.getByTestId('card-panel')).toBeVisible()
+  await expect(page.getByTestId('panel-setup')).toBeVisible()
+  // Only the waiting card carries the door: a populated Tier doors on its
+  // collector count instead.
+  await expect(page.getByTestId('setup-door-data-flow/gateway')).toHaveCount(0)
+})

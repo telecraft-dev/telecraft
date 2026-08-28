@@ -1,7 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
+import { api } from '../../api/client'
 import { BAND_ORDER, type CardFace, type EstatePayload, type TeamNode } from '../../api/types'
 import { useLens } from '../../chrome/LensControl'
+import { collectorsBand, teamIds } from '../../estate/collectors'
 import { cardStanding, orderCards, sectionAllHealthy, totalFindings } from '../../estate/order'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { usePresentation } from '../../presentation/usePresentation'
@@ -9,6 +12,7 @@ import { Button, buttonClass } from '../../ui/Button'
 import { Mark } from '../../ui/Mark'
 import { count } from '../../ui/text'
 import { CardFaceView } from './card'
+import { LastSeen, stateWords, TierCell } from './FlatList'
 
 interface Section {
   team: TeamNode
@@ -51,9 +55,12 @@ function subtree(root: TeamNode, id: string): TeamNode | undefined {
  * with aligned Environment rows, cards ordered worst-severity-first from
  * face summary fields alone. Scope rests on the signed-in user's team
  * subtree; one click widens to the estate. The lens leads and draws its
- * row in full; every other Environment row collapses to a line carrying
- * its counts and worst mark (ADR-0059): emphasis, never a filter, so
- * nothing leaves the page.
+ * cards in full; every other Environment rests as a collapsed segment
+ * carrying its counts and worst mark (ADR-0059): emphasis, never a
+ * filter, so nothing leaves the page. The segments flow in one row-major
+ * stream rather than stacking (ADR-0063 §1), so the lens's cards and its
+ * neighbours share the width. Below the sections, the Collectors band
+ * reflects the scope and selection (ADR-0063 §2).
  */
 export function Shelf({
   payload,
@@ -86,26 +93,6 @@ export function Shelf({
 
   return (
     <section className="shelf" data-testid="shelf">
-      <div className="shelf-scope">
-        <Link
-          from="/estate"
-          to="/estate"
-          search={(prev) => ({ ...prev, scope: 'team' as const })}
-          className={scope === 'team' ? 'scope-link active' : 'scope-link'}
-          data-testid="scope-team"
-        >
-          My team
-        </Link>
-        <Link
-          from="/estate"
-          to="/estate"
-          search={(prev) => ({ ...prev, scope: 'estate' as const })}
-          className={scope === 'estate' ? 'scope-link active' : 'scope-link'}
-          data-testid="scope-estate"
-        >
-          Whole estate
-        </Link>
-      </div>
       {/* Ungoverned collectors sit in the dedicated band above governed
           Tiers (ADR-0031 §2): concern, never failure. An explicit
           onboard-me CTA, and no compliance denominator counts them. The
@@ -143,6 +130,119 @@ export function Shelf({
           selectedTier={selectedTier}
         />
       ))}
+      <CollectorsBand
+        payload={payload}
+        root={root}
+        wholeEstate={root.id === payload.teams.id}
+        selectedTier={selectedTier}
+      />
+    </section>
+  )
+}
+
+/**
+ * The Collectors band (ADR-0063 §2): the flat list's data riding under
+ * the shelf, scoped to what the shelf shows. It reflects the scope and
+ * the selection and filters nothing itself: the flat list stays the home
+ * of explicit filters (ADR-0042 §4), and the door lands there
+ * pre-filtered (rule 3.4). Bounded, and it names what it did not show.
+ * The query key is the flat list's, so TanStack Query serves both from
+ * one fetch (ADR-0063 §3).
+ */
+function CollectorsBand({
+  payload,
+  root,
+  wholeEstate,
+  selectedTier,
+}: {
+  payload: EstatePayload
+  root: TeamNode
+  wholeEstate: boolean
+  selectedTier?: string
+}) {
+  const collectors = useQuery({ queryKey: ['collectors'], queryFn: api.collectors })
+
+  // Ambient posture while loading: the shelf above is the surface, and a
+  // skeleton band under it would be louder than the rows.
+  if (collectors.isPending) return null
+  if (collectors.isError) return <p className="surface-status">Collectors failed to load.</p>
+
+  const band = collectorsBand(collectors.data, teamIds(root), wholeEstate, selectedTier)
+  const selectedCard =
+    selectedTier === undefined
+      ? undefined
+      : payload.cards.find((card) => card.tier === selectedTier)
+  if (band.total === 0) return null
+
+  return (
+    <section className="collectors-band" data-testid="collectors-band">
+      <header className="section-header">
+        <h2>Collectors</h2>
+        {selectedCard && band.leading > 0 && (
+          <p className="section-summary" data-testid="collectors-band-context">
+            {selectedCard.name} is selected: its{' '}
+            {count(band.leading, 'matched collector')} first, then the rest of the{' '}
+            {wholeEstate ? 'estate' : 'team'}.
+          </p>
+        )}
+      </header>
+      <table className="catalogue-table collector-table" data-testid="collectors-band-table">
+        <thead>
+          <tr>
+            <th>Collector</th>
+            <th>Tier</th>
+            <th>Environment</th>
+            <th>State</th>
+            <th>Version</th>
+            <th>Last seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {band.rows.map((row) => (
+            <tr
+              key={row.id}
+              data-testid={`band-collector-${row.id}`}
+              className={row.ungoverned !== undefined ? 'ungoverned-row' : undefined}
+            >
+              <td>{row.id}</td>
+              <td>
+                <TierCell row={row} />
+              </td>
+              <td>{row.environment}</td>
+              <td>{stateWords(row.state)}</td>
+              <td>{row.version}</td>
+              <td>
+                <LastSeen lastSeen={row.lastSeen} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="section-summary">
+        {band.rows.length < band.total && (
+          <span data-testid="collectors-band-truncation">
+            Showing {band.rows.length} of {band.total}.{' '}
+          </span>
+        )}
+        <Link
+          from="/estate"
+          to="/estate"
+          search={(prev) => ({
+            ...prev,
+            view: 'list' as const,
+            tier: undefined,
+            env: undefined,
+            ungoverned: undefined,
+            team: wholeEstate ? undefined : root.id,
+          })}
+          className="count-door"
+          data-testid="collectors-band-door"
+        >
+          {wholeEstate
+            ? 'See every collector in the flat list'
+            : "See the team's collectors in the flat list"}
+        </Link>
+      </p>
     </section>
   )
 }
@@ -200,70 +300,77 @@ function ShelfSection({
               )}
         </p>
       ) : (
-        environments.map((env) => {
-          const row = orderCards(cards.filter((card) => card.environment === env))
-          if (row.length === 0) return null
-          if (env !== lens && !expandedEnvs[env]) {
-            const findings = row.reduce((n, c) => n + totalFindings(c), 0)
-            const worst = rowWorst(row)
+        // One row-major stream (ADR-0063 §1): the lens Environment's cards
+        // lead and the other Environments' segments sit after them in the
+        // same flow, wrapping when they do not fit. Geometry only: what
+        // each segment carries is still ADR-0059's, lead position plus
+        // collapse, so the stream removes nothing.
+        <div className="shelf-flow">
+          {environments.map((env) => {
+            const row = orderCards(cards.filter((card) => card.environment === env))
+            if (row.length === 0) return null
+            if (env !== lens && !expandedEnvs[env]) {
+              const findings = row.reduce((n, c) => n + totalFindings(c), 0)
+              const worst = rowWorst(row)
+              return (
+                <div
+                  key={env}
+                  className="environment-row env-collapsed"
+                  data-environment={env}
+                  data-testid={`env-summary-${team.id}-${env}`}
+                >
+                  <h3 className="environment-label">{env}</h3>
+                  <p className="section-summary env-summary">
+                    {worst !== 'ok' && worst !== 'neutral' && (
+                      <span className={`env-worst severity-${worst}`}>
+                        <Mark name={worst} />
+                      </span>
+                    )}
+                    {count(row.length, 'Tier')},{' '}
+                    {findings === 0 ? 'no findings' : count(findings, 'finding')}
+                  </p>
+                  <Button
+                    tone="quiet"
+                    data-testid={`env-expand-${team.id}-${env}`}
+                    onClick={() => setExpandedEnvs((was) => ({ ...was, [env]: true }))}
+                  >
+                    Expand
+                  </Button>
+                </div>
+              )
+            }
             return (
               <div
                 key={env}
-                className="environment-row env-collapsed"
+                className={env === lens ? 'environment-row lens-leading' : 'environment-row'}
                 data-environment={env}
-                data-testid={`env-summary-${team.id}-${env}`}
               >
                 <h3 className="environment-label">{env}</h3>
-                <p className="section-summary env-summary">
-                  {worst !== 'ok' && worst !== 'neutral' && (
-                    <span className={`env-worst severity-${worst}`}>
-                      <Mark name={worst} />
-                    </span>
-                  )}
-                  {count(row.length, 'Tier')},{' '}
-                  {findings === 0 ? 'no findings' : count(findings, 'finding')}
-                </p>
-                <Button
-                  tone="quiet"
-                  data-testid={`env-expand-${team.id}-${env}`}
-                  onClick={() => setExpandedEnvs((was) => ({ ...was, [env]: true }))}
-                >
-                  Expand
-                </Button>
+                <div className="card-row">
+                  {row.map((card) => (
+                    <CardFaceView
+                      key={card.tier}
+                      card={card}
+                      standing={cardStanding(card)}
+                      bands={BAND_ORDER}
+                      selected={card.tier === selectedTier}
+                      onSelect={() =>
+                        void navigate({
+                          from: '/estate',
+                          to: '/estate',
+                          search: (prev) => ({
+                            ...prev,
+                            object: formatObjectRef({ kind: 'tier', id: card.tier }),
+                          }),
+                        })
+                      }
+                    />
+                  ))}
+                </div>
               </div>
             )
-          }
-          return (
-            <div
-              key={env}
-              className={env === lens ? 'environment-row lens-leading' : 'environment-row'}
-              data-environment={env}
-            >
-              <h3 className="environment-label">{env}</h3>
-              <div className="card-row">
-                {row.map((card) => (
-                  <CardFaceView
-                    key={card.tier}
-                    card={card}
-                    standing={cardStanding(card)}
-                    bands={BAND_ORDER}
-                    selected={card.tier === selectedTier}
-                    onSelect={() =>
-                      void navigate({
-                        from: '/estate',
-                        to: '/estate',
-                        search: (prev) => ({
-                          ...prev,
-                          object: formatObjectRef({ kind: 'tier', id: card.tier }),
-                        }),
-                      })
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })
+          })}
+        </div>
       )}
     </section>
   )

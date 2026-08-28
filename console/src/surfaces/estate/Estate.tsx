@@ -61,6 +61,32 @@ export function Estate() {
               </Link>
             ))}
           </nav>
+          {/* The shelf's scope shares the title row with the views
+              (ADR-0063 §1): one row of switchers, the cards higher. It
+              still scopes only the shelf (ADR-0042 §2), so the other
+              views do not show it. */}
+          {view === 'shelf' && (
+            <nav className="shelf-scope" aria-label="Shelf scope">
+              <Link
+                from="/estate"
+                to="/estate"
+                search={(prev) => ({ ...prev, scope: 'team' as const })}
+                className={(search.scope ?? 'team') === 'team' ? 'scope-link active' : 'scope-link'}
+                data-testid="scope-team"
+              >
+                My team
+              </Link>
+              <Link
+                from="/estate"
+                to="/estate"
+                search={(prev) => ({ ...prev, scope: 'estate' as const })}
+                className={search.scope === 'estate' ? 'scope-link active' : 'scope-link'}
+                data-testid="scope-estate"
+              >
+                Whole estate
+              </Link>
+            </nav>
+          )}
           {/* The governance-first door into the Add-a-Tier flow (ADR-0060
               §1); the claim flow's draft branch is the other door. */}
           <Link

@@ -58,10 +58,21 @@ A context strip sits beneath the chrome, on every Workspace:
 The landing Workspace has three views: **Shelf**, **Roll-up**, and **Flat
 list**.
 
-The Shelf is a grid of card faces, grouped by team subtree and split into
-aligned Environment rows, with production first. Each card shows three bands:
+The Shelf is a grid of card faces, grouped by team subtree. The view and
+scope switchers share the title row with **Add a Tier**. Within each team
+section, the Environment the lens names leads with its cards drawn in full,
+and every other Environment sits beside them as a segment carrying its name,
+its Tier count, its finding count, and its worst mark, with an **Expand**
+control that draws its cards in place. Each card shows three bands:
 Delivery, Expectation, and Conformance. Cards sort worst severity first, from
-the face alone.
+the face alone. A Tier that is still waiting for its first collector carries
+a **Set up its first collector** door where its readings would be; it opens
+the card's setup guidance.
+
+Below the cards, a Collectors band shows the scope's collectors: with a card
+selected, that Tier's matched collectors first, then the rest of the scope.
+It shows a fixed number of rows, says how many it did not show, and links to
+the Flat list, which holds the filters.
 
 A banner sits above the grid:
 

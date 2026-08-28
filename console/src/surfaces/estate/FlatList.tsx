@@ -37,12 +37,36 @@ export function herdIds(herd: string | undefined): string[] {
 
 // Age in the cell, the exact instant on the title (ADR-0040 §6): the
 // reader scanning the column wants staleness, and the InfoSec reader who
-// wants the instant hovers for it.
-function LastSeen({ lastSeen }: { lastSeen: string | undefined }) {
+// wants the instant hovers for it. Exported so the shelf's Collectors band
+// renders the same reading the same way (ADR-0063 §2).
+export function LastSeen({ lastSeen }: { lastSeen: string | undefined }) {
   if (lastSeen === undefined) return <>never</>
   const takenAt = new Date(lastSeen)
   if (Number.isNaN(takenAt.getTime())) return <>{lastSeen}</>
   return <span title={lastSeen}>{formatAge((Date.now() - takenAt.getTime()) / 1000)} ago</span>
+}
+
+/**
+ * The Tier cell: the matched Tier's id, or the ungoverned chip (ADR-0031
+ * §2): concern, never failure. Shared with the shelf's Collectors band so
+ * one collector never reads two ways (ADR-0063 §2).
+ */
+export function TierCell({ row }: { row: CollectorRow }) {
+  if (row.tier !== undefined) return <>{row.tier}</>
+  return (
+    <Chip
+      tone="ungoverned"
+      className={`ungoverned-chip ungoverned-${row.ungoverned}`}
+      data-testid={`ungoverned-${row.id}`}
+    >
+      ungoverned · {row.ungoverned === 'served' ? 'served the Unmatched artefact' : 'foreign'}
+    </Chip>
+  )
+}
+
+/** The collector state, in words rather than the payload's token. */
+export function stateWords(state: CollectorRow['state']): string {
+  return state.replace('_', ' ')
 }
 
 export function FlatList({
@@ -217,19 +241,11 @@ export function FlatList({
               </td>
               <td>{row.id}</td>
               <td>
-                {row.tier ?? (
-                  <Chip
-                    tone="ungoverned"
-                    className={`ungoverned-chip ungoverned-${row.ungoverned}`}
-                    data-testid={`ungoverned-${row.id}`}
-                  >
-                    ungoverned · {row.ungoverned === 'served' ? 'served the Unmatched artefact' : 'foreign'}
-                  </Chip>
-                )}
+                <TierCell row={row} />
               </td>
               <td>{row.team ?? 'none'}</td>
               <td>{row.environment}</td>
-              <td>{row.state.replace('_', ' ')}</td>
+              <td>{stateWords(row.state)}</td>
               <td>{row.version}</td>
               <td>
                 <LastSeen lastSeen={row.lastSeen} />

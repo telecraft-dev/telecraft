@@ -640,10 +640,13 @@
   margin: 0 0 var(--space-3);
 }
 
+/* The scope switcher shares the title row with the views (ADR-0063 §1);
+   the hairline keeps the two switchers readable as two. */
 .shelf-scope {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  border-left: 1px solid var(--colour-rule);
+  padding-left: var(--space-4);
 }
 
 .scope-link {
@@ -681,24 +684,50 @@
   margin: 0;
 }
 
+/* The section's Environments flow in one row-major stream (ADR-0063 §1):
+ * the lens's cards lead, and the other Environments' segments sit after
+ * them on the same line when they fit, wrapping when they do not. A
+ * segment shrinks no narrower than one card, so wrapping happens at card
+ * grain. */
+.shelf-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-4);
+}
+
+.shelf-flow > .environment-row {
+  margin-bottom: 0;
+}
+
+/* The hairline between a segment and its neighbour. */
+.shelf-flow > .environment-row + .environment-row {
+  border-left: 1px solid var(--colour-rule);
+  padding-left: var(--space-4);
+}
+
 .environment-row {
   margin-bottom: var(--space-3);
 }
 
 /* The lens's emphasis is lead position plus collapse, never opacity
- * (ADR-0059): the leading row draws in full, the rest rest as one line
- * carrying their counts. Reduced opacity on this surface meant nothing a
- * reader could name, so no rule here uses it. */
+ * (ADR-0059): the leading segment draws in full, the rest rest as their
+ * counts. Reduced opacity on this surface meant nothing a reader could
+ * name, so no rule here uses it. */
 
 .environment-row.lens-leading .environment-label {
   color: var(--colour-text);
   font-weight: 600;
 }
 
+/* A collapsed Environment is a slim segment beside the lens's cards:
+   name, counts, worst mark, the cards one press away (ADR-0059 §1,
+   ADR-0063 §1). */
 .environment-row.env-collapsed {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
 .environment-row.env-collapsed .environment-label,
@@ -725,6 +754,22 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+/* The Collectors band under the shelf (ADR-0063 §2): the flat list's
+   rows, bounded, reflecting the shelf's scope and selection. It filters
+   nothing; the door carries the reader to the flat list, where the
+   filters live (ADR-0042 §4). */
+.collectors-band {
+  margin-top: var(--space-5);
+}
+
+.collectors-band .section-header {
+  align-items: baseline;
+}
+
+.collectors-band table {
+  margin-bottom: var(--space-2);
 }
 
 /* Card face: equal heights at card grain, always (ADR-0042 §2). */
@@ -756,6 +801,14 @@
 .count-door {
   color: var(--colour-fill);
   text-decoration: underline;
+}
+
+/* The never_seen card's door to its setup guidance (ADR-0060 §3,
+   ADR-0063): it sits in the space the matrix would fill, above the foot,
+   and only the waiting card carries it. */
+.card-face .setup-door {
+  align-self: flex-start;
+  margin-bottom: var(--space-2);
 }
 
 .card-face.selected {

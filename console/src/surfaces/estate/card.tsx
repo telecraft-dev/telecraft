@@ -211,6 +211,21 @@ export function CardFaceView({
         </ul>
         <SignalMatrix tier={card.tier} signals={card.signals ?? []} />
       </button>
+      {/* The waiting room's door (ADR-0060 §3, ADR-0063): the setup
+          guidance lives on the card panel, so the door summons the panel
+          exactly as selecting the card does. It sits in the space the
+          matrix would fill, beside the quiet line, and only a never_seen
+          population carries it. */}
+      {card.population.state === 'never_seen' && (
+        <Button
+          tone="quiet"
+          className="setup-door"
+          data-testid={`setup-door-${card.tier}`}
+          onClick={onSelect}
+        >
+          Set up its first collector
+        </Button>
+      )}
       <footer className="card-foot">
         {/* A collector count is a door to the flat list, pre-filtered
             (ADR-0042 §3.4). A never_seen population has no count to door
