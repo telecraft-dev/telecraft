@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // Config carries the vendor-neutral onboarding shape of ADR-0028 §5: the

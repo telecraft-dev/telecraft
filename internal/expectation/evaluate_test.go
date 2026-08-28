@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/inventory"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 var t0 = time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/forge"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
+	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // fakeForge records what was proposed.

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // The generated projection derives from the tree, not the directory shape

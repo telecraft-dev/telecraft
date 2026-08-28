@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // activeRef is the ref the drifted fixture version stands at: one ahead of

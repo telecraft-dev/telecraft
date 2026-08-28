@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/licence"
-	"github.com/telecraft-dev/telecraft/internal/register"
+	"github.com/telecraft-dev/telecraft/pkg/register"
 )
 
 // three is the register of a deployment that wants to run three

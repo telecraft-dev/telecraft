@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/telecraft-dev/telecraft/internal/conformance"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // registry builds one Schema Registry version through the artefact the

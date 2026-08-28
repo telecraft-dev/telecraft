@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/consoleassets"
 	"github.com/telecraft-dev/telecraft/internal/serving"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
 )
 
 // The storage audit, held over this process the way it is held over the

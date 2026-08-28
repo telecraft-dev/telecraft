@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/forge"
 	"github.com/telecraft-dev/telecraft/internal/serving"
+	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // fakePush is a forge that verifies a delivery the way one would: an HMAC

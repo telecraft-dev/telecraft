@@ -7,7 +7,7 @@ import (
 	"errors"
 	"strings"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // GitHubPush verifies the deliveries a GitHub App's webhook makes: the

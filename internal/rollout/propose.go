@@ -10,8 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/telecraft-dev/telecraft/internal/forge"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
+	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // AdvanceBranch is the deterministic branch an advance proposal lives on

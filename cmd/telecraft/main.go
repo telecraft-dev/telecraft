@@ -66,9 +66,9 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/allowlist"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 func main() {

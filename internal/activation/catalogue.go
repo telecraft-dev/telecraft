@@ -7,8 +7,8 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // CatalogueInputs is everything the Catalogue impact report reads: the two

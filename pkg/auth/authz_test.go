@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 func testActor(t *testing.T, email string) Actor {

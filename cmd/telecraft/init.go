@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
-	"github.com/telecraft-dev/telecraft/internal/seed"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/seed"
 )
 
 // runInit creates an estate: the team tree, the person it is created for,

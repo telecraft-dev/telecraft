@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // keys reduces a palette to its component keys, in palette order.

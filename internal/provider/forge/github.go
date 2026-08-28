@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // GitHubApp is the first-party Forge implementation (ADR-0014): the

@@ -13,7 +13,7 @@ no index name, no API type, no authentication scheme.
 
 This page covers the four seams you implement against a vendor product:
 TelemetryProvider, EstateProvider, InventoryProvider, and the forge adapter.
-`internal/auth` is a seam on the same terms, and its first-party providers
+`pkg/auth` is a seam on the same terms, and its first-party providers
 follow the same rules.
 
 Two rules apply to all of them, and both come from ADR-0008.
@@ -236,7 +236,7 @@ cadence multiplied by 3 so it cannot float a fresh-looking floor.
 
 ## The forge adapter
 
-**Seam:** `internal/forge`. **Decisions:** ADR-0014, ADR-0028. **Shipped
+**Seam:** `pkg/forge`. **Decisions:** ADR-0014, ADR-0028. **Shipped
 implementation:** `GitHubApp`.
 
 ```go

@@ -29,8 +29,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 	"gopkg.in/yaml.v3"
 )
 

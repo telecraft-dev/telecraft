@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // The printed hash is a working users.yaml credential: write it into the

@@ -928,7 +928,7 @@ services:
 // derived run whose topology, recorded reading and authored estate all
 // answer for the same row; and two edges of the team-subtree waiver test:
 // a team id the tree rejects, and a Service the ownership model has never
-// heard of. Both edges belong to internal/ownership, which asserts on them
+// heard of. Both edges belong to pkg/ownership, which asserts on them
 // directly rather than through a report this command renders.
 
 // schemaLibrary is a reference into the Schema Registry: a pinned version

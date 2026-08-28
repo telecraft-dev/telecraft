@@ -3,7 +3,7 @@ package auth
 import (
 	"fmt"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Authorization derives from the ownership tree with one source of truth

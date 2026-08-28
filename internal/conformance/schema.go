@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // SchemaReading keys one Observed reading a schema-conformance requirement

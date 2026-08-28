@@ -15,13 +15,13 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
 	"github.com/telecraft-dev/telecraft/internal/conformance"
 	"github.com/telecraft-dev/telecraft/internal/drift"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // runCheck is the CI mode (REQ-024): load the requirements library and the

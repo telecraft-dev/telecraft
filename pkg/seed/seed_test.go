@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // anyValue answers every secret name, which is what a deployment that

@@ -13,7 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // AllowListsFile and GrantsFile are the two policy files an estate directory

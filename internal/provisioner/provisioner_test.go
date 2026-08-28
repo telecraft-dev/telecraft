@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/telecraft-dev/telecraft/internal/licence"
-	"github.com/telecraft-dev/telecraft/internal/register"
+	"github.com/telecraft-dev/telecraft/pkg/register"
 )
 
 // unlicensed is the deployment ADR-0050 §2 protects: no licence file, the

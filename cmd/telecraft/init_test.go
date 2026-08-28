@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // An estate is created for somebody: the team tree names them as an Owner,

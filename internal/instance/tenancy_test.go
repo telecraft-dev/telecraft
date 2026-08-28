@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/serving"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
 )
 
 // A deployment that serves several Organisations runs one of these

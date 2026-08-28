@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/inventory"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/selftelemetry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Status is one claim's judged state. The vocabulary is a band state, not

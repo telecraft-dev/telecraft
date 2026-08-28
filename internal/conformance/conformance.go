@@ -31,8 +31,8 @@ package conformance
 import (
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Outcome is the diagnosis for one requirement on one row.

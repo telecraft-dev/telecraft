@@ -11,14 +11,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
 	"github.com/telecraft-dev/telecraft/internal/instance"
 	forgeprovider "github.com/telecraft-dev/telecraft/internal/provider/forge"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/secrets"
 	"github.com/telecraft-dev/telecraft/internal/serving"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // runServe runs the Instance server (ADR-0067): one process serving one

@@ -14,6 +14,7 @@ seams, a TypeScript console, and one lint that keeps the first two apart.
 | `cmd/` | The four binaries. |
 | `internal/` | The neutral core. No vendor word appears here. |
 | `internal/provider/` | Vendor implementations behind the core's seams, product-qualified. |
+| `pkg/` | The core packages something outside this repository imports. Neutral core on the same terms as `internal/`, and public because a consumer depends on them. |
 | `console/` | The console, which consumes only the documented platform API. |
 | `tools/vendorlint/` | The lint that draws the core and provider boundary. |
 | `docs/` | The decision corpus and this documentation. |
@@ -69,8 +70,8 @@ Each seam package defines one interface and its vocabulary, and nothing else.
 | `internal/telemetry` | The TelemetryProvider seam: did signal X arrive for Service Y in window W. No query language, index name or product concept crosses it. `AttributeNames` is the sanctioned extension primitive; `ObserveSelf` reads collector self-telemetry; `Meter` reads pipeline-grain flow counters. |
 | `internal/estate` | The EstateProvider seam: the collector estate in one call, keyed on the collector. Also the static capability declaration, the minimum populated set, and the staleness arithmetic that demotes an old reading before it can feed a verdict. |
 | `internal/inventory` | The InventoryProvider seam: given a Tier's selector, how many instances should match. Also the population findings the answer produces. |
-| `internal/forge` | The forge-adapter seam: a change is a branch, a message, an acting human and a set of file contents; a proposal is an opaque identifier and a URL. Implementations declare a static capability ladder. |
-| `internal/auth` | The authentication seam and the ownership-derived authorisation it feeds. Two flow shapes, password and redirect, cover every first-party provider: basic auth, OIDC and SAML. The redirect flow hands its provider two values per attempt, the CSRF state and a secret the browser never sees, and both ride the caller's signed cookie rather than a server-side store (ADR-0019, ADR-0013). Membership resolves through `users.yaml` and, where the estate opts in, the group mapping in `auth.yaml`; neither writes the ownership tree. Everything here is standard library except SAML's XML signature verification, which is the package's one dependency and says why in its doc comment (REQ-060). |
+| `pkg/forge` | The forge-adapter seam: a change is a branch, a message, an acting human and a set of file contents; a proposal is an opaque identifier and a URL. Implementations declare a static capability ladder. |
+| `pkg/auth` | The authentication seam and the ownership-derived authorisation it feeds. Two flow shapes, password and redirect, cover every first-party provider: basic auth, OIDC and SAML. The redirect flow hands its provider two values per attempt, the CSRF state and a secret the browser never sees, and both ride the caller's signed cookie rather than a server-side store (ADR-0019, ADR-0013). Membership resolves through `users.yaml` and, where the estate opts in, the group mapping in `auth.yaml`; neither writes the ownership tree. Everything here is standard library except SAML's XML signature verification, which is the package's one dependency and says why in its doc comment (REQ-060). |
 
 ### The authored model
 
@@ -84,7 +85,7 @@ a silently lenient verdict.
 | `internal/requirements` | The requirements library: the versioned assertions a Service is judged against, and the signal vocabulary the rest of the core adopts. |
 | `internal/blueprint` | Blueprints and Components: per-signal lanes of ordered Component references, shared or local, with the ordering rules and the authoring findings. |
 | `internal/catalogue` | The Catalogue: the versioned inventory of collector component types, machine-generated from upstream metadata. Hand-curation of the component list is prohibited. |
-| `internal/ownership` | The Team tree and the owner every authored object carries. Routes each finding to the owner of the object it is about, and rolls compliance up as ratio-plus-worst per finding kind. Owns the one grade vocabulary every producer of findings grades in: pass, neutral, advisory, violation. |
+| `pkg/ownership` | The Team tree and the owner every authored object carries. Routes each finding to the owner of the object it is about, and rolls compliance up as ratio-plus-worst per finding kind. Owns the one grade vocabulary every producer of findings grades in: pass, neutral, advisory, violation. |
 | `internal/allowlist` | The Allow-list policy: which subset of the Catalogue each Team may use, composed down the tree by narrowing-only inheritance with owned Grants as the one widening mechanism. |
 
 ### The import pipeline
@@ -134,7 +135,8 @@ pipeline.
 | `internal/instance` | The Instance server: one process serving the console, the platform API behind the authentication gate, the two probes, and the OpAMP endpoint, over one estate. Holds the head, one loseable memo of the documents, and the authentication wiring at that head. |
 | `internal/consoleassets` | The built console, embedded in the binary. A build with nothing staged answers the console route with a page saying so, so the tree compiles where npm has never run. |
 | `internal/secrets` | Resolving the material an estate names against the directory the deployment filled. A name is letters, digits and hyphens, so it can never describe a path, and a value is read at the point of use rather than held. |
-| `internal/register` | The register of Organisations: one authored record per Organisation, holding its name, the address its Instance answers on, where its estate is read from, and its lifecycle state. The schema has no field that takes secret material, and a remote carrying a password is a load error. |
+| `pkg/seed` | The first commit of an estate: one team, the person it is created for, and how they sign in. The same three files whether an adopter starts an estate of their own or a deployment creates one for an Organisation, and nothing here is written twice. |
+| `pkg/register` | The register of Organisations: one authored record per Organisation, holding its name, the address its Instance answers on, where its estate is read from, and its lifecycle state. The schema has no field that takes secret material, and a remote carrying a password is a load error. |
 | `internal/provisioner` | Reconciling the register against the Instances a deployment runs: what to create, what to bring in line, and what to retire, behind a substrate seam that carries names and addresses in both directions. It holds nothing of any Organisation's estate, which a test over every type that crosses it holds it to. |
 
 ### Provider implementations
@@ -173,7 +175,7 @@ owns each step:
    per-team trees under `teams/<team>/` (components, blueprints, tiers,
    services), the requirements library, `allow-lists.yaml`, the exemptions
    tree, and the retained Catalogue versions.
-2. **Strict load.** `internal/ownership`, `internal/requirements`,
+2. **Strict load.** `pkg/ownership`, `internal/requirements`,
    `internal/blueprint`, `internal/catalogue` and `internal/allowlist` load
    those files. A load error names the file and the field, and judges nothing.
 3. **Render.** `internal/renderer` compiles each Tier's bound Blueprint into
@@ -194,7 +196,7 @@ owns each step:
    `internal/conformance` crosses Effective against Observed per requirement
    for one Service in one Environment. `internal/drift` finds `library_drift`,
    and `internal/inventory` finds population shortfalls.
-7. **Route and roll up.** `internal/ownership` routes each finding to the
+7. **Route and roll up.** `pkg/ownership` routes each finding to the
    owner of the object it is about, and rolls the results up the team tree as
    ratio-plus-worst per finding kind, with waived findings always visible.
 8. **Present.** `internal/card` assembles the face and drawer payloads.

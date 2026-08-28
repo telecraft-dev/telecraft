@@ -8,7 +8,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
 	"github.com/telecraft-dev/telecraft/internal/livecheck"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // NodeEnvVar is the environment variable the rendered artefact reads its

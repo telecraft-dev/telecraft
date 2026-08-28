@@ -9,13 +9,13 @@ import (
 	"sort"
 
 	"github.com/telecraft-dev/telecraft/internal/activation"
-	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/conformance"
 	"github.com/telecraft-dev/telecraft/internal/console"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/readings"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // The estate layout: where an estate keeps the files the API is computed

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // snapshotRef is the ref the fixture Schema Registry version is imported at.

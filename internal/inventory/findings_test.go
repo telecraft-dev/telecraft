@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 func one(t *testing.T, findings []Finding, class Class) Finding {

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // The fixture tree: org > platform > payments > checkout, with data as a

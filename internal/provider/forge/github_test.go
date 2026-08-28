@@ -16,7 +16,7 @@ import (
 	"sync"
 	"testing"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 var (
