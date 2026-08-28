@@ -156,10 +156,18 @@ embedded in, so the image carries it.
 
    It must print the Enterprise Edition line. A build shipping the wrong
    public keys denies every Enterprise Instance its Entitlements while
-   looking entirely healthy, and this is the only step that catches it. The
-   licence to test with, and the keys themselves, live in the private
-   `telecraft-dev/licensing` repository; a signing key never enters this
-   repository, its CI, an image, or a release artefact.
+   looking entirely healthy, and this is the step that catches it. The
+   licence to test with is `licences/tc-2026-0000.licence` in the private
+   `telecraft-dev/licensing` repository, which is where the keys live too; a
+   signing key never enters this repository, its CI, an image, or a release
+   artefact.
+
+   The emptiest version of that failure is not left to this step.
+   `TestThisBuildShipsAKey` in `pkg/licence` fails when the compiled-in list
+   holds no key, and `go test ./...` runs on every pull request, so a build
+   that would accept no licence at all cannot reach a tag unnoticed. What the
+   test cannot say is whether the keys are the right ones, which is what the
+   command above is for.
 9. **Trust the checks over an open tab.** The demo serves behind a cache
    that can hold the previous build for some minutes after the deployment
    finishes, so a page that still looks old is not evidence the release

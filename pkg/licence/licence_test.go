@@ -318,6 +318,16 @@ func TestABuildWithNoKeyAcceptsNothing(t *testing.T) {
 	}
 }
 
+// A build ships at least one key, or it accepts no licence at all: every
+// Enterprise Instance reads its file as unreadable while the build looks
+// entirely healthy. The list was empty while there was nothing to put in
+// it, and this is what stops it emptying again.
+func TestThisBuildShipsAKey(t *testing.T) {
+	if len(shippedKeys()) == 0 {
+		t.Error("this build ships no verifying key, so no licence it is given verifies")
+	}
+}
+
 // Whatever this build ships is a key, or every Enterprise Instance is
 // denied its Entitlements by a build that looks entirely healthy.
 func TestEveryShippedKeyIsAKey(t *testing.T) {

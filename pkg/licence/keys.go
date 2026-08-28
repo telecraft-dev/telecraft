@@ -15,11 +15,15 @@ import (
 // so a licence signed before a rotation and one signed after it both
 // verify.
 //
-// The list is empty until the first release that carries a gated
-// capability adds to it. A build with no key accepts no licence, which is
-// the unreadable state, and the release verification step exists to catch
-// exactly that (docs/contributing/releases.md).
-var keys = []string{}
+// A build with no key accepts no licence, which is the unreadable state,
+// and TestThisBuildShipsAKey is what stops an empty list reaching a
+// release. The release verification step is what checks the keys are the
+// right ones (docs/contributing/releases.md).
+var keys = []string{
+	// Made 2026-08-28, the first, and the one every licence issued so far
+	// is signed with.
+	"MZtZX+kga3fxtcpJdkJUrM3QC3EQmCv+DOeMXDtYOIs=",
+}
 
 // shippedKeys decodes the list. A malformed entry is dropped rather than
 // panicking a running Instance: a key this build cannot read is a key that
