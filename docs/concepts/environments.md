@@ -148,3 +148,37 @@ cause.
 Delivery needs no separate per-environment mechanism. A delivery finding
 attaches to a collector, which matches one Tier, which declares one
 Environment, so the finding inherits its Environment from the Tier.
+
+## Holding development, staging, and production
+
+Development, staging, and production are Environments inside one
+Organisation. That is the shape this page describes: a Tier declares one
+Environment, a Service running in several Environments has sibling Tiers,
+evaluation is per Service and Environment, and estate views lead with
+production while keeping the other Environments on the page.
+
+You can hold them in separate Organisations instead, one for each. An
+Organisation has its own estate, its own people, and its own Instance, and
+nothing one Organisation authors can name anything in another. Three things
+follow:
+
+- **Two Environments cannot be read beside each other.** No view, roll-up, or
+  comparison spans two Organisations, so you read staging and production one
+  at a time, in two places.
+- **Each Organisation carries its own Team tree.** Owners are named in each,
+  and compliance rolls up within each, so a Team at the top of one tree sees
+  that Organisation's results and nothing of the others.
+- **On the hosted service, each Organisation is its own subscription.**
+
+An Instance for each Environment is supported, and two things need one.
+
+**Trying a Catalogue or a Schema Registry version before it judges
+production.** Activating a version is per Instance, and it changes judgement
+for the whole Estate, so one Instance cannot hold production on the version
+it has and try the next one at the same time. A second Instance, holding real
+authored content, is where you try it. See
+[Activate a version](../guides/activate-a-version.md).
+
+**Keeping two groups' estates separate, whether that is the people who may
+read them or the data their telemetry carries.** Everything Telecraft judges
+belongs to one Instance, so two groups you keep separate are two Instances.

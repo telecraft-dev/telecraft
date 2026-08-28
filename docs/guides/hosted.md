@@ -157,6 +157,10 @@ If a subscription lapses, change proposals are refused and say why. Reading,
 judging and delivery are exactly as they were: collectors go on fetching, and
 your estate goes on being readable and cloneable.
 
+[Environments](../concepts/environments.md#holding-development-staging-and-production)
+covers how to hold development, staging, and production, and what an
+Organisation for each of them costs you.
+
 ## Closing an Organisation
 
 An administrator asks, we merge the change, and the Instance and its secrets
