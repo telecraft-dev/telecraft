@@ -70,6 +70,8 @@ Telecraft's words meet OpenTelemetry's, and where the two collide.
 | **Foreign** | A collector whose configuration arrives by any other route: GitOps, configuration management, or a person. Foreign collectors are governed exactly like Served ones. |
 | **Delivery path** | How a collector gets its configuration: Served, or delivered through git. Telecraft shows it for every collector. |
 | **Forge adapter** | The interface between Telecraft and your git host's API, used for change proposals, review routing, and attribution. Each implementation is named after the product, starting with the GitHub App. Beneath it, plain git transport over a deploy key or token always works, and governance never depends on a forge feature. |
+| **Secret name** | The name an estate file uses to point at secret material without carrying it, such as the client secret of an identity provider. It is lower-case letters, digits, and hyphens, and it never describes a path. Telecraft resolves it to a file of that name in the Secret directory. The estate names secret material; it never holds any. |
+| **Secret directory** | The directory Telecraft reads secret material from, and the only place it looks. One file per Secret name, the file's contents the value. How the directory is filled is your deployment's business: files on a host, a compose secret, a Kubernetes Secret mounted read-only, or anything else that writes a file. Telecraft never fetches secret material over the network. |
 
 ## Delivery & rollout
 
