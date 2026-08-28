@@ -63,6 +63,8 @@ Telecraft's words meet OpenTelemetry's, and where the two collide.
 
 | Term | Meaning |
 |---|---|
+| **Instance** | One running Telecraft: one Instance server over one estate, with its own users, its own activated versions, and its own verdicts. Everything Telecraft judges belongs to exactly one Instance, so keeping two groups' estates apart from each other means one Instance each. An Instance is never a collector process: one start of a collector is an Incarnation. |
+| **Instance server** | The long-running Telecraft process. It serves the console you sign in to, the API behind it, and the configuration Served collectors fetch, all from one estate. It holds nothing that outlives it: restarting it signs everybody out and loses no record. |
 | **Supervisor** | The upstream OpAMP Supervisor (`opampsupervisor`). Every Served collector runs one beside it. |
 | **Served** | A collector that receives its configuration from Telecraft's OpAMP server. |
 | **Foreign** | A collector whose configuration arrives by any other route: GitOps, configuration management, or a person. Foreign collectors are governed exactly like Served ones. |
