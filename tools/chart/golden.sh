@@ -41,7 +41,25 @@ chart=charts/telecraft
 testdata=$chart/testdata
 
 render() {
-  helm template telecraft "$chart" --namespace telecraft "$@"
+  helm template telecraft "$chart" --namespace telecraft "$@" | normalise
+}
+
+# Helm puts a blank line before its document separator in some versions and
+# not in others, so a golden written from one of them fails on the other and
+# the check pins a Helm patch release rather than the chart. This drops a
+# blank line that sits immediately before a `---`, and touches nothing else:
+# a blank line anywhere a manifest means one, inside a block scalar most of
+# all, comes through as it was.
+normalise() {
+  awk '
+    /^$/ { blank++; next }
+    {
+      if ($0 != "---") { while (blank-- > 0) print "" }
+      blank = 0
+      print
+    }
+    END { while (blank-- > 0) print "" }
+  '
 }
 
 failures=0
@@ -61,7 +79,7 @@ for values in "$testdata"/*.yaml; do
     failures=$((failures + 1))
     continue
   fi
-  if ! diff -u "$golden" <(printf '%s\n' "$rendered"); then
+  if ! diff -u <(normalise < "$golden") <(printf '%s\n' "$rendered"); then
     echo "  $name: the rendered manifests changed. Where the change is meant, regenerate with UPDATE=1 tools/chart/golden.sh" >&2
     failures=$((failures + 1))
     continue
