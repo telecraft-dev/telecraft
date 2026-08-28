@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/open-telemetry/opamp-go/protobufs"
+
+	"github.com/telecraft-dev/telecraft/internal/serving"
 )
 
 // The wire readers. Everything below runs over messages built here rather
@@ -164,11 +166,11 @@ func TestSafeNameKeepsAnIdentityInsideItsOwnDirectory(t *testing.T) {
 }
 
 // One wire, several readers: the server takes a single tap, so fanning out
-// is the devenv's concern and every reader has to see every message.
+// is the caller's concern and every reader has to see every message.
 func TestTapsFanOneWireOutToEveryReader(t *testing.T) {
 	dir, other := t.TempDir(), t.TempDir()
 	first, second := &reportedConfigs{dir: dir}, &reportedConfigs{dir: other}
-	fan := taps{first, second}
+	fan := serving.Taps{first, second}
 	identity := map[string]string{"service.instance.id": "gateway-1"}
 
 	fan.Report("conn-1", identity, effectiveConfig(map[string]string{"": "service: {}\n"}))

@@ -32,6 +32,12 @@ type OIDC struct {
 	ClientID     string
 	ClientSecret string
 
+	// ClientSecretFrom, when set, is read at each token exchange instead
+	// of ClientSecret being held. That is what makes rotating the client
+	// secret one act, writing the file the estate named, with no restart
+	// and nothing here to renew (ADR-0071 §5).
+	ClientSecretFrom func() (string, error)
+
 	// HTTPClient is the client discovery, token exchange and JWKS fetches
 	// go through. Nil means a 10-second-timeout default.
 	HTTPClient *http.Client
@@ -42,6 +48,15 @@ type OIDC struct {
 
 // Name implements Provider.
 func (*OIDC) Name() string { return "oidc" }
+
+// clientSecret is the secret this exchange presents: read from its file
+// where the estate named one, and the held value otherwise.
+func (o *OIDC) clientSecret() (string, error) {
+	if o.ClientSecretFrom == nil {
+		return o.ClientSecret, nil
+	}
+	return o.ClientSecretFrom()
+}
 
 // oidcDiscovery is the slice of the provider metadata this flow needs.
 type oidcDiscovery struct {
@@ -94,12 +109,16 @@ func (o *OIDC) Complete(ctx context.Context, state, verifier, callbackURL string
 	if err != nil {
 		return Identity{}, err
 	}
+	clientSecret, err := o.clientSecret()
+	if err != nil {
+		return Identity{}, err
+	}
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {code},
 		"redirect_uri":  {callbackURL},
 		"client_id":     {o.ClientID},
-		"client_secret": {o.ClientSecret},
+		"client_secret": {clientSecret},
 		"code_verifier": {verifier},
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, disc.TokenEndpoint, strings.NewReader(form.Encode()))

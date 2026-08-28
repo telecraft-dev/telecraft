@@ -29,6 +29,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/open-telemetry/opamp-go/protobufs"
+
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/rollout"
 )
@@ -198,4 +200,26 @@ func satisfies(selector, attrs map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// Taps fans one serving wire out to several readers. The server takes a
+// single Tap (Config.Tap) and is unaffected by any of them, so a second
+// reader is the caller's concern and never the serving decision's: the
+// Instance server reads the wire twice, once for the estate reading and
+// once for the delivery path (ADR-0067 §2), and the serving path does not
+// know it.
+type Taps []Tap
+
+// Report implements Tap.
+func (t Taps) Report(conn any, identity map[string]string, msg *protobufs.AgentToServer) {
+	for _, tap := range t {
+		tap.Report(conn, identity, msg)
+	}
+}
+
+// Closed implements Tap.
+func (t Taps) Closed(conn any) {
+	for _, tap := range t {
+		tap.Closed(conn)
+	}
 }

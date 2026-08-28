@@ -20,6 +20,7 @@ live-check.yaml                       # optional: the live-check destination
 allow-lists.yaml                      # optional: every team's declared list
 grants.yaml                           # optional: every Grant
 users.yaml                            # optional: the sign-in seam
+auth.yaml                             # optional: the sign-in providers
 activations.yaml                      # optional: the active Catalogue and Schema Registry
 catalogues/                           # imported Catalogue versions, retained side by side
 schema-registries/                    # imported Schema Registry versions, likewise
@@ -95,6 +96,15 @@ moving a team under a new parent rewrites no path and breaks no id.
 : The sign-in mapping from authenticated identities to the Owner each acts
   as. Each entry carries `email`, `name`, `owner`, and an optional `password`
   hash produced by `telecraft passwd`.
+
+`auth.yaml`
+: The ways of signing in this Instance offers, in the order the sign-in
+  surface shows them. Each entry carries `kind`, one of `basic` or `oidc`, an
+  optional `name` that defaults to the kind, and for `oidc` an `issuer`, a
+  `client_id`, and a `secret` naming the client secret. The name only: no
+  field here takes a value, and the deployment places a file of that name.
+  Optional, and without it an Instance offers basic auth alone. See
+  [Run an Instance](../guides/run-an-instance.md).
 
 `activations.yaml`
 : Which imported version of the Catalogue and of the Schema Registry your
@@ -240,7 +250,7 @@ line:
 
 | Path | Written by |
 |---|---|
-| `teams.yaml`, `telemetry.yaml`, `live-check.yaml`, `allow-lists.yaml`, `grants.yaml`, `users.yaml` | you |
+| `teams.yaml`, `telemetry.yaml`, `live-check.yaml`, `allow-lists.yaml`, `grants.yaml`, `users.yaml`, `auth.yaml` | you |
 | `teams/**` | you |
 | `rendered/**` | `telecraft render` |
 | `CODEOWNERS` | `telecraft render` |
@@ -253,8 +263,8 @@ artefacts with their own import pipeline; see [Catalogue](catalogue.md).
 `telecraft check -ownership` takes a directory with a different shape from the
 estate root: `teams.yaml` plus flat authored-object files beside it, each
 holding one object or a list of objects with `kind`, `id`, and `owner` fields.
-`allow-lists.yaml`, `grants.yaml`, and `users.yaml` are skipped, so one
-directory can carry the whole authored set.
+`allow-lists.yaml`, `grants.yaml`, `users.yaml` and `auth.yaml` are skipped,
+so one directory can carry the whole authored set.
 
 `kind` is one of `component`, `blueprint`, `tier`, `hop`, `path`, `service`,
 `requirement`, or `exemption`. `collector` is rejected: a collector is never

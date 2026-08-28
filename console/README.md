@@ -66,8 +66,17 @@ npm run e2e                 # Playwright against dist/ and the fixture backend
 The console consumes only the documented platform API (ADR-0045 §6): if
 the console needs it, the API grows it, documented here. The fixture
 backend (`tools/fixture-backend.mjs`) implements this contract over the
-fixture estate; the platform binary replaces it when the API endpoint
-lands there.
+fixture estate and stays the console's dev and test backend.
+
+`telecraft serve` (`internal/instance`) is the other implementation: the
+Instance server, which answers every read endpoint below from
+`internal/console`'s document computation over a live estate, behind
+`internal/auth`'s `Require` (ADR-0067). The endpoints that propose a
+change, plus `validate`, `claims/preview` and `setup`, are routed there
+and answer that this instance does not answer them yet. The route set is
+held from both sides: `TestTheRouteSetAgreesWithTheFixtureBackendAndTheContract`
+reads this table and the fixture backend, and fails when either names an
+endpoint the Go server does not.
 
 Endpoints are `GET` unless marked, returning JSON. The TypeScript shapes
 live in `src/api/types.ts`. Everything outside `/api/v1/auth/` wants a
@@ -124,6 +133,15 @@ Both sides of the contract are held to one artefact,
 reads it, so a field added or renamed on either side without the other
 following is a failing test, and the version bump is the reviewable
 event.
+
+## Inside the binary
+
+`npm run bundle` stages `dist/` into `internal/consoleassets/dist`, which
+is where the platform binary embeds it from (ADR-0067 §3): one artefact,
+one version, and the zero-CDN rule holding at run time by construction. A
+binary built without that step serves the API normally and answers the
+console route with a plain page saying so, which is what keeps
+`go build ./...` working on a checkout where npm has never run.
 
 ## Demo mode
 

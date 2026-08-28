@@ -49,12 +49,14 @@ func Load(dir string) (Estate, error) {
 			teamsPath = filepath.Join(dir, e.Name())
 			continue
 		}
-		// Allow-lists, Grants and users live beside teams.yaml in the
-		// estate directory (ADR-0021 §5; ADR-0019), but they are policy
-		// and membership, not ownership: internal/allowlist and
-		// internal/auth load and validate them. Skipped here so one
-		// estate directory carries the whole authored set.
-		if e.Name() == "allow-lists.yaml" || e.Name() == "grants.yaml" || e.Name() == "users.yaml" {
+		// Allow-lists, Grants, users and the sign-in providers live
+		// beside teams.yaml in the estate directory (ADR-0021 §5;
+		// ADR-0019, ADR-0067 §4), but they are policy, membership and
+		// wiring, not ownership: internal/allowlist and internal/auth
+		// load and validate them. Skipped here so one estate directory
+		// carries the whole authored set.
+		switch e.Name() {
+		case "allow-lists.yaml", "grants.yaml", "users.yaml", "auth.yaml":
 			continue
 		}
 		objectFiles = append(objectFiles, filepath.Join(dir, e.Name()))

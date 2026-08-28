@@ -1,4 +1,4 @@
-package main
+package readings
 
 import (
 	"sync"
@@ -9,7 +9,7 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/serving"
 )
 
-// deliveryPaths reads how each collector came by its configuration: the
+// DeliveryPaths reads how each collector came by its configuration: the
 // served path or the git-delivered one (REQ-041).
 //
 // The signal is a declaration and not an absence. Every OpAMP message
@@ -26,15 +26,14 @@ import (
 // cheaper answer and the wrong one: a served collector has not reported one
 // either, for the first moments of its connection.
 //
-// This is a devenv reading rather than a seam one. The EstateProvider seam
-// carries what a collector reports about its own running state (ADR-0008);
-// where that state came from is a different question, and answering it in
-// core would be a development environment deciding product semantics ahead
-// of the product (ADR-0052 §3).
+// It is a reading beside the seam rather than part of it. The
+// EstateProvider seam carries what a collector reports about its own
+// running state (ADR-0008); where that state came from is a different
+// question, answered off the same wire.
 //
 // Like every other tap, what it holds is a cache of live connections and
 // dies with them (ADR-0032).
-type deliveryPaths struct {
+type DeliveryPaths struct {
 	mu   sync.Mutex
 	held map[any]connectionPath
 }
@@ -46,7 +45,7 @@ type connectionPath struct {
 	accepts     bool
 }
 
-func (d *deliveryPaths) Report(conn any, identity map[string]string, msg *protobufs.AgentToServer) {
+func (d *DeliveryPaths) Report(conn any, identity map[string]string, msg *protobufs.AgentToServer) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.held == nil {
@@ -63,7 +62,7 @@ func (d *deliveryPaths) Report(conn any, identity map[string]string, msg *protob
 	d.held[conn] = held
 }
 
-func (d *deliveryPaths) Closed(conn any) {
+func (d *DeliveryPaths) Closed(conn any) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.held, conn)
@@ -78,9 +77,9 @@ func (d *deliveryPaths) Closed(conn any) {
 //
 // A collector this wire has shown nothing about reads as served, because
 // REQ-041 has two values and no third for not having looked. It cannot
-// arise from the composer, which only asks about collectors the same wire
+// arise from the Composer, which only asks about collectors the same wire
 // reported.
-func (d *deliveryPaths) Path(identity map[string]string) string {
+func (d *DeliveryPaths) Path(identity map[string]string) string {
 	key := seam.Fingerprint(identity)
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -101,6 +100,6 @@ func (d *deliveryPaths) Path(identity map[string]string) string {
 }
 
 var (
-	_ serving.Tap    = (*deliveryPaths)(nil)
-	_ deliveryReader = (*deliveryPaths)(nil)
+	_ serving.Tap    = (*DeliveryPaths)(nil)
+	_ DeliveryReader = (*DeliveryPaths)(nil)
 )

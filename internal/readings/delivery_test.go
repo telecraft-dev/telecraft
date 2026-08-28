@@ -1,4 +1,4 @@
-package main
+package readings
 
 import (
 	"testing"
@@ -24,7 +24,7 @@ var (
 
 func TestACollectorThatAcceptsRemoteConfigIsServed(t *testing.T) {
 	identity := map[string]string{"telecraft.tier": "gateway", "service.instance.id": "gateway-1"}
-	d := &deliveryPaths{}
+	d := &DeliveryPaths{}
 
 	d.Report("conn-1", identity, &protobufs.AgentToServer{Capabilities: acceptsRemoteConfig})
 
@@ -35,7 +35,7 @@ func TestACollectorThatAcceptsRemoteConfigIsServed(t *testing.T) {
 
 func TestACollectorThatTakesNothingTheServerSendsIsGitDelivered(t *testing.T) {
 	identity := map[string]string{"telecraft.tier": "appliance", "service.instance.id": "appliance-1"}
-	d := &deliveryPaths{}
+	d := &DeliveryPaths{}
 
 	// The collector's own opamp extension: it reports and has no
 	// remote-config side at all, so the platform sees what is running and
@@ -49,7 +49,7 @@ func TestACollectorThatTakesNothingTheServerSendsIsGitDelivered(t *testing.T) {
 
 func TestADeclarationWithoutIdentityWaitsForOne(t *testing.T) {
 	identity := map[string]string{"telecraft.tier": "appliance"}
-	d := &deliveryPaths{}
+	d := &DeliveryPaths{}
 
 	// The first message on a connection can arrive without the agent
 	// description; the server asks for full state and the next one carries
@@ -64,7 +64,7 @@ func TestADeclarationWithoutIdentityWaitsForOne(t *testing.T) {
 
 func TestTheDeclarationDiesWithTheConnection(t *testing.T) {
 	identity := map[string]string{"telecraft.tier": "appliance"}
-	d := &deliveryPaths{}
+	d := &DeliveryPaths{}
 	d.Report("conn-1", identity, &protobufs.AgentToServer{Capabilities: reportsOnly})
 
 	d.Closed("conn-1")
@@ -79,7 +79,7 @@ func TestTheDeclarationDiesWithTheConnection(t *testing.T) {
 
 func TestAReconnectingCollectorIsStillServedOverItsOtherConnection(t *testing.T) {
 	identity := map[string]string{"telecraft.tier": "gateway", "service.instance.id": "gateway-1"}
-	d := &deliveryPaths{}
+	d := &DeliveryPaths{}
 
 	// A reconnect leaves two live connections for one collector for a
 	// moment. The platform is delivering to it over one of them, so the
@@ -95,7 +95,7 @@ func TestAReconnectingCollectorIsStillServedOverItsOtherConnection(t *testing.T)
 func TestOneCollectorsPathSaysNothingAboutAnother(t *testing.T) {
 	served := map[string]string{"telecraft.tier": "gateway", "service.instance.id": "gateway-1"}
 	git := map[string]string{"telecraft.tier": "appliance", "service.instance.id": "appliance-1"}
-	d := &deliveryPaths{}
+	d := &DeliveryPaths{}
 
 	d.Report("conn-1", served, &protobufs.AgentToServer{Capabilities: acceptsRemoteConfig})
 	d.Report("conn-2", git, &protobufs.AgentToServer{Capabilities: reportsOnly})

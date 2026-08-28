@@ -36,6 +36,14 @@ type HandlerConfig struct {
 
 	// Secure marks the cookies Secure, the behind-TLS deployment shape.
 	Secure bool
+
+	// ExternalURL is the address a browser reaches this instance at, when
+	// the deployment declares one. The redirect round trip is built from
+	// it, so a provider returns the human to the address they arrived on
+	// rather than to whatever a terminator forwarded (ADR-0067 §5). Empty
+	// builds the callback from the request, which is the loopback shape
+	// with nothing in front.
+	ExternalURL string
 }
 
 // NewHandler validates the wiring and builds the routes.
@@ -63,6 +71,12 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	h.mux.HandleFunc("GET /api/v1/auth/{provider}/start", h.start)
 	h.mux.HandleFunc("GET /api/v1/auth/{provider}/callback", h.callback)
 	h.mux.Handle("GET /api/v1/me", h.Require(http.HandlerFunc(h.me)))
+	// Anything else beneath the auth prefix is a 404 with a JSON body,
+	// like every other unknown API path. It is answered here because a
+	// server mounting this handler under the prefix cannot see inside it.
+	h.mux.HandleFunc("/api/v1/auth/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusNotFound, "no such endpoint: "+r.URL.Path)
+	})
 	return h, nil
 }
 
@@ -383,6 +397,9 @@ func (h *Handler) verifyStateCookie(value string) (state, verifier, returnTo str
 }
 
 func (h *Handler) callbackURL(r *http.Request, provider string) string {
+	if base := strings.TrimRight(h.cfg.ExternalURL, "/"); base != "" {
+		return fmt.Sprintf("%s/api/v1/auth/%s/callback", base, provider)
+	}
 	scheme := "http"
 	if h.cfg.Secure || r.TLS != nil {
 		scheme = "https"

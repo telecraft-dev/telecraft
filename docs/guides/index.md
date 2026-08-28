@@ -59,9 +59,11 @@ keeps flowing.
 1. [Author and render](author-and-render.md) comes first: the server serves
    what the renderer wrote, so there is nothing to serve until you have
    rendered.
-2. [Serve configurations](serve-configs.md) runs the stateless OpAMP server
-   from a local estate or a git URL.
-3. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
+2. [Serve configurations](serve-configs.md) runs the OpAMP endpoint from a
+   local estate or a git URL, and installs a collector against it.
+3. [Run an Instance](run-an-instance.md) opens the second address on the same
+   process: the console, the API behind it, and sign-in.
+4. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
    Blueprint version in cohorts, advancing and aborting by pull request.
 
 ## See it running first

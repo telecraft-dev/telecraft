@@ -1,0 +1,5 @@
+The built console lands here, and the binary embeds whatever it finds.
+
+Everything beside this file is build output and is ignored by git. The
+placeholder is tracked because the embed needs a directory to point at, so
+a checkout where the console has never been built still compiles.

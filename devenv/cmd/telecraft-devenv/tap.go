@@ -10,25 +10,9 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
+	"github.com/telecraft-dev/telecraft/internal/readings"
 	"github.com/telecraft-dev/telecraft/internal/serving"
 )
-
-// taps fans one serving wire out to several readers. The server takes a
-// single Tap and is unaffected by any of them (serving.Config.Tap), so
-// adding a second reader is a devenv concern and not a serving one.
-type taps []serving.Tap
-
-func (t taps) Report(conn any, identity map[string]string, msg *protobufs.AgentToServer) {
-	for _, tap := range t {
-		tap.Report(conn, identity, msg)
-	}
-}
-
-func (t taps) Closed(conn any) {
-	for _, tap := range t {
-		tap.Closed(conn)
-	}
-}
 
 // reportedConfigs writes each collector's reported effective configuration
 // to a file, verbatim.
@@ -58,7 +42,7 @@ func (r *reportedConfigs) Report(conn any, identity map[string]string, msg *prot
 		r.named = map[any]string{}
 	}
 	if len(identity) > 0 {
-		r.named[conn] = collectorID(identity)
+		r.named[conn] = readings.CollectorID(identity)
 	}
 	name := r.named[conn]
 	r.mu.Unlock()
@@ -129,11 +113,10 @@ func safeName(id string) string {
 	return replaced
 }
 
-// Compile-time proof that both readers satisfy the tap contract, and that
+// Compile-time proof that this reader satisfies the tap contract, and that
 // the seam's own provider is both a tap and the reading the composer takes.
 var (
-	_ serving.Tap  = (*reportedConfigs)(nil)
-	_ serving.Tap  = taps(nil)
-	_ serving.Tap  = (*estateprovider.OpAMPDirect)(nil)
-	_ estateReader = (*estateprovider.OpAMPDirect)(nil)
+	_ serving.Tap           = (*reportedConfigs)(nil)
+	_ serving.Tap           = (*estateprovider.OpAMPDirect)(nil)
+	_ readings.EstateReader = (*estateprovider.OpAMPDirect)(nil)
 )

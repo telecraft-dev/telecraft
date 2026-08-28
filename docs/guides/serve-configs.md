@@ -1,15 +1,19 @@
 ---
 title: Serve configurations
-description: Run the stateless OpAMP server, install a collector that matches its Tier, and compare what was sent with what is running.
+description: Open the OpAMP endpoint, install a collector that matches its Tier, and compare what was sent with what is running.
 order: 5
 ---
 
 # Serve configurations
 
-Serving is the optional third rung: a stateless OpAMP server that hands
-rendered artefacts from git to connected collectors. It stores nothing
-durable, so stopping it loses delivery and never the record. GitOps stays an
-equal alternative, chosen per collector rather than per estate.
+Serving is the optional third rung: an OpAMP endpoint that hands rendered
+artefacts from git to connected collectors. It stores nothing durable, so
+stopping it loses delivery and never the record. GitOps stays an equal
+alternative, chosen per collector rather than per estate.
+
+This page is the collectors' half of `telecraft serve`. The same process
+serves the console and the API on a second address, which is
+[Run an Instance](run-an-instance.md).
 
 Nothing here sits in your telemetry path. If the server is down, collectors
 keep running the configuration they already have.
@@ -23,12 +27,14 @@ have rendered.
 The standalone shape is a single binary plus a directory:
 
 ```sh
-./telecraft serve -estate ../estate-demo -listen 127.0.0.1:4321
+./telecraft serve -estate ../estate-demo -listen 127.0.0.1:4320
 ```
 
 ```
-serving on 127.0.0.1:4321
-serve: serving head 870c9b8a26458402c1982359bcdea90fdb7ef73d on 127.0.0.1:4321, fetch interval 30s
+console and API on http://127.0.0.1:4321
+OpAMP on 127.0.0.1:4320
+the session key was drawn at start, so sessions last as long as this process
+serve: serving head 870c9b8a26458402c1982359bcdea90fdb7ef73d on 127.0.0.1:4320, fetch interval 30s
 ```
 
 The head SHA in that line is the git head of the source the server is reading.
@@ -38,7 +44,7 @@ is running. The two SHAs differ whenever an earlier commit than head stamped
 the committed `rendered/` tree.
 
 The OpAMP endpoint is at `/v1/opamp` and speaks WebSocket. A plain HTTP GET
-gets a refusal, which makes a useful liveness probe:
+gets a refusal:
 
 ```
 GET / -> 404
@@ -48,6 +54,9 @@ GET /v1/opamp -> 400
 ```
 serve: Cannot upgrade HTTP connection to WebSocket: websocket: the client is not using the websocket protocol: 'upgrade' token not found in 'Connection' header
 ```
+
+Probe the process on the other address instead: `/healthz` and `/readyz` are
+in [Run an Instance](run-an-instance.md).
 
 Stop the server with a signal. It exits 0 after a clean shutdown, 1 if it
 could not start or stop, and 2 on a usage error.
@@ -75,11 +84,13 @@ estate lives somewhere other than the machine the server runs on:
   -repo https://github.com/telecraft-dev/estate-demo.git \
   -cache /tmp/telecraft-estate-cache \
   -listen 127.0.0.1:4322 \
+  -http 127.0.0.1:4323 \
   -fetch-interval 10s
 ```
 
 ```
-serving on 127.0.0.1:4322
+console and API on http://127.0.0.1:4323
+OpAMP on 127.0.0.1:4322
 serve: serving head 870c9b8a26458402c1982359bcdea90fdb7ef73d on 127.0.0.1:4322, fetch interval 10s
 ```
 
@@ -101,7 +112,9 @@ serving the previous head, because a stale head is better than no head.
 
 Both are stateless. Membership, matching, and delivery are pure functions of
 the head and the collector's reported attributes, so replicas need no
-coordination and no leader.
+coordination and no leader. One Instance is one process, though: the reading
+of Served collectors is the reading of the connections one process holds, and
+a second replica would see half the estate.
 
 ## What collectors need
 

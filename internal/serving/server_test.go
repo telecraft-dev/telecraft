@@ -297,6 +297,7 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		"interval":    true, // the poll cadence
 		"logf":        true, // operational logging
 		"tap":         true, // the off-path wire observer (EstateProvider); the server stores nothing for it
+		"onSnapshot":  true, // the off-path snapshot reader; a callback, not a holding
 		"opamp":       true, // the wire-protocol listener
 		"stopRefresh": true, // poll shutdown
 		"refreshDone": true, // poll shutdown

@@ -41,7 +41,7 @@ and exits `2`.
 | `check` | Evaluate the estate once and write one machine-readable report. |
 | `palette` | Print one team's effective palette with provenance. |
 | `render` | Compile every Tier's bound Blueprint to the rendered artefact tree. |
-| `serve` | Run the stateless OpAMP server. |
+| `serve` | Run the Instance server: the console, the API and the OpAMP endpoint. |
 | `snapshot` | Write the console API snapshot for one estate checkout. |
 | `delivery` | Print one collector's delivery status from two files. |
 | `activate` | Show what activating an imported version would change, and designate it. |
@@ -59,6 +59,15 @@ and exits `2`.
 `TELECRAFT_TELEMETRY_API_KEY`
 : Default for `-api-key` on `observe` and `check`. When unset, the default is
   empty.
+
+Every flag of `serve` has one too: `TELECRAFT_` plus the flag name
+upper-cased, with dashes as underscores, so `-external-url` reads
+`TELECRAFT_EXTERNAL_URL`.
+
+No environment variable on `serve` carries secret material. The estate names
+what it needs and the deployment places a file of that name under
+`-secrets-dir`; the process's own secrets take a file path. `check` and
+`observe` are short-lived and keep `TELECRAFT_TELEMETRY_API_KEY`.
 
 An explicit flag always wins over the environment variable.
 
@@ -209,15 +218,31 @@ telecraft render -estate ESTATE_DIR -catalogue ARTEFACT -commit SHA
 
 ## telecraft serve
 
-Runs the stateless OpAMP server. It serves the estate's rendered artefacts
-from git, matches each collector's reported identifying attributes against
-the Tier selectors at head, and stores nothing durable. The OpAMP endpoint
-listens at `/v1/opamp` on the `-listen` address.
+Runs the Instance server: one process over one estate. On the `-http` address
+it serves the console, the platform API under `/api/v1/`, and the two probes
+`/healthz` and `/readyz`. On the `-listen` address it serves the OpAMP
+endpoint at `/v1/opamp`, matching each collector's reported identifying
+attributes against the Tier selectors at head. It stores nothing durable.
 
 Name the source with exactly one of `-estate` or `-repo`. `-estate` points at
 a local checkout, which suits standalone and air-gapped use. `-repo` names a
 git URL, including a `file:///` URL, which the server fetches every
 `-fetch-interval`.
+
+The HTTP address is always open, because it carries the probes. An empty
+`-listen` closes the OpAMP endpoint.
+
+Both endpoints speak plain HTTP, and the process holds no certificate: TLS
+terminates in front. `-external-url` declares the URL the Instance is reached
+at. Its scheme decides whether session cookies are marked Secure, and it is
+the base a redirect sign-in returns to. A non-loopback host over plain HTTP is
+refused unless `-insecure-http` is given.
+
+Secret material is read from files, never from a flag or an environment
+variable. `auth.yaml` names a secret; the deployment places a file of that
+name under `-secrets-dir`. A named secret with no file stops the start. A
+file path this command defaulted to, with nothing at it, is an absence, and
+the capability that needed it declares itself unavailable.
 
 The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 
@@ -226,8 +251,16 @@ The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 | `-estate` | string | empty | Local estate checkout to serve. |
 | `-repo` | string | empty | Git URL of the estate repository to fetch and serve. |
 | `-cache` | string | a fresh temporary directory, removed on exit | Directory the fetched clone lives in. |
-| `-listen` | string | `127.0.0.1:4320` | `host:port` the OpAMP endpoint listens on. |
+| `-http` | string | `127.0.0.1:4321` | `host:port` the console, the API and the probes listen on. |
+| `-listen` | string | `127.0.0.1:4320` | `host:port` the OpAMP endpoint listens on; empty closes it. |
+| `-external-url` | string | `http://` and the `-http` address | The URL a browser reaches this Instance at. |
+| `-insecure-http` | bool | `false` | Admit an external URL naming a non-loopback host over plain HTTP. |
 | `-fetch-interval` | duration | `30s` | Repository snapshot poll interval. |
+| `-window` | duration | `15m` | Trailing window the arrival readings cover. |
+| `-secrets-dir` | string | empty | Directory the deployment placed the secrets the estate names in. |
+| `-session-key-file` | string | `session-key` under `-secrets-dir` | File holding the session signing key, at least 32 bytes. Nothing placed draws one at start, so a restart signs everybody out. |
+| `-telemetry-endpoint` | string | empty | Telemetry backend base URL. Empty takes no arrival reading. |
+| `-telemetry-key-file` | string | `telemetry-key` under `-secrets-dir` | File holding the telemetry backend credential. |
 
 | Exit code | Meaning |
 |---|---|
@@ -236,8 +269,15 @@ The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 | `2` | Usage error, including naming neither or both sources, or a bad configuration. |
 
 ```sh
-telecraft serve -estate ESTATE_DIR -listen 0.0.0.0:4320
+telecraft serve -estate ESTATE_DIR \
+  -http 0.0.0.0:4321 -listen 0.0.0.0:4320 \
+  -external-url https://telecraft.example
 ```
+
+The console is served from inside the binary. A binary built without one
+answers the console route with a page saying so and serves the API as usual;
+[Run an Instance](../guides/run-an-instance.md) has the build steps that put
+it there.
 
 ## telecraft snapshot
 

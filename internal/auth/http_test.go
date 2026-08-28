@@ -562,3 +562,40 @@ users:
 func newTestJar() (http.CookieJar, error) {
 	return cookiejar.New(nil)
 }
+
+// The redirect round trip is built from the external URL where a
+// deployment declares one, so a provider returns the human to the address
+// their browser used rather than to whatever a terminator forwarded.
+func TestTheRedirectRoundTripIsBuiltFromTheExternalURL(t *testing.T) {
+	idp := newFakeIdP(t)
+	oidc := idp.provider()
+	users := usersWithPassword(t, "correct horse battery")
+	h, err := NewHandler(HandlerConfig{
+		Sessions:    testSessions(t),
+		Users:       users,
+		Tree:        testTree(),
+		Providers:   []Provider{oidc},
+		Secure:      true,
+		ExternalURL: "https://telecraft.example/",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	c := client(t, srv)
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	res, err := c.Get(srv.URL + "/api/v1/auth/oidc/start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	to, err := url.Parse(res.Header.Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := to.Query().Get("redirect_uri"); got != "https://telecraft.example/api/v1/auth/oidc/callback" {
+		t.Errorf("redirect_uri = %q, want the callback under the declared external URL", got)
+	}
+}
