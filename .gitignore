@@ -67,3 +67,10 @@ internal/consoleassets/dist/*
 # licence and the Catalogue baseline here, and the Dockerfile copies from
 # here and from nowhere else.
 /dist/
+
+# The deployment compose file's own values (deploy/compose/.env). It is a
+# copy of the tracked .env.example filled in for one host: paths, addresses,
+# and the mirror an image comes from. It belongs to the host it configures
+# and never to this repository, and `go run ./tools/composelint` fails on
+# one that is tracked anyway.
+deploy/compose/.env

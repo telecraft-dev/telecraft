@@ -1,7 +1,7 @@
 ---
 title: Activate a version
 description: Read what changes before your estate is judged against a new Catalogue or Schema Registry version, then designate it.
-order: 11
+order: 12
 ---
 
 # Activate a version

@@ -202,6 +202,8 @@ image with networking disabled and requires it to serve.
 
 ## What next
 
+- [Deploy with Compose](deploy-with-compose.md) puts this image on one host
+  behind a terminator, with the secrets and the estate around it.
 - [Run an Instance](run-an-instance.md) is the same server as a host process,
   with the whole flag surface.
 - [Activate a version](activate-a-version.md) moves the estate onto a new
