@@ -1,13 +1,16 @@
 package instance
 
 import (
+	"crypto/subtle"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/telecraft-dev/telecraft/internal/console"
 	"github.com/telecraft-dev/telecraft/internal/licence"
+	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // routes builds the whole HTTP surface: the two probes, the auth slice open
@@ -28,6 +31,12 @@ func (s *Server) routes() http.Handler {
 	// with a JSON body like every other one.
 	mux.Handle("/api/v1/auth/", http.HandlerFunc(s.serveAuth))
 	mux.Handle("GET /api/v1/me", http.HandlerFunc(s.serveAuth))
+
+	// The refresh endpoint is asked for by machines, so it sits outside
+	// the session gate and carries its own: a delivery the forge signed,
+	// or the key the deployment placed. Nothing about a session would help
+	// a repository's own hook, which has none.
+	mux.Handle("POST /api/v1/refresh", http.HandlerFunc(s.serveRefresh))
 
 	api := http.NewServeMux()
 
@@ -171,6 +180,95 @@ func (s *Server) document(answer func(*console.Bundle, url.Values) (any, bool)) 
 		}
 		writeJSON(w, http.StatusOK, payload)
 	})
+}
+
+// The refresh endpoint's answers, and the most of a delivery it reads.
+const (
+	refreshBodyLimit = 1 << 20
+
+	refreshUnavailable = "this instance takes no refresh requests: no refresh key and no push secret were placed"
+	refreshNotAccepted = "this refresh request was not accepted"
+)
+
+// serveRefresh means "fetch now" (ADR-0073 §5). It fetches nothing itself:
+// it says who asked, asks the poll to run, and answers.
+//
+// The payload is never believed. A refresh triggers a fetch and a
+// recompute, and git says what changed, so a forged or replayed delivery
+// costs one fetch and can assert nothing (ADR-0003). Nothing durable is
+// added: no queue, no delivery record, and no memory of which deliveries
+// arrived (ADR-0032).
+//
+// Two callers, which is what keeps the endpoint from being shaped like one
+// forge's webhook: a push notification the forge adapter verifies against
+// the secret the deployment placed, and a bare request presenting the
+// refresh key, which is what a repository with no forge behind it uses.
+func (s *Server) serveRefresh(w http.ResponseWriter, r *http.Request) {
+	key, keyPlaced := placed(s.cfg.RefreshKey)
+	secret, secretPlaced := placed(s.cfg.PushSecret)
+	if !keyPlaced && !(secretPlaced && s.cfg.Notifications != nil) {
+		// An absence declares the capability unavailable rather than
+		// failing (ADR-0071 §4).
+		writeError(w, http.StatusNotImplemented, refreshUnavailable)
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, refreshBodyLimit))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "this refresh request could not be read")
+		return
+	}
+
+	if secretPlaced && s.cfg.Notifications != nil {
+		push, err := s.cfg.Notifications.Push(forge.Notification{Header: r.Header, Body: body}, secret)
+		switch {
+		case err != nil:
+			// Worth one line: somebody wiring a webhook up needs to know
+			// why nothing is happening. It is not a refusal on its own,
+			// because the bare key may still be what this request carries.
+			s.logf("a delivery to the refresh endpoint was not verified: %v", err)
+		case push:
+			s.Nudge()
+			writeJSON(w, http.StatusAccepted, map[string]string{"status": "fetching"})
+			return
+		default:
+			// Genuine, and not a push. Nothing to do, and nothing wrong.
+			writeJSON(w, http.StatusAccepted, map[string]string{"status": "nothing to fetch"})
+			return
+		}
+	}
+
+	presented := presentedKey(r)
+	if keyPlaced && presented != "" && subtle.ConstantTimeCompare([]byte(presented), []byte(key)) == 1 {
+		s.Nudge()
+		writeJSON(w, http.StatusAccepted, map[string]string{"status": "fetching"})
+		return
+	}
+	writeError(w, http.StatusUnauthorized, refreshNotAccepted)
+}
+
+// presentedKey is the key a bare request carries, as an ordinary bearer
+// credential.
+func presentedKey(r *http.Request) string {
+	header := r.Header.Get("Authorization")
+	if len(header) < len("Bearer ") || !strings.EqualFold(header[:len("Bearer ")], "bearer ") {
+		return ""
+	}
+	return strings.TrimSpace(header[len("Bearer "):])
+}
+
+// placed reads one of the deployment's own secrets at the moment it is
+// needed, which is what makes rotating it writing the file. A secret
+// nothing answers is an absence, and an absence declares.
+func placed(read func() (string, error)) (string, bool) {
+	if read == nil {
+		return "", false
+	}
+	value, err := read()
+	if err != nil || value == "" {
+		return "", false
+	}
+	return value, true
 }
 
 // refuse says what this instance does not answer, in the words the console

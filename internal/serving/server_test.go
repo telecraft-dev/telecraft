@@ -301,6 +301,7 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		"opamp":       true, // the wire-protocol listener
 		"stopRefresh": true, // poll shutdown
 		"refreshDone": true, // poll shutdown
+		"fetchMu":     true, // one fetch at a time into the working directory
 	}
 	storage := map[string]bool{
 		"snapshot": true, // ADR-0032 §1 item 1: the repo snapshot
@@ -424,3 +425,29 @@ type clientLogger struct{ t *testing.T }
 
 func (l clientLogger) Debugf(_ context.Context, format string, v ...any) { l.t.Logf(format, v...) }
 func (l clientLogger) Errorf(_ context.Context, format string, v ...any) { l.t.Logf(format, v...) }
+
+// A refresh is the poll's own work, done at somebody's asking rather than
+// on the clock. It fetches once and holds what it read, and the poll it
+// short-cuts is untouched: a refresh that never comes costs one interval.
+func TestARefreshFetchesOutOfTurn(t *testing.T) {
+	root, _ := fixtureEstate(t)
+	s := testServer(t, root)
+
+	before := s.snapshot.Load()
+	if before == nil {
+		t.Fatal("the server holds no snapshot to begin with")
+	}
+	const moved = "# the estate moved\n"
+	writeFile(t, root, "rendered/_estate/unmatched.yaml", moved)
+
+	if err := s.Refresh(context.Background()); err != nil {
+		t.Fatalf("refreshing: %v", err)
+	}
+	after := s.snapshot.Load()
+	if after == before {
+		t.Fatal("a refresh held the snapshot it already had")
+	}
+	if got := string(after.Match(map[string]string{"nothing": "matches"}).Artefact); got != moved {
+		t.Errorf("the snapshot serves %q, want what the source says now", got)
+	}
+}

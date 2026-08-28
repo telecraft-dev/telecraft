@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Class names one population finding class (ADR-0035). never_seen and

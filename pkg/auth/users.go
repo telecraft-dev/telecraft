@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 	"gopkg.in/yaml.v3"
 )
 
@@ -69,7 +69,7 @@ func (u Users) Emails() []string {
 }
 
 // LoadUsers reads and validates users.yaml against the team tree. Loading
-// fails closed, matching internal/ownership: an unknown field, a user whose
+// fails closed, matching pkg/ownership: an unknown field, a user whose
 // owner nobody's team contains, or a duplicate email is a load error naming
 // the file. A human who authenticates but resolves to nobody would hold an
 // unattributable session, and that is worse than a crash at start-up.

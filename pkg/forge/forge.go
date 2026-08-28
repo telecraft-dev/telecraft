@@ -12,12 +12,16 @@
 // are vendor-qualified there (ADR-0001).
 //
 // What a forge can do varies down the ADR-0028 §4 capability ladder (full →
-// partial → bare git). An implementation declares its rungs statically via
-// Capabilities, the ADR-0036 pattern: "cannot" is a declared shape surfaces
-// can render honestly, never a runtime surprise.
+// partial → bare git), and so does what one deployment was granted on it.
+// An implementation declares both through Capabilities, the ADR-0036
+// pattern: "cannot" is a declared shape surfaces can render honestly,
+// never a runtime surprise.
 package forge
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 // Identity is the acting human a change is attributed to (ADR-0014): name
 // and email come from the authenticated identity's claims, so attribution
@@ -79,9 +83,18 @@ type Proposal struct {
 	Branch string
 }
 
-// Capabilities is an implementation's static declaration of its rungs on
-// the ADR-0028 §4 ladder. A false is "not applicable" for this forge:
-// declared once, rendered honestly, never failure (ADR-0036 §1).
+// Capabilities is an implementation's declaration of its rungs on the
+// ADR-0028 §4 ladder. A false is a "cannot" a surface renders honestly,
+// never a failure somebody meets on the way through (ADR-0036 §1).
+//
+// It is a reading rather than a constant. What an implementation can do is
+// the forge's shape narrowed by what this deployment was granted on it, so
+// an adapter that can see its own grant declares what the grant allows,
+// and is at most one credential's life behind what the customer set
+// (ADR-0073 §3). What it cannot see, it does not claim: an adapter handed
+// a credential it did not obtain declares the forge's own rungs, and a
+// call the forge then refuses is a fault, loud and dated, on the surface
+// that owns it (ADR-0036 §3).
 type Capabilities struct {
 	// Proposals: the forge has a change-proposal object with review
 	// machinery. Bare git (branch push, manual merge) declares false.
@@ -99,6 +112,47 @@ type Capabilities struct {
 	// unverified (ADR-0028 §4); the render gate still holds; forge-
 	// enforced review is what that adopter forfeited.
 	VerifiedAttribution bool
+
+	// Withheld is the sentence a surface shows when a rung above is
+	// false: what is missing, and where to change it. Empty when nothing
+	// is withheld.
+	//
+	// It is one sentence in the reader's words. It names no permission
+	// scheme, no adapter and no decision, because the person reading it
+	// is somebody who cannot open a change proposal and wants to know
+	// what to do about it.
+	Withheld string
+}
+
+// Notification is one delivery a forge made to this Instance: the headers
+// it carried and the bytes it sent. Nothing in it is believed. It is
+// checked for being genuine, and what it says happened is never read: a
+// refresh fetches and recomputes, and git is the source of truth
+// (ADR-0003, ADR-0073 §5).
+type Notification struct {
+	// Header is the delivery's headers, which is where a forge puts its
+	// signature and the name of the event.
+	Header http.Header
+
+	// Body is the delivery's bytes, exactly as they arrived. A signature
+	// is over these, so re-encoding them would break it.
+	Body []byte
+}
+
+// Notifications is the half of the seam that judges a delivery. An
+// implementation says only whether this was a genuine push from the forge
+// it speaks for; it says nothing about an installation, a repository or
+// what changed, because the caller acts the same way whatever the answer
+// would have been.
+//
+// The verifying material is a secret the deployment placed, handed in
+// rather than held, so rotating it is writing the file (ADR-0071 §2, §5).
+type Notifications interface {
+	// Push reports whether n is a genuine push notification. An error
+	// says it is not, and says why in words an operator reading a log
+	// can act on. Anything the forge sends that is not a push is not a
+	// push, and is not an error either.
+	Push(n Notification, secret string) (bool, error)
 }
 
 // Forge is the forge-adapter seam. Implementations live under
@@ -109,9 +163,10 @@ type Forge interface {
 	// the vendor-qualified name as runtime data, never a type.
 	Name() string
 
-	// Capabilities is the static ladder declaration. Constant per
-	// implementation: capability is what the forge is, not how it feels
-	// right now.
+	// Capabilities is the ladder declaration: what the forge is, narrowed
+	// by what this deployment was granted on it. It is read from the
+	// credential rather than asked of the forge, so calling it costs
+	// nothing and reaches nothing.
 	Capabilities() Capabilities
 
 	// Propose opens the change proposal, or refreshes it when the branch

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // Config carries the vendor-neutral onboarding shape of ADR-0028 §5: the
@@ -27,6 +27,11 @@ type Config struct {
 	AppID          string
 	InstallationID string
 	PrivateKeyPEM  []byte
+
+	// TokenFrom reads a credential something else obtained and keeps
+	// current, for a deployment that holds no key of its own (ADR-0072
+	// §8). It stands in place of the three above rather than beside them.
+	TokenFrom func() (string, error)
 
 	// APIBase overrides the forge's API endpoint: self-hosted instances,
 	// or a test double. Empty means the host's public API.
@@ -55,9 +60,29 @@ func New(cfg Config) (seam.Forge, error) {
 		AppID:          cfg.AppID,
 		InstallationID: cfg.InstallationID,
 		PrivateKeyPEM:  cfg.PrivateKeyPEM,
+		TokenFrom:      cfg.TokenFrom,
 		APIBase:        cfg.APIBase,
 		Timeout:        cfg.Timeout,
 	})
+}
+
+// Notifications returns the verifier for push deliveries from the
+// repository's host, and false where no adapter here speaks for it: a
+// repository reached over the git transport alone has no forge to be
+// notified by, and the refresh endpoint's other caller is what serves it
+// (ADR-0073 §5).
+//
+// It reaches nothing and needs no credential. Which forge answers is
+// decided by the repository's host, exactly as it is for New.
+func Notifications(cfg Config) (seam.Notifications, bool) {
+	host, _, _, err := splitRepo(cfg.Repo)
+	if err != nil {
+		return nil, false
+	}
+	if host != "github.com" && cfg.APIBase == "" {
+		return nil, false
+	}
+	return GitHubPush{}, true
 }
 
 // splitRepo takes the repository URL apart into host, owner and name,

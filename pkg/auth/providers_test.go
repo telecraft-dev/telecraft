@@ -337,3 +337,119 @@ func writeBeside(t *testing.T, dir, name, body string) string {
 	}
 	return path
 }
+
+// A preset is the issuer of a provider most people already hold, so an
+// estate that signs people in through one writes the client id, the secret
+// name, and nothing it would otherwise have to look up.
+func TestAPresetCarriesTheIssuerAndTheNameItIsKnownBy(t *testing.T) {
+	users := writeUsers(t, goodUsers)
+	signIn, err := LoadSignIn(writeProviders(t, `
+providers:
+  - kind: oidc
+    preset: google
+    client_id: telecraft
+    secret: staff-oidc
+  - kind: oidc
+    preset: entra
+    directory: acme.example
+    client_id: telecraft
+    secret: staff-oidc
+`), testTree(), users, placed{"staff-oidc": "the value"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(signIn.Providers) != 2 {
+		t.Fatalf("providers = %v, want the two the file declares", signIn.Providers)
+	}
+	for i, want := range []struct{ name, issuer string }{
+		{"Google", "https://accounts.google.com"},
+		{"Microsoft Entra ID", "https://login.microsoftonline.com/acme.example/v2.0"},
+	} {
+		named, ok := signIn.Providers[i].(namedOIDC)
+		if !ok {
+			t.Fatalf("provider %d is %T, want the OIDC one", i, signIn.Providers[i])
+		}
+		if named.Name() != want.name {
+			t.Errorf("provider %d is shown as %q, want %q", i, named.Name(), want.name)
+		}
+		if named.Issuer != want.issuer {
+			t.Errorf("provider %d signs in at %q, want %q", i, named.Issuer, want.issuer)
+		}
+	}
+}
+
+// A preset is a convenience over the OIDC flow, so what an estate writes
+// itself keeps working, and a preset the build does not hold names the
+// ones it does rather than being read as silence.
+func TestWhatAPresetRefuses(t *testing.T) {
+	users := writeUsers(t, goodUsers)
+	for name, tc := range map[string]struct{ body, want string }{
+		"a preset nobody holds": {
+			"providers:\n  - kind: oidc\n    preset: acme\n    client_id: telecraft\n    secret: staff-oidc\n",
+			"which this build does not hold",
+		},
+		"a preset and an issuer": {
+			"providers:\n  - kind: oidc\n    preset: google\n    issuer: https://issuer.example\n    client_id: telecraft\n    secret: staff-oidc\n",
+			"names a preset and an issuer",
+		},
+		"a preset that needs a directory": {
+			"providers:\n  - kind: oidc\n    preset: entra\n    client_id: telecraft\n    secret: staff-oidc\n",
+			"and no directory",
+		},
+		"a directory the preset has no use for": {
+			"providers:\n  - kind: oidc\n    preset: google\n    directory: acme.example\n    client_id: telecraft\n    secret: staff-oidc\n",
+			"signs everybody in at one issuer",
+		},
+		"a directory that is a path": {
+			"providers:\n  - kind: oidc\n    preset: entra\n    directory: acme/other\n    client_id: telecraft\n    secret: staff-oidc\n",
+			"is one word",
+		},
+		"a directory and no preset": {
+			"providers:\n  - kind: oidc\n    issuer: https://issuer.example\n    directory: acme.example\n    client_id: telecraft\n    secret: staff-oidc\n",
+			"names a directory and no preset",
+		},
+		"a preset on basic auth": {
+			"providers:\n  - kind: basic\n    preset: google\n",
+			"which is an OIDC field",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := LoadSignIn(writeProviders(t, tc.body), testTree(), users, placed{"staff-oidc": "the value"})
+			if err == nil {
+				t.Fatal("the file loaded")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error does not say %q:\n%v", tc.want, err)
+			}
+		})
+	}
+}
+
+// Basic auth is bootstrap and break-glass for an operator who can reach
+// the host. A deployment run for somebody else refuses it, and says so
+// rather than dropping the entry and serving something narrower than the
+// estate it read.
+func TestADeploymentCanRefuseBasicAuth(t *testing.T) {
+	users := writeUsers(t, goodUsers)
+	const oidcOnly = "providers:\n  - kind: oidc\n    preset: google\n    client_id: telecraft\n    secret: staff-oidc\n"
+
+	if _, err := LoadSignIn(writeProviders(t, oidcOnly+"  - kind: basic\n"), testTree(), users,
+		placed{"staff-oidc": "the value"}, WithoutBasicAuth()); err == nil {
+		t.Error("basic auth was offered on a deployment that refuses it")
+	} else if !strings.Contains(err.Error(), "does not offer it") {
+		t.Errorf("the refusal does not say what happened: %v", err)
+	}
+
+	if _, err := LoadSignIn(filepath.Join(t.TempDir(), ProvidersFile), testTree(), users, nil, WithoutBasicAuth()); err == nil {
+		t.Error("an estate that declares nothing fell back to basic auth")
+	}
+
+	signIn, err := LoadSignIn(writeProviders(t, oidcOnly), testTree(), users,
+		placed{"staff-oidc": "the value"}, WithoutBasicAuth())
+	if err != nil {
+		t.Fatalf("an estate that declares an identity provider was refused: %v", err)
+	}
+	if len(signIn.Providers) != 1 {
+		t.Errorf("providers = %v, want the one the estate declares", signIn.Providers)
+	}
+}

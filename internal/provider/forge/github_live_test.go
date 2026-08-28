@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 const defaultLiveRepo = "https://github.com/telecraft-dev/estate-fixture"

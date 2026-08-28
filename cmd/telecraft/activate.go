@@ -10,9 +10,9 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/activation"
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/schemaregistry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // CataloguesDir and SchemaRegistriesDir are where an estate keeps the

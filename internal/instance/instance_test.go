@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/consoleassets"
 	"github.com/telecraft-dev/telecraft/internal/serving"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
 )
 
 // The storage audit, held over this process the way it is held over the
@@ -39,6 +39,7 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		"composer":   true, // the seams' composer, holding only the silence and shortfall clocks
 		"stopPoll":   true, // poll shutdown
 		"pollDone":   true, // poll shutdown
+		"nudge":      true, // one slot saying somebody asked for a fetch
 	}
 	storage := map[string]bool{
 		"head":    true, // the head the source reported; loss is a re-fetch

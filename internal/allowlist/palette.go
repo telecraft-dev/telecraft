@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Origin says why a component is in an effective palette. The audit chain is

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // CodeOwners renders the generated code-ownership projection from the team

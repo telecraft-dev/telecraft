@@ -53,6 +53,11 @@ estate:
   repository: https://git.example.com/beacon-rail/estate.git
 administrators:
   - oidc:8f21c0ac
+installations:
+  - git_host: github
+    id: "48291043"
+    repositories:
+      - https://git.example.com/beacon-rail/estate.git
 ```
 
 | Field | Required | Meaning |
@@ -64,6 +69,10 @@ administrators:
 | `estate.kind` | yes, while active | `hosted` for a repository the deployment keeps, `connected` for one the Organisation owns. |
 | `estate.repository` | for a connected estate | The git remote the estate is read from. |
 | `administrators` | no | The identity subjects that hold the account. Account authority grants nothing inside an estate, and owning something in an estate grants nothing on the account. |
+| `installations` | no | The grants this Organisation made on a git host, each naming the repositories it is used for. |
+| `installations[].git_host` | with an installation | Which implementation the grant was made on. It is a name and nothing here compares it against one it knows. |
+| `installations[].id` | with an installation | The identifier the host gave the installation. An identifier and never a credential, so it sits here in plain text. |
+| `installations[].repositories` | with an installation | The remotes the grant is used for. A token minted for this Organisation reaches these and nothing else the installation covers. |
 
 A hosted estate names no repository. It is created with the Organisation, so
 the deployment already knows where it is.
@@ -79,6 +88,15 @@ register is read as one reviewed change.
 - **The record's `name` matches its file name.**
 - **No two Organisations are reached at one address**, and **no two read one
   estate**.
+- **A repository is named by one Organisation.** Two Instances writing into
+  one repository would each be right and the result would flap, so the review
+  of this file is where that is caught. One installation naming two
+  Organisations is ordinary, as it is for a consultancy holding several: what
+  is refused is the repository belonging to two, never the grant.
+- **An installation names its host, its identifier and what it is used for.**
+  A grant used for nothing belongs at the git host rather than here: a token
+  scoped to no repository is a token scoped to everything the installation
+  could reach.
 - **Nothing here carries a credential.** There is no field that takes secret
   material, and an address or a remote carrying a password is refused. A
   refusal names the file and never repeats the value. Credentials are files

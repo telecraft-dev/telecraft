@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Handler serves the auth slice of the documented platform API

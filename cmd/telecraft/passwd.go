@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/auth"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
 )
 
 // runPasswd hashes one basic-auth secret for users.yaml (REQ-017,

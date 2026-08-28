@@ -16,7 +16,7 @@ import (
 	"sync"
 	"testing"
 
-	seam "github.com/telecraft-dev/telecraft/internal/forge"
+	seam "github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 var (
@@ -46,12 +46,18 @@ func keyPEM(t *testing.T) []byte {
 type fakeAPI struct {
 	t *testing.T
 
-	mu       sync.Mutex
-	bodies   map[string][]map[string]any // "METHOD path" -> decoded bodies
-	branch   string                      // current sha of the draft branch, "" = absent
-	openPR   int                         // PR number for the branch, 0 = none
-	prState  string                      // "open" or "closed"; GitHub closes an emptied PR
-	prMerged bool                        // a merged proposal is finished, never reopened
+	mu     sync.Mutex
+	bodies map[string][]map[string]any // "METHOD path" -> decoded bodies
+	branch string                      // current sha of the draft branch, "" = absent
+	// permissions is what the token response says the installation
+	// granted, and refuseToken is the installation not covering the
+	// repository at all. Both default to the ordinary case: everything
+	// the App asks for, on a repository it was installed on.
+	permissions map[string]string
+	refuseToken bool
+	openPR      int    // PR number for the branch, 0 = none
+	prState     string // "open" or "closed"; GitHub closes an emptied PR
+	prMerged    bool   // a merged proposal is finished, never reopened
 }
 
 func (f *fakeAPI) record(r *http.Request) map[string]any {
@@ -86,7 +92,21 @@ func (f *fakeAPI) server(t *testing.T) *httptest.Server {
 		f.record(r)
 		jwt := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		verifyJWT(t, jwt)
-		reply(w, http.StatusCreated, map[string]any{"token": "ghs_inst_token", "expires_at": "2100-01-01T00:00:00Z"})
+		f.mu.Lock()
+		refused, granted := f.refuseToken, f.permissions
+		f.mu.Unlock()
+		if refused {
+			reply(w, http.StatusUnprocessableEntity, map[string]string{"message": "There is at least one repository that does not exist or is not accessible"})
+			return
+		}
+		if granted == nil {
+			granted = map[string]string{"contents": "write", "pull_requests": "write", "metadata": "read"}
+		}
+		reply(w, http.StatusCreated, map[string]any{
+			"token":       "ghs_inst_token",
+			"expires_at":  "2100-01-01T00:00:00Z",
+			"permissions": granted,
+		})
 	})
 
 	auth := func(r *http.Request) bool {

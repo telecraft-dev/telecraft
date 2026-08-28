@@ -73,6 +73,13 @@ keeps flowing.
 7. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
    Blueprint version in cohorts, advancing and aborting by pull request.
 
+## Or let us run it
+
+[Use the hosted service](hosted.md) is Telecraft at an address of your own,
+run by us: you sign up, connect a repository, and sign your people in. It is
+the same product this section describes, so every other guide here still
+applies to it.
+
 ## See it running first
 
 If you would rather look before you build, [explore the

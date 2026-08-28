@@ -56,7 +56,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/telecraft-dev/telecraft/internal/forge"
+	"github.com/telecraft-dev/telecraft/pkg/forge"
 )
 
 // Identity is the authenticated human as claims: the stable subject the

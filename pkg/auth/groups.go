@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Groups is the estate's opt-in mapping from the groups an identity

@@ -9,8 +9,9 @@
 //
 // A record holds what it takes to address an Organisation and nothing of
 // what is inside one: the name, the name people read, the address its
-// Instance answers on, where its estate comes from, and its lifecycle
-// state. Nothing here takes secret material and nothing here can
+// Instance answers on, where its estate comes from, who holds the account,
+// which grants it made on a git host, and its lifecycle state. Nothing
+// here takes secret material and nothing here can
 // (ADR-0071 §1): a remote carrying a password is a load error naming the
 // file it was written in.
 //
@@ -80,6 +81,37 @@ type EstateSource struct {
 	Repository string
 }
 
+// Installation is one grant an Organisation made on a git host: the host
+// it was made on, the identifier the host gave it, and the repositories
+// the deployment may read and write through it (ADR-0073 §4).
+//
+// Nothing here is a credential. An installation identifier identifies, so
+// it lives in the register in plain text exactly as every other identifier
+// does (ADR-0071 §2), and what the grant covers is held by the host, where
+// whoever made it can read it and withdraw it.
+//
+// One record may name several: an estate is a primary repository plus
+// satellites (ADR-0027), and those need not sit under one account. The
+// repositories are named here rather than taken from the installation,
+// because an installation may cover repositories that have nothing to do
+// with Telecraft, and may legitimately serve two Organisations. A token
+// minted for one Organisation is scoped to the repositories that
+// Organisation's record names, so the boundary is a property of the
+// credential rather than a rule somebody has to remember.
+type Installation struct {
+	// GitHost names which implementation the grant was made on. It is
+	// opaque here: the register never compares it against a name it knows
+	// (ADR-0073 §7).
+	GitHost string
+
+	// ID is the identifier the host gave the installation, opaque.
+	ID string
+
+	// Repositories are the remotes this installation is used for. Each is
+	// named by one Organisation across the whole register.
+	Repositories []string
+}
+
 // Organisation is one record of the register.
 //
 // Every field is a name, an address or a lifecycle state. Nothing an
@@ -109,6 +141,12 @@ type Organisation struct {
 	// Account authority grants nothing inside an estate (ADR-0072 §7),
 	// and estate ownership grants nothing here.
 	Administrators []string
+
+	// Installations are the grants this Organisation made on a git host,
+	// each naming the repositories it is used for. An Organisation whose
+	// estate is a Hosted repository names none, and an Organisation
+	// reached over the git transport alone names none either.
+	Installations []Installation
 }
 
 // Register is the whole authored set, in name order.
@@ -144,22 +182,47 @@ var nameRule = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 const nameLimit = 63
 
+// CheckName judges a name against what an address allows, so that whatever
+// asks for one refuses it in the same words the register does. A name that
+// fails here is a name no record could hold.
+//
+// It says nothing about whether the name is free: that is the register's
+// to answer, and a retired record holds its name for ever (ADR-0072 §4).
+func CheckName(name string) error {
+	switch {
+	case name == "":
+		return errors.New("the Organisation has no name. The name is what it is reached at")
+	case len(name) > nameLimit:
+		return fmt.Errorf("the name %q is %d characters. An address allows %d at most", name, len(name), nameLimit)
+	case !nameRule.MatchString(name):
+		return fmt.Errorf("the name %q is not one an address allows. Use lower-case letters, digits and hyphens, starting and ending with a letter or a digit", name)
+	}
+	return nil
+}
+
 // record is one file's YAML. It is strict-loaded, so a field that does not
 // exist is a load error naming the fields that do, and a field that would
 // carry a value rather than a name cannot be written because it is not
 // here to write.
 type record struct {
-	Name           string       `yaml:"name"`
-	DisplayName    string       `yaml:"display_name"`
-	State          string       `yaml:"state"`
-	Address        string       `yaml:"address"`
-	Estate         estateRecord `yaml:"estate"`
-	Administrators []string     `yaml:"administrators"`
+	Name           string               `yaml:"name"`
+	DisplayName    string               `yaml:"display_name"`
+	State          string               `yaml:"state"`
+	Address        string               `yaml:"address"`
+	Estate         estateRecord         `yaml:"estate"`
+	Administrators []string             `yaml:"administrators"`
+	Installations  []installationRecord `yaml:"installations"`
 }
 
 type estateRecord struct {
 	Kind       string `yaml:"kind"`
 	Repository string `yaml:"repository"`
+}
+
+type installationRecord struct {
+	GitHost      string   `yaml:"git_host"`
+	ID           string   `yaml:"id"`
+	Repositories []string `yaml:"repositories"`
 }
 
 // Load reads every record in a directory.
@@ -225,6 +288,25 @@ func Load(dir string) (Register, error) {
 			}
 			repos[org.Estate.Repository] = path
 		}
+		// One repository is named by at most one Organisation, and this is
+		// where that is caught. Two Instances writing into one repository
+		// would contend over the rendered tree, each correctly, and the
+		// result flaps rather than converging (ADR-0073 §4).
+		claimed := false
+		for _, inst := range org.Installations {
+			for _, repo := range inst.Repositories {
+				first, dup := repos[repo]
+				if dup && first != path {
+					problems = append(problems, fmt.Sprintf("%s and %s both reach %s. A repository is named by one Organisation", first, path, repo))
+					claimed = true
+					continue
+				}
+				repos[repo] = path
+			}
+		}
+		if claimed {
+			continue
+		}
 		orgs = append(orgs, org)
 	}
 	if len(problems) > 0 {
@@ -271,15 +353,23 @@ func loadRecord(path string) (Organisation, []string) {
 			Repository: strings.TrimSpace(rec.Estate.Repository),
 		},
 	}
+	for _, inst := range rec.Installations {
+		held := Installation{
+			GitHost: strings.TrimSpace(inst.GitHost),
+			ID:      strings.TrimSpace(inst.ID),
+		}
+		for _, repo := range inst.Repositories {
+			held.Repositories = append(held.Repositories, strings.TrimSpace(repo))
+		}
+		org.Installations = append(org.Installations, held)
+	}
 
 	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	switch {
+	switch err := CheckName(org.Name); {
 	case org.Name == "":
 		problem("names no Organisation. The name is the first line of a record")
-	case len(org.Name) > nameLimit:
-		problem("the name %q is %d characters. An address allows %d at most", org.Name, len(org.Name), nameLimit)
-	case !nameRule.MatchString(org.Name):
-		problem("the name %q is not one an address allows. Use lower-case letters, digits and hyphens, starting and ending with a letter or a digit", org.Name)
+	case err != nil:
+		problem("%v", err)
 	case org.Name != base:
 		problem("the record names %q and the file is named %q. A record lives in a file named for its Organisation", org.Name, base)
 	}
@@ -348,6 +438,67 @@ func checkOptional(org Organisation, problem func(string, ...any)) {
 			problem("names %s as an administrator twice", admin)
 		}
 		seen[admin] = true
+	}
+	checkInstallations(org, problem)
+}
+
+// hostRule is what a git host name may be: a plain lower-case token. The
+// value is opaque to this package, which never compares it against a name
+// it knows (ADR-0073 §7); the rule is here so that a record cannot smuggle
+// a URL, a path or a credential into a field that names an implementation.
+var hostRule = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
+
+// idRule is what an installation identifier may be. Hosts issue numbers
+// today and nothing says they always will, so the shape is deliberately
+// wide and the rule is only that it is one opaque word.
+var idRule = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// checkInstallations judges the grants a record names: their shape, that
+// each is used for something, and that no repository is named twice inside
+// one record. Nothing here reaches a git host: whether the grant still
+// stands is the host's to say, and a register that asked would be a
+// register that could not be reviewed offline.
+func checkInstallations(org Organisation, problem func(string, ...any)) {
+	ids := map[string]bool{}
+	repos := map[string]bool{}
+	for i, inst := range org.Installations {
+		where := fmt.Sprintf("installation %d", i+1)
+		if inst.ID != "" {
+			where = fmt.Sprintf("installation %s", inst.ID)
+		}
+		switch {
+		case inst.GitHost == "":
+			problem("%s names no git host. Name the host the grant was made on", where)
+		case !hostRule.MatchString(inst.GitHost):
+			problem("%s names the git host %q. Name it in lower-case letters, digits, dots and hyphens", where, inst.GitHost)
+		}
+		switch {
+		case inst.ID == "":
+			problem("%s has no identifier. Name the identifier the host gave it", where)
+		case !idRule.MatchString(inst.ID):
+			problem("%s is identified by %q, which is not one word. An installation identifier is what the host gave it, and it is not a credential", where, inst.ID)
+		case ids[inst.ID]:
+			problem("%s is named twice. One installation, one entry, naming every repository it is used for", where)
+		}
+		ids[inst.ID] = true
+
+		if len(inst.Repositories) == 0 {
+			problem("%s names no repository. Name what the grant is used for, and a grant used for nothing belongs at the host rather than here", where)
+		}
+		for _, repo := range inst.Repositories {
+			if repo == "" {
+				problem("%s names a repository with no remote", where)
+				continue
+			}
+			if err := checkRepository(repo); err != nil {
+				problem("%v", err)
+				continue
+			}
+			if repos[repo] {
+				problem("%s names %s twice", where, repo)
+			}
+			repos[repo] = true
+		}
 	}
 }
 

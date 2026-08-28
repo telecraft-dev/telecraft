@@ -17,7 +17,7 @@
 // Allow-lists and Grants are authored files in the estate repo beside
 // teams.yaml (§5), reviewed and versioned like everything else; they are
 // never rows edited live in the instance database. Loading is strict and
-// fails closed, matching internal/ownership: an unknown field, an unknown
+// fails closed, matching pkg/ownership: an unknown field, an unknown
 // team or owner, a grant without ancestor authority, or an entry matching
 // nothing in the active Catalogue is a load error naming the file, because a
 // silently dropped entry would widen or narrow a palette nobody reviewed.
@@ -35,7 +35,7 @@ import (
 	"strings"
 
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // Entry is one Allow-list or Grant entry: a shape selecting Catalogue

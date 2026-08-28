@@ -37,7 +37,7 @@ import (
 	"sort"
 
 	"github.com/telecraft-dev/telecraft/internal/licence"
-	"github.com/telecraft-dev/telecraft/internal/register"
+	"github.com/telecraft-dev/telecraft/pkg/register"
 )
 
 // Allowance is how many Instances a deployment runs without an

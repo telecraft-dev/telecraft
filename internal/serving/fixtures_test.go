@@ -10,8 +10,8 @@ import (
 	"github.com/telecraft-dev/telecraft/internal/allowlist"
 	"github.com/telecraft-dev/telecraft/internal/blueprint"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // fixtureCommit is the SHA the fixture estate renders under (ADR-0013).

@@ -52,7 +52,7 @@ func Load(dir string) (Estate, error) {
 		// Allow-lists, Grants, users and the sign-in providers live
 		// beside teams.yaml in the estate directory (ADR-0021 §5;
 		// ADR-0019, ADR-0067 §4), but they are policy, membership and
-		// wiring, not ownership: internal/allowlist and internal/auth
+		// wiring, not ownership: internal/allowlist and pkg/auth
 		// load and validate them. Skipped here so one estate directory
 		// carries the whole authored set.
 		switch e.Name() {

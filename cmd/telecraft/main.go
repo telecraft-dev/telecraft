@@ -46,6 +46,10 @@
 // passwd hashes one basic-auth secret for the users.yaml seam (REQ-017,
 // ADR-0019): stdin in, the stored hash out. See passwd.go.
 //
+// init creates an estate: the team tree, the person it is created for, and
+// how they sign in, written into a directory or into a bare repository as
+// one commit (ADR-0032 §3, ADR-0072 §4). See init.go.
+//
 // Which backend answers is wiring inside internal/provider/. This command
 // holds only neutral connection settings (ADR-0001).
 package main
@@ -62,9 +66,9 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/allowlist"
 	"github.com/telecraft-dev/telecraft/internal/catalogue"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 func main() {
@@ -97,6 +101,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runLicence(args[1:], stdout, stderr)
 	case "passwd":
 		return runPasswd(args[1:], os.Stdin, stdout, stderr)
+	case "init":
+		return runInit(args[1:], stdout, stderr)
 	default:
 		usage(stderr)
 		return 2
@@ -108,12 +114,13 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
-	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-insecure-http] [-fetch-interval 30s] [-window 15m] [-secrets-dir path] [-session-key-file path] [-telemetry-endpoint URL] [-telemetry-key-file path] [-licence-file path]")
+	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-insecure-http] [-fetch-interval 30s] [-window 15m] [-secrets-dir path] [-session-key-file path] [-telemetry-endpoint URL] [-telemetry-key-file path] [-licence-file path] [-basic-auth=false] [-refresh-key-file path] [-push-secret-file path]")
 	fmt.Fprintln(stderr, "       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
 	fmt.Fprintln(stderr, "       telecraft activate -estate <dir> -substrate (catalogue|schema-registry) -version <ref> [-artefacts dir] [-confirm -by <owner>]")
 	fmt.Fprintln(stderr, "       telecraft licence [-licence-file <path>]")
 	fmt.Fprintln(stderr, "       telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)")
+	fmt.Fprintln(stderr, "       telecraft init    (-estate <dir> | -bare <path>) -email <address> -name <name> [-owner <id>] [-team <id>] [-team-name <name>]")
 }
 
 func runObserve(args []string, stdout, stderr io.Writer) int {

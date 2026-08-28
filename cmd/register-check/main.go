@@ -26,7 +26,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/telecraft-dev/telecraft/internal/register"
+	"github.com/telecraft-dev/telecraft/pkg/register"
 )
 
 func main() {

@@ -9,13 +9,13 @@ import (
 	"sort"
 
 	"github.com/telecraft-dev/telecraft/internal/activation"
-	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/conformance"
 	"github.com/telecraft-dev/telecraft/internal/console"
-	"github.com/telecraft-dev/telecraft/internal/ownership"
 	"github.com/telecraft-dev/telecraft/internal/readings"
 	"github.com/telecraft-dev/telecraft/internal/renderer"
 	"github.com/telecraft-dev/telecraft/internal/requirements"
+	"github.com/telecraft-dev/telecraft/pkg/auth"
+	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
 
 // The estate layout: where an estate keeps the files the API is computed
@@ -163,7 +163,11 @@ func (s *Server) refreshAuth() error {
 	if err != nil {
 		return err
 	}
-	signIn, err := auth.LoadSignIn(filepath.Join(s.cfg.Root, auth.ProvidersFile), tree, users, s.cfg.Secrets)
+	var options []auth.SignInOption
+	if s.cfg.RefuseBasicAuth {
+		options = append(options, auth.WithoutBasicAuth())
+	}
+	signIn, err := auth.LoadSignIn(filepath.Join(s.cfg.Root, auth.ProvidersFile), tree, users, s.cfg.Secrets, options...)
 	if err != nil {
 		return err
 	}

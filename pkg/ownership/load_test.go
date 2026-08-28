@@ -315,7 +315,7 @@ func TestMissingDirectoryIsAnError(t *testing.T) {
 
 // Allow-lists, Grants and users live beside teams.yaml in the estate
 // directory (ADR-0021 §5; ADR-0019); they are policy and membership, loaded
-// by internal/allowlist and internal/auth, and must not be parsed here as
+// by internal/allowlist and pkg/auth, and must not be parsed here as
 // authored-object files.
 func TestPolicyFilesBesideTeamsAreSkipped(t *testing.T) {
 	dir := t.TempDir()
