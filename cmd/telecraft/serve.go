@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/auth"
+	seam "github.com/telecraft-dev/telecraft/internal/forge"
 	"github.com/telecraft-dev/telecraft/internal/instance"
+	forgeprovider "github.com/telecraft-dev/telecraft/internal/provider/forge"
 	provider "github.com/telecraft-dev/telecraft/internal/provider/telemetry"
 	"github.com/telecraft-dev/telecraft/internal/secrets"
 	"github.com/telecraft-dev/telecraft/internal/serving"
@@ -50,6 +52,15 @@ import (
 // there is no default path, because nothing is read that the flag did not
 // name (ADR-0070 §2).
 //
+// -basic-auth is the one thing a deployment overrides the estate on: an
+// operator who cannot reach a shell on the host has no use for bootstrap
+// and break-glass, and a deployment run for other people refuses both
+// (ADR-0072 §6). Everything else about signing in is the estate's.
+//
+// -refresh-key-file and -push-secret-file are what the refresh endpoint
+// accepts (ADR-0073 §5). Neither placed takes no refresh request, and the
+// poll runs either way: a refresh is a shortcut and never a dependency.
+//
 // Exit codes: 0 after a clean signal-driven shutdown; 1 the server could
 // not start or stop; 2 usage.
 func runServe(args []string, stdout, stderr io.Writer) int {
@@ -69,6 +80,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	endpoint := fs.String("telemetry-endpoint", "", "telemetry backend base URL; empty takes no arrival reading")
 	telemetryKey := fs.String("telemetry-key-file", "", "file holding the telemetry backend credential (default: "+telemetryKeyName+" under -secrets-dir)")
 	licenceFile := fs.String("licence-file", "", "file holding the Enterprise Edition licence; none named runs Standard Edition")
+	basicAuth := fs.Bool("basic-auth", true, "offer basic auth where the estate declares it; false refuses it whatever the estate says")
+	refreshKey := fs.String("refresh-key-file", "", "file holding the key a refresh request presents (default: "+refreshKeyName+" under -secrets-dir; absent takes no bare refresh request)")
+	pushSecret := fs.String("push-secret-file", "", "file holding the secret the estate's git host signs its push notifications with (default: "+pushSecretName+" under -secrets-dir; absent takes no push notification)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -114,6 +128,33 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// The refresh endpoint's two credentials. Each is read at the moment
+	// it is needed rather than held, so rotating one is writing its file
+	// and nothing else (ADR-0071 §5), and an absence declares the
+	// capability unavailable rather than failing (ADR-0071 §4).
+	refreshKeyPath, refreshKeyNamed := secretFile(*refreshKey, named["refresh-key-file"], dir, refreshKeyName)
+	pushSecretPath, pushSecretNamed := secretFile(*pushSecret, named["push-secret-file"], dir, pushSecretName)
+	for _, check := range []struct {
+		path  string
+		named bool
+	}{{refreshKeyPath, refreshKeyNamed}, {pushSecretPath, pushSecretNamed}} {
+		if _, err := readSecretFile(check.path, check.named); err != nil {
+			fmt.Fprintf(stderr, "serve: %v\n", err)
+			return 2
+		}
+	}
+
+	// A push notification is verified by whatever speaks for the host the
+	// estate is read from. A checkout on disk and a repository nothing
+	// here has an adapter for have none, and the bare request is what
+	// serves those (ADR-0073 §5).
+	var notifications seam.Notifications
+	if *repo != "" {
+		if verifier, ok := forgeprovider.Notifications(forgeprovider.Config{Repo: *repo}); ok {
+			notifications = verifier
+		}
+	}
+
 	var tel telemetry.Provider
 	if *endpoint != "" {
 		telemetryKeyPath, telemetryKeyNamed := secretFile(*telemetryKey, named["telemetry-key-file"], dir, telemetryKeyName)
@@ -143,6 +184,11 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		LicenceFile:   *licenceFile,
 		Telemetry:     tel,
 		Logf:          logf,
+
+		RefuseBasicAuth: !*basicAuth,
+		RefreshKey:      func() (string, error) { return readSecretValue(refreshKeyPath, refreshKeyNamed) },
+		PushSecret:      func() (string, error) { return readSecretValue(pushSecretPath, pushSecretNamed) },
+		Notifications:   notifications,
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "serve: %v\n", err)
@@ -187,6 +233,8 @@ const environmentPrefix = "TELECRAFT_"
 const (
 	sessionKeyName   = "session-key"
 	telemetryKeyName = "telemetry-key"
+	refreshKeyName   = "refresh-key"
+	pushSecretName   = "push-secret"
 )
 
 // applyEnvironment fills the flags nobody passed from the environment, so a
@@ -230,6 +278,14 @@ func secretFile(path string, named bool, dir secrets.Dir, fallback string) (stri
 		return path, true
 	}
 	return dir.Path(fallback), false
+}
+
+// readSecretValue reads one of the process's own secrets at the moment it
+// is used, which is what makes rotating it writing the file. Nothing is
+// held between calls.
+func readSecretValue(path string, named bool) (string, error) {
+	value, err := readSecretFile(path, named)
+	return string(value), err
 }
 
 // readSecretFile reads one secret file. A path somebody named and this

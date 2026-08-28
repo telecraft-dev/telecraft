@@ -99,6 +99,11 @@ type Server struct {
 	stopRefresh context.CancelFunc
 	refreshDone chan struct{}
 
+	// fetchMu serialises fetches, because a source is a working directory
+	// git is driven in and two fetches at once would be two checkouts in
+	// one directory. It holds nothing: a mutex is wiring.
+	fetchMu sync.Mutex
+
 	// Storage, the closed list (ADR-0032 §1):
 	//   1. the repo snapshot at last-known head; loss is a re-fetch;
 	snapshot atomic.Pointer[Snapshot]
@@ -205,17 +210,49 @@ func (s *Server) refreshLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			snap, err := s.source.Snapshot(ctx)
+			snap, err := s.fetch(ctx)
 			if err != nil {
 				s.logf("repo snapshot refresh failed, serving the previous head: %v", err)
 				continue
 			}
-			if prev := s.snapshot.Swap(snap); prev == nil || prev.Commit != snap.Commit {
-				s.logf("repo snapshot now at head %s", headName(snap))
-			}
 			s.announce(snap)
 		}
 	}
+}
+
+// Refresh fetches out of turn: the "fetch now" the refresh endpoint means
+// (ADR-0073 §5). It is the poll's own work, done once, at somebody's
+// asking rather than on the clock.
+//
+// The poll never stops, which is what makes this safe to offer: a fetch
+// that fails, or a notification that never arrives, costs at most one
+// interval rather than stalling the estate. Nothing durable is added and
+// nothing is remembered about who asked, so a burst of requests is at most
+// one extra fetch in flight, and everything that made it possible dies
+// with the process.
+func (s *Server) Refresh(ctx context.Context) error {
+	snap, err := s.fetch(ctx)
+	if err != nil {
+		return err
+	}
+	s.announce(snap)
+	return nil
+}
+
+// fetch takes one snapshot and holds it, saying whether the head moved on
+// the operator's terminal. It is the one place a snapshot is swapped in,
+// so the poll and a refresh cannot be doing it at the same moment.
+func (s *Server) fetch(ctx context.Context) (*Snapshot, error) {
+	s.fetchMu.Lock()
+	defer s.fetchMu.Unlock()
+	snap, err := s.source.Snapshot(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if prev := s.snapshot.Swap(snap); prev == nil || prev.Commit != snap.Commit {
+		s.logf("repo snapshot now at head %s", headName(snap))
+	}
+	return snap, nil
 }
 
 // announce hands the snapshot to the configured reader, if there is one.

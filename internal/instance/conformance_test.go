@@ -55,6 +55,7 @@ func served() []string {
 	// contract's and not the fixture's, which offers a password provider
 	// only.
 	out = append(out,
+		"/api/v1/refresh",
 		"/api/v1/auth/providers",
 		"/api/v1/auth/login",
 		"/api/v1/auth/logout",

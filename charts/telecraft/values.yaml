@@ -124,9 +124,14 @@ server:
   # as a Secret you created, projected read-only. Every key in it becomes a
   # file of that name, which is what the estate resolves against.
   #
-  # The server's own two secrets live here under documented names:
-  # `session-key`, without which a restart signs everybody out, and
-  # `telemetry-key` where a telemetry endpoint is set below.
+  # The server's own secrets live here under documented names:
+  # `session-key`, without which a restart signs everybody out;
+  # `telemetry-key` where a telemetry endpoint is set below; and, where
+  # the deployment wants the estate fetched on being told rather than on
+  # the poll alone, `refresh-key` for a bare refresh request and
+  # `push-secret` for a notification the estate's git host signed. A file
+  # nobody placed is an absence, and what needed it says it is
+  # unavailable.
   secrets:
     secretName: ""
     mountPath: /etc/telecraft/secrets
@@ -148,7 +153,9 @@ server:
   telemetry:
     endpoint: ""
 
-  # Arguments and environment appended to the ones the chart sets.
+  # Arguments and environment appended to the ones the chart sets. A
+  # deployment run for people who cannot reach a shell on the host refuses
+  # basic auth here, with `-basic-auth=false`.
   extraArgs: []
   extraEnv: []
 

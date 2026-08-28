@@ -50,6 +50,7 @@ and exits `2`.
 | `activate` | Show what activating an imported version would change, and designate it. |
 | `licence` | Print the Edition this build is running, and what a licence file says. |
 | `passwd` | Hash one basic-auth secret for `users.yaml`. |
+| `init` | Create an estate: the team tree, the person it is created for, and where they sign in. |
 
 Every subcommand accepts `-h`, which prints that subcommand's flags to stderr
 and exits `2`.
@@ -256,6 +257,25 @@ network involved at any point, and a file that is not accepted is one line on
 the terminal and changes nothing else: the server starts, the probes answer,
 and collectors are served. See [Licensing](../guides/licensing.md).
 
+`-basic-auth=false` refuses basic auth whatever the estate declares. Use it
+where the people signing in are not the people who run the deployment. An
+estate that declares `basic` on such a deployment stops the start and names
+the entry.
+
+The server accepts a refresh request at `POST /api/v1/refresh`, which means
+fetch the estate now rather than at the next poll. It has two callers and
+neither is signed in: a push notification the estate's git host signed, which
+is verified against `-push-secret-file`, and a bare request carrying the key
+in `-refresh-key-file` as a bearer credential, which is what a repository with
+no git host behind it uses. Neither file placed takes no refresh request and
+says so. The poll runs either way, so a delivery that never arrives costs one
+fetch interval:
+
+```sh
+curl -X POST -H "Authorization: Bearer $(cat /run/secrets/refresh-key)" \
+  https://telecraft.example/api/v1/refresh
+```
+
 The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 
 | Flag | Type | Default | Description |
@@ -274,6 +294,9 @@ The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 | `-telemetry-endpoint` | string | empty | Telemetry backend base URL. Empty takes no arrival reading. |
 | `-telemetry-key-file` | string | `telemetry-key` under `-secrets-dir` | File holding the telemetry backend credential. |
 | `-licence-file` | string | empty | File holding the Enterprise Edition licence. None named runs Standard Edition. |
+| `-basic-auth` | bool | `true` | Offer basic auth where the estate declares it. `false` refuses it whatever the estate says, and an estate that declares it then stops the start. |
+| `-refresh-key-file` | string | `refresh-key` under `-secrets-dir` | File holding the key a refresh request presents. Nothing placed takes no bare refresh request. |
+| `-push-secret-file` | string | `push-secret` under `-secrets-dir` | File holding the secret the estate's git host signs its push notifications with. Nothing placed takes no push notification. |
 
 | Exit code | Meaning |
 |---|---|
@@ -458,6 +481,41 @@ printf 'SECRET' | telecraft passwd
 
 ```
 pbkdf2-sha256$600000$9WjDMLabnekbxwNlJaUxlg$qmNB8MhgWk4UiXZt1v13di5Ko4W8ElkBic/SgfKrq24
+```
+
+## telecraft init
+
+Creates an estate: `teams.yaml` with one team, `users.yaml` naming the person
+it is created for as that team's Owner, and nothing else. It authors no Tier,
+no Service and no Blueprint.
+
+Name exactly one of `-estate`, a directory to write the files into, or
+`-bare`, a path to create a bare git repository at holding the estate as one
+commit. A bare repository is an ordinary remote: clone it, push to it, and
+point `telecraft serve -repo` at it. Either place has to be empty or absent.
+
+Nobody can sign in to a new estate until it says how. Add a provider in
+`auth.yaml` (see [Sign-in file format](sign-in.md)), or give the first
+administrator a password with `telecraft passwd`.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-estate` | string | empty | Directory to write the estate into. |
+| `-bare` | string | empty | Path to create a bare git repository at, holding the estate as one commit. |
+| `-email` | string | empty | The first administrator's email address, which is what their identity provider asserts. Required. |
+| `-name` | string | empty | The first administrator's name, which authors their changes. Required. |
+| `-owner` | string | the part of the address before the at sign | The Owner they act as. |
+| `-team` | string | `engineering` | The team that Owner belongs to. |
+| `-team-name` | string | the team id | What surfaces show for that team. |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | The estate was created. |
+| `1` | It could not be written. |
+| `2` | Usage error, including naming neither or both places, or a request that would not load. |
+
+```sh
+telecraft init -estate ESTATE_DIR -email robin@acme.example -name "Robin Vale"
 ```
 
 ## catalogue-import
