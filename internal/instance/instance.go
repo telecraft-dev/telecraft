@@ -43,6 +43,7 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/console"
+	"github.com/telecraft-dev/telecraft/internal/forge"
 	"github.com/telecraft-dev/telecraft/internal/licence"
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
 	"github.com/telecraft-dev/telecraft/internal/readings"
@@ -101,6 +102,12 @@ type Config struct {
 	// an Instance whose estate names any.
 	Secrets auth.Secrets
 
+	// RefuseBasicAuth refuses basic auth whatever the estate declares. It
+	// is bootstrap and break-glass for an operator who can reach a shell
+	// on the host, so a deployment run for people the operator is not
+	// refuses it and says so (ADR-0072 §6).
+	RefuseBasicAuth bool
+
 	// LicenceFile is the licence the deployment placed, or empty for the
 	// Standard Edition, which is the ordinary case and needs no file. The
 	// file is read at start and again whenever it changes, and what it
@@ -112,6 +119,23 @@ type Config struct {
 	// Telemetry is the arrivals seam. Nil takes no arrival reading, which
 	// the console renders as not known with the cause said out loud.
 	Telemetry telemetry.Provider
+
+	// RefreshKey reads the key a bare refresh request presents: the
+	// deployment's own material, read at each use so that rewriting the
+	// file is the whole of rotating it (ADR-0071 §5). Nil, or a key that
+	// reads empty, takes no bare refresh request.
+	RefreshKey func() (string, error)
+
+	// PushSecret reads the secret the forge signs its deliveries with,
+	// on the same terms. Nil, or a secret that reads empty, takes no push
+	// notification.
+	PushSecret func() (string, error)
+
+	// Notifications judges a delivery: whether it is a genuine push from
+	// the forge this estate is read from. Nil is an estate with no forge
+	// behind it, such as a repository reached over the git transport
+	// alone, and the bare request is what serves one.
+	Notifications forge.Notifications
 
 	// Logf receives operational one-liners. Nil discards them.
 	Logf func(format string, args ...any)
@@ -138,6 +162,11 @@ type Server struct {
 	composer   *readings.Composer
 	stopPoll   context.CancelFunc
 	pollDone   chan struct{}
+
+	// nudge asks the poll to run now. It is one buffered slot, so a burst
+	// of asking coalesces into one fetch, and it holds nothing: what is
+	// in it is the fact that somebody asked, and it dies with the process.
+	nudge chan struct{}
 
 	// Storage, and every item of it is rebuildable:
 	//   1. the head the source last reported, which is a name for the repo
@@ -192,6 +221,7 @@ func New(cfg Config) (*Server, error) {
 	s := &Server{
 		cfg:        cfg,
 		logf:       cfg.Logf,
+		nudge:      make(chan struct{}, 1),
 		collectors: estateprovider.NewOpAMPDirect(estateprovider.OpAMPDirectConfig{Now: cfg.Now}),
 		delivery:   &readings.DeliveryPaths{},
 	}
@@ -330,16 +360,49 @@ func (s *Server) pollLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			s.readLicence()
+			// The serving path polls the source on its own interval
+			// where the OpAMP endpoint is open, so asking again here
+			// would fetch twice for one interval.
 			if s.opamp == nil {
-				snap, err := s.cfg.Source.Snapshot(ctx)
-				if err != nil {
-					s.logf("repo snapshot refresh failed, keeping the previous head: %v", err)
-				} else {
-					s.observe(snap)
-				}
+				s.fetch(ctx)
 			}
 			s.refresh(ctx)
+		case <-s.nudge:
+			// Somebody said the estate moved. The poll is unchanged and
+			// still running, so this costs one fetch and saves waiting
+			// for the next tick.
+			s.fetch(ctx)
+			s.refresh(ctx)
 		}
+	}
+}
+
+// fetch brings the source to its current head. The serving path owns the
+// fetch where there is one, because it is the process's one connection to
+// the estate; where the OpAMP endpoint is closed there is nothing else to
+// do it, so this loop does (ADR-0067 §2).
+func (s *Server) fetch(ctx context.Context) {
+	var err error
+	if s.opamp != nil {
+		err = s.opamp.Refresh(ctx)
+	} else {
+		var snap *serving.Snapshot
+		if snap, err = s.cfg.Source.Snapshot(ctx); err == nil {
+			s.observe(snap)
+		}
+	}
+	if err != nil {
+		s.logf("repo snapshot refresh failed, keeping the previous head: %v", err)
+	}
+}
+
+// Nudge asks the poll to fetch and recompute now, and returns without
+// waiting for it. A nudge already waiting is the whole of the coalescing:
+// a burst of them is one fetch, and none of it survives the process.
+func (s *Server) Nudge() {
+	select {
+	case s.nudge <- struct{}{}:
+	default:
 	}
 }
 

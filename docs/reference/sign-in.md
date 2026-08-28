@@ -58,6 +58,12 @@ sign-in surface offers them in.
 Bootstrap and break-glass, verified against the hashes in `users.yaml`.
 Nothing else is configured. Production sign-in belongs on `oidc` or `saml`.
 
+A deployment can refuse basic auth outright, whatever the estate declares, by
+running the server with `-basic-auth=false`. Use it where the people signing
+in are not the people who run the deployment. An estate that declares `basic`
+on such a deployment stops the start and names the entry. The hosted service
+runs this way.
+
 ```yaml
 providers:
   - kind: basic
@@ -73,7 +79,9 @@ self-hosted one with no route to the internet.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `issuer` | string | yes | The issuer URL, exactly as the provider names itself. Discovery is served beneath it. |
+| `issuer` | string | yes, unless `preset` | The issuer URL, exactly as the provider names itself. Discovery is served beneath it. |
+| `preset` | string | no | A provider Telecraft already knows the issuer of: `google` or `entra`. Write this or `issuer`, never both. |
+| `directory` | string | with `entra` | Your own directory, which is what gives the issuer its address. Only for a preset that gives each customer one. |
 | `client_id` | string | yes | What this Instance is registered as with the issuer. |
 | `secret` | string | yes | The **name** of the client secret, never its value. |
 
@@ -92,6 +100,37 @@ URI with your provider, replacing `staff` with the name you gave the entry.
 The ID token must carry an email claim, because the email is what joins the
 identity to `users.yaml`. Nothing else is fetched: the flow reads the token it
 is given.
+
+#### presets
+
+A preset is the issuer of a provider most organisations already have, so that
+an entry using one writes a client id and a secret name and nothing it would
+otherwise have to look up. It changes nothing else: the flow, the redirect
+URI and the email claim are the same.
+
+```yaml
+providers:
+  - kind: oidc
+    preset: google
+    client_id: telecraft
+    secret: google-client-secret
+  - kind: oidc
+    preset: entra
+    directory: acme.onmicrosoft.com
+    client_id: telecraft
+    secret: entra-client-secret
+```
+
+| Preset | Shows as | Needs a directory |
+|---|---|---|
+| `google` | Google | no |
+| `entra` | Microsoft Entra ID | yes |
+
+The name defaults to what the preset is known by, so a sign-in surface reads
+like the button it is. Write `name` to call it something else.
+
+An estate that names no preset is unchanged, and an air-gapped Instance
+reaches none of these addresses unless its own estate authored one.
 
 ### saml
 

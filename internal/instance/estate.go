@@ -163,7 +163,11 @@ func (s *Server) refreshAuth() error {
 	if err != nil {
 		return err
 	}
-	signIn, err := auth.LoadSignIn(filepath.Join(s.cfg.Root, auth.ProvidersFile), tree, users, s.cfg.Secrets)
+	var options []auth.SignInOption
+	if s.cfg.RefuseBasicAuth {
+		options = append(options, auth.WithoutBasicAuth())
+	}
+	signIn, err := auth.LoadSignIn(filepath.Join(s.cfg.Root, auth.ProvidersFile), tree, users, s.cfg.Secrets, options...)
 	if err != nil {
 		return err
 	}

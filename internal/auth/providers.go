@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/telecraft-dev/telecraft/internal/ownership"
@@ -35,6 +37,55 @@ const (
 	KindSAML  = "saml"
 )
 
+// preset is an issuer this build already knows: the name a sign-in surface
+// shows for it, and how its issuer URL is built.
+//
+// The two here are the providers most organisations that have not stood up
+// an identity provider of their own already hold. They are a convenience
+// over the OIDC flow and never a requirement: nothing reaches one unless
+// an estate authored it, an air-gapped Instance that authors neither is
+// unchanged, and no address here belongs to anything this project runs.
+type preset struct {
+	// name is what the sign-in surface shows when the entry names none.
+	name string
+
+	// issuer builds the issuer URL. Where a preset gives each customer
+	// their own, it takes the directory the entry named.
+	issuer func(directory string) string
+
+	// directory says whether this preset needs one.
+	directory bool
+}
+
+// The presets, by the word an estate writes.
+var presets = map[string]preset{
+	"google": {
+		name:   "Google",
+		issuer: func(string) string { return "https://accounts.google.com" },
+	},
+	"entra": {
+		name:      "Microsoft Entra ID",
+		issuer:    func(directory string) string { return "https://login.microsoftonline.com/" + directory + "/v2.0" },
+		directory: true,
+	},
+}
+
+// presetNames lists the presets in one sentence, for a refusal to name
+// what an author may have meant.
+func presetNames() string {
+	names := make([]string, 0, len(presets))
+	for name := range presets {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return strings.Join(names, " or ")
+}
+
+// directoryRule is what a directory may be: one token that goes into a
+// URL path. A name cannot describe a path, so a preset's issuer can never
+// be pointed somewhere else by what an estate wrote.
+var directoryRule = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
 // providerEntry is one authored provider. It names its kind, the name the
 // sign-in surface shows, where its identity provider is, and the name of
 // the secret it needs rather than the secret itself.
@@ -47,6 +98,17 @@ type providerEntry struct {
 
 	// Issuer is the identity provider's own URL, for the OIDC kind.
 	Issuer string `yaml:"issuer"`
+
+	// Preset names a provider whose issuer this build already knows, so an
+	// estate signing people in through one of the common ones writes a
+	// client id and a secret name and nothing else. It is offered over the
+	// OIDC flow like any other issuer, and it withdraws nothing: an
+	// estate that writes the issuer itself is unchanged.
+	Preset string `yaml:"preset"`
+
+	// Directory names the customer's own directory inside a preset that
+	// gives each one its own issuer.
+	Directory string `yaml:"directory"`
 
 	// ClientID identifies this Instance to the issuer.
 	ClientID string `yaml:"client_id"`
@@ -99,6 +161,28 @@ type SignIn struct {
 	Groups    Groups
 }
 
+// SignInOption narrows what a deployment offers, whatever an estate
+// declares. There is one, and it exists because basic auth is the one
+// provider whose fitness is the deployment's to judge rather than the
+// estate's.
+type SignInOption func(*signInOptions)
+
+type signInOptions struct{ refuseBasic bool }
+
+// WithoutBasicAuth refuses basic auth on this deployment. It is bootstrap
+// and break-glass for an operator who can reach a shell on the host
+// (ADR-0019 §1), and a deployment whose operator is somebody other than
+// the people signing in has no use for either: break-glass into an estate
+// the operator does not own is not a facility such a deployment gives
+// itself (ADR-0072 §6).
+//
+// It refuses rather than quietly dropping the entry. An Instance serving
+// something narrower than the estate it read, without saying so, is the
+// Instance lying about its own configuration (ADR-0071 §4).
+func WithoutBasicAuth() SignInOption {
+	return func(o *signInOptions) { o.refuseBasic = true }
+}
+
 // LoadSignIn reads auth.yaml and builds what it declares.
 //
 // A named secret nothing answers is a load error, and the caller refuses
@@ -117,9 +201,17 @@ type SignIn struct {
 // basic auth alone, verified against the hashes users.yaml already carries
 // (ADR-0019 §1): the bootstrap shape, and the whole of what an air-gapped
 // first start needs.
-func LoadSignIn(path string, tree ownership.Tree, users Users, secrets Secrets) (SignIn, error) {
+func LoadSignIn(path string, tree ownership.Tree, users Users, secrets Secrets, opts ...SignInOption) (SignIn, error) {
+	var options signInOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
+		if options.refuseBasic {
+			return SignIn{}, fmt.Errorf("%s: there is no such file, and this deployment does not offer basic auth, so nobody could sign in. Declare an identity provider in that file", path)
+		}
 		return SignIn{Providers: []Provider{Basic{Users: users}}}, nil
 	}
 	if err != nil {
@@ -151,7 +243,14 @@ func LoadSignIn(path string, tree ownership.Tree, users Users, secrets Secrets) 
 	for i, entry := range file.Providers {
 		name := strings.TrimSpace(entry.Name)
 		if name == "" {
-			name = entry.Kind
+			// A preset carries the name people know the provider by, so an
+			// estate that names one gets a sign-in surface that reads like
+			// the button it is.
+			if known, ok := presets[entry.Preset]; ok {
+				name = known.name
+			} else {
+				name = entry.Kind
+			}
 		}
 		ctx := fmt.Sprintf("provider %q", name)
 		if name == "" {
@@ -168,7 +267,12 @@ func LoadSignIn(path string, tree ownership.Tree, users Users, secrets Secrets) 
 
 		switch entry.Kind {
 		case KindBasic:
+			if options.refuseBasic {
+				problems = append(problems, ctx+" is basic auth, and this deployment does not offer it. Sign people in through an identity provider they already have")
+				continue
+			}
 			entryProblems := samlOnlyFields(ctx, entry)
+			entryProblems = append(entryProblems, presetOnlyFields(ctx, entry)...)
 			if entry.GroupsClaim != "" {
 				entryProblems = append(entryProblems, ctx+" names a groups claim, and basic auth asserts nothing about groups. Resolve these people through users.yaml")
 			}
@@ -189,6 +293,7 @@ func LoadSignIn(path string, tree ownership.Tree, users Users, secrets Secrets) 
 			out = append(out, provider)
 		case KindSAML:
 			provider, entryProblems := samlFrom(ctx, name, entry, filepath.Dir(path), secrets)
+			entryProblems = append(entryProblems, presetOnlyFields(ctx, entry)...)
 			if len(entryProblems) > 0 {
 				problems = append(problems, entryProblems...)
 				continue
@@ -229,8 +334,28 @@ func (o namedOIDC) Name() string { return o.name }
 // once.
 func oidcFrom(ctx, name string, entry providerEntry, secrets Secrets) (Provider, []string) {
 	var problems []string
-	if entry.Issuer == "" {
-		problems = append(problems, ctx+" names no issuer. An OIDC provider needs the issuer URL its discovery document sits under")
+	issuer := entry.Issuer
+	if entry.Preset != "" {
+		known, ok := presets[entry.Preset]
+		switch {
+		case !ok:
+			problems = append(problems, fmt.Sprintf("%s names the preset %q, which this build does not hold. Use %s, or name the issuer URL yourself", ctx, entry.Preset, presetNames()))
+		case entry.Issuer != "":
+			problems = append(problems, ctx+" names a preset and an issuer. A preset is the issuer, so name one or the other")
+		case known.directory && entry.Directory == "":
+			problems = append(problems, fmt.Sprintf("%s names the preset %q and no directory. Name the directory the people signing in belong to", ctx, entry.Preset))
+		case !known.directory && entry.Directory != "":
+			problems = append(problems, fmt.Sprintf("%s names a directory, and the preset %q signs everybody in at one issuer", ctx, entry.Preset))
+		case entry.Directory != "" && !directoryRule.MatchString(entry.Directory):
+			problems = append(problems, fmt.Sprintf("%s names the directory %q. A directory is one word, in letters, digits, dots, hyphens and underscores", ctx, entry.Directory))
+		default:
+			issuer = known.issuer(entry.Directory)
+		}
+	} else if entry.Directory != "" {
+		problems = append(problems, ctx+" names a directory and no preset. A directory says which one of a preset's issuers to use")
+	}
+	if issuer == "" && len(problems) == 0 {
+		problems = append(problems, ctx+" names no issuer. An OIDC provider needs the issuer URL its discovery document sits under, or a preset that carries one")
 	}
 	if entry.ClientID == "" {
 		problems = append(problems, ctx+" names no client_id")
@@ -251,7 +376,7 @@ func oidcFrom(ctx, name string, entry providerEntry, secrets Secrets) (Provider,
 	}
 	return namedOIDC{
 		OIDC: &OIDC{
-			Issuer:      entry.Issuer,
+			Issuer:      issuer,
 			ClientID:    entry.ClientID,
 			GroupsClaim: entry.GroupsClaim,
 			// Read at the exchange rather than held, so rotation is one
@@ -340,6 +465,22 @@ func samlOnlyFields(ctx string, entry providerEntry) []string {
 	} {
 		if f.value != "" {
 			problems = append(problems, fmt.Sprintf("%s names %s, which is a SAML field", ctx, f.field))
+		}
+	}
+	return problems
+}
+
+// presetOnlyFields reports the preset fields written on an entry that
+// cannot use one. The schema is one struct across the kinds, so this is
+// what keeps a field landing on the wrong kind from being read as silence.
+func presetOnlyFields(ctx string, entry providerEntry) []string {
+	var problems []string
+	for _, f := range []struct{ field, value string }{
+		{"preset", entry.Preset},
+		{"directory", entry.Directory},
+	} {
+		if f.value != "" {
+			problems = append(problems, fmt.Sprintf("%s names %s, which is an OIDC field", ctx, f.field))
 		}
 	}
 	return problems
