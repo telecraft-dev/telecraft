@@ -85,7 +85,9 @@ A release is an annotated `vMAJOR.MINOR.PATCH` tag pushed on a green
 `release` pointer a few minutes later, behind a cache, so an open tab
 showing the old build proves nothing. The sizing table, the cut steps and
 the verification list are in
-[Releases](docs/contributing/releases.md); while the major is zero,
-anything a consumer can notice is a minor. Never cut a release unasked,
+[Releases](docs/contributing/releases.md); while the major is zero, a
+release a consumer must act on, or that hands them a new capability, is a
+minor, and everything else is a patch however visible (ADR-0066). Release
+notes open with `Breaking:` and `New:`. Never cut a release unasked,
 and never move a version tag: a wrong release is corrected by the next
 number. `release` is the one ref that moves.

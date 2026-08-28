@@ -20,8 +20,10 @@ reason releases exist:
   artefact rather than copied (ADR-0047 §1).
 
 The decision behind all of this is
-[ADR-0049](https://github.com/telecraft-dev/telecraft/blob/main/docs/adr/0049-releases-tags-on-main-and-the-demo-pin.md).
-Read it before you change the scheme; this page tells you how to work it.
+[ADR-0049](https://github.com/telecraft-dev/telecraft/blob/main/docs/adr/0049-releases-tags-on-main-and-the-demo-pin.md),
+and the sizing rule is
+[ADR-0066](https://github.com/telecraft-dev/telecraft/blob/main/docs/adr/0066-a-version-number-is-sized-by-what-it-asks.md)'s.
+Read them before you change the scheme; this page tells you how to work it.
 
 ## What a version number means
 
@@ -30,12 +32,30 @@ modesty about quality. It is a statement about the platform API documents,
 the authored file formats, and the CLI flags, none of which are ones the
 project is willing to freeze yet.
 
-While the major version is zero:
+While the major version is zero, size the number by what the release asks
+of a consumer, never by what it shows them (ADR-0066). Ask two questions,
+in order; the first yes decides:
 
-| Part | Increments when |
-|---|---|
-| Minor (`v0.3.0`) | Anything a consumer can notice moves: a CLI flag, a platform API document, a token name, a file format, or a behaviour a reader could have relied on. Removals live here too. |
-| Patch (`v0.3.1`) | A fix that changes no documented surface. |
+1. **Must a consumer change anything to take it?** Migrating an authored
+   file, changing a CLI invocation, re-pinning a renamed token,
+   re-rendering a committed estate, adjusting to a changed platform API
+   document. Yes: **minor** (`v0.3.0`), and the release notes lead with
+   what must change and how.
+2. **Can a consumer do something they could not do before?** A new CLI
+   command or flag, a new platform API document, a new field in an
+   authored format, a new Workspace or view, a new release artefact.
+   Yes: **minor**.
+
+Neither: **patch** (`v0.3.1`), however visible. Fixes, redesigns, copy
+and polish all live here; a patch is safe to take on sight, and that
+promise is the point of the split.
+
+A consumer is anyone who takes this repository at a ref: `estate-demo`,
+the sites consuming the design artefact, an operator building the CLI and
+authoring an estate. A reader of the demo is an audience, not a consumer.
+
+Every release's notes open with `Breaking:` and `New:`, each possibly
+`none`, so the number can be audited against its notes.
 
 A tag never moves once pushed. If a release is wrong, the fix is the next
 number, not a new commit under the old name. The one exception is `release`,
@@ -77,7 +97,8 @@ Three things are deliberately absent:
 1. **Check that `main` is green.** The release workflow refuses a tag that
    does not sit on `main`, but it does not re-run the test suite: the pull
    request that merged is the gate.
-2. **Choose the number** using the table above. To see what exists, run
+2. **Choose the number** with the two questions above. To see what
+   exists, run
    `git tag --sort=-v:refname --list 'v*'`.
 3. **Tag the commit**, annotated, from an up to date `main`:
 
