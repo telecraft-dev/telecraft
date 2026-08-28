@@ -100,6 +100,11 @@ Three things are deliberately absent:
 6. **Verify.** The release page lists the archive and `SHA256SUMS`,
    `git ls-remote --tags origin release` resolves to the commit you tagged,
    and the demo run in `estate-demo` finishes green.
+7. **Trust the checks over an open tab.** The demo serves behind a cache
+   that can hold the previous build for some minutes after the deployment
+   finishes, so a page that still looks old is not evidence the release
+   failed. Hard-refresh, and compare the version the console names in its
+   profile section against the tag you pushed.
 
 ## The release pointer, and how the demo follows it
 
