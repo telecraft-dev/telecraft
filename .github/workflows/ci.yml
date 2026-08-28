@@ -19,6 +19,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       console: ${{ steps.filter.outputs.console }}
+      image: ${{ steps.filter.outputs.image }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -35,6 +36,7 @@ jobs:
              || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             echo "code=true"    >> "$GITHUB_OUTPUT"
             echo "console=true" >> "$GITHUB_OUTPUT"
+            echo "image=true"   >> "$GITHUB_OUTPUT"
             echo "No usable diff base; running every job."
             exit 0
           fi
@@ -52,6 +54,15 @@ jobs:
           else
             console=$code
           fi
+          # The image's own files. A Go or console change is covered by the
+          # build and the console jobs; what this job catches is the image
+          # itself failing to assemble or failing to serve.
+          if echo "$files" | grep -qE '^(Dockerfile|\.dockerignore|tools/image/.*|\.github/workflows/ci\.yml)$'; then
+            image=true
+          else
+            image=false
+          fi
+          echo "image=$image"     >> "$GITHUB_OUTPUT"
           echo "code=$code"       >> "$GITHUB_OUTPUT"
           echo "console=$console" >> "$GITHUB_OUTPUT"
           echo "code=$code console=$console"
@@ -238,6 +249,8 @@ jobs:
       - run: npm run build
       - run: npm run check:zero-cdn
       - run: npm run check:bundle-budget
+      - run: npm run bundle
+      - run: test -f ../internal/consoleassets/dist/index.html
       # Playwright's browser, cached on the lockfile so a run that has not
       # changed its dependencies downloads nothing.
       #
@@ -258,6 +271,43 @@ jobs:
       - if: steps.playwright.outputs.cache-hit != 'true'
         run: npx playwright install chromium
       - run: npm run e2e
+
+  # The container image (ADR-0068). It builds and never pushes: a pull request
+  # cannot publish, and what is worth catching before a tag is whether the
+  # image assembles at all and whether what it assembled runs.
+  #
+  # No QEMU. The Dockerfile has no RUN instruction, so nothing executes for
+  # either architecture at build time: Go cross-compiles both binaries and
+  # buildx copies each into its own manifest.
+  image:
+    name: Container image (ADR-0068)
+    needs: changes
+    if: needs.changes.outputs.image == 'true'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: telecraft
+      VERSION: ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - uses: docker/setup-buildx-action@v3
+      - run: go run ./tools/imagelint
+      - name: Stage the build context
+        run: tools/image/stage.sh
+      - name: Both architectures assemble
+        run: STAGED=1 tools/image/build.sh
+      # The air-gap rule, checked rather than asserted (ADR-0068 §6).
+      - name: The image serves with no network
+        run: |
+          STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
+          tools/image/offline.sh "$IMAGE:$VERSION"
 
   # The public demo's two halves (issue #50), built here so they cannot
   # regress: `telecraft snapshot` producing the platform API's documents

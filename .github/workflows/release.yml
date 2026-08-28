@@ -26,10 +26,14 @@ on:
       - 'v*'
 
 permissions:
-  # To create the release and attach the design artefact to it. Nothing here
-  # writes to the tree, and no other repository is touched: telling the demo
-  # about a release is demo-dispatch.yml's job, on the same tag push.
+  # contents: to create the release and attach the files. packages: to push
+  # the image and move the `release` tag beside it. id-token and attestations:
+  # for the build attestation, which needs no key this project holds
+  # (ADR-0068 §7).
   contents: write
+  packages: write
+  id-token: write
+  attestations: write
 
 jobs:
   publish:
@@ -78,6 +82,66 @@ jobs:
           esac
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
           echo "$TAG is on main; prerelease=$prerelease"
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - uses: docker/setup-buildx-action@v3
+
+      # The console is built once and both binaries are cross-compiled from
+      # it, so the bytes attached below and the bytes inside the image are one
+      # build rather than two of one commit (ADR-0068 §2).
+      - name: Stage the image's build context
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: tools/image/stage.sh
+
+      # An image that needed one fetch to become ready fails here, before
+      # anything is published, rather than in somebody's air gap (ADR-0068 §6).
+      - name: The image serves with no network
+        env:
+          IMAGE: telecraft
+          VERSION: ${{ github.ref_name }}
+        run: |
+          STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
+          tools/image/offline.sh "telecraft:$VERSION"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      # Two tags and no third (ADR-0068 §3). A pre-release publishes its
+      # version tag and moves nothing the world follows, which is ADR-0049 §6
+      # in the registry.
+      - name: Push the image index
+        id: image
+        env:
+          VERSION: ${{ github.ref_name }}
+          PRERELEASE: ${{ steps.tag.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if [ "$PRERELEASE" = "false" ]; then
+            export TAGS=release
+          fi
+          STAGED=1 PUSH=1 tools/image/build.sh
+          digest=$(docker buildx imagetools inspect \
+            "ghcr.io/telecraft-dev/telecraft:$VERSION" \
+            --format '{{json .Manifest.Digest}}' | tr -d '"')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "ghcr.io/telecraft-dev/telecraft@$digest"
+
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ghcr.io/telecraft-dev/telecraft
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
 
       # The design artefact: the four distributed files of
       # docs/branding/design-system.md "Distribution", laid out the way a
@@ -176,11 +240,21 @@ jobs:
               --mtime="@$epoch" \
               -czf "$out/$archive" \
               -C "$(dirname "$STAGED")" "$(basename "$STAGED")"
+          cp dist/image/telecraft-linux-amd64 "$out/telecraft-$TAG-linux-amd64"
+          cp dist/image/telecraft-linux-arm64 "$out/telecraft-$TAG-linux-arm64"
           cd "$out"
-          sha256sum "$archive" > SHA256SUMS
+          sha256sum "$archive" \
+            "telecraft-$TAG-linux-amd64" \
+            "telecraft-$TAG-linux-arm64" > SHA256SUMS
           cat SHA256SUMS
           echo "out=$out" >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            ${{ steps.pack.outputs.out }}/telecraft-*-linux-*
+            ${{ steps.pack.outputs.out }}/${{ steps.pack.outputs.archive }}
 
       # The notes are composed rather than left to `--generate-notes` alone:
       # the generated half is the commit list, and the half above it says
@@ -195,6 +269,7 @@ jobs:
           PRERELEASE: ${{ steps.tag.outputs.prerelease }}
           OUT: ${{ steps.pack.outputs.out }}
           ARCHIVE: ${{ steps.pack.outputs.archive }}
+          DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -euo pipefail
           notes="$RUNNER_TEMP/notes.md"
@@ -214,8 +289,15 @@ jobs:
             echo "  part of the software is given the terms with it. \`SHA256SUMS\`"
             echo "  covers the archive."
             echo
-            echo "**Not in this release**: prebuilt binaries, and the console bundle. Both are"
-            echo "built from the source at this tag, the console per deployment mode."
+            echo "- \`ghcr.io/telecraft-dev/telecraft:$TAG\`, the container image for"
+            echo "  \`linux/amd64\` and \`linux/arm64\`. Pin the digest:"
+            echo "  \`ghcr.io/telecraft-dev/telecraft@$DIGEST\`."
+            echo "- \`telecraft-$TAG-linux-amd64\` and \`telecraft-$TAG-linux-arm64\`, the"
+            echo "  same binary the image holds, for a pipeline with neither a container"
+            echo "  runtime nor a Go toolchain."
+            echo
+            echo "**Not in this release**: a build for any platform but Linux. Every other"
+            echo "platform builds from source at this tag."
             echo
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
               -f tag_name="$TAG" --jq .body
@@ -229,4 +311,6 @@ jobs:
             --notes-file "$notes" \
             "${flags[@]}" \
             "$OUT/$ARCHIVE" \
+            "$OUT/telecraft-$TAG-linux-amd64" \
+            "$OUT/telecraft-$TAG-linux-arm64" \
             "$OUT/SHA256SUMS"
