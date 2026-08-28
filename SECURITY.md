@@ -121,6 +121,42 @@ reaching an instance behind an air gap. That distance is whatever your change
 process takes, and it is the reason the table above promises a release rather
 than a remediation date.
 
+### If we are running it for you
+
+Everything above is written for somebody running Telecraft themselves. The
+hosted service at `app.telecraft.dev` adds a second reader, and one thing that
+is true for them and can never be true of a deployment you run yourself: we
+are holding the instance.
+
+An operator with access to the cluster can reach what any Organisation holds,
+which is the estate repository we keep for it and the values of the secrets
+its estate names. That operator is us. It is what hosting is, and the honest
+thing to do about it is write it down here rather than to imply otherwise.
+What sits under it is ordinary and worth naming: one Organisation is one
+process in one namespace with traffic between namespaces denied, secrets are
+encrypted at rest by the cluster under a key the cloud provider holds, a
+session is signed with one Instance's own key so it cannot be carried to
+another, and no surface anywhere returns the value of a secret to anybody,
+including us.
+
+Connecting a repository of your own adds one more thing, and it reaches
+further than the cluster does. We publish one app, and its private key can
+mint a credential for every repository every customer has connected it to,
+on git hosts we do not operate. Two things bound that. Each credential is
+minted for the repositories your own record names, so one customer's
+credential never opens another's repository. And the grant is yours: you chose
+which repositories at install time, you can read what you granted at your git
+host, and uninstalling withdraws it completely, with no request to us and
+nothing left behind holding access.
+
+Who inside the project may exercise either kind of access, on what authority,
+and what record you can see afterwards is not settled yet. The honest interim
+is to not have the access rather than to have it unrecorded.
+
+Nothing here reaches a deployment you run yourself. The binary holds no
+address of anything we operate, it contacts us for nothing, and we cannot see
+it, notify it, or reach into it.
+
 Advisories are written for that reader. Each one names the affected versions
 precisely rather than saying "older versions", carries whatever mitigation
 applies without an upgrade (a configuration change, a revoked credential, a
