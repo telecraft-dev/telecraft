@@ -106,12 +106,14 @@ isolation, run one instance per isolation domain.
 ### You cannot be assumed to get the fix quickly
 
 Air-gapped deployment is first class. Telecraft has no hard dependency on any
-hosted service, it doesn't phone home, and it never updates itself. So the
-maintainers can't see who is running which version, can't notify you, and
-can't shorten the distance between a fix existing and a fix reaching an
-instance behind an air gap. That distance is whatever your change process
-takes, and it is the reason the table above promises a release rather than a
-remediation date.
+hosted service, it doesn't phone home, and it never updates itself. Licence
+verification is no exception: it reads the file the deployment named, checks
+the signature against keys inside the binary, and opens no socket at any
+point. So the maintainers can't see who is running which version, can't
+notify you, and can't shorten the distance between a fix existing and a fix
+reaching an instance behind an air gap. That distance is whatever your change
+process takes, and it is the reason the table above promises a release rather
+than a remediation date.
 
 Advisories are written for that reader. Each one names the affected versions
 precisely rather than saying "older versions", carries whatever mitigation

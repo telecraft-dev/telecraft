@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/telecraft-dev/telecraft/internal/console"
+	"github.com/telecraft-dev/telecraft/internal/licence"
 )
 
 // routes builds the whole HTTP surface: the two probes, the auth slice open
@@ -29,6 +30,13 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("GET /api/v1/me", http.HandlerFunc(s.serveAuth))
 
 	api := http.NewServeMux()
+
+	// The Edition is not a reading of the estate, so it is answered from
+	// the licence standing rather than from the computed documents. It
+	// sits behind the same gate as everything else under /api/v1/: it is
+	// a fact about the reader's session, and nobody signed out has one.
+	api.Handle("GET /api/v1/edition", http.HandlerFunc(s.serveEdition))
+
 	for path, answer := range documentRoutes() {
 		api.Handle("GET "+path, s.document(answer))
 	}
@@ -77,6 +85,35 @@ var unanswered = map[string]string{
 	"/api/v1/tiers/proposals":       http.MethodPost,
 	"/api/v1/activations/proposals": http.MethodPost,
 	"/api/v1/setup":                 http.MethodGet,
+}
+
+// editionPayload is what /api/v1/edition answers: the Edition this
+// Instance is running, and the one quiet line a surface that names the
+// Edition shows.
+//
+// The line is composed here rather than by each surface, so the CLI, the
+// operator's terminal and the console cannot disagree about what an
+// Instance is running (ADR-0070 §5). What is wrong with a file that was
+// not accepted is on the operator's terminal, where an operator is, and is
+// not carried here.
+type editionPayload struct {
+	Edition   string `json:"edition"`
+	Statement string `json:"statement"`
+}
+
+// serveEdition answers what this Instance is running. It answers before
+// the first documents exist and after a licence file has gone: an Instance
+// with no licence is Standard Edition, which is an answer rather than an
+// absence.
+func (s *Server) serveEdition(w http.ResponseWriter, r *http.Request) {
+	standing := s.licence.Load()
+	if standing == nil {
+		standing = &licence.Standing{State: licence.Absent}
+	}
+	writeJSON(w, http.StatusOK, editionPayload{
+		Edition:   string(standing.Edition()),
+		Statement: standing.Report(),
+	})
 }
 
 // signInUnavailable is what an instance answers before it has read who may

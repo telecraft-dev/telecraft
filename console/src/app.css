@@ -371,6 +371,15 @@
   font-size: var(--text-s);
 }
 
+/* The Edition, under the version and in the same register (ADR-0070 §5):
+   a fact about the reader's session, never a health signal, so no
+   severity colour rides it whatever the licence says. */
+.profile-edition {
+  align-self: flex-start;
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
 /* Jump-to-object dialog */
 
 .jump-overlay {

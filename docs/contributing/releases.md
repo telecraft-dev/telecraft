@@ -121,7 +121,20 @@ Three things are deliberately absent:
 6. **Verify.** The release page lists the archive and `SHA256SUMS`,
    `git ls-remote --tags origin release` resolves to the commit you tagged,
    and the demo run in `estate-demo` finishes green.
-7. **Trust the checks over an open tab.** The demo serves behind a cache
+7. **Verify that a known-good licence still verifies**, against the binary
+   the release built:
+
+   ```bash
+   ./telecraft licence -licence-file KNOWN_GOOD_LICENCE
+   ```
+
+   It must print the Enterprise Edition line. A build shipping the wrong
+   public keys denies every Enterprise Instance its Entitlements while
+   looking entirely healthy, and this is the only step that catches it. The
+   licence to test with, and the keys themselves, live in the private
+   `telecraft-dev/licensing` repository; a signing key never enters this
+   repository, its CI, an image, or a release artefact.
+8. **Trust the checks over an open tab.** The demo serves behind a cache
    that can hold the previous build for some minutes after the deployment
    finishes, so a page that still looks old is not evidence the release
    failed. Hard-refresh, and compare the version the console names in its

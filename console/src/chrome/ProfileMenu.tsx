@@ -32,6 +32,7 @@ import { consoleVersion, versionLink } from './version'
  */
 export function ProfileMenu() {
   const me = useQuery({ queryKey: ['me'], queryFn: api.me })
+  const edition = useQuery({ queryKey: ['edition'], queryFn: api.edition })
   const queryClient = useQueryClient()
   const signOut = useMutation({
     mutationFn: api.logout,
@@ -139,6 +140,17 @@ export function ProfileMenu() {
           ) : (
             <span className="profile-version" data-testid="console-version">
               {consoleVersion}
+            </span>
+          )}
+          {/* The Edition, under the version and in the same register
+              (ADR-0070 §5). The server composes the line, so this shows
+              what it says and never assembles a sentence of its own. It
+              takes no severity styling: an expired licence is a fact
+              about the reader's session, and a refusal belongs on the
+              surface that refuses. */}
+          {edition.data !== undefined && (
+            <span className="profile-edition" data-testid="console-edition">
+              {edition.data.statement}
             </span>
           )}
         </div>

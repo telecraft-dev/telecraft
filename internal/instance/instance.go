@@ -43,6 +43,7 @@ import (
 
 	"github.com/telecraft-dev/telecraft/internal/auth"
 	"github.com/telecraft-dev/telecraft/internal/console"
+	"github.com/telecraft-dev/telecraft/internal/licence"
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
 	"github.com/telecraft-dev/telecraft/internal/readings"
 	"github.com/telecraft-dev/telecraft/internal/serving"
@@ -100,6 +101,14 @@ type Config struct {
 	// an Instance whose estate names any.
 	Secrets auth.Secrets
 
+	// LicenceFile is the licence the deployment placed, or empty for the
+	// Standard Edition, which is the ordinary case and needs no file. The
+	// file is read at start and again whenever it changes, and what it
+	// says is reported and never enforced here: no licence state reaches
+	// the renderer, the OpAMP endpoint, the readiness probe or the
+	// artefact a Served collector fetches (ADR-0070 §4).
+	LicenceFile string
+
 	// Telemetry is the arrivals seam. Nil takes no arrival reading, which
 	// the console renders as not known with the cause said out loud.
 	Telemetry telemetry.Provider
@@ -142,7 +151,11 @@ type Server struct {
 	//      providers, rebuilt whenever the head moves, so removing a user
 	//      revokes them at their next request;
 	authz atomic.Pointer[auth.Handler]
-	//   4. nothing else.
+	//   4. the licence standing at the file's current contents, a pure
+	//      function of that file, the keys in this binary and the clock
+	//      (ADR-0070 §4): losing it costs one re-read and no record;
+	licence atomic.Pointer[licence.Standing]
+	//   5. nothing else.
 }
 
 // New validates the configuration and builds the server. Nothing is
@@ -225,6 +238,12 @@ func (s *Server) Start(ctx context.Context) error {
 	} else {
 		s.observe(snap)
 	}
+
+	// The licence is read before anything is served, so the first surface
+	// anybody meets names the Edition it is actually running. A file that
+	// was not accepted is loud here and stops nothing: the server starts
+	// whatever the licence says and whatever it fails to say.
+	s.readLicence()
 
 	// Who may sign in, how, and with what material is read before
 	// anything is served. The estate is reviewed and it asserts what this
@@ -310,6 +329,7 @@ func (s *Server) pollLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			s.readLicence()
 			if s.opamp == nil {
 				snap, err := s.cfg.Source.Snapshot(ctx)
 				if err != nil {
@@ -341,6 +361,30 @@ func (s *Server) refresh(ctx context.Context) {
 		return
 	}
 	s.docs.Store(&bundle)
+}
+
+// readLicence re-reads the licence file and holds what it says. The check
+// runs at start and again on the poll, so a file the deployment replaced
+// takes effect without a restart, and the result is held in memory and
+// dies with the process.
+//
+// A change is one line on the operator's terminal, and a file that was not
+// accepted names itself and what is wrong with it. Nothing else happens: a
+// licence never stops this process starting, serving, or answering a
+// probe.
+func (s *Server) readLicence() {
+	standing := licence.Read(s.cfg.LicenceFile)
+	previous := s.licence.Load()
+	s.licence.Store(&standing)
+	if previous != nil && previous.Same(standing) {
+		return
+	}
+	if standing.State == licence.Unreadable {
+		s.logf("the licence file %s was not accepted: %s", standing.Path, standing.Problem)
+	}
+	if standing.State != licence.Absent || previous != nil {
+		s.logf("this instance is running %s", standing.Report())
+	}
 }
 
 // checkExternalURL fails closed on the one combination that would put a

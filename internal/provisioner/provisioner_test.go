@@ -7,8 +7,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/telecraft-dev/telecraft/internal/licence"
 	"github.com/telecraft-dev/telecraft/internal/register"
 )
+
+// unlicensed is the deployment ADR-0050 §2 protects: no licence file, the
+// Standard Edition, and nothing wrong with it.
+func unlicensed() licence.Standing { return licence.Standing{State: licence.Absent} }
+
+// entitled is a deployment holding a licence that names running many
+// Organisations, in a window that is open. The Standing is built rather
+// than signed: what a signature means is internal/licence's to test, and
+// what a Standing entitles is this package's.
+func entitled() licence.Standing {
+	return licence.Standing{
+		State: licence.InForce,
+		Document: licence.Document{
+			Licence:      "tc-2026-0007",
+			Licensee:     "Acme Ltd",
+			Entitlements: []licence.Entitlement{licence.ManyOrganisations},
+		},
+	}
+}
 
 func org(name string, state register.State, address string, estate register.EstateSource) register.Organisation {
 	return register.Organisation{
@@ -45,7 +65,12 @@ func TestTheProvisionerHoldsNothingOfAnEstate(t *testing.T) {
 		},
 		reflect.TypeOf(Plan{}): {
 			"Actions": "the actions, each of the above",
+			"Refused": "names the licence withholds, each with the sentence that says so",
 			"Unknown": "names reality holds and the register does not",
+		},
+		reflect.TypeOf(Refusal{}): {
+			"Organisation": "the name in the register",
+			"Reason":       "what a person is told, which names no estate and reads none",
 		},
 		reflect.TypeOf(register.Organisation{}): {
 			"Name":           "the name, which is also the address label",
@@ -112,7 +137,7 @@ func TestReconcileCreatesUpdatesAndRetires(t *testing.T) {
 		{Organisation: "corvid", Address: "https://corvid.telecraft.example", Estate: hosted()},
 	}
 
-	plan := Reconcile(reg, observed)
+	plan := Reconcile(reg, observed, entitled())
 	if len(plan.Unknown) != 0 {
 		t.Errorf("the register does not name %v, and it names every Instance here", plan.Unknown)
 	}
@@ -133,7 +158,7 @@ func TestReconcileCreatesUpdatesAndRetires(t *testing.T) {
 			t.Errorf("action %d = %s %s, want %s %s", i, plan.Actions[i].Organisation(), plan.Actions[i].Kind, w.org, w.kind)
 		}
 	}
-	if !reflect.DeepEqual(plan, Reconcile(reg, observed)) {
+	if !reflect.DeepEqual(plan, Reconcile(reg, observed, entitled())) {
 		t.Error("two reconciliations of one register read differently")
 	}
 
@@ -151,7 +176,7 @@ func TestARetiredOrganisationIsNeverProvisionedAgain(t *testing.T) {
 	reg := register.Register{Organisations: []register.Organisation{
 		org("corvid", register.StateRetired, "https://corvid.telecraft.example", hosted()),
 	}}
-	if plan := Reconcile(reg, nil); !plan.Empty() {
+	if plan := Reconcile(reg, nil, unlicensed()); !plan.Empty() {
 		t.Errorf("reconciling a retired record with nothing running plans %+v, want nothing", plan.Actions)
 	}
 }
@@ -159,7 +184,7 @@ func TestARetiredOrganisationIsNeverProvisionedAgain(t *testing.T) {
 // Retirement is deliberate. An Instance the register does not name at all
 // is reported for somebody to look at, and never destroyed.
 func TestAnInstanceTheRegisterDoesNotNameIsReportedAndNeverDestroyed(t *testing.T) {
-	plan := Reconcile(register.Register{}, []Instance{{Organisation: "acme", Address: "https://acme.telecraft.example"}})
+	plan := Reconcile(register.Register{}, []Instance{{Organisation: "acme", Address: "https://acme.telecraft.example"}}, unlicensed())
 	if !plan.Empty() {
 		t.Errorf("an Instance no record names was acted on: %+v", plan.Actions)
 	}
@@ -204,7 +229,7 @@ func TestApplyCarriesOnPastOneRefusalAndNamesIt(t *testing.T) {
 	}}
 	sub := &recording{refuses: "acme"}
 
-	err := Apply(context.Background(), sub, Reconcile(reg, nil))
+	err := Apply(context.Background(), sub, Reconcile(reg, nil, entitled()))
 	if err == nil {
 		t.Fatal("a refusal was not reported")
 	}

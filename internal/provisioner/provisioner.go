@@ -18,6 +18,16 @@
 // Substrate seam: a namespace, a chart release, storage, a session key and
 // a route in one deployment; something else in another. Nothing in this
 // package knows which.
+//
+// The Provisioner is where the licence gate attaches (ADR-0069 §7,
+// ADR-0070 §1): what is gated is running many Organisations from one
+// deployment, and the component that runs many is this one. An adopter
+// running one Telecraft for their own estate meets none of this, and their
+// binary holds none of it. What the gate withholds is a create, and it
+// withholds nothing else: an Instance already running is updated whatever
+// the licence says, a retirement always proceeds, and no licence state
+// reaches the renderer, the OpAMP endpoint or the artefact a collector
+// fetches (ADR-0070 §4).
 package provisioner
 
 import (
@@ -26,8 +36,19 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/telecraft-dev/telecraft/internal/licence"
 	"github.com/telecraft-dev/telecraft/internal/register"
 )
+
+// Allowance is how many Instances a deployment runs without an
+// Entitlement to run many. It is the free single-tenant product: one
+// Organisation, unrestricted, exactly as it has always been.
+//
+// Nothing is counted against a licence here (ADR-0070 §3). A licence that
+// grants the Entitlement grants it without limit; what this number
+// separates is the deployment that runs one Telecraft from the deployment
+// that runs many.
+const Allowance = 1
 
 // Instance is one Organisation's Instance as the Provisioner addresses it:
 // which Organisation it belongs to, the address it answers on, and the
@@ -76,11 +97,34 @@ type Action struct {
 // Organisation names who the action is about.
 func (a Action) Organisation() string { return a.Instance.Organisation }
 
+// Refusal is one Organisation the register asks for and the licence does
+// not entitle the deployment to run.
+//
+// It carries the sentence a surface says. The sentence names what is
+// unavailable and what would make it available, and nothing else: no
+// price, no plan name, no link, and no second sentence arguing that the
+// reader should want it.
+type Refusal struct {
+	// Organisation is the record that was not acted on.
+	Organisation string
+
+	// Reason is what a person is told.
+	Reason string
+}
+
 // Plan is the whole of one reconciliation, in Organisation order so that
 // two runs over one register read the same.
 type Plan struct {
 	// Actions are what the substrate is asked to do.
 	Actions []Action
+
+	// Refused names the Organisations the licence withholds, each with
+	// the sentence that says so. They are reported and never carried out.
+	//
+	// A refusal is never a retirement and never an update: what the gate
+	// withholds is standing an Instance up that is not up. Nothing
+	// already serving is touched by one.
+	Refused []Refusal
 
 	// Unknown names the Organisations reality holds an Instance for that
 	// the register does not name at all.
@@ -111,27 +155,56 @@ func Instances(reg register.Register) []Instance {
 	return out
 }
 
-// Reconcile works out what would make reality match the register.
+// Reconcile works out what would make reality match the register, within
+// what the deployment's licence entitles it to run.
 //
 // A retired record whose Instance is already gone plans nothing, so a
 // retired Organisation is never provisioned again however many times the
 // reconciler runs.
-func Reconcile(reg register.Register, observed []Instance) Plan {
+//
+// Creates beyond the Allowance are gated, in name order, so two runs over
+// one register and one licence refuse the same Organisations. Updates and
+// retirements are never gated: an Instance already running stays running
+// and stays in line with its record whatever the licence says.
+func Reconcile(reg register.Register, observed []Instance, held licence.Standing) Plan {
 	running := map[string]Instance{}
 	for _, inst := range observed {
 		running[inst.Organisation] = inst
 	}
 
-	var plan Plan
+	// kept is what the register asks for and reality already has. An
+	// Instance the register does not name at all is not counted: it is
+	// reported as unknown for somebody to look at, and refusing a
+	// legitimate create because of one would make a defect in the
+	// register into a denial of what the deployment paid for.
+	var (
+		plan    Plan
+		creates []Action
+		kept    int
+	)
 	for _, want := range Instances(reg) {
 		have, up := running[want.Organisation]
 		switch {
 		case !up:
-			plan.Actions = append(plan.Actions, Action{Kind: ActionCreate, Instance: want})
+			creates = append(creates, Action{Kind: ActionCreate, Instance: want})
+			continue
 		case have != want:
 			plan.Actions = append(plan.Actions, Action{Kind: ActionUpdate, Instance: want})
 		}
+		kept++
 	}
+	for _, create := range creates {
+		if kept < Allowance || held.Grants(licence.ManyOrganisations) {
+			plan.Actions = append(plan.Actions, create)
+			kept++
+			continue
+		}
+		plan.Refused = append(plan.Refused, Refusal{
+			Organisation: create.Organisation(),
+			Reason:       refusal(held),
+		})
+	}
+
 	for _, inst := range observed {
 		org, known := reg.Lookup(inst.Organisation)
 		switch {
@@ -148,8 +221,37 @@ func Reconcile(reg register.Register, observed []Instance) Plan {
 	sort.Slice(plan.Actions, func(i, j int) bool {
 		return plan.Actions[i].Organisation() < plan.Actions[j].Organisation()
 	})
+	sort.Slice(plan.Refused, func(i, j int) bool {
+		return plan.Refused[i].Organisation < plan.Refused[j].Organisation
+	})
 	sort.Strings(plan.Unknown)
 	return plan
+}
+
+// refusal is what a person is told when the licence withholds a create.
+//
+// One sentence, naming what is unavailable and what would make it
+// available, in the reader's words. The word trial appears in none of
+// them, because there is no trial.
+func refusal(held licence.Standing) string {
+	if !held.Holds(licence.ManyOrganisations) {
+		switch {
+		case held.State == licence.Unreadable:
+			return "Running another Organisation needs an Enterprise Edition licence, and the file this deployment was given was not accepted."
+		case held.Edition() == licence.Enterprise:
+			return "Running another Organisation needs a licence that names it, and this one does not."
+		default:
+			return "Running another Organisation needs an Enterprise Edition licence."
+		}
+	}
+	switch held.State {
+	case licence.Expired:
+		return "The licence expired on " + held.Document.Expires.Written() + ", and running another Organisation needs one that has not."
+	case licence.NotYetStarted:
+		return "The licence starts on " + held.Document.Issued.Written() + ", and running another Organisation needs one that has started."
+	default:
+		return "Running another Organisation needs an Enterprise Edition licence."
+	}
 }
 
 // Substrate is what a deployment runs Instances on: a Kubernetes cluster
@@ -174,7 +276,9 @@ type Substrate interface {
 	Retire(ctx context.Context, organisation string) error
 }
 
-// Apply carries a plan out.
+// Apply carries a plan out. It acts on the plan's actions, which are what
+// survived the gate: a refusal is reported by whoever runs the reconciler
+// and is never an action, so nothing here can carry one out by accident.
 //
 // One Organisation's failure never stops the others: reconciling is run
 // again, and an Organisation the substrate refuses today must not hold up

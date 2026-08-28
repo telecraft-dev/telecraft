@@ -15,6 +15,7 @@ import type {
   ClaimPreviewRequest,
   CollectorRow,
   ComposeVerdict,
+  EditionStanding,
   EndorsementDoc,
   Environment,
   EstatePayload,
@@ -239,6 +240,16 @@ function emptyDrawer(tier: string): CardDrawer {
  * server would judge with, so those surfaces stay live rather than canned.
  */
 export const demoApi: PlatformApi = {
+  /**
+   * The demo runs Standard Edition, so the surfaces an evaluator meets
+   * are the free ones and the demo never shows a capability an evaluator
+   * cannot have.
+   */
+  edition: async (): Promise<EditionStanding> => ({
+    edition: 'Standard Edition',
+    statement: 'Standard Edition',
+  }),
+
   me: async (): Promise<Me> => {
     const s = await snapshot()
     return { ...s.estate.me, editableTeams: subtree(s.estate.teams, s.estate.me.team) }

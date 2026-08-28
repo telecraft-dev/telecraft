@@ -77,6 +77,27 @@ test('the profile menu names the version the console was built from', async ({ p
   }
 })
 
+test('the profile menu names the Edition under the version', async ({ page }) => {
+  await page.goto('/estate')
+  await page.getByTestId('profile-trigger').click()
+
+  // The fixture backend holds no licence file, which is the ordinary case
+  // and the whole free product, so the line is the Standard one and it
+  // says nothing more.
+  const edition = page.getByTestId('console-edition')
+  await expect(edition).toHaveText('Standard Edition')
+
+  // It sits under the version, in the same register: a fact about the
+  // reader's session, never a health signal and never a sales pitch.
+  const version = page.getByTestId('console-version')
+  const order = await edition.evaluate(
+    (el, other) => el.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_PRECEDING,
+    await version.elementHandle(),
+  )
+  expect(order).toBeTruthy()
+  await expect(edition).not.toHaveText(/trial|upgrade|contact|free/i)
+})
+
 test('a panel is resized by dragging its edge, and remembers the width', async ({ page }) => {
   await page.goto('/estate?object=tier%3Adata-flow%2Fgateway')
 

@@ -38,6 +38,11 @@
 // decision is taken on (ADR-0020 §6). Nothing is activated without -confirm.
 // See activate.go.
 //
+// licence prints what this build makes of a licence file: the Edition, the
+// licensee, the dates, the Entitlements and the path it read them from
+// (ADR-0070 §5). It reports rather than judges, so it exits 0 whatever it
+// finds, and it reaches no network. See licence.go.
+//
 // passwd hashes one basic-auth secret for the users.yaml seam (REQ-017,
 // ADR-0019): stdin in, the stored hash out. See passwd.go.
 //
@@ -88,6 +93,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runDelivery(args[1:], stdout, stderr)
 	case "activate":
 		return runActivate(args[1:], stdout, stderr)
+	case "licence":
+		return runLicence(args[1:], stdout, stderr)
 	case "passwd":
 		return runPasswd(args[1:], os.Stdin, stdout, stderr)
 	default:
@@ -101,10 +108,11 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
-	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-fetch-interval 30s] [-session-key-file path] [-telemetry-endpoint URL] [-secret name=value]")
+	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-fetch-interval 30s] [-session-key-file path] [-telemetry-endpoint URL] [-licence-file path] [-secret name=value]")
 	fmt.Fprintln(stderr, "       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
 	fmt.Fprintln(stderr, "       telecraft activate -estate <dir> -substrate (catalogue|schema-registry) -version <ref> [-artefacts dir] [-confirm -by <owner>]")
+	fmt.Fprintln(stderr, "       telecraft licence [-licence-file <path>]")
 	fmt.Fprintln(stderr, "       telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)")
 }
 
