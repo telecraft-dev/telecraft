@@ -7,12 +7,12 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 
 | REQ | ADR / session | Build phase |
 |---|---|---|
-| REQ-001 three rungs, separately adoptable | ADR-0002, ADR-0003, ADR-0013, ADR-0072 (the hosted service offers the governance rungs and not the serving rung) | P1 to P5 |
-| REQ-002 nothing in the telemetry path | ADR-0002, ADR-0070 (a licence state never changes what a collector receives), ADR-0072 (an unpaid subscription refuses Authoring and never delivery) | all |
+| REQ-001 three rungs, separately adoptable | ADR-0002, ADR-0003, ADR-0013, ADR-0072 (the hosted service offers the governance rungs and not the serving rung), ADR-0073 (Authoring in a hosted Organisation needs a repository the customer connected) | P1 to P5 |
+| REQ-002 nothing in the telemetry path | ADR-0002, ADR-0070 (a licence state never changes what a collector receives), ADR-0072 (an unpaid subscription refuses Authoring and never delivery), ADR-0073 (uninstalling the published App withdraws Authoring and never delivery) | all |
 | REQ-003 configs never binaries | ADR-0002, ADR-0068 (the rule is about the telemetry path; packaging the control plane is not collector distribution) | P2 |
 | REQ-004 neutral core, vendor lint | ADR-0001 | P0 |
 | REQ-005 unique branding | G0 | P0 |
-| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check), ADR-0067 (the Instance server carries its console and reaches nothing beyond its estate), ADR-0068 (every artefact mirrors; the image is started offline in CI), ADR-0069 (many Organisations reconcile from git into the adopter's own substrate, fetching nothing), ADR-0070 (the licence verifies offline against keys in the binary), ADR-0071 (secrets are files a deployment places; no secret manager is ever a dependency), ADR-0072 (the hosted service is a private sibling the product never imports, names, or reaches) | all |
+| REQ-006 air-gap deployable, no SaaS dependency | ADR-0019, ADR-0045 (zero-CDN CI check), ADR-0067 (the Instance server carries its console and reaches nothing beyond its estate), ADR-0068 (every artefact mirrors; the image is started offline in CI), ADR-0069 (many Organisations reconcile from git into the adopter's own substrate, fetching nothing), ADR-0070 (the licence verifies offline against keys in the binary), ADR-0071 (secrets are files a deployment places; no secret manager is ever a dependency), ADR-0072 (the hosted service is a private sibling the product never imports, names, or reaches), ADR-0073 (the published App is the hosted service's alone; a self-managed deployment registers its own and holds its own key) | all |
 | REQ-010 component Catalogue | ADR-0020 | P2 |
 | REQ-011 team-scoped Allow-lists | ADR-0021 | P2 |
 | REQ-012 hierarchical Owners/Teams, roll-up | ADR-0017, ADR-0035, ADR-0042 (roll-up surfaces) | P1/P4 |
@@ -30,7 +30,7 @@ rows is the exit gate for `/to-issues`. Build phases are defined in
 | REQ-030 phase-ordered blueprints | ADR-0024 (ordering findings, phases dropped) | P2 |
 | REQ-031 satisfies = intent | ADR-0004, ADR-0026 | P2 |
 | REQ-032 one artefact, SHA-stamped | ADR-0002, ADR-0013, ADR-0027 | P2 |
-| REQ-033 PRs via GitHub App | ADR-0003, ADR-0014, ADR-0028 (forge-neutral), ADR-0071 (the App key's custody, and what a missing one declares), ADR-0072 (a hosted Organisation connects its own repository, and the App key never reaches its namespace) | P2 |
+| REQ-033 PRs via GitHub App | ADR-0003, ADR-0014, ADR-0028 (forge-neutral), ADR-0071 (the App key's custody, and what a missing one declares), ADR-0072 (a hosted Organisation connects its own repository, and the App key never reaches its namespace), ADR-0073 (the published App a hosted customer installs, the permissions it asks for, and what a narrower grant declares) | P2 |
 | REQ-034 renderer hard rules | ADR-0007, ADR-0010, ADR-0022, ADR-0028 | P2 |
 | REQ-035 YAML escape hatch | ADR-0043 (resident read-only flyout) | P4 |
 | REQ-036 canvas survives scale | ADR-0007, ADR-0044 | P4 |
