@@ -92,7 +92,7 @@ export function PaletteView() {
       case 'allow-list':
         return (
           <>
-            <p className="why-claim">Survives every declared Allow-list on the chain</p>
+            <p className="why-claim">Allowed by every Allow-list declared above this team</p>
             <ul className="why-lines">
               {palette.declaredLists.map((listTeam) => (
                 <li key={listTeam} className="mono">
@@ -105,8 +105,10 @@ export function PaletteView() {
       case 'default-allow':
         return (
           <>
-            <p className="why-claim">No Allow-list is declared on the chain</p>
-            <p>The effective list is the whole active Catalogue.</p>
+            <p className="why-claim">
+              No Allow-list is declared for this team or any team above it
+            </p>
+            <p>Everything in the active Catalogue is allowed.</p>
           </>
         )
       default:

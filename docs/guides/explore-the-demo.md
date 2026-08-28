@@ -207,10 +207,11 @@ Three views: **Browse**, **Effective palette**, and **Governance**.
 Browse is the Catalogue: 268 entries in the active `v0.158.0` artefact, with
 `v0.156.0` kept beside it in the selector. Installed Catalogues are kept, never
 replaced, because a collector is judged against the Catalogue for the version
-it runs. Filters narrow by stability and by signal, and each row shows
-per-signal stability rather than one overall rating. Below the table, a
-**Governed Components** section lists the estate's configured instances at
-their pinned versions.
+it runs. Filters narrow by stability, by signal, and by a name search, and
+each row shows stability by signal rather than one overall rating. A row
+whose signals all sit at one level shows a single `all signals` chip; mixed
+rows keep a chip per signal. Below the table, a **Governed Components**
+section lists the estate's configured instances at their pinned versions.
 
 Effective palette is `telecraft palette` as a page: pick a team and see every
 entry it can use, with its origin (`default-allow`, `allow-list`, or a named

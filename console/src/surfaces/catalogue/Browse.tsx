@@ -6,6 +6,7 @@ import { STABILITY_LEVELS, formatCatalogueKey } from '../../api/types'
 import { formatObjectRef, parseObjectRef } from '../../objectref'
 import { EntryPanel } from './EntryPanel'
 import { chipClass } from '../../ui/Chip'
+import { STABILITY_TITLE, stabilityChips } from './stability'
 
 /**
  * Catalogue browsing by version (ADR-0020 §9: installed catalogues are
@@ -36,11 +37,20 @@ export function Browse() {
 
   const stability = search.stability
   const signal = search.signal
+  const name = search.name?.trim().toLowerCase()
   const signals = [...new Set(entries.data.flatMap((entry) => Object.keys(entry.stability)))].sort()
 
-  // Together the filters name the signal at the level; alone, each filters
-  // on any signal.
+  // Together the stability and signal filters name the signal at the level;
+  // alone, each filters on any signal. The name filter narrows further, as
+  // a substring of the type or the display name.
   const visible = entries.data.filter((entry) => {
+    if (
+      name &&
+      !entry.type.toLowerCase().includes(name) &&
+      !(entry.displayName ?? '').toLowerCase().includes(name)
+    ) {
+      return false
+    }
     if (signal && stability) return entry.stability[signal] === stability
     if (signal) return signal in entry.stability
     if (stability) return Object.values(entry.stability).includes(stability as StabilityLevel)
@@ -53,7 +63,7 @@ export function Browse() {
       ? entries.data.find((entry) => formatCatalogueKey(entry) === selected.id)
       : undefined
 
-  const setParam = (key: 'version' | 'stability' | 'signal', value: string) =>
+  const setParam = (key: 'version' | 'stability' | 'signal' | 'name', value: string) =>
     void navigate({
       from: '/catalogue',
       to: '/catalogue',
@@ -109,6 +119,15 @@ export function Browse() {
               ))}
             </select>
           </label>
+          <label>
+            Name
+            <input
+              type="text"
+              data-testid="filter-name"
+              value={search.name ?? ''}
+              onChange={(event) => setParam('name', event.target.value)}
+            />
+          </label>
         </div>
         <table className="catalogue-table" data-testid="entries-table">
           <thead>
@@ -116,7 +135,7 @@ export function Browse() {
               <th>Class</th>
               <th>Type</th>
               <th>Name</th>
-              <th>Per-signal stability</th>
+              <th>Stability by signal</th>
               <th>Source</th>
             </tr>
           </thead>
@@ -149,19 +168,18 @@ export function Browse() {
                   <td>{entry.displayName}</td>
                   <td>
                     <ul className="signal-chips">
-                      {Object.keys(entry.stability)
-                        .sort()
-                        .map((s) => (
-                          <li
-                            key={s}
-                            className={chipClass('neutral', {
-                              mono: true,
-                              extra: `stability-chip stability-${entry.stability[s]}`,
-                            })}
-                          >
-                            {s}: {entry.stability[s]}
-                          </li>
-                        ))}
+                      {stabilityChips(entry.stability).map((chip) => (
+                        <li
+                          key={chip.key}
+                          className={chipClass('neutral', {
+                            mono: true,
+                            extra: `stability-chip stability-${chip.level}`,
+                          })}
+                          title={STABILITY_TITLE[chip.level]}
+                        >
+                          {chip.label}
+                        </li>
+                      ))}
                     </ul>
                   </td>
                   <td>{entry.source}</td>
@@ -170,10 +188,12 @@ export function Browse() {
             })}
           </tbody>
         </table>
-        <h2 className="catalogue-subhead">Governed Components</h2>
-        <p className="section-summary">
-          Configured instances of Catalogue types, at their pinned versions.
-        </p>
+        <header className="section-header">
+          <h2>Governed Components</h2>
+          <p className="section-summary">
+            Configured instances of Catalogue types, at their pinned versions.
+          </p>
+        </header>
         <table className="catalogue-table" data-testid="catalogue-table">
           <thead>
             <tr>

@@ -1924,6 +1924,17 @@
   overflow: auto;
 }
 
+/* Both browse tables fill the column: the entries table and the Governed
+ * Components table read as one surface at one width, beside the entry
+ * panel when one is summoned. */
+.browse-main .catalogue-table {
+  width: 100%;
+}
+
+.browse-main .section-header {
+  margin-top: var(--space-5);
+}
+
 .catalogue-filters {
   display: flex;
   align-items: center;
@@ -1939,9 +1950,9 @@
   font-size: var(--text-s);
 }
 
-.catalogue-subhead {
-  font-size: var(--text-base);
-  margin: var(--space-5) 0 var(--space-1);
+.catalogue-filters input {
+  width: 14rem;
+  font-size: var(--text-s);
 }
 
 .mono {

@@ -17,3 +17,11 @@ export function count(n: number, one: string, many = `${one}s`): string {
 export function formatCount(n: number): string {
   return n.toLocaleString('en-GB')
 }
+
+/** A calendar date in words, day month year; the raw value on a surface
+ * reads as debug output. Falls back to the input when it does not parse. */
+export function formatDate(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+}

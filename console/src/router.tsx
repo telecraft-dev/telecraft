@@ -242,6 +242,8 @@ export interface CatalogueSearch {
   /** Browse filters: together they filter on the named signal at the named level. */
   stability?: string
   signal?: string
+  /** Browse name filter: a substring of the entry's type or display name. */
+  name?: string
   /** The palette's team; absent means the signed-in user's team. */
   team?: string
   /** A class/type entry prefilling a Grant draft in the governance view. */
@@ -263,6 +265,7 @@ const catalogueRoute = createRoute({
     version: typeof search.version === 'string' ? search.version : undefined,
     stability: typeof search.stability === 'string' ? search.stability : undefined,
     signal: typeof search.signal === 'string' ? search.signal : undefined,
+    name: typeof search.name === 'string' ? search.name : undefined,
     team: typeof search.team === 'string' ? search.team : undefined,
     request: typeof search.request === 'string' ? search.request : undefined,
   }),

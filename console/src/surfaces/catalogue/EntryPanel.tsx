@@ -5,6 +5,8 @@ import { formatObjectRef } from '../../objectref'
 import { buttonClass } from '../../ui/Button'
 import { Panel } from '../../ui/Panel'
 import { chipClass } from '../../ui/Chip'
+import { formatDate } from '../../ui/text'
+import { STABILITY_TITLE } from './stability'
 
 /**
  * One Catalogue entry, summoned in place (ADR-0042 §3.2): identity with
@@ -61,19 +63,20 @@ export function EntryPanel({
       </dl>
       {entry.description && <p className="entry-description">{entry.description}</p>}
       <section>
-        <h3>Per-signal stability</h3>
+        <h3>Stability by signal</h3>
         <ul className="signal-chips">
-          {Object.keys(entry.stability)
-            .sort()
-            .map((signal) => (
+          {Object.entries(entry.stability)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([signal, level]) => (
               <li
                 key={signal}
                 className={chipClass('neutral', {
                   mono: true,
-                  extra: `stability-chip stability-${entry.stability[signal]}`,
+                  extra: `stability-chip stability-${level}`,
                 })}
+                title={STABILITY_TITLE[level]}
               >
-                {signal}: {entry.stability[signal]}
+                {signal}: {level}
               </li>
             ))}
         </ul>
@@ -84,7 +87,7 @@ export function EntryPanel({
             data-testid={`deprecation-${signal}`}
           >
             <strong>
-              {signal} deprecated {notice.date}
+              {signal} deprecated {formatDate(notice.date)}
             </strong>
             <p>{notice.migration}</p>
           </div>
@@ -124,7 +127,10 @@ export function EntryPanel({
         className={buttonClass('secondary', 'who-acts')}
         data-testid="entry-see-palette"
       >
-        See the effective palette
+        {/* The reader's question, not the surface's name (interface-text
+            rule): the door answers "may my team use it?", and "effective
+            palette" is the docs' word for the answer, not the reader's. */}
+        See what your team may use
       </Link>
     </Panel>
   )

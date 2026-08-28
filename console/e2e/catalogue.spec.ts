@@ -43,6 +43,42 @@ test('stability and signal filters narrow the browse, alone and together', async
   await expect(page).toHaveURL(/signal=logs/)
 })
 
+test('the name filter narrows by type or display name and lands in the URL', async ({ page }) => {
+  await page.goto('/catalogue')
+  const rows = page.getByTestId('entries-table').locator('tbody tr')
+  await page.getByTestId('filter-name').fill('kafka')
+  await expect(rows).toHaveCount(2)
+  await expect(page.getByTestId('entry-receiver/kafka')).toBeVisible()
+  await expect(page.getByTestId('entry-exporter/kafka')).toBeVisible()
+  // The filtered state is URL-addressable (ADR-0042 §3.5).
+  await expect(page).toHaveURL(/name=kafka/)
+  // Case falls away, and the display name matches as well as the type:
+  // "file log" is the display name of the filelog receiver.
+  await page.getByTestId('filter-name').fill('File log')
+  await expect(rows).toHaveCount(1)
+  await expect(page.getByTestId('entry-receiver/filelog')).toBeVisible()
+  await page.getByTestId('filter-name').fill('')
+  await expect(rows).toHaveCount(13)
+})
+
+test('uniform stability collapses to one chip; mixed and single-signal rows keep their own', async ({
+  page,
+}) => {
+  await page.goto('/catalogue')
+  // Every signal at one level reads as one chip.
+  await expect(page.getByTestId('entry-processor/batch')).toContainText('all signals: beta')
+  await expect(page.getByTestId('entry-processor/batch')).not.toContainText('logs:')
+  // Mixed levels keep the chip per signal.
+  const otlp = page.getByTestId('entry-receiver/otlp')
+  await expect(otlp).toContainText('logs: beta')
+  await expect(otlp).toContainText('metrics: stable')
+  await expect(otlp).toContainText('traces: stable')
+  // A single-signal entry keeps its named chip.
+  const filelog = page.getByTestId('entry-receiver/filelog')
+  await expect(filelog).toContainText('logs: beta')
+  await expect(filelog).not.toContainText('all signals')
+})
+
 test('an entry panel carries per-signal stability and the deprecation remediation', async ({
   page,
 }) => {
@@ -83,7 +119,7 @@ test('the effective palette resolves provenance to the Grant or ancestor Allow-l
   // A list-admitted component names the ancestor chain it survived.
   await expect(page.getByTestId('origin-processor/batch')).toHaveText('Allow-list')
   await page.getByTestId('palette-why-processor/batch').click()
-  await expect(popover).toContainText('Survives every declared Allow-list')
+  await expect(popover).toContainText('Allowed by every Allow-list declared above this team')
   await expect(popover).toContainText('platform')
   // A narrowed-out component says which list removed it.
   await expect(page.getByTestId('origin-exporter/debug')).toHaveText('not allowed')
