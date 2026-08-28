@@ -11,6 +11,11 @@
 // in either direction. Implementations live under internal/provider/ and
 // are vendor-qualified there (ADR-0001).
 //
+// Beside the seam, and not part of it, sits the App-assertion signer.
+// Signing an assertion is not something the seam asks of an adapter, but
+// it is something two callers in two repositories do identically, so
+// there is one routine rather than a copy each (ADR-0073 §4).
+//
 // What a forge can do varies down the ADR-0028 §4 capability ladder (full →
 // partial → bare git), and so does what one deployment was granted on it.
 // An implementation declares both through Capabilities, the ADR-0036

@@ -3,14 +3,8 @@ package forge
 import (
 	"bytes"
 	"context"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -50,11 +44,18 @@ type GitHubApp struct {
 	owner string
 	repo  string
 
-	// appID is the JWT issuer: the App ID or the Client ID; GitHub
-	// accepts either, and recommends the Client ID.
-	appID          string
 	installationID string
-	key            *rsa.PrivateKey
+
+	// signer holds the App key and signs the assertion the token
+	// exchange presents. It is the seam's signer rather than one of this
+	// adapter's own: the hosted minter signs the same assertion, and one
+	// routine with one set of tests is what stops the two drifting.
+	//
+	// The issuer it signs as is the App ID or the Client ID; GitHub
+	// accepts either, and recommends the Client ID. GitHub's ceiling on
+	// how long an assertion may last is ten minutes, which the seam's
+	// five stays well inside.
+	signer *seam.AppSigner
 
 	// tokenFrom, when set, is the credential mode of a deployment that
 	// does not hold the App key: a token something else minted and
@@ -122,13 +123,13 @@ func NewGitHubApp(cfg GitHubAppConfig) (*GitHubApp, error) {
 	if cfg.Owner == "" || cfg.Repo == "" {
 		return nil, errors.New("github: owner and repo are required")
 	}
-	var key *rsa.PrivateKey
+	var signer *seam.AppSigner
 	if cfg.TokenFrom == nil {
 		if cfg.AppID == "" || cfg.InstallationID == "" {
 			return nil, errors.New("github: app id and installation id are required")
 		}
 		var err error
-		if key, err = parsePrivateKey(cfg.PrivateKeyPEM); err != nil {
+		if signer, err = seam.NewAppSigner(cfg.AppID, cfg.PrivateKeyPEM); err != nil {
 			return nil, fmt.Errorf("github: private key: %w", err)
 		}
 	} else if cfg.AppID != "" || cfg.InstallationID != "" || len(cfg.PrivateKeyPEM) > 0 {
@@ -145,33 +146,13 @@ func NewGitHubApp(cfg GitHubAppConfig) (*GitHubApp, error) {
 	return &GitHubApp{
 		owner:          cfg.Owner,
 		repo:           cfg.Repo,
-		appID:          cfg.AppID,
 		installationID: cfg.InstallationID,
-		key:            key,
+		signer:         signer,
 		tokenFrom:      cfg.TokenFrom,
 		apiBase:        apiBase,
 		client:         &http.Client{Timeout: timeout},
 		now:            time.Now,
 	}, nil
-}
-
-func parsePrivateKey(pemBytes []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(pemBytes)
-	if block == nil {
-		return nil, errors.New("no PEM block found")
-	}
-	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
-		return key, nil
-	}
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-	key, ok := parsed.(*rsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("unsupported key type %T, want RSA", parsed)
-	}
-	return key, nil
 }
 
 // Name implements the seam: the vendor-qualified implementation name as
@@ -449,25 +430,6 @@ func (g *GitHubApp) repoPath(suffix string) string {
 	return "/repos/" + g.owner + "/" + g.repo + suffix
 }
 
-// appJWT mints the short-lived App JWT (RS256). iat is backdated a minute
-// against clock drift, exp stays well inside GitHub's ten-minute ceiling.
-func (g *GitHubApp) appJWT() (string, error) {
-	now := g.now()
-	header, _ := json.Marshal(map[string]string{"alg": "RS256", "typ": "JWT"})
-	claims, _ := json.Marshal(map[string]any{
-		"iat": now.Add(-60 * time.Second).Unix(),
-		"exp": now.Add(5 * time.Minute).Unix(),
-		"iss": g.appID,
-	})
-	signing := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(claims)
-	digest := sha256.Sum256([]byte(signing))
-	sig, err := rsa.SignPKCS1v15(rand.Reader, g.key, crypto.SHA256, digest[:])
-	if err != nil {
-		return "", fmt.Errorf("github: signing app jwt: %w", err)
-	}
-	return signing + "." + base64.RawURLEncoding.EncodeToString(sig), nil
-}
-
 // installationToken exchanges the App JWT for the installation token,
 // caching it until shortly before expiry, and reads the grant the response
 // reports into the capability declaration.
@@ -502,9 +464,9 @@ func (g *GitHubApp) installationToken(ctx context.Context) (string, error) {
 		return g.token, nil
 	}
 
-	jwt, err := g.appJWT()
+	jwt, err := g.signer.Assertion(g.now())
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("github: signing app jwt: %w", err)
 	}
 	var minted struct {
 		Token       string            `json:"token"`
