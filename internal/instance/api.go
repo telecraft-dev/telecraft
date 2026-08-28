@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/telecraft-dev/telecraft/internal/console"
-	"github.com/telecraft-dev/telecraft/internal/licence"
 	"github.com/telecraft-dev/telecraft/pkg/forge"
+	"github.com/telecraft-dev/telecraft/pkg/licence"
 )
 
 // routes builds the whole HTTP surface: the two probes, the auth slice open

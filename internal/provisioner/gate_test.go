@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/licence"
+	"github.com/telecraft-dev/telecraft/pkg/licence"
 	"github.com/telecraft-dev/telecraft/pkg/register"
 )
 

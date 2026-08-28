@@ -42,13 +42,13 @@ import (
 	"time"
 
 	"github.com/telecraft-dev/telecraft/internal/console"
-	"github.com/telecraft-dev/telecraft/internal/licence"
 	estateprovider "github.com/telecraft-dev/telecraft/internal/provider/estate"
 	"github.com/telecraft-dev/telecraft/internal/readings"
 	"github.com/telecraft-dev/telecraft/internal/serving"
 	"github.com/telecraft-dev/telecraft/internal/telemetry"
 	"github.com/telecraft-dev/telecraft/pkg/auth"
 	"github.com/telecraft-dev/telecraft/pkg/forge"
+	"github.com/telecraft-dev/telecraft/pkg/licence"
 )
 
 // DefaultWindow is the trailing window the arrival readings cover when the

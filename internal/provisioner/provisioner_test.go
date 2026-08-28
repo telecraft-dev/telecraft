@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/telecraft-dev/telecraft/internal/licence"
+	"github.com/telecraft-dev/telecraft/pkg/licence"
 	"github.com/telecraft-dev/telecraft/pkg/register"
 )
 
@@ -17,7 +17,7 @@ func unlicensed() licence.Standing { return licence.Standing{State: licence.Abse
 
 // entitled is a deployment holding a licence that names running many
 // Organisations, in a window that is open. The Standing is built rather
-// than signed: what a signature means is internal/licence's to test, and
+// than signed: what a signature means is pkg/licence's to test, and
 // what a Standing entitles is this package's.
 func entitled() licence.Standing {
 	return licence.Standing{

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/telecraft-dev/telecraft/internal/licence"
+	"github.com/telecraft-dev/telecraft/pkg/licence"
 )
 
 // runLicence prints what this build makes of a licence file: the Edition,
