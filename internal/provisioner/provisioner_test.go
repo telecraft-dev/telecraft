@@ -79,10 +79,16 @@ func TestTheProvisionerHoldsNothingOfAnEstate(t *testing.T) {
 			"Address":        "where the Instance answers",
 			"Estate":         "where the estate is read from",
 			"Administrators": "identity subjects holding the account, never authority inside an estate",
+			"Installations":  "the grants made on a git host: identifiers and the remotes they are used for, which the Provisioner never reads",
 		},
 		reflect.TypeOf(register.EstateSource{}): {
 			"Kind":       "hosted or connected",
 			"Repository": "the remote, which is an address",
+		},
+		reflect.TypeOf(register.Installation{}): {
+			"GitHost":      "which implementation the grant was made on, opaque",
+			"ID":           "the identifier the host gave it, opaque and never a credential",
+			"Repositories": "the remotes it is used for, which are addresses",
 		},
 	}
 

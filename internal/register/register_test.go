@@ -1,6 +1,7 @@
 package register
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -236,5 +237,127 @@ func TestAnEmptyRegisterLoads(t *testing.T) {
 	}
 	if _, err := Load(filepath.Join(t.TempDir(), "nowhere")); err == nil {
 		t.Error("a register directory that does not exist was admitted")
+	}
+}
+
+// A connected Organisation names the grant it made on a git host: the
+// host, the identifier the host gave it, and what it is used for. The
+// identifier is an identifier, so it sits in the register in plain text.
+func TestARecordNamesTheGrantsItsOrganisationMade(t *testing.T) {
+	body := beacon + `installations:
+  - git_host: example-forge
+    id: "48291043"
+    repositories:
+      - https://git.example.com/beacon/estate.git
+      - https://git.example.com/beacon/payments.git
+`
+	reg, err := Load(write(t, map[string]string{"beacon.yaml": body}))
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+	org, _ := reg.Lookup("beacon")
+	if len(org.Installations) != 1 {
+		t.Fatalf("beacon names %d installations, want the one it authored", len(org.Installations))
+	}
+	inst := org.Installations[0]
+	if inst.GitHost != "example-forge" || inst.ID != "48291043" {
+		t.Errorf("the installation is %+v, want the host and identifier as authored", inst)
+	}
+	if len(inst.Repositories) != 2 {
+		t.Errorf("the installation is used for %v, want both repositories the record names", inst.Repositories)
+	}
+}
+
+// A grant with no host, no identifier or nothing to use it for is a record
+// nobody can mint against, and the refusal says which of the three is
+// missing.
+func TestAGrantNamesItsHostItsIdentifierAndWhatItIsUsedFor(t *testing.T) {
+	for name, tc := range map[string]struct{ entry, want string }{
+		"no host": {
+			entry: "  - id: \"48291043\"\n    repositories: [https://git.example.com/beacon/estate.git]\n",
+			want:  "names no git host",
+		},
+		"no identifier": {
+			entry: "  - git_host: example-forge\n    repositories: [https://git.example.com/beacon/estate.git]\n",
+			want:  "has no identifier",
+		},
+		"nothing to use it for": {
+			entry: "  - git_host: example-forge\n    id: \"48291043\"\n",
+			want:  "names no repository",
+		},
+		"a host that is a URL": {
+			entry: "  - git_host: https://git.example.com\n    id: \"48291043\"\n    repositories: [https://git.example.com/beacon/estate.git]\n",
+			want:  "names the git host",
+		},
+		"an identifier that is a sentence": {
+			entry: "  - git_host: example-forge\n    id: \"the one we made in May\"\n    repositories: [https://git.example.com/beacon/estate.git]\n",
+			want:  "not one word",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Load(write(t, map[string]string{"beacon.yaml": beacon + "installations:\n" + tc.entry}))
+			if err == nil {
+				t.Fatal("the record was admitted")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("the refusal does not say %q: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+// A repository is named by one Organisation. Two Instances writing into
+// one repository would each be right and the result would flap, so the
+// review of the register is where that is caught.
+func TestARepositoryIsNamedByOneOrganisation(t *testing.T) {
+	const grant = `installations:
+  - git_host: example-forge
+    id: "%s"
+    repositories:
+      - https://git.example.com/shared/estate.git
+`
+	_, err := Load(write(t, map[string]string{
+		"beacon.yaml": beacon + fmt.Sprintf(grant, "48291043"),
+		"acme.yaml":   acme + fmt.Sprintf(grant, "77120095"),
+	}))
+	if err == nil {
+		t.Fatal("two Organisations reaching one repository were admitted")
+	}
+	if !strings.Contains(err.Error(), "named by one Organisation") {
+		t.Errorf("the refusal does not say what the rule is: %v", err)
+	}
+
+	// One installation serving two Organisations is ordinary, as it is for
+	// a consultancy holding several: what is refused is the repository
+	// belonging to two, never the grant.
+	if _, err := Load(write(t, map[string]string{
+		"beacon.yaml": beacon + fmt.Sprintf(grant, "48291043"),
+		"acme.yaml": acme + `installations:
+  - git_host: example-forge
+    id: "48291043"
+    repositories:
+      - https://git.example.com/acme/estate.git
+`,
+	})); err != nil {
+		t.Errorf("one installation serving two Organisations was refused: %v", err)
+	}
+}
+
+// A credential written into an installation's remote is refused there
+// exactly as it is refused in the estate source, and the refusal does not
+// repeat what it refused.
+func TestAnInstallationCarriesNoCredential(t *testing.T) {
+	body := beacon + `installations:
+  - git_host: example-forge
+    id: "48291043"
+    repositories:
+      - https://beacon:s3cret@git.example.com/beacon/estate.git
+`
+	_, err := Load(write(t, map[string]string{"beacon.yaml": body}))
+	if err == nil {
+		t.Fatal("a remote carrying a password was admitted")
+	}
+	if strings.Contains(err.Error(), "s3cret") {
+		t.Errorf("the refusal quotes the secret it refused: %v", err)
 	}
 }
