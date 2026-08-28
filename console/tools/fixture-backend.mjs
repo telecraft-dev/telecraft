@@ -139,6 +139,10 @@ function objects() {
 
 const api = {
   '/api/v1/me': me,
+  // The Edition this Instance is running (ADR-0070 §5). The fixture holds
+  // no licence file, which is the ordinary case and the whole free
+  // product, so it reports what an Instance with none reports.
+  '/api/v1/edition': () => ({ edition: 'Standard Edition', statement: 'Standard Edition' }),
   '/api/v1/objects': objects,
   '/api/v1/estate': () => ({
     environments: estate.environments,

@@ -41,9 +41,10 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		"pollDone":   true, // poll shutdown
 	}
 	storage := map[string]bool{
-		"head":  true, // the head the source reported; loss is a re-fetch
-		"docs":  true, // the API documents at that head; loss is one recomputation
-		"authz": true, // the estate's own users, teams and providers, reread on every poll
+		"head":    true, // the head the source reported; loss is a re-fetch
+		"docs":    true, // the API documents at that head; loss is one recomputation
+		"authz":   true, // the estate's own users, teams and providers, reread on every poll
+		"licence": true, // what the licence file says, reread on every poll; loss is a re-read
 	}
 
 	typ := reflect.TypeOf(Server{})
@@ -120,7 +121,7 @@ func TestAnInstanceServesTheEstateBehindASignIn(t *testing.T) {
 		"/api/v1/rollouts", "/api/v1/blueprints", "/api/v1/catalogue",
 		"/api/v1/catalogue/versions", "/api/v1/catalogue/entries",
 		"/api/v1/activations", "/api/v1/governance", "/api/v1/endorsements",
-		"/api/v1/drawer?tier=data-flow/gateway",
+		"/api/v1/edition", "/api/v1/drawer?tier=data-flow/gateway",
 	} {
 		if body, status := get(t, client, base+path); status != 200 {
 			t.Errorf("%s = %d, want 200:\n%s", path, status, body)

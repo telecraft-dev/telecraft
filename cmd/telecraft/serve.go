@@ -43,6 +43,13 @@ import (
 // the process's own secrets take a file path, defaulting to a file of a
 // documented name in that same directory.
 //
+// -licence-file names the licence, and no licence is the ordinary case:
+// the Instance is then Standard Edition, which is the whole free product
+// and raises no warning. It is not a secret and does not live under
+// -secrets-dir: it is signed, it grants nothing to whoever reads it, and
+// there is no default path, because nothing is read that the flag did not
+// name (ADR-0070 §2).
+//
 // Exit codes: 0 after a clean signal-driven shutdown; 1 the server could
 // not start or stop; 2 usage.
 func runServe(args []string, stdout, stderr io.Writer) int {
@@ -61,6 +68,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	sessionKey := fs.String("session-key-file", "", "file holding the session signing key (default: "+sessionKeyName+" under -secrets-dir; absent draws a key at start, so a restart signs everybody out)")
 	endpoint := fs.String("telemetry-endpoint", "", "telemetry backend base URL; empty takes no arrival reading")
 	telemetryKey := fs.String("telemetry-key-file", "", "file holding the telemetry backend credential (default: "+telemetryKeyName+" under -secrets-dir)")
+	licenceFile := fs.String("licence-file", "", "file holding the Enterprise Edition licence; none named runs Standard Edition")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -132,6 +140,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		Window:        *window,
 		Sessions:      sessions,
 		Secrets:       dir,
+		LicenceFile:   *licenceFile,
 		Telemetry:     tel,
 		Logf:          logf,
 	})

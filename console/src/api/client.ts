@@ -14,6 +14,7 @@ import type {
   ClaimRequest,
   CollectorRow,
   ComposeVerdict,
+  EditionStanding,
   EndorsementDoc,
   EstatePayload,
   GovernancePayload,
@@ -83,6 +84,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
  */
 export const liveApi: PlatformApi = {
   me: () => get<Me>('/api/v1/me'),
+  edition: () => get<EditionStanding>('/api/v1/edition'),
   authProviders: () => get<AuthProviderInfo[]>('/api/v1/auth/providers'),
   login: (provider: string, username: string, secret: string) =>
     post<Me>('/api/v1/auth/login', { provider, username, secret }),

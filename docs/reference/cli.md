@@ -48,6 +48,7 @@ and exits `2`.
 | `snapshot` | Write the console API snapshot for one estate checkout. |
 | `delivery` | Print one collector's delivery status from two files. |
 | `activate` | Show what activating an imported version would change, and designate it. |
+| `licence` | Print the Edition this build is running, and what a licence file says. |
 | `passwd` | Hash one basic-auth secret for `users.yaml`. |
 
 Every subcommand accepts `-h`, which prints that subcommand's flags to stderr
@@ -247,6 +248,14 @@ name under `-secrets-dir`. A named secret with no file stops the start. A
 file path this command defaulted to, with nothing at it, is an absence, and
 the capability that needed it declares itself unavailable.
 
+`-licence-file` names a licence, and no licence is the ordinary case: the
+Instance is then Standard Edition, which is the whole free product. The
+licence is not a secret and has no default path, so nothing is read that the
+flag did not name. It is verified against keys inside the binary, with no
+network involved at any point, and a file that is not accepted is one line on
+the terminal and changes nothing else: the server starts, the probes answer,
+and collectors are served. See [Licensing](../guides/licensing.md).
+
 The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 
 | Flag | Type | Default | Description |
@@ -264,6 +273,7 @@ The server stops on `SIGINT` or `SIGTERM` and has 10 seconds to shut down.
 | `-session-key-file` | string | `session-key` under `-secrets-dir` | File holding the session signing key, at least 32 bytes. Nothing placed draws one at start, so a restart signs everybody out. |
 | `-telemetry-endpoint` | string | empty | Telemetry backend base URL. Empty takes no arrival reading. |
 | `-telemetry-key-file` | string | `telemetry-key` under `-secrets-dir` | File holding the telemetry backend credential. |
+| `-licence-file` | string | empty | File holding the Enterprise Edition licence. None named runs Standard Edition. |
 
 | Exit code | Meaning |
 |---|---|
@@ -388,6 +398,42 @@ takes none of, and the report says so. The console shows both halves.
 telecraft activate -estate ESTATE_DIR -substrate catalogue -version v0.159.0
 telecraft activate -estate ESTATE_DIR -substrate catalogue -version v0.159.0 \
   -confirm -by platform-observability
+```
+
+## telecraft licence
+
+Prints the Edition this build is running and what a licence file says: the
+licensee, the licence id, the dates, the Entitlements it grants, and the path
+it was read from. With no file it prints the Standard Edition line and stops.
+
+It reports rather than judges, so it exits `0` whatever it finds. A file that
+was not accepted is a fact about the file, not a failure of the command.
+
+Nothing here reaches a network. Verification is a function of the file, the
+keys compiled into the binary and the host clock, so it prints the same answer
+on a machine that has never had a route out.
+
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `-licence-file` | string | empty | The licence file to read. None named is Standard Edition. |
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Always, whatever the file says. |
+| `2` | Usage error. |
+
+```sh
+telecraft licence -licence-file /run/licence/acme.licence
+```
+
+```
+Enterprise Edition, licensed to Acme Ltd, expires 3 March 2027
+  licensee      Acme Ltd
+  licence       tc-2026-0007
+  issued        1 August 2026
+  expires       3 March 2027
+  entitlements  many-organisations
+  file          /run/licence/acme.licence
 ```
 
 ## telecraft passwd

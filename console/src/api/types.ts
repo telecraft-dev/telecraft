@@ -1099,8 +1099,26 @@ export interface SetupGuidance {
  * client that drifts from it fails to compile, rather than failing in a
  * surface at runtime.
  */
+/**
+ * GET /api/v1/edition: which Edition this Instance is running, and the one
+ * quiet line the chrome shows for it.
+ *
+ * The line is composed by the server so that the console, the CLI and the
+ * operator's terminal cannot disagree about what an Instance is running.
+ * It is a fact about the reader's session, like the version above it, and
+ * it never carries severity: an expired licence is a reading, not a
+ * warning, and a refusal belongs on the surface that refuses.
+ */
+export interface EditionStanding {
+  /** `Standard Edition` or `Enterprise Edition`. */
+  edition: string
+  /** The whole line, ready to show. */
+  statement: string
+}
+
 export interface PlatformApi {
   me(): Promise<Me>
+  edition(): Promise<EditionStanding>
   authProviders(): Promise<AuthProviderInfo[]>
   login(provider: string, username: string, secret: string): Promise<Me>
   logout(): Promise<void>

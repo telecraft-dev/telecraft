@@ -19,6 +19,11 @@ A deployment that runs one Organisation has no register and needs none.
 `telecraft serve` has no Organisation flag, no register flag, and no tenancy
 setting: it serves one estate, which is what it has always done.
 
+Running more than one Organisation from a single deployment needs an
+Enterprise Edition licence. A deployment with no licence runs one, and
+everything else on this page still applies to it. See
+[Place a licence](../guides/licensing.md).
+
 ## Where the register lives
 
 Its own repository, separate from any estate and separate from the code that

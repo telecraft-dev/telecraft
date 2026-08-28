@@ -156,6 +156,22 @@ Point either somewhere else with `-session-key-file` or
 start; a file you never placed is an absence, and an absence means the
 capability is unavailable rather than broken.
 
+## Name a licence, if you have one
+
+Most deployments have none, and that is the whole free product: Standard
+Edition, unrestricted, with nothing to place and nothing to configure.
+
+If you hold a licence, name the file:
+
+```sh
+./telecraft serve -estate ../estate-demo -licence-file /run/licence/acme.licence
+```
+
+It is not a secret and does not go under `-secrets-dir`. It is read at start
+and again whenever it changes, and it never affects what a collector receives:
+a licence that is absent, unreadable, or expired stops nothing being served.
+[Place a licence](licensing.md) has the four states and what each one does.
+
 ## Keep sessions across a restart
 
 A session is a signed token, never a record. With no key placed, one is
@@ -286,6 +302,7 @@ export TELECRAFT_HTTP=0.0.0.0:4321
 export TELECRAFT_EXTERNAL_URL=https://telecraft.example
 export TELECRAFT_SECRETS_DIR=/run/secrets
 export TELECRAFT_FETCH_INTERVAL=15s
+export TELECRAFT_LICENCE_FILE=/run/licence/acme.licence
 ./telecraft serve
 ```
 
@@ -318,3 +335,5 @@ the estate does.
   Catalogue or Schema Registry version.
 - [Explore the demo](explore-the-demo.md) is the same console over a curated
   estate, with a build-time snapshot in place of a server.
+- [Place a licence](licensing.md) says where a licence file goes and what an
+  Instance does in each state one can be in.

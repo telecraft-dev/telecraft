@@ -47,7 +47,7 @@ func TestAnIdentityInOneOrganisationReadsNothingOfAnother(t *testing.T) {
 		"/api/v1/topology", "/api/v1/rollouts", "/api/v1/blueprints",
 		"/api/v1/catalogue", "/api/v1/catalogue/versions", "/api/v1/catalogue/entries",
 		"/api/v1/activations", "/api/v1/governance", "/api/v1/endorsements",
-		"/api/v1/drawer?tier=data-flow/gateway",
+		"/api/v1/edition", "/api/v1/drawer?tier=data-flow/gateway",
 	} {
 		body, status := get(t, client, beacon+path)
 		if status != http.StatusUnauthorized {
