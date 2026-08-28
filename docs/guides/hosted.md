@@ -146,16 +146,21 @@ cannot lose for you.
 reconstruct: your estate is the whole of your authored work, and a clone is a
 complete copy of it.
 
-## Paying, and not paying
+## Paying
 
-An Organisation is a subscription. Nothing about your estate is counted:
-not collectors, not Services, not Tiers. The subscription is handled by a
-payment provider, whose own portal is where you change a card or an address.
-No payment details reach anything we run.
+The beta is free. There is no subscription, no plan and no price, and nothing
+here can take a payment.
 
-If a subscription lapses, change proposals are refused and say why. Reading,
-judging and delivery are exactly as they were: collectors go on fetching, and
-your estate goes on being readable and cloneable.
+It will not always be free, and you will be told before that changes. We are
+not naming a price, a plan or a date, because none of them is decided, and
+you will never be billed for the beta period afterwards.
+
+Whatever the price turns out to be, the way out is the same as it is today:
+clone your estate and you have a complete copy of everything of yours, which
+is the whole of what we hold for you.
+
+When there is something to pay, nothing about your estate will be counted:
+not collectors, not Services, not Tiers.
 
 [Environments](../concepts/environments.md#holding-development-staging-and-production)
 covers how to hold development, staging, and production, and what an
