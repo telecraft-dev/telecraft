@@ -20,6 +20,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       console: ${{ steps.filter.outputs.console }}
       image: ${{ steps.filter.outputs.image }}
+      chart: ${{ steps.filter.outputs.chart }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,6 +38,7 @@ jobs:
             echo "code=true"    >> "$GITHUB_OUTPUT"
             echo "console=true" >> "$GITHUB_OUTPUT"
             echo "image=true"   >> "$GITHUB_OUTPUT"
+            echo "chart=true"   >> "$GITHUB_OUTPUT"
             echo "No usable diff base; running every job."
             exit 0
           fi
@@ -63,6 +65,16 @@ jobs:
             image=false
           fi
           echo "image=$image"     >> "$GITHUB_OUTPUT"
+          # The chart's own files, and the two sources chartlint reads
+          # rather than repeats. A flag that moves in serve.go, or a probe
+          # route that moves in the instance server, is exactly the change
+          # that leaves the chart setting the old one.
+          if echo "$files" | grep -qE '^(charts/.*|tools/chart/.*|tools/chartlint/.*|cmd/telecraft/serve\.go|internal/instance/api\.go|\.github/workflows/ci\.yml)$'; then
+            chart=true
+          else
+            chart=false
+          fi
+          echo "chart=$chart"     >> "$GITHUB_OUTPUT"
           echo "code=$code"       >> "$GITHUB_OUTPUT"
           echo "console=$console" >> "$GITHUB_OUTPUT"
           echo "code=$code console=$console"
@@ -308,6 +320,52 @@ jobs:
         run: |
           STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
           tools/image/offline.sh "$IMAGE:$VERSION"
+
+  # The chart (ADR-0068 §5, ADR-0074 §5). Three checks in one job, cheapest
+  # first, because the last of them stands up a cluster.
+  #
+  # `chartlint` renders nothing and reads the command the chart deploys, so
+  # it catches the drift that has no other reader. `golden.sh` holds the
+  # three documented shapes to their manifests and requires each refusal to
+  # fail. `kind.sh` installs both estate shapes and requires what it
+  # installed to serve, which is the half a renderer cannot see.
+  #
+  # The image comes from this repository's own staging scripts rather than
+  # from the registry: the chart and the image it deploys are one commit,
+  # and installing yesterday's published image would check the chart
+  # against something this pull request did not build.
+  chart:
+    name: Helm chart (ADR-0068)
+    needs: changes
+    if: needs.changes.outputs.chart == 'true'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: telecraft
+      VERSION: ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+      - uses: docker/setup-buildx-action@v3
+      - uses: azure/setup-helm@v4
+      - run: go run ./tools/chartlint
+      - run: helm lint charts/telecraft --values charts/telecraft/testdata/minimal.yaml
+      - run: tools/chart/golden.sh
+      - name: Build the image the chart installs
+        run: |
+          tools/image/stage.sh
+          STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
+      - uses: helm/kind-action@v1
+        with:
+          install_only: true
+      - name: The chart installs and serves
+        run: IMAGE="$IMAGE:$VERSION" tools/chart/kind.sh
 
   # The public demo's two halves (issue #50), built here so they cannot
   # regress: `telecraft snapshot` producing the platform API's documents

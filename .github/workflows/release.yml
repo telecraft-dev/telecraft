@@ -143,6 +143,42 @@ jobs:
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true
 
+      # The chart, on the same tag push and to the same registry, so one
+      # number answers what to deploy (ADR-0068 §5). `version` is the tag
+      # without its leading v, because Helm requires SemVer without one;
+      # `appVersion` is the tag as written, and it is what the chart's own
+      # image tag defaults to.
+      #
+      # The chart is checked before it is pushed, over the values that
+      # install the published image, because a chart that renders wrong is
+      # published in one command and corrected only by the next release.
+      - uses: azure/setup-helm@v4
+      - name: Package and push the chart
+        id: chart
+        env:
+          VERSION: ${{ github.ref_name }}
+          # Helm reads the Docker credential the login step wrote, but says
+          # so nowhere the next reader of this file would find it. This
+          # login is that sentence made a command.
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          go run ./tools/chartlint
+          tools/chart/golden.sh
+          printf '%s' "$REGISTRY_TOKEN" |
+            helm registry login ghcr.io --username "$REGISTRY_USER" --password-stdin
+          helm package charts/telecraft \
+            --version "${VERSION#v}" --app-version "$VERSION" \
+            --destination "$RUNNER_TEMP"
+          package="$RUNNER_TEMP/telecraft-${VERSION#v}.tgz"
+          helm push "$package" oci://ghcr.io/telecraft-dev/charts
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ steps.chart.outputs.package }}
+
       # The design artefact: the four distributed files of
       # docs/branding/design-system.md "Distribution", laid out the way a
       # consumer serves them. `fonts.css` reaches its faces by relative URL
@@ -295,6 +331,8 @@ jobs:
             echo "- \`telecraft-$TAG-linux-amd64\` and \`telecraft-$TAG-linux-arm64\`, the"
             echo "  same binary the image holds, for a pipeline with neither a container"
             echo "  runtime nor a Go toolchain."
+            echo "- The Helm chart at \`oci://ghcr.io/telecraft-dev/charts/telecraft\`,"
+            echo "  version \`${TAG#v}\`, which installs the image above."
             echo
             echo "**Not in this release**: a build for any platform but Linux. Every other"
             echo "platform builds from source at this tag."
