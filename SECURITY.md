@@ -124,7 +124,7 @@ than a remediation date.
 ### If we are running it for you
 
 Everything above is written for somebody running Telecraft themselves. The
-hosted service at `app.telecraft.dev` adds a second reader, and one thing that
+hosted service at `cloud.telecraft.dev` adds a second reader, and one thing that
 is true for them and can never be true of a deployment you run yourself: we
 are holding the instance.
 
