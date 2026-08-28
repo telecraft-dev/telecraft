@@ -1,11 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { Fragment } from 'react'
 import { api } from '../../api/client'
-import { BAND_ORDER, type BandName, type RolloutDecision } from '../../api/types'
+import { BAND_ORDER, type BandName, type CardFace, type RolloutDecision } from '../../api/types'
 import { useLens } from '../../chrome/LensControl'
 import { cardStanding, totalFindings } from '../../estate/order'
 import type { KindRollup, TeamRollup } from '../../estate/rollup'
-import { summarise, teamStanding, ungovernedTotal, type HomeSummary } from '../../home/summary'
+import {
+  KIND_LABEL,
+  rolloutPosition,
+  summarise,
+  teamStanding,
+  tierDetail,
+  ungovernedTotal,
+  type HomeSummary,
+  type NamedTiers,
+} from '../../home/summary'
 import { formatObjectRef } from '../../objectref'
 import { Chip } from '../../ui/Chip'
 import { Mark } from '../../ui/Mark'
@@ -24,17 +34,11 @@ import { count } from '../../ui/text'
 // this comment, never on screen, where it reads as a page defending itself.
 //
 // Nothing here is judged here (§2). The numbers come from `home/summary.ts`,
-// which reads `estate/rollup.ts` and `estate/order.ts`: the same modules the
-// tree-table and the shelf read, so Home cannot disagree with the surface it
-// points at. No number on this page is blended (§3), and every bounded list
-// says what it left out (§5).
-
-const KIND_LABEL: Record<BandName, string> = {
-  delivery: 'Delivery',
-  expectation: 'Expectation',
-  conformance: 'Conformance',
-}
-
+// which reads `estate/rollup.ts`, `estate/order.ts` and
+// `estate/readings.ts`: the same modules the tree-table, the shelf and the
+// card matrix read, so Home cannot disagree with the surface it points at.
+// No number on this page is blended (§3), and every bounded list says what
+// it left out (§5).
 
 /** The tone a Rollout's verdict earns; the word beside it carries the meaning. */
 const DECISION_TONE: Record<RolloutDecision, 'violation' | 'advisory' | 'neutral'> = {
@@ -44,13 +48,85 @@ const DECISION_TONE: Record<RolloutDecision, 'violation' | 'advisory' | 'neutral
   hold: 'neutral',
 }
 
+/** A Tier name as a door: Estate's shelf with that card selected (§4). */
+function TierDoor({ card }: { card: CardFace }) {
+  return (
+    <Link
+      to="/estate"
+      search={(prev) => ({
+        ...prev,
+        view: 'shelf' as const,
+        scope: 'estate' as const,
+        object: formatObjectRef({ kind: 'tier', id: card.tier }),
+      })}
+      className="count-door"
+    >
+      {card.name}
+    </Link>
+  )
+}
+
+/**
+ * The Tier names behind one tile's number, each a door, the overflow
+ * counted rather than dropped. The trailing words are the tile's own
+ * (`no result yet`, the exempt count), passed by the tile that has them.
+ */
+function TileTiers({
+  tiers,
+  testId,
+  trailing,
+}: {
+  tiers: NamedTiers
+  testId: string
+  trailing?: string
+}) {
+  if (tiers.shown.length === 0 && trailing === undefined) return null
+  return (
+    <span className="standing-kind-tiers" data-testid={testId}>
+      {tiers.shown.map((card, index) => (
+        <Fragment key={card.tier}>
+          {index > 0 && ' · '}
+          <TierDoor card={card} />
+        </Fragment>
+      ))}
+      {tiers.more > 0 && (
+        <>
+          {' · '}
+          <Link
+            to="/estate"
+            search={(prev) => ({ ...prev, view: 'shelf' as const, scope: 'estate' as const })}
+            className="count-door"
+          >
+            and {tiers.more} more
+          </Link>
+        </>
+      )}
+      {trailing !== undefined && (
+        <>
+          {tiers.shown.length > 0 && ' · '}
+          {trailing}
+        </>
+      )}
+    </span>
+  )
+}
+
 /**
  * One finding kind at estate grain: ratio, worst, and the waived count
  * alongside (ADR-0017). This is the tree-table's own cell, at the root row,
  * and it stays ratio-plus-worst here for the reason it is there: an
- * exemption-heavy 100% must not be able to hide.
+ * exemption-heavy 100% must not be able to hide. Beneath the number, the
+ * Tiers it counts, each a door.
  */
-function StandingKind({ kind, rollup }: { kind: BandName; rollup: KindRollup }) {
+function StandingKind({
+  kind,
+  rollup,
+  tiers,
+}: {
+  kind: BandName
+  rollup: KindRollup
+  tiers: NamedTiers
+}) {
   const badge =
     rollup.worst === 'violation' ? 'violation' : rollup.worst === 'advisory' ? 'advisory' : null
   return (
@@ -66,7 +142,11 @@ function StandingKind({ kind, rollup }: { kind: BandName; rollup: KindRollup }) 
           {badge && <Mark name={badge} />}
         </span>
       )}
-      {rollup.waived > 0 && <span className="rollup-waived">{rollup.waived} exempt</span>}
+      <TileTiers
+        tiers={tiers}
+        testId={`standing-${kind}-tiers`}
+        trailing={rollup.waived > 0 ? `${rollup.waived} exempt` : undefined}
+      />
     </div>
   )
 }
@@ -104,44 +184,44 @@ function TeamRow({ row }: { row: TeamRollup }) {
 }
 
 function Summary({ summary }: { summary: HomeSummary }) {
-  const { standing, lens } = summary
+  const { standing } = summary
   const ungoverned = ungovernedTotal(summary.ungoverned)
   const undrawn = summary.attentionInLens - summary.worstTiers.length
+  const lens = summary.lens
 
   return (
     <div className="home">
       {/* Estate standing: the root row of the tree-table's own roll-up,
-          judged under the lens, with the all-Environments count beside it
-          so the lens hides nothing (ADR-0056 §3, §6). */}
+          judged under the lens, one tile per finding kind, with the Tiers
+          behind each number named beneath it (ADR-0056 §3, §4). */}
       <section className="home-block" data-testid="home-standing" data-tour="home-standing">
-        <div className="section-header">
-          <h2>Estate summary</h2>
-          <p className="section-summary">
-            In <strong data-testid="home-lens">{lens}</strong>, across{' '}
-            {standing.tiersInEnvironment} of {count(standing.tiersTotal, 'Tier')}.
-          </p>
-        </div>
         <div className="standing-kinds">
           {BAND_ORDER.map((kind) => (
-            <StandingKind key={kind} kind={kind} rollup={standing.kinds[kind]} />
+            <StandingKind
+              key={kind}
+              kind={kind}
+              rollup={standing.kinds[kind]}
+              tiers={summary.standingTiers[kind]}
+            />
           ))}
           <div className="standing-kind" data-testid="standing-neutral">
             <span className="standing-kind-label">Neutral</span>
             <span className="standing-kind-ratio">{standing.neutral}</span>
-            <span className="rollup-waived">no result yet</span>
+            <TileTiers
+              tiers={summary.neutralTiers}
+              testId="standing-neutral-tiers"
+              trailing="no result yet"
+            />
           </div>
         </div>
-        <p className="section-summary" data-testid="home-all-environments">
-          Across all Environments: {count(standing.findingsAllEnvironments, 'finding')},{' '}
-          {standing.waivedAllEnvironments} exempt.
-        </p>
       </section>
 
       {/* The two bounded lists share a row where the window affords it,
           in the same reading order they stack in. */}
       <div className="home-columns">
         {/* Where to look first: the shelf's own worst-first order, bounded,
-            and saying what it did not draw (ADR-0056 §5). */}
+            and saying what it did not draw (ADR-0056 §5). Each row's second
+            line is the card face's own facts (§2): never the drawer's. */}
         <section className="home-block" data-testid="home-worst">
           <div className="section-header">
             <h2>Tiers with findings</h2>
@@ -155,29 +235,25 @@ function Summary({ summary }: { summary: HomeSummary }) {
             <ul className="home-tiers">
               {summary.worstTiers.map((card) => {
                 const standingName = cardStanding(card)
+                const detail = tierDetail(card)
                 return (
                   <li className="home-tier" data-testid={`home-tier-${card.tier}`} key={card.tier}>
-                    <Link
-                      to="/estate"
-                      search={(prev) => ({
-                        ...prev,
-                        view: 'shelf' as const,
-                        scope: 'estate' as const,
-                        object: formatObjectRef({ kind: 'tier', id: card.tier }),
-                      })}
-                      className="count-door"
-                    >
-                      {card.name}
-                    </Link>
+                    <TierDoor card={card} />
                     <Chip tone={standingName === 'violation' ? 'violation' : 'advisory'}>
                       {standingName}
                     </Chip>
-                    {card.serviceClass && (
-                      <Chip mono>{card.serviceClass}</Chip>
-                    )}
+                    {card.serviceClass && <Chip mono>{card.serviceClass}</Chip>}
                     <span className="home-tier-counts">
                       {count(totalFindings(card), 'finding')}, {card.team}
                     </span>
+                    {detail.length > 0 && (
+                      <span
+                        className="home-tier-detail"
+                        data-testid={`home-tier-detail-${card.tier}`}
+                      >
+                        {detail.join(' · ')}
+                      </span>
+                    )}
                   </li>
                 )
               })}
@@ -235,7 +311,8 @@ function Summary({ summary }: { summary: HomeSummary }) {
 
       <div className="home-columns">
         {/* Ungoverned: a concern carrying the onboard CTA, never a failure,
-            and in no compliance denominator (ADR-0031). */}
+            and in no compliance denominator (ADR-0031). One row: the chip,
+            the reading, and the door. */}
         <section className="home-block" data-testid="home-ungoverned">
           <div className="section-header">
             <h2>Ungoverned collectors</h2>
@@ -243,34 +320,33 @@ function Summary({ summary }: { summary: HomeSummary }) {
           {ungoverned === 0 ? (
             <p className="section-summary">Every collector matches a Tier.</p>
           ) : (
-            <>
-              <p className="section-summary">
-                <Chip tone="ungoverned" data-testid="home-ungoverned-count">
-                  {count(ungoverned, 'collector')}
-                </Chip>{' '}
+            <div className="home-ungoverned-row">
+              <Chip tone="ungoverned" data-testid="home-ungoverned-count">
+                {count(ungoverned, 'collector')}
+              </Chip>
+              <span className="home-ungoverned-note">
                 don't match any Tier. {summary.ungoverned.served} served,{' '}
                 {summary.ungoverned.foreign} foreign.
-              </p>
-              <p className="section-summary">
-                <Link
-                  to="/estate"
-                  search={(prev) => ({
-                    ...prev,
-                    view: 'list' as const,
-                    ungoverned: true,
-                  })}
-                  className="count-door"
-                  data-testid="home-to-ungoverned"
-                >
-                  Claim them
-                </Link>
-              </p>
-            </>
+              </span>
+              <Link
+                to="/estate"
+                search={(prev) => ({
+                  ...prev,
+                  view: 'list' as const,
+                  ungoverned: true,
+                })}
+                className="count-door"
+                data-testid="home-to-ungoverned"
+              >
+                Claim them
+              </Link>
+            </div>
           )}
         </section>
 
         {/* Rollouts whose verdict wants a person; `hold` is counted, not
-            drawn, because nothing there needs doing (ADR-0029 §5). */}
+            drawn, because nothing there needs doing (ADR-0029 §5). The
+            position line is the ledger's own numbers, in its words. */}
         <section className="home-block" data-testid="home-rollouts">
           <div className="section-header">
             <h2>Rollouts</h2>
@@ -284,27 +360,38 @@ function Summary({ summary }: { summary: HomeSummary }) {
           ) : (
             <>
               <ul className="home-rollouts">
-                {summary.rollouts.map((rollout) => (
-                  <li
-                    className="home-rollout"
-                    data-testid={`home-rollout-${rollout.id}`}
-                    key={rollout.id}
-                  >
-                    <Link
-                      to="/topology"
-                      search={(prev) => ({
-                        ...prev,
-                        view: 'rollout' as const,
-                        object: formatObjectRef({ kind: 'rollout', id: rollout.id }),
-                      })}
-                      className="count-door"
+                {summary.rollouts.map((rollout) => {
+                  const position = rolloutPosition(rollout)
+                  return (
+                    <li
+                      className="home-rollout"
+                      data-testid={`home-rollout-${rollout.id}`}
+                      key={rollout.id}
                     >
-                      {rollout.name}
-                    </Link>
-                    <Chip tone={DECISION_TONE[rollout.decision]}>{rollout.decision}</Chip>
-                    <span className="home-rollout-reason">{rollout.reason}</span>
-                  </li>
-                ))}
+                      <Link
+                        to="/topology"
+                        search={(prev) => ({
+                          ...prev,
+                          view: 'rollout' as const,
+                          object: formatObjectRef({ kind: 'rollout', id: rollout.id }),
+                        })}
+                        className="count-door"
+                      >
+                        {rollout.name}
+                      </Link>
+                      <Chip tone={DECISION_TONE[rollout.decision]}>{rollout.decision}</Chip>
+                      {position.length > 0 && (
+                        <span
+                          className="home-rollout-position"
+                          data-testid={`home-rollout-position-${rollout.id}`}
+                        >
+                          {position.join(' · ')}
+                        </span>
+                      )}
+                      <span className="home-rollout-reason">{rollout.reason}</span>
+                    </li>
+                  )
+                })}
               </ul>
               <p className="section-summary">
                 {summary.rolloutsWaiting > summary.rollouts.length &&
@@ -344,8 +431,20 @@ export function Home() {
   return (
     <div className="estate-main" data-testid="home">
       <div className="home-page">
+        {/* The title row carries the estate sentence: the lens-judged count
+            with its all-Environments companion beside it, so the lens hides
+            nothing (ADR-0056 §6). */}
         <header className="estate-header">
           <h1>Home</h1>
+          <p className="section-summary home-lede">
+            In <strong data-testid="home-lens">{lens}</strong>, across{' '}
+            {summary.standing.tiersInEnvironment} of{' '}
+            {count(summary.standing.tiersTotal, 'Tier')} ·{' '}
+            <span data-testid="home-all-environments">
+              {count(summary.standing.findingsAllEnvironments, 'finding')},{' '}
+              {summary.standing.waivedAllEnvironments} exempt in all Environments.
+            </span>
+          </p>
         </header>
         <Summary summary={summary} />
       </div>

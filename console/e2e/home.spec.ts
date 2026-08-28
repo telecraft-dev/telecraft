@@ -36,14 +36,55 @@ test('shows ratio-plus-worst per kind, and no blended score anywhere', async ({ 
   // so conformance passes one of the three.
   await expect(page.getByTestId('standing-conformance')).toContainText('1/3')
 
+  // Each tile names the Tiers behind its number (§4), and the exempt
+  // count stays alongside the ratio it would otherwise inflate (ADR-0017).
+  await expect(page.getByTestId('standing-conformance-tiers')).toContainText('gateway')
+  await expect(page.getByTestId('standing-conformance-tiers')).toContainText('edge')
+  await expect(page.getByTestId('standing-conformance')).toContainText('1 exempt')
+  await expect(page.getByTestId('standing-delivery-tiers')).toContainText('storefront-edge')
+  await expect(page.getByTestId('standing-neutral')).toContainText('payments-gateway')
+  await expect(page.getByTestId('standing-neutral')).toContainText('no result yet')
+
   // ADR-0056 §3: a single health score is the one thing this surface must
   // not grow, and a percentage is how one would arrive.
   await expect(standing).not.toContainText('%')
 
   // The lens is evaluation context, and the all-Environments count sits
-  // beside it so the lens conceals no finding (§6).
+  // beside it in the title row so the lens conceals no finding (§6).
   await expect(page.getByTestId('home-lens')).toHaveText('production')
   await expect(page.getByTestId('home-all-environments')).toBeVisible()
+  await expect(page.getByTestId('home-all-environments')).toContainText('in all Environments')
+})
+
+test('a Tier named on a standing tile is a door to its card', async ({ page }) => {
+  await page.goto('/')
+  // The expectation finding is gateway's alone, so its tile names one Tier.
+  await page
+    .getByTestId('standing-expectation-tiers')
+    .getByRole('link', { name: 'gateway' })
+    .click()
+
+  // ADR-0056 §4: the door carries its filter, so the card arrives selected.
+  await expect(page.getByTestId('card-panel')).toBeVisible()
+  await expect(page).toHaveURL(/object=tier%3Adata-flow%2Fgateway/)
+  await expect(page.getByTestId('shelf')).toBeVisible()
+})
+
+test('a Tier row carries the face facts behind its finding', async ({ page }) => {
+  await page.goto('/')
+  // Everything on the second line is a card-face field (§2): the band's
+  // own worst-finding label and the per-signal matrix facts, never the
+  // drawer's findings, which Home does not fetch.
+  const gateway = page.getByTestId('home-tier-detail-data-flow/gateway')
+  await expect(gateway).toContainText('checkout misses the C1 floor in production')
+  await expect(gateway).toContainText('logs silent')
+  await expect(gateway).toContainText('1 of 2 metrics missing')
+  await expect(gateway).toContainText('100 metrics refused')
+
+  // A lane the artefact never wired is a fact of the face, not a failure.
+  await expect(page.getByTestId('home-tier-detail-data-flow/edge')).toContainText(
+    'no metrics lane on this Tier',
+  )
 })
 
 test('the worst Tier is a door that opens its card in place', async ({ page }) => {
@@ -91,6 +132,15 @@ test('Rollouts waiting on a person lead, and each is a door to the ledger', asyn
     'home-rollout-data-flow/gateway-staging-trial',
   )
   await expect(rollouts.first()).toContainText('abort')
+
+  // Each row carries its stage position from the payload Home already
+  // reads, in the ledger's own words.
+  await expect(page.getByTestId('home-rollout-position-data-flow/gateway-canary')).toHaveText(
+    'stage 2 of 3 · 1 of 3 on the new version · gw-1 apply failed',
+  )
+  await expect(
+    page.getByTestId('home-rollout-position-data-flow/gateway-staging-trial'),
+  ).toContainText('gws-0 went dark')
 
   await page.getByTestId('home-rollout-data-flow/gateway-canary').getByRole('link').click()
   await expect(page).toHaveURL(/object=rollout%3Adata-flow%2Fgateway-canary/)

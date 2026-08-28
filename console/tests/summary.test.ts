@@ -7,14 +7,18 @@ import type {
   EstatePayload,
   RolloutDecision,
   RolloutProgress,
+  SignalRow,
   TeamNode,
 } from '../src/api/types'
 import {
   needsAttention,
   ROLLOUTS_SHOWN,
+  rolloutPosition,
   rolloutWaiting,
+  STANDING_TIERS_NAMED,
   summarise,
   teamStanding,
+  tierDetail,
   ungovernedTotal,
   WORST_TIERS_SHOWN,
 } from '../src/home/summary'
@@ -32,7 +36,7 @@ function card(
   team: string,
   environment: string,
   bands: Partial<Record<BandName, Band>> = {},
-  extras: Partial<Pick<CardFace, 'findingCounts' | 'waivedCounts'>> = {},
+  extras: Partial<Pick<CardFace, 'findingCounts' | 'waivedCounts' | 'signals'>> = {},
 ): CardFace {
   return {
     contractVersion: CARD_CONTRACT_VERSION,
@@ -44,7 +48,7 @@ function card(
     findingCounts: extras.findingCounts ?? {},
     waivedCounts: extras.waivedCounts,
     population: { matched: 1, floorSource: 'absent', state: 'ok' },
-    signals: [],
+    signals: extras.signals ?? [],
     churn: { known: true, asOf: '2026-08-18T12:00:00Z', incarnations: 0 },
   }
 }
@@ -76,10 +80,14 @@ function payload(cards: CardFace[], ungoverned = { served: 0, foreign: 0 }): Est
   return { environments: ['production', 'staging'], teams, cards, ungoverned, settings }
 }
 
-function rollout(id: string, decision: RolloutDecision, name = id): RolloutProgress {
+function rollout(
+  id: string,
+  decision: RolloutDecision,
+  overrides: Partial<RolloutProgress> = {},
+): RolloutProgress {
   return {
     id,
-    name,
+    name: id,
     team: 'data-flow',
     owner: 'someone',
     tier: 'data-flow/gateway',
@@ -94,6 +102,7 @@ function rollout(id: string, decision: RolloutDecision, name = id): RolloutProgr
     cohorts: [],
     halts: [],
     provenance: [],
+    ...overrides,
   }
 }
 
@@ -293,6 +302,210 @@ describe('summarise: Rollouts', () => {
     for (const decision of ['advance', 'blocked', 'abort'] as RolloutDecision[]) {
       expect(rolloutWaiting(rollout('a', decision))).toBe(true)
     }
+  })
+})
+
+describe('summarise: the standing tiles name their Tiers', () => {
+  const noisy = card('data-flow/gateway', 'data-flow', 'production', violation('conformance'), {
+    findingCounts: { conformance: 2 },
+  })
+  const warned = card('data-flow/edge', 'data-flow', 'production', advisory('conformance'), {
+    findingCounts: { conformance: 1 },
+  })
+  const quiet = card('infosec/audit', 'infosec', 'production')
+  const neutral = card('data-flow/payments', 'data-flow', 'production', {
+    delivery: { state: 'unknown', worstSeverity: 'none' },
+    expectation: { state: 'unknown', worstSeverity: 'none' },
+    conformance: { state: 'unknown', worstSeverity: 'none' },
+  })
+
+  it('a kind carrying findings names exactly the Tiers with them, worst first', () => {
+    const summary = summarise(payload([quiet, warned, noisy, neutral]), [], 'production')
+    expect(summary.standingTiers.conformance.shown.map((c) => c.tier)).toEqual([
+      'data-flow/gateway',
+      'data-flow/edge',
+    ])
+    expect(summary.standingTiers.conformance.more).toBe(0)
+  })
+
+  it('a clean kind names the Tiers its ratio counted', () => {
+    // Delivery is clean on every verdict-bearing card, so the tile names
+    // them all; the neutral card joins no kind's names, as it joins no
+    // kind's denominator.
+    const summary = summarise(payload([quiet, warned, noisy, neutral]), [], 'production')
+    expect(summary.standingTiers.delivery.shown.map((c) => c.tier)).toEqual([
+      'data-flow/gateway',
+      'data-flow/edge',
+      'infosec/audit',
+    ])
+  })
+
+  it('bounds the names and counts the rest (ADR-0056 §5)', () => {
+    const many = Array.from({ length: STANDING_TIERS_NAMED + 2 }, (_, i) =>
+      card(`data-flow/t${i}`, 'data-flow', 'production', violation('delivery'), {
+        findingCounts: { delivery: 1 },
+      }),
+    )
+    const summary = summarise(payload(many), [], 'production')
+    expect(summary.standingTiers.delivery.shown).toHaveLength(STANDING_TIERS_NAMED)
+    expect(summary.standingTiers.delivery.more).toBe(2)
+  })
+
+  it('names the neutral Tiers behind the neutral count', () => {
+    const summary = summarise(payload([quiet, neutral]), [], 'production')
+    expect(summary.neutralTiers.shown.map((c) => c.tier)).toEqual(['data-flow/payments'])
+    expect(summary.standing.neutral).toBe(summary.neutralTiers.shown.length)
+  })
+})
+
+describe('tierDetail', () => {
+  const asOf = '2026-08-18T12:00:00Z'
+  function lane(signal: SignalRow['signal'], over: Partial<SignalRow> = {}): SignalRow {
+    return {
+      signal,
+      lane: 'present',
+      volume: {
+        known: true,
+        asOf,
+        in: 100,
+        out: 100,
+        reduction: 0,
+        refused: 0,
+        sendFailed: 0,
+        enqueueFailed: 0,
+      },
+      freshness: { known: true, asOf, ageSeconds: 30 },
+      shape: { known: true, asOf, required: 2, missing: 0 },
+      ...over,
+    }
+  }
+
+  it('leads with the worst finding band, preferring the face label the card carries', () => {
+    const face = card('data-flow/gateway', 'data-flow', 'production', {
+      expectation: { state: 'finding', worstSeverity: 'advisory' },
+      conformance: {
+        state: 'finding',
+        worstSeverity: 'violation',
+        worstFinding: 'checkout misses the C1 floor in production',
+      },
+    })
+    expect(tierDetail(face)[0]).toBe('checkout misses the C1 floor in production')
+  })
+
+  it('falls back to the kind name when the face carries no label', () => {
+    const face = card('data-flow/edge', 'data-flow', 'production', advisory('conformance'))
+    expect(tierDetail(face)).toEqual(['Conformance: finding'])
+  })
+
+  it('reads the lane facts off the face, in lane order', () => {
+    const face = card('data-flow/gateway', 'data-flow', 'production', violation('conformance'), {
+      signals: [
+        lane('logs', { freshness: { known: true, asOf, silent: true } }),
+        lane('metrics', {
+          volume: {
+            known: true,
+            asOf,
+            in: 1000,
+            out: 900,
+            reduction: 0,
+            refused: 100,
+            sendFailed: 0,
+            enqueueFailed: 0,
+          },
+          shape: { known: true, asOf, required: 2, missing: 1 },
+        }),
+        { signal: 'traces', lane: 'not_applicable' },
+      ],
+    })
+    expect(tierDetail(face)).toEqual([
+      'Conformance: finding',
+      'logs silent',
+      '1 of 2 metrics missing',
+      '100 metrics refused',
+      'no traces lane on this Tier',
+    ])
+  })
+
+  it('is empty for a healthy card with quiet lanes', () => {
+    const face = card('data-flow/ok', 'data-flow', 'production', {}, {
+      signals: [lane('logs'), lane('metrics'), lane('traces')],
+    })
+    expect(tierDetail(face)).toEqual([])
+  })
+
+  it('survives a wired lane that has no readings yet', () => {
+    // A never_seen Tier's rows carry a lane and nothing else: no reading
+    // is not a fact to report, so the line stays empty rather than lying.
+    const face = card('data-flow/new', 'data-flow', 'production', {}, {
+      signals: [{ signal: 'logs', lane: 'present' }],
+    })
+    expect(tierDetail(face)).toEqual([])
+  })
+})
+
+describe('rolloutPosition', () => {
+  const split = { members: 0, to: 0, from: 0, other: 0, unknown: 0 }
+  function cohorts(n: number): RolloutProgress['cohorts'] {
+    return Array.from({ length: n }, (_, index) => ({
+      index,
+      cohort: `cohort-${index}`,
+      soak: '24h',
+      state: 'entered' as const,
+      widens: 0,
+      served: split,
+      foreign: split,
+    }))
+  }
+  const evidence = {
+    membersSeen: 3,
+    runningTo: 1,
+    runningFrom: 2,
+    runningOther: 0,
+    unknown: 0,
+    soaked: '36h',
+    minSoak: '24h',
+  }
+
+  it('carries the stage, the running split, and the halted member by name', () => {
+    const progressing = rollout('gateway-canary', 'blocked', {
+      stage: 1,
+      cohorts: cohorts(3),
+      evidence,
+      halts: [
+        { collector: 'gw-1', path: 'served', condition: 'failed', reason: 'apply failed' },
+      ],
+    })
+    expect(rolloutPosition(progressing)).toEqual([
+      'stage 2 of 3',
+      '1 of 3 on the new version',
+      'gw-1 apply failed',
+    ])
+  })
+
+  it('words the halt conditions as the ledger does, spacing out unmapped ones', () => {
+    const dark = rollout('trial', 'abort', {
+      halts: [{ collector: 'gws-0', path: 'foreign', condition: 'went_dark', reason: 'dark' }],
+    })
+    expect(rolloutPosition(dark)).toEqual(['gws-0 went dark'])
+    const odd = rollout('trial', 'abort', {
+      halts: [{ collector: 'gws-1', path: 'foreign', condition: 'ran_hot', reason: 'hot' }],
+    })
+    expect(rolloutPosition(odd)).toEqual(['gws-1 ran hot'])
+  })
+
+  it('counts halts beyond the first rather than naming them all (ADR-0056 §5)', () => {
+    const many = rollout('canary', 'blocked', {
+      halts: [
+        { collector: 'gw-1', path: 'served', condition: 'failed', reason: 'a' },
+        { collector: 'gw-2', path: 'served', condition: 'failed', reason: 'b' },
+        { collector: 'gw-3', path: 'served', condition: 'went_dark', reason: 'c' },
+      ],
+    })
+    expect(rolloutPosition(many)).toEqual(['gw-1 apply failed', 'and 2 more halted'])
+  })
+
+  it('stays empty when the payload carries no position to report', () => {
+    expect(rolloutPosition(rollout('bare', 'advance'))).toEqual([])
   })
 })
 

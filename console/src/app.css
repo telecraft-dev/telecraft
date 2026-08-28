@@ -2482,6 +2482,12 @@
   gap: var(--space-5);
 }
 
+/* The estate sentence rides the title row's baseline; the muted colour is
+   `.section-summary`'s, so only the emphasis needs restating. */
+.home-lede strong {
+  color: var(--colour-text);
+}
+
 .home-block {
   display: flex;
   flex-direction: column;
@@ -2515,14 +2521,18 @@
   gap: var(--space-3);
 }
 
+/* Shallow tiles: the number and, beneath it, the Tiers behind it. The
+   padding is the row scale rather than the card scale, because the tile's
+   third line now carries what a taller tile left unsaid. */
 .standing-kind {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--colour-rule);
   border-radius: var(--radius-2);
   background: var(--colour-surface);
+  min-width: 0;
 }
 
 .standing-kind-label {
@@ -2535,6 +2545,17 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-l);
+}
+
+/* The Tier names behind the number, each a door. Faint, because the
+   number is the reading and the names are where it leads. */
+.standing-kind-tiers {
+  color: var(--colour-text-faint);
+  font-size: var(--text-xs);
+}
+
+.standing-kind-tiers .count-door {
+  color: inherit;
 }
 
 .standing-kind.severity-violation .mark {
@@ -2604,10 +2625,45 @@
 /* A Rollout's reason is a sentence rather than a count, so it takes its own
    line and starts at the left margin. Trailing the name like the Tier
    counts do, it wraps, and `margin-left: auto` then right-aligns the
-   wrapped line against a left-aligned one above it. */
+   wrapped line against a left-aligned one above it. The Tier row's second
+   line takes the same shape: the face facts read as one line under the
+   name. */
 .home-rollout-reason {
   flex-basis: 100%;
   margin-left: 0;
+}
+
+.home-tier-detail {
+  flex-basis: 100%;
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+/* The Rollout's position trails its first line, as the Tier counts do. */
+.home-rollout-position {
+  margin-left: auto;
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+/* Ungoverned collectors as one row: the chip, the reading, the door. */
+.home-ungoverned-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-rule-soft);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
+.home-ungoverned-note {
+  color: var(--colour-text-muted);
+}
+
+.home-ungoverned-row .count-door {
+  margin-left: auto;
 }
 
 @media (max-width: 44rem) {

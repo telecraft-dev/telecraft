@@ -1,15 +1,18 @@
 import {
   BAND_ORDER,
+  type BandName,
   type CardFace,
   type Environment,
   type EstatePayload,
   type RolloutDecision,
   type RolloutProgress,
   type Severity,
+  type SignalRow,
   type TeamNode,
   type UngovernedSummary,
 } from '../api/types'
 import { cardStanding, orderCards, totalFindings } from '../estate/order'
+import { errorReadings, formatItems, laneReads, readingState } from '../estate/readings'
 import { rollupTree, type TeamRollup } from '../estate/rollup'
 
 // Home's derivation (ADR-0056 §2): the landing surface answers "where do I
@@ -23,6 +26,28 @@ import { rollupTree, type TeamRollup } from '../estate/rollup'
 // Nothing here blends. There is no estate health score, at this grain or
 // any other: the root row carries a ratio, a worst, and a waived count per
 // kind, exactly as the tree-table's rows do (ADR-0056 §3).
+
+/** The finding kinds' on-screen labels, shared by the tiles and the rows. */
+export const KIND_LABEL: Record<BandName, string> = {
+  delivery: 'Delivery',
+  expectation: 'Expectation',
+  conformance: 'Conformance',
+}
+
+/** How many Tiers a standing tile names before it starts counting instead. */
+export const STANDING_TIERS_NAMED = 3
+
+/**
+ * The Tiers behind one tile's number, named within a bound (ADR-0056 §5):
+ * the bound reports what it dropped, because a truncation that does not
+ * say it truncated reads as an all-clear.
+ */
+export interface NamedTiers {
+  /** The cards named on the tile, in the shelf's own order. */
+  shown: CardFace[]
+  /** Cards behind the number the tile did not name. */
+  more: number
+}
 
 /** How many worst Tiers Home draws before it starts counting instead. */
 export const WORST_TIERS_SHOWN = 6
@@ -88,6 +113,15 @@ export interface HomeSummary {
   lens: Environment
   /** The estate root row of the same roll-up the tree-table draws. */
   standing: TeamRollup
+  /**
+   * Per finding kind, the Tiers behind the tile's number: the Tiers whose
+   * band carries a finding when any does, otherwise the Tiers the ratio
+   * counted as passing. Read off the same band states the roll-up counts,
+   * so the names and the number cannot disagree.
+   */
+  standingTiers: Record<BandName, NamedTiers>
+  /** The Tiers with no verdict-bearing band, behind the neutral count. */
+  neutralTiers: NamedTiers
   /** The worst Tiers in the lens Environment, in the shelf's own order. */
   worstTiers: CardFace[]
   /** Tiers wanting attention in the lens Environment, drawn or not. */
@@ -129,6 +163,28 @@ export function summarise(
   const attention = inLens.filter(needsAttention)
   const worstTiers = orderCards(attention).slice(0, WORST_TIERS_SHOWN)
 
+  const named = (pool: CardFace[]): NamedTiers => {
+    const ordered = orderCards(pool)
+    return {
+      shown: ordered.slice(0, STANDING_TIERS_NAMED),
+      more: Math.max(0, ordered.length - STANDING_TIERS_NAMED),
+    }
+  }
+  // Each tile names what its number counts, from the band states the
+  // roll-up counts (rollupOne's own rule): a kind carrying findings names
+  // the Tiers with them, a clean kind names the Tiers it counted, and the
+  // neutral tile names the cards the roll-up left out of every ratio.
+  const standingTiers = {} as Record<BandName, NamedTiers>
+  for (const kind of BAND_ORDER) {
+    const withFinding = inLens.filter((card) => card.bands[kind].state === 'finding')
+    standingTiers[kind] = named(
+      withFinding.length > 0
+        ? withFinding
+        : inLens.filter((card) => card.bands[kind].state === 'ok'),
+    )
+  }
+  const neutralTiers = named(inLens.filter((card) => cardStanding(card) === 'neutral'))
+
   const teamRows = topLevel(payload.teams)
     .map((team) => byTeam.get(team.id))
     .filter((row): row is TeamRollup => row !== undefined)
@@ -151,6 +207,8 @@ export function summarise(
   return {
     lens,
     standing,
+    standingTiers,
+    neutralTiers,
     worstTiers,
     attentionInLens: attention.length,
     attentionElsewhere: payload.cards.filter(
@@ -163,6 +221,93 @@ export function summarise(
     rolloutsWaiting: waiting.length,
     rolloutsSteady: rollouts.length - waiting.length,
   }
+}
+
+/**
+ * A Tier row's second line, from card-face fields alone (ADR-0056 §2): the
+ * worst finding band's face label where the face carries one, then the
+ * per-lane facts the card's own matrix shows. No drawer is fetched, and the
+ * lane facts read through `estate/readings.ts`, the module the matrix
+ * itself reads through, so this line and the card cannot disagree.
+ */
+export function tierDetail(card: CardFace): string[] {
+  const segments: string[] = []
+
+  let lead: BandName | undefined
+  for (const kind of BAND_ORDER) {
+    const band = card.bands[kind]
+    if (band.state !== 'finding') continue
+    if (
+      lead === undefined ||
+      SEVERITY_RANK[band.worstSeverity] > SEVERITY_RANK[card.bands[lead].worstSeverity]
+    ) {
+      lead = kind
+    }
+  }
+  if (lead !== undefined) {
+    segments.push(card.bands[lead].worstFinding ?? `${KIND_LABEL[lead]}: finding`)
+  }
+
+  for (const row of card.signals) {
+    if (!laneReads(row)) {
+      segments.push(`no ${row.signal} lane on this Tier`)
+      continue
+    }
+    // A wired lane's readings can still be absent outright on a card no
+    // collector has reported for, so each is read only where it exists.
+    const { volume, freshness, shape } = row as SignalRow
+    if (freshness !== undefined && readingState(freshness) === 'silent') {
+      segments.push(`${row.signal} silent`)
+    }
+    if (shape?.known === true && shape.missing > 0) {
+      segments.push(`${shape.missing} of ${shape.required} ${row.signal} missing`)
+    }
+    if (volume !== undefined) {
+      for (const error of errorReadings(volume)) {
+        segments.push(`${formatItems(error.items)} ${row.signal} ${error.label}`)
+      }
+    }
+  }
+  return segments
+}
+
+/* Halt conditions arrive as the evaluator's enum names, and the set is
+   explicitly extensible (ADR-0029 §6): the known ones read exactly as the
+   rollout ledger words them, and an unmapped one falls back to its name
+   with the underscores spaced out. The map is repeated from the ledger
+   rather than imported, because the ledger is a lazily loaded Workspace
+   and Home is the eagerly loaded entry (ADR-0056): importing it here would
+   pull that whole surface into the entry chunk. */
+const HALT_CONDITION_LABEL: Record<string, string> = {
+  failed: 'apply failed',
+  went_dark: 'went dark',
+}
+
+function haltConditionLabel(condition: string): string {
+  return HALT_CONDITION_LABEL[condition] ?? condition.replace(/_/g, ' ')
+}
+
+/**
+ * A Rollout row's position, from the payload Home already reads (ADR-0056
+ * §2): the active stage, the running split in the ledger's own words, and
+ * the halted member by name. Halts beyond the first are counted rather
+ * than named (§5).
+ */
+export function rolloutPosition(rollout: RolloutProgress): string[] {
+  const segments: string[] = []
+  if (rollout.cohorts.length > 0) {
+    segments.push(`stage ${rollout.stage + 1} of ${rollout.cohorts.length}`)
+  }
+  const seen = rollout.evidence.membersSeen
+  if (typeof seen === 'number' && seen > 0) {
+    segments.push(`${rollout.evidence.runningTo} of ${seen} on the new version`)
+  }
+  const [first] = rollout.halts
+  if (first !== undefined) {
+    segments.push(`${first.collector} ${haltConditionLabel(first.condition)}`)
+    if (rollout.halts.length > 1) segments.push(`and ${rollout.halts.length - 1} more halted`)
+  }
+  return segments
 }
 
 /** The total ungoverned population, both referents (ADR-0030, ADR-0031). */
