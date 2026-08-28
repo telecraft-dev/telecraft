@@ -38,7 +38,7 @@ jobs:
     steps:
       # Full history, because the guard below asks whether this tag sits on
       # main and a shallow checkout cannot answer that.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

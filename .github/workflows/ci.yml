@@ -20,7 +20,7 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       console: ${{ steps.filter.outputs.console }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: filter
@@ -60,8 +60,8 @@ jobs:
     name: Vendor-word lint (ADR-0001)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go run ./tools/vendorlint
@@ -78,8 +78,8 @@ jobs:
     name: Documentation front matter
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go run ./tools/docslint
@@ -103,8 +103,8 @@ jobs:
     name: No tracked binaries (issue #122)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go run ./tools/binlint
@@ -134,8 +134,8 @@ jobs:
     name: Go formatting (issue #146)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go run ./tools/fmtlint
@@ -146,8 +146,8 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go build ./...
@@ -177,8 +177,8 @@ jobs:
           --health-timeout 5s
           --health-retries 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go test ./internal/provider/telemetry/ -run Live -v -count=1
@@ -197,8 +197,8 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go test ./internal/provider/forge/ -run Live -v -count=1
@@ -225,8 +225,8 @@ jobs:
       run:
         working-directory: console
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -250,7 +250,7 @@ jobs:
       # containers and self-hosted runners, which this is not. If that ever
       # stops being true the next step fails immediately and says which
       # library is missing, which is a better failure than a hang.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: playwright
         with:
           path: ~/.cache/ms-playwright
@@ -271,11 +271,11 @@ jobs:
     if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
