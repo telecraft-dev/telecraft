@@ -1,13 +1,13 @@
 ---
 title: Use the hosted service
-description: Sign up for an Organisation on app.telecraft.dev, connect a repository, sign your people in, and know what is promised about keeping it.
+description: Sign up for an Organisation on cloud.telecraft.dev, connect a repository, sign your people in, and know what is promised about keeping it.
 order: 15
 ---
 
 # Use the hosted service
 
-We run Telecraft for you at `app.telecraft.dev`. Your Organisation is one
-Instance at an address of your own, `<your-name>.app.telecraft.dev`, with its
+We run Telecraft for you at `cloud.telecraft.dev`. Your Organisation is one
+Instance at an address of your own, `<your-name>.cloud.telecraft.dev`, with its
 own estate, its own people, and nothing shared with anybody else's.
 
 It is the same Telecraft you can run yourself. There is no capability here
@@ -18,7 +18,7 @@ upgrades, the backups, and somebody whose job it is to notice.
 
 ## Sign up
 
-Signing up is a request. You ask at `app.telecraft.dev` with a Google or
+Signing up is a request. You ask at `cloud.telecraft.dev` with a Google or
 Microsoft Entra ID account, and we open a change against the register of
 Organisations that a person reads and merges. Merging it is what creates your
 Organisation, so you wait for us rather than for a machine.
