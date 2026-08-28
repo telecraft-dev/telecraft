@@ -163,7 +163,7 @@ func (s *Server) refreshAuth() error {
 	if err != nil {
 		return err
 	}
-	providers, err := auth.LoadProviders(filepath.Join(s.cfg.Root, auth.ProvidersFile), users, s.cfg.Secrets)
+	signIn, err := auth.LoadSignIn(filepath.Join(s.cfg.Root, auth.ProvidersFile), tree, users, s.cfg.Secrets)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,8 @@ func (s *Server) refreshAuth() error {
 		Sessions:    s.cfg.Sessions,
 		Users:       users,
 		Tree:        tree,
-		Providers:   providers,
+		Providers:   signIn.Providers,
+		Groups:      signIn.Groups,
 		Secure:      secureCookies(s.cfg.ExternalURL),
 		ExternalURL: s.cfg.ExternalURL,
 	})

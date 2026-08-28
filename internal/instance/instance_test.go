@@ -2,9 +2,14 @@ package instance
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"io/fs"
+	"math/big"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -359,4 +364,106 @@ func decode(t *testing.T, client *http.Client, url string, into any) {
 	if err := json.Unmarshal([]byte(body), into); err != nil {
 		t.Fatalf("%s: %v\n%s", url, err, body)
 	}
+}
+
+// The sign-in providers are the estate's to declare, and a SAML entry
+// reaches the console's provider list through the same seam every other
+// one does. It also proves the deployment constraint the assertion
+// consumer binding brings with it: the start refuses rather than serving a
+// sign-in that a browser would drop the cookie for.
+func TestAnEstateDeclaringSAMLIsServedBehindTLS(t *testing.T) {
+	root := estateCheckout(t)
+	if err := os.WriteFile(filepath.Join(root, "idp-metadata.xml"), idpMetadata(t), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	authored := "providers:\n" +
+		"  - kind: basic\n" +
+		"  - kind: saml\n" +
+		"    entity_id: https://telecraft.example/saml\n" +
+		"    metadata_file: idp-metadata.xml\n" +
+		"    groups_claim: groups\n" +
+		"groups:\n" +
+		"  - group: platform-engineering\n" +
+		"    owner: gateway-owners\n"
+	if err := os.WriteFile(filepath.Join(root, auth.ProvidersFile), []byte(authored), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	serve := func(external string) (*Server, error) {
+		srv, err := New(Config{
+			Source:        serving.DirSource{Root: root},
+			Root:          root,
+			HTTPEndpoint:  "127.0.0.1:0",
+			OpAMPEndpoint: "",
+			FetchInterval: time.Hour,
+			Sessions:      sessions(t),
+			ExternalURL:   external,
+			Logf:          t.Logf,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return srv, srv.Start(context.Background())
+	}
+
+	// Nothing in front: the start says so, and says what to do.
+	if _, err := serve(""); err == nil {
+		t.Fatal("a SAML provider was served over plain HTTP")
+	} else if !strings.Contains(err.Error(), "HTTPS") {
+		t.Fatalf("the refusal does not name the fix: %v", err)
+	}
+
+	srv, err := serve("https://telecraft.example")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Stop(ctx)
+	})
+
+	body, status := get(t, http.DefaultClient, "http://"+srv.HTTPAddr()+"/api/v1/auth/providers")
+	if status != http.StatusOK {
+		t.Fatalf("providers = %d, want 200", status)
+	}
+	var offered []struct{ Name, Flow string }
+	if err := json.Unmarshal([]byte(body), &offered); err != nil {
+		t.Fatal(err)
+	}
+	want := []struct{ Name, Flow string }{{"basic", "password"}, {"saml", "redirect"}}
+	if !reflect.DeepEqual(offered, want) {
+		t.Fatalf("providers = %+v, want %+v", offered, want)
+	}
+}
+
+// idpMetadata is a SAML identity provider's published description of
+// itself: one self-signed certificate and one endpoint.
+func idpMetadata(t *testing.T) []byte {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return []byte(`<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example/metadata">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data><X509Certificate>` + base64.StdEncoding.EncodeToString(der) + `</X509Certificate></X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`)
 }

@@ -200,6 +200,22 @@ Register `https://telecraft.example/api/v1/auth/staff/callback` as the
 redirect URI with your provider, replacing `staff` with the name you gave the
 entry.
 
+For SAML, save the identity provider's metadata document beside `auth.yaml`
+and name it in the entry:
+
+```yaml
+providers:
+  - kind: saml
+    name: staff
+    entity_id: https://telecraft.example/saml
+    metadata_file: idp-metadata.xml
+```
+
+Register the same callback address as the assertion consumer service, on the
+HTTP POST binding. SAML needs HTTPS: the assertion arrives as a form post
+from your identity provider's page, and the cookie that carries the sign-in
+attempt across it is only sent over an encrypted connection.
+
 Editing `auth.yaml` is a pull request, exactly like editing who may author. A
 file that names a secret nobody placed stops the start rather than
 withdrawing sign-in quietly:
@@ -209,6 +225,38 @@ serve: provider "staff": the secret "staff-oidc" is named, and there is no file 
 ```
 
 With no `auth.yaml`, the Instance offers basic auth alone.
+
+## Place people by their identity provider groups
+
+`users.yaml` names people one at a time, which is right while the list is
+short enough to read. Where it is not, tell the provider which claim carries
+group membership, and map a group to the Owner its members act as:
+
+```yaml
+providers:
+  - kind: oidc
+    name: staff
+    issuer: https://issuer.example
+    client_id: telecraft
+    secret: staff-oidc
+    groups_claim: groups
+
+groups:
+  - group: platform-engineering
+    owner: gateway-owners
+  - group: security
+    owner: pii-guardians
+```
+
+`users.yaml` still wins wherever it names somebody's email. The mapping
+places everybody else, and it changes nothing in `teams.yaml`: the Owners and
+the Teams stay exactly where they are, and a rule pointing at an Owner that
+file does not hold stops the start. Somebody in two mapped groups acts as the
+Owner of the first rule that matches, so write the rules in the order you
+mean them.
+
+The full format, and every way the file is refused, is in
+[Sign-in](../reference/sign-in.md).
 
 ## Probe it
 

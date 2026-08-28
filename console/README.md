@@ -87,7 +87,8 @@ URL the user arrived on survives the round trip.
 |---|---|
 | `/api/v1/auth/providers` | How sign-in works on this instance (REQ-017, ADR-0019): each provider's name and flow, `password` or `redirect`. Answers signed out. |
 | `/api/v1/auth/login` (POST) | Signs in with a password provider: `{provider, username, secret}` in, the session cookie and the `me` payload out. |
-| `/api/v1/auth/{name}/start` | Begins a redirect provider's round trip (OIDC; SAML when it lands); `return_to` names the path to resume. |
+| `/api/v1/auth/{name}/start` | Begins a redirect provider's round trip (OIDC, SAML); `return_to` names the path to resume. |
+| `/api/v1/auth/{name}/callback` | Completes it. GET is the authorization-code return; POST is SAML's assertion consumer binding, which the browser submits from the identity provider's page. Neither is called by the console: the browser is navigated to it. |
 | `/api/v1/auth/logout` (POST) | Ends the session. |
 | `/api/v1/me` | The signed-in user: id, name, team (the shelf's resting scope), and `editableTeams`, the team subtree the ownership tree derives their authoring rights from (ADR-0019 §2). Surfaces offer authoring actions exactly on objects owned inside that set. |
 | `/api/v1/objects` | The jump-to-object index: every authored object with kind, id, name, and owning team, plus the active catalogue's entries (kind `entry`, id `class/type`, no team, because nobody owns them). |

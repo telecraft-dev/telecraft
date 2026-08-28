@@ -20,7 +20,8 @@ live-check.yaml                       # optional: the live-check destination
 allow-lists.yaml                      # optional: every team's declared list
 grants.yaml                           # optional: every Grant
 users.yaml                            # optional: the sign-in seam
-auth.yaml                             # optional: the sign-in providers
+auth.yaml                             # optional: the sign-in providers and group mapping
+<idp>-metadata.xml                    # optional: a SAML identity provider's metadata
 activations.yaml                      # optional: the active Catalogue and Schema Registry
 catalogues/                           # imported Catalogue versions, retained side by side
 schema-registries/                    # imported Schema Registry versions, likewise
@@ -99,12 +100,14 @@ moving a team under a new parent rewrites no path and breaks no id.
 
 `auth.yaml`
 : The ways of signing in this Instance offers, in the order the sign-in
-  surface shows them. Each entry carries `kind`, one of `basic` or `oidc`, an
-  optional `name` that defaults to the kind, and for `oidc` an `issuer`, a
-  `client_id`, and a `secret` naming the client secret. The name only: no
-  field here takes a value, and the deployment places a file of that name.
-  Optional, and without it an Instance offers basic auth alone. See
-  [Run an Instance](../guides/run-an-instance.md).
+  surface shows them, and the optional mapping from a group the identity
+  provider asserts to the Owner its members act as. Each entry carries
+  `kind`, one of `basic`, `oidc` or `saml`, and an optional `name` that
+  defaults to the kind. No field here takes a secret value: a provider that
+  needs one names it, and the deployment places a file of that name.
+  Optional, and without it an Instance offers basic auth alone. A `saml`
+  entry names a metadata document saved beside this file. See
+  [Sign-in](sign-in.md).
 
 `activations.yaml`
 : Which imported version of the Catalogue and of the Schema Registry your

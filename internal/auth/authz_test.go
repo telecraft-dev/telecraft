@@ -10,7 +10,7 @@ import (
 func testActor(t *testing.T, email string) Actor {
 	t.Helper()
 	users := writeUsers(t, goodUsers)
-	actor, err := Resolve(Identity{Subject: "sub-1", Name: "", Email: email}, users, testTree())
+	actor, err := Resolve(Identity{Subject: "sub-1", Name: "", Email: email}, users, nil, testTree())
 	if err != nil {
 		t.Fatalf("Resolve(%q): %v", email, err)
 	}
@@ -30,7 +30,7 @@ func TestResolveJoinsIdentityToOwnerAndTeam(t *testing.T) {
 
 func TestResolveKeepsTheProviderNameClaim(t *testing.T) {
 	users := writeUsers(t, goodUsers)
-	actor, err := Resolve(Identity{Subject: "s", Name: "Josephine Author", Email: "jo@example.com"}, users, testTree())
+	actor, err := Resolve(Identity{Subject: "s", Name: "Josephine Author", Email: "jo@example.com"}, users, nil, testTree())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestResolveKeepsTheProviderNameClaim(t *testing.T) {
 
 func TestResolveRefusesAnIdentityTheEstateDoesNotKnow(t *testing.T) {
 	users := writeUsers(t, goodUsers)
-	_, err := Resolve(Identity{Subject: "s", Email: "stranger@example.com"}, users, testTree())
+	_, err := Resolve(Identity{Subject: "s", Email: "stranger@example.com"}, users, nil, testTree())
 	if err == nil || !strings.Contains(err.Error(), UsersFile) {
 		t.Fatalf("Resolve = %v, want an unknown identity to fail closed, naming the seam", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/telecraft-dev/telecraft/internal/ownership"
@@ -33,6 +34,10 @@ type HandlerConfig struct {
 	// Providers is what this instance offers, in sign-in surface order.
 	// Each must satisfy PasswordProvider or RedirectProvider.
 	Providers []Provider
+
+	// Groups is the estate's mapping from an asserted group to the Owner
+	// its members act as, empty where the estate authored none.
+	Groups Groups
 
 	// Secure marks the cookies Secure, the behind-TLS deployment shape.
 	Secure bool
@@ -62,6 +67,9 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 		default:
 			return nil, fmt.Errorf("provider %q is neither a password provider nor a redirect provider", p.Name())
 		}
+		if postsCallback(p) && !cfg.Secure {
+			return nil, fmt.Errorf("provider %q returns people here by a form post from the identity provider, and the cookie that carries a sign-in attempt across that post is only sent over HTTPS. Serve this instance over HTTPS and give it an external URL that begins with https://", p.Name())
+		}
 	}
 
 	h := &Handler{cfg: cfg, mux: http.NewServeMux()}
@@ -70,6 +78,9 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	h.mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
 	h.mux.HandleFunc("GET /api/v1/auth/{provider}/start", h.start)
 	h.mux.HandleFunc("GET /api/v1/auth/{provider}/callback", h.callback)
+	// The assertion consumer binding: a redirect provider whose identity
+	// provider returns the human by submitting a form to this address.
+	h.mux.HandleFunc("POST /api/v1/auth/{provider}/callback", h.callback)
 	h.mux.Handle("GET /api/v1/me", h.Require(http.HandlerFunc(h.me)))
 	// Anything else beneath the auth prefix is a 404 with a JSON body,
 	// like every other unknown API path. It is answered here because a
@@ -112,7 +123,7 @@ func (h *Handler) Require(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "sign in to use this API")
 			return
 		}
-		actor, err := Resolve(id, h.cfg.Users, h.cfg.Tree)
+		actor, err := Resolve(id, h.cfg.Users, h.cfg.Groups, h.cfg.Tree)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "this identity is no longer known to the estate")
 			return
@@ -165,7 +176,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "sign-in failed")
 		return
 	}
-	actor, err := Resolve(id, h.cfg.Users, h.cfg.Tree)
+	actor, err := Resolve(id, h.cfg.Users, h.cfg.Groups, h.cfg.Tree)
 	if err != nil {
 		// Authenticated but unknown to the estate: indistinguishable from
 		// bad credentials on purpose: which emails exist is not an
@@ -232,7 +243,7 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	blob := stateCookieBlob(state, verifier, returnTo)
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: blob + "." + h.cfg.Sessions.sign(blob), Path: "/api/v1/auth/",
-		MaxAge: 600, HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
+		MaxAge: 600, HttpOnly: true, Secure: h.cfg.Secure, SameSite: stateCookieSameSite(provider),
 	})
 	http.Redirect(w, r, to, http.StatusFound)
 }
@@ -241,6 +252,11 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	provider, ok := h.redirectProvider(r.PathValue("provider"))
 	if !ok {
 		writeError(w, http.StatusNotFound, "no such redirect provider on this instance")
+		return
+	}
+	params, err := callbackParams(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	cookie, err := r.Cookie(stateCookie)
@@ -253,17 +269,17 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if state != r.URL.Query().Get("state") {
+	if state != returnedState(params) {
 		writeError(w, http.StatusBadRequest, errStateCookie.Error())
 		return
 	}
 
-	id, err := provider.Complete(r.Context(), state, verifier, h.callbackURL(r, provider.Name()), r.URL.Query())
+	id, err := provider.Complete(r.Context(), state, verifier, h.callbackURL(r, provider.Name()), params)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, fmt.Sprintf("sign-in failed: %v", err))
 		return
 	}
-	actor, err := Resolve(id, h.cfg.Users, h.cfg.Tree)
+	actor, err := Resolve(id, h.cfg.Users, h.cfg.Groups, h.cfg.Tree)
 	if err != nil {
 		// The provider vouched for them but the estate has no place for
 		// them: name the fix. This is an operator conversation, not a
@@ -278,7 +294,7 @@ func (h *Handler) callback(w http.ResponseWriter, r *http.Request) {
 	// The state cookie is spent.
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: "", Path: "/api/v1/auth/", MaxAge: -1,
-		HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
+		HttpOnly: true, Secure: h.cfg.Secure, SameSite: stateCookieSameSite(provider),
 	})
 	http.Redirect(w, r, returnTo, http.StatusFound)
 }
@@ -424,6 +440,50 @@ func (h *Handler) redirectProvider(name string) (RedirectProvider, bool) {
 		}
 	}
 	return nil, false
+}
+
+// callbackParams is what the identity provider sent back, whichever way it
+// sent it: the query of a top-level navigation, or the body of the form it
+// asked the browser to submit here.
+func callbackParams(r *http.Request) (url.Values, error) {
+	if r.Method != http.MethodPost {
+		return r.URL.Query(), nil
+	}
+	if err := r.ParseForm(); err != nil {
+		return nil, fmt.Errorf("the callback body is not a form")
+	}
+	return r.PostForm, nil
+}
+
+// returnedState is the round trip's anchor coming back, under whichever
+// name the binding gives it: an authorization code flow echoes `state`,
+// and an assertion carries the same value as `RelayState`. One value, two
+// spellings, and the cookie is what either is judged against.
+func returnedState(params url.Values) string {
+	if state := params.Get("state"); state != "" {
+		return state
+	}
+	return params.Get("RelayState")
+}
+
+// postsCallback reports whether this provider returns people here by a
+// cross-site form post.
+func postsCallback(p Provider) bool {
+	pc, ok := p.(PostCallbackProvider)
+	return ok && pc.PostsCallback()
+}
+
+// stateCookieSameSite is how far the state cookie has to travel. Lax is
+// the default and covers a top-level navigation back from an issuer. A
+// cross-site form post is not a navigation the browser will send a Lax
+// cookie on, so a provider that returns people that way needs None, which
+// browsers only honour together with Secure; NewHandler refuses such a
+// provider on a deployment that is not behind TLS.
+func stateCookieSameSite(p Provider) http.SameSite {
+	if postsCallback(p) {
+		return http.SameSiteNoneMode
+	}
+	return http.SameSiteLaxMode
 }
 
 // safeReturnTo admits only same-origin absolute paths: the open-redirect

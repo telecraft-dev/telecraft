@@ -34,27 +34,57 @@ type Actor struct {
 	Team     ownership.TeamID
 }
 
-// Resolve joins an authenticated identity to the estate through the
-// users.yaml seam. It fails closed: an identity the estate does not know,
-// or one resolving to an owner outside the tree, gets no actor. A session
-// with no place in the tree could author nothing anyway, and saying so at
-// sign-in beats a surface of dead affordances.
-func Resolve(id Identity, users Users, tree ownership.Tree) (Actor, error) {
+// Resolve joins an authenticated identity to the estate: through the
+// users.yaml seam first, and then, where the estate authored one, through
+// the group mapping in auth.yaml.
+//
+// users.yaml wins wherever it names the email. It is the explicit,
+// reviewed statement about one human, and the group mapping is the bulk
+// rule for the humans nobody wrote down one at a time; a rule must never
+// quietly override a name somebody put in a file on purpose.
+//
+// It fails closed: an identity the estate does not know, or one resolving
+// to an owner outside the tree, gets no actor. A session with no place in
+// the tree could author nothing anyway, and saying so at sign-in beats a
+// surface of dead affordances.
+func Resolve(id Identity, users Users, groups Groups, tree ownership.Tree) (Actor, error) {
 	if err := id.valid(); err != nil {
 		return Actor{}, err
 	}
-	user, ok := users.ByEmail(id.Email)
-	if !ok {
-		return Actor{}, fmt.Errorf("no user with email %q in %s. Add the user to that file to let them sign in", id.Email, UsersFile)
+	// Only the groups the estate names travel any further, in the actor
+	// and so in the session it signs (see Groups.Known).
+	id.Groups = groups.Known(id.Groups)
+
+	user, named := users.ByEmail(id.Email)
+	if named {
+		owner, ok := tree.Owners[user.Owner]
+		if !ok {
+			return Actor{}, fmt.Errorf("user %q acts as owner %q, which is not in the team tree", user.Email, user.Owner)
+		}
+		// The provider's claims author the changes (ADR-0019 §3);
+		// users.yaml only fills a name the provider could not supply.
+		if id.Name == "" {
+			id.Name = user.Name
+		}
+		return Actor{Identity: id, Owner: owner.ID, Team: owner.Team}, nil
 	}
-	owner, ok := tree.Owners[user.Owner]
-	if !ok {
-		return Actor{}, fmt.Errorf("user %q acts as owner %q, which is not in the team tree", user.Email, user.Owner)
+
+	ownerID, mapped := groups.Owner(id.Groups)
+	if !mapped {
+		if len(groups) == 0 {
+			return Actor{}, fmt.Errorf("no user with email %q in %s. Add the user to that file to let them sign in", id.Email, UsersFile)
+		}
+		return Actor{}, fmt.Errorf("no user with email %q in %s, and none of the groups this identity carries is mapped to an owner in %s. Add the user, or map one of their groups", id.Email, UsersFile, ProvidersFile)
 	}
-	// The provider's claims author the changes (ADR-0019 §3); users.yaml
-	// only fills a name the provider could not supply.
+	owner, ok := tree.Owners[ownerID]
+	if !ok {
+		return Actor{}, fmt.Errorf("a group maps to owner %q, which is not in the team tree", ownerID)
+	}
+	// Nobody wrote this human down, so nobody wrote their name down
+	// either. The address they signed in with attributes their changes,
+	// which keeps git history the audit trail (ADR-0019 §3).
 	if id.Name == "" {
-		id.Name = user.Name
+		id.Name = id.Email
 	}
 	return Actor{Identity: id, Owner: owner.ID, Team: owner.Team}, nil
 }

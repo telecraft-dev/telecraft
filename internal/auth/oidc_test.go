@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -282,7 +283,7 @@ func TestOIDCCompleteVerifiesTheCodeFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Identity{Subject: "idp-subject-1", Name: "Jo Author", Email: "jo@example.com"}
-	if id != want {
+	if !reflect.DeepEqual(id, want) {
 		t.Fatalf("Complete = %+v, want %+v", id, want)
 	}
 }
@@ -422,7 +423,7 @@ func TestOIDCCompleteRejectsUnsignedAlgorithms(t *testing.T) {
 	payload, _ := json.Marshal(idp.goodClaims(o.ClientID, "state-1"))
 	token := header + "." + base64.RawURLEncoding.EncodeToString(payload) + "."
 
-	_, err := o.verifyIDToken(context.Background(), &oidcDiscovery{JWKSURI: idp.issuer + "/jwks"}, token, nonceFrom("state-1"))
+	_, _, err := o.verifyIDToken(context.Background(), &oidcDiscovery{JWKSURI: idp.issuer + "/jwks"}, token, nonceFrom("state-1"))
 	if err == nil || !strings.Contains(err.Error(), "RS256") {
 		t.Fatalf("verifyIDToken = %v, want an RS256-only refusal", err)
 	}
@@ -464,3 +465,48 @@ var (
 	_ RedirectProvider = (*OIDC)(nil)
 	_ PasswordProvider = Basic{}
 )
+
+// The groups claim is read only where the estate named one, and it is read
+// out of the same verified bytes the rest of the claims came from, never a
+// second parse of an unverified token.
+func TestOIDCReadsTheGroupsClaimTheEstateNames(t *testing.T) {
+	cases := map[string]struct {
+		claim  string
+		value  any
+		want   []string
+		absent bool
+	}{
+		"a list of groups":              {"groups", []string{"platform-engineering", "everyone"}, []string{"platform-engineering", "everyone"}, false},
+		"one space-separated string":    {"groups", "platform-engineering everyone", []string{"platform-engineering", "everyone"}, false},
+		"a claim under another name":    {"roles", []string{"platform-engineering"}, []string{"platform-engineering"}, false},
+		"the estate named none":         {"", []string{"platform-engineering"}, nil, false},
+		"the issuer released none":      {"groups", nil, nil, true},
+		"a claim of an unusable shape":  {"groups", map[string]any{"a": 1}, nil, false},
+		"a claim the issuer left empty": {"groups", "", nil, false},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			idp := newFakeIdP(t)
+			o := idp.provider()
+			o.GroupsClaim = tc.claim
+			claims := idp.goodClaims(o.ClientID, "state-1")
+			if !tc.absent {
+				key := tc.claim
+				if key == "" {
+					key = "groups"
+				}
+				claims[key] = tc.value
+			}
+			idp.claims = claims
+
+			id, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback,
+				url.Values{"code": {"c0de"}, "state": {"state-1"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(id.Groups, tc.want) {
+				t.Fatalf("groups = %v, want %v", id.Groups, tc.want)
+			}
+		})
+	}
+}

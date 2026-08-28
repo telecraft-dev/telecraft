@@ -32,6 +32,13 @@ type OIDC struct {
 	ClientID     string
 	ClientSecret string
 
+	// GroupsClaim names the ID token claim group membership arrives in,
+	// empty unless the estate asked for one. The issuer has to be
+	// configured to put that claim in the ID token; this flow reads the
+	// token it is given and fetches nothing further, which is what keeps
+	// the air-gapped shape one round trip (REQ-006).
+	GroupsClaim string
+
 	// ClientSecretFrom, when set, is read at each token exchange instead
 	// of ClientSecret being held. That is what makes rotating the client
 	// secret one act, writing the file the estate named, with no restart
@@ -148,11 +155,16 @@ func (o *OIDC) Complete(ctx context.Context, state, verifier, callbackURL string
 		return Identity{}, fmt.Errorf("token exchange: the response carries no id_token")
 	}
 
-	claims, err := o.verifyIDToken(ctx, disc, token.IDToken, nonceFrom(state))
+	claims, rawClaims, err := o.verifyIDToken(ctx, disc, token.IDToken, nonceFrom(state))
 	if err != nil {
 		return Identity{}, err
 	}
-	id := Identity{Subject: claims.Subject, Name: claims.Name, Email: claims.Email}
+	id := Identity{
+		Subject: claims.Subject,
+		Name:    claims.Name,
+		Email:   claims.Email,
+		Groups:  groupsFrom(rawClaims, o.GroupsClaim),
+	}
 	if id.Name == "" {
 		id.Name = claims.PreferredUsername
 	}
@@ -208,48 +220,50 @@ func (a *audience) UnmarshalJSON(raw []byte) error {
 }
 
 // verifyIDToken checks signature (RS256 against the issuer's JWKS), issuer,
-// audience, the time claims and nonce. Anything else the token carries is
-// ignored.
-func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, wantNonce string) (idClaims, error) {
+// audience, the time claims and nonce. It returns the claims this flow
+// reads by name, and the verified claim set whole, so a claim the estate
+// named rather than this package can be read from the same verified bytes
+// and never from a second, unverified parse.
+func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, wantNonce string) (idClaims, []byte, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) != 3 {
-		return idClaims{}, fmt.Errorf("id_token is not a three-part JWT")
+		return idClaims{}, nil, fmt.Errorf("id_token is not a three-part JWT")
 	}
 	headerJSON, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return idClaims{}, fmt.Errorf("id_token header: %w", err)
+		return idClaims{}, nil, fmt.Errorf("id_token header: %w", err)
 	}
 	var header struct {
 		Alg string `json:"alg"`
 		Kid string `json:"kid"`
 	}
 	if err := json.Unmarshal(headerJSON, &header); err != nil {
-		return idClaims{}, fmt.Errorf("id_token header: %w", err)
+		return idClaims{}, nil, fmt.Errorf("id_token header: %w", err)
 	}
 	if header.Alg != "RS256" {
-		return idClaims{}, fmt.Errorf("id_token is signed with %q, but this provider only verifies RS256. Configure the issuer's client to use RS256", header.Alg)
+		return idClaims{}, nil, fmt.Errorf("id_token is signed with %q, but this provider only verifies RS256. Configure the issuer's client to use RS256", header.Alg)
 	}
 
 	key, err := o.signingKey(ctx, disc.JWKSURI, header.Kid)
 	if err != nil {
-		return idClaims{}, err
+		return idClaims{}, nil, err
 	}
 	digest := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
 	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
-		return idClaims{}, fmt.Errorf("id_token signature: %w", err)
+		return idClaims{}, nil, fmt.Errorf("id_token signature: %w", err)
 	}
 	if err := rsa.VerifyPKCS1v15(key, crypto.SHA256, digest[:], sig); err != nil {
-		return idClaims{}, fmt.Errorf("id_token signature does not verify against the issuer's keys")
+		return idClaims{}, nil, fmt.Errorf("id_token signature does not verify against the issuer's keys")
 	}
 
 	claimsJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return idClaims{}, fmt.Errorf("id_token claims: %w", err)
+		return idClaims{}, nil, fmt.Errorf("id_token claims: %w", err)
 	}
 	var claims idClaims
 	if err := json.Unmarshal(claimsJSON, &claims); err != nil {
-		return idClaims{}, fmt.Errorf("id_token claims: %w", err)
+		return idClaims{}, nil, fmt.Errorf("id_token claims: %w", err)
 	}
 	// The time claims are read against one instant, so a verification that
 	// straddles a second cannot judge two of them by different clocks. iat
@@ -259,19 +273,19 @@ func (o *OIDC) verifyIDToken(ctx context.Context, disc *oidcDiscovery, raw, want
 	now := time.Now()
 	switch {
 	case claims.Issuer != o.Issuer:
-		return idClaims{}, fmt.Errorf("id_token issuer %q is not the configured issuer %q", claims.Issuer, o.Issuer)
+		return idClaims{}, nil, fmt.Errorf("id_token issuer %q is not the configured issuer %q", claims.Issuer, o.Issuer)
 	case !claims.Audience.contains(o.ClientID):
-		return idClaims{}, fmt.Errorf("id_token audience does not include this client")
+		return idClaims{}, nil, fmt.Errorf("id_token audience does not include this client")
 	case now.Add(-clockSkew).Unix() >= claims.Expires:
-		return idClaims{}, fmt.Errorf("id_token has expired")
+		return idClaims{}, nil, fmt.Errorf("id_token has expired")
 	case claims.NotBefore != 0 && now.Add(clockSkew).Unix() < claims.NotBefore:
-		return idClaims{}, fmt.Errorf("id_token is not valid yet: its nbf claim is further ahead than the clock-skew allowance covers")
+		return idClaims{}, nil, fmt.Errorf("id_token is not valid yet: its nbf claim is further ahead than the clock-skew allowance covers")
 	case claims.IssuedAt != 0 && now.Add(clockSkew).Unix() < claims.IssuedAt:
-		return idClaims{}, fmt.Errorf("id_token is issued in the future: its iat claim is further ahead than the clock-skew allowance covers")
+		return idClaims{}, nil, fmt.Errorf("id_token is issued in the future: its iat claim is further ahead than the clock-skew allowance covers")
 	case claims.Nonce != wantNonce:
-		return idClaims{}, fmt.Errorf("id_token nonce does not match this sign-in attempt")
+		return idClaims{}, nil, fmt.Errorf("id_token nonce does not match this sign-in attempt")
 	}
-	return claims, nil
+	return claims, claimsJSON, nil
 }
 
 func (a audience) contains(clientID string) bool {
@@ -387,4 +401,32 @@ func nonceFrom(state string) string {
 func challengeFor(verifier string) string {
 	sum := sha256.Sum256([]byte(verifier))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// groupsFrom reads the named claim out of a verified claim set. A claim
+// that is absent, or is neither a list of strings nor a single
+// space-separated string, yields nothing: an identity provider that does
+// not release groups is not an error, it is an estate that resolves its
+// people some other way.
+func groupsFrom(claims []byte, name string) []string {
+	if name == "" || len(claims) == 0 {
+		return nil
+	}
+	var all map[string]json.RawMessage
+	if err := json.Unmarshal(claims, &all); err != nil {
+		return nil
+	}
+	raw, ok := all[name]
+	if !ok {
+		return nil
+	}
+	var many []string
+	if err := json.Unmarshal(raw, &many); err == nil {
+		return many
+	}
+	var one string
+	if err := json.Unmarshal(raw, &one); err == nil && strings.TrimSpace(one) != "" {
+		return strings.Fields(one)
+	}
+	return nil
 }
