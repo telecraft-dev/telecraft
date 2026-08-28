@@ -40,7 +40,8 @@ Two controls sit in the chrome above every Workspace:
 - **Jump to object** (`⌘K`) is how you reach a specific Tier, Service,
   Blueprint, or Catalogue entry. There is no object-first navigation tree.
 - The user chip shows whose team scopes the shelf. The demo signs you in as
-  the root Team, so the first view is the whole estate.
+  the root Team, so the first view is the whole estate. Its panel also names
+  the version the console was built from.
 
 A context strip sits beneath the chrome, on every Workspace:
 

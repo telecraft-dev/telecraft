@@ -5,8 +5,8 @@
 // Every text file in the bundle is scanned for absolute and
 // protocol-relative URLs. HTML, CSS, and SVG tolerate none that could be
 // fetched. JavaScript additionally tolerates the allowlisted never-fetched
-// string literals below (error-message documentation links); anything else
-// fails the build.
+// string literals below (error-message documentation links, and the
+// version link the profile menu names); anything else fails the build.
 //
 // XML namespace identifiers are the one exception everywhere: `xmlns` is a
 // name, not an address, and no parser has ever dereferenced one. An SVG
@@ -35,6 +35,12 @@ const NEVER_FETCHED = [
   // attribution element (proOptions in FlowCanvas.tsx), so the string is
   // never rendered, navigated, or fetched.
   /https:\/\/reactflow\.dev\b/,
+  // The version link in the profile menu (ADR-0065): the bundle names
+  // the release or commit the build came from and never loads anything
+  // from it. A navigation the reader chooses is not a runtime dependency
+  // (ADR-0045 §5); an air-gapped deployment renders identically with the
+  // address unreachable.
+  /https:\/\/github\.com\/telecraft-dev\/telecraft\b/,
 ]
 
 const URL_PATTERN = /(?:https?:)?\/\/[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?![a-z0-9.-])[^\s"'`)<>\\]*/gi

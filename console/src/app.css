@@ -341,6 +341,16 @@
   justify-content: space-between;
 }
 
+/* The console's version, last in the panel: provenance, never a health
+   signal, so it takes the muted ink and the mono face and no severity
+   colour ever rides it (ADR-0065). */
+.profile-version {
+  align-self: flex-start;
+  color: var(--colour-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-s);
+}
+
 /* Jump-to-object dialog */
 
 .jump-overlay {

@@ -6,6 +6,7 @@ import { Button, buttonClass } from '../ui/Button'
 import { Icon } from '../ui/Icon'
 import { DemoBanner } from './DemoBanner'
 import { ThemeControl } from './ThemeControl'
+import { consoleVersion, versionLink } from './version'
 
 /**
  * The profile control (issue #182): one compact button at the right edge of
@@ -58,6 +59,7 @@ export function ProfileMenu() {
   }, [open])
 
   const name = me.data?.name
+  const link = versionLink(consoleVersion)
   if (!demoMode && name === undefined) return null
 
   const toggle = () => {
@@ -115,6 +117,29 @@ export function ProfileMenu() {
             <Button data-testid="sign-out" onClick={() => signOut.mutate()}>
               Sign out
             </Button>
+          )}
+          {/* The console's version (ADR-0065): provenance about the
+              reader's session, so it lives here, quiet and last. An exact
+              release tag opens its release page, anything else the
+              nearest thing the describe string can prove; `development`
+              has nowhere to lead, so it is a word, not a link. The
+              github.com literal rides tools/check-zero-cdn.mjs's
+              never-fetched allowlist: the bundle names the address and
+              never loads it. */}
+          {link !== null ? (
+            <a
+              className="profile-version"
+              data-testid="console-version"
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {consoleVersion}
+            </a>
+          ) : (
+            <span className="profile-version" data-testid="console-version">
+              {consoleVersion}
+            </span>
           )}
         </div>
       )}

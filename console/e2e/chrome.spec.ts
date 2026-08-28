@@ -49,6 +49,34 @@ test('the theme is stamped before the first paint, never after it', async ({ pag
   expect(atLoad).toMatch(/light|dark/)
 })
 
+test('the profile menu names the version the console was built from', async ({ page }) => {
+  await page.goto('/estate')
+  await page.getByTestId('profile-trigger').click()
+
+  // The value is stamped at build time (vite.config.ts), so this suite
+  // cannot know the exact string without re-running the build's own
+  // derivation at its own moment, which can disagree across a dirty
+  // tree. The shape is asserted instead: a tag description, a sha, or
+  // the word `development`, and never an empty entry.
+  const version = page.getByTestId('console-version')
+  await expect(version).toHaveText(/^(v\d+\.\d+\.\d+\S*|[0-9a-f]{7,40}(-dirty)?|development)$/)
+
+  // Anything but `development` is a door to where the build came from;
+  // `development` has nowhere to lead, so it must not be one.
+  const text = (await version.textContent()) ?? ''
+  const tag = await version.evaluate((el) => el.tagName)
+  if (text === 'development') {
+    expect(tag).toBe('SPAN')
+  } else {
+    expect(tag).toBe('A')
+    await expect(version).toHaveAttribute(
+      'href',
+      /^https:\/\/github\.com\/telecraft-dev\/telecraft/,
+    )
+    await expect(version).toHaveAttribute('rel', 'noreferrer')
+  }
+})
+
 test('a panel is resized by dragging its edge, and remembers the width', async ({ page }) => {
   await page.goto('/estate?object=tier%3Adata-flow%2Fgateway')
 
