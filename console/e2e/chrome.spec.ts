@@ -97,6 +97,75 @@ test('the resize handle takes the keyboard, not only a pointer', async ({ page }
   expect((await panel.boundingBox())!.width).toBeCloseTo(before, 0)
 })
 
+// The context strip's ambient readings (ADR-0062): derived through the
+// modules the surfaces themselves read (the derivation is held by
+// tests/ambient.test.ts), so what only a browser can answer is here:
+// every reading is a door that carries its filter, and the strip holds
+// one row the way the chrome above it does.
+
+test('the context strip reads standing, the Catalogue, and the ungoverned', async ({ page }) => {
+  await page.goto('/estate')
+
+  // The estate under the lens: the fixture's four production findings,
+  // with the exempt count alongside so exemptions never hide.
+  await expect(page.getByTestId('strip-standing')).toContainText('4 findings · 1 exempt')
+
+  // The Catalogue designation, and the version on offer beside it.
+  await expect(page.getByTestId('strip-catalogue')).toContainText('v0.158.0')
+  await expect(page.getByTestId('strip-catalogue-offer')).toHaveText('v0.155.0 on offer')
+
+  // The ungoverned population, styled as concern rather than severity.
+  await expect(page.getByTestId('strip-ungoverned')).toHaveText('5 ungoverned collectors')
+
+  // The quiet edge summary reads the other Environments.
+  await expect(page.getByTestId('strip-elsewhere')).toHaveText('staging: clear')
+
+  // Switching the lens re-reads both sides of the strip: staging is
+  // clean, and production's findings move to the edge summary.
+  await page.getByTestId('lens-control').selectOption('staging')
+  await expect(page.getByTestId('strip-standing')).toContainText('clear')
+  await expect(page.getByTestId('strip-elsewhere')).toHaveText('production: 4 findings')
+})
+
+test('every reading in the strip is a door that carries its filter', async ({ page }) => {
+  // The ungoverned count opens the flat list already filtered to the
+  // ungoverned population: the same door Home offers.
+  await page.goto('/estate')
+  await page.getByTestId('strip-ungoverned').click()
+  await expect(page).toHaveURL(/view=list/)
+  await expect(page).toHaveURL(/ungoverned=true/)
+  await expect(page.getByTestId('collector-table').locator('tbody tr')).toHaveCount(5)
+
+  // The version on offer opens the Activation view, where the impact
+  // report the decision would be taken on is waiting.
+  await page.getByTestId('strip-catalogue-offer').click()
+  await expect(page).toHaveURL(/view=activation/)
+  await expect(page.getByTestId('candidate-v0.155.0')).toBeVisible()
+
+  // The active version opens the Catalogue browse view.
+  await page.getByTestId('strip-catalogue').getByRole('link').first().click()
+  await expect(page).toHaveURL(/view=browse/)
+
+  // The standing opens Home, and the lens rides along.
+  await page.getByTestId('lens-control').selectOption('staging')
+  await page.getByTestId('strip-standing').getByRole('link').click()
+  await expect(page.getByTestId('home')).toBeVisible()
+  await expect(page.getByTestId('home-lens')).toHaveText('staging')
+})
+
+test('the context strip holds one row, giving way before it wraps', async ({ page }) => {
+  for (const width of [720, 800, 1024, 1280, 1600]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/estate')
+    await expect(page.getByTestId('strip-standing')).toBeVisible()
+
+    // One line is ~49px with the strip's padding and two would be well
+    // past this, so 56px separates them without pinning the leading.
+    const strip = page.locator('.context-strip')
+    expect((await strip.boundingBox())!.height, `the strip wraps at ${width}px`).toBeLessThan(56)
+  }
+})
+
 test('nothing in the chrome wraps, overlaps, or is printed over', async ({ page }) => {
   // Two regressions live here, one after the other. First the theme
   // control pushed the demo's chrome to 1749px inside 1600px and

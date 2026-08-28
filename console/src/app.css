@@ -522,10 +522,13 @@
   flex-direction: column;
 }
 
-/* The context strip (ADR-0058): the lens, and in time the other
-   surface-level context controls, on one line beneath the chrome. The
-   surface wrapper below is the scroll container, so the strip holds its
-   place while the surface scrolls. */
+/* The context strip (ADR-0058, ADR-0062): the lens, the surface-level
+   context controls as they earn a place, and the ambient standing
+   readings beside them. The surface wrapper below is the scroll
+   container, so the strip holds its place while the surface scrolls.
+   One row, always, on the chrome's own argument: the edge summary gives
+   way at a bounded width, and past the point where nothing else fits the
+   strip scrolls rather than wrapping or overlapping. */
 .context-strip {
   flex: none;
   display: flex;
@@ -533,6 +536,58 @@
   gap: var(--space-4);
   padding: var(--space-2) var(--space-5);
   border-bottom: 1px solid var(--colour-rule-soft);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+/* One ambient reading: a hairline seam apart from its neighbour, and
+   never narrower than its own words, which is what keeps the row one
+   row. */
+.strip-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-left: 1px solid var(--colour-rule-soft);
+  padding-left: var(--space-4);
+  white-space: nowrap;
+  font-size: var(--text-s);
+  flex-shrink: 0;
+}
+
+.strip-item .mark {
+  flex-shrink: 0;
+}
+
+.strip-item.severity-violation .mark {
+  color: var(--severity-violation);
+}
+
+.strip-item.severity-advisory .mark {
+  color: var(--severity-advisory);
+}
+
+.strip-label {
+  color: var(--colour-text-muted);
+}
+
+/* A version is data, and data is set in the mono face. */
+.strip-version {
+  font-family: var(--font-mono);
+}
+
+.strip-elsewhere {
+  margin-left: auto;
+  border-left: none;
+  color: var(--colour-text-muted);
+}
+
+/* The quiet edge summary is the first reading to give way: at widths
+   where the strip would otherwise scroll, it goes, and the readings that
+   are doors stay reachable. */
+@media (max-width: 64rem) {
+  .strip-elsewhere {
+    display: none;
+  }
 }
 
 .workspace-surface {

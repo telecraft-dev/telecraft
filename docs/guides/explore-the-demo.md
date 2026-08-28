@@ -33,17 +33,25 @@ a Grant, click **Propose as a pull request**, and you get:
 The header carries the same message permanently, beside the commit the site
 was built from and the moment the estate was evaluated.
 
-## The chrome
+## The chrome and the context strip
 
-Three controls sit above every Workspace:
+Two controls sit in the chrome above every Workspace:
 
-- **Lens** picks the leading Environment, `production` by default. It sets
-  emphasis and evaluation context rather than filtering: surfaces that show
-  several Environments keep every row visible.
 - **Jump to object** (`⌘K`) is how you reach a specific Tier, Service,
   Blueprint, or Catalogue entry. There is no object-first navigation tree.
 - The user chip shows whose team scopes the shelf. The demo signs you in as
   the root Team, so the first view is the whole estate.
+
+A context strip sits beneath the chrome, on every Workspace:
+
+- **Lens** picks the leading Environment, `production` by default. It sets
+  emphasis and evaluation context rather than filtering: surfaces that show
+  several Environments keep every row visible.
+- Beside the lens, the strip reads the estate under it: the finding count
+  with its worst mark and any exempt count, the active Catalogue version
+  with anything on offer, and the ungoverned collector count. Each reading
+  opens the surface that shows it in full, and a quiet summary at the right
+  edge covers the other Environments.
 
 ## Estate
 

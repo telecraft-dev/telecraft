@@ -1,6 +1,6 @@
 import { Link, Outlet } from '@tanstack/react-router'
+import { ContextStrip } from './ContextStrip'
 import { JumpToObject } from './JumpToObject'
-import { LensControl } from './LensControl'
 import { ProfileMenu } from './ProfileMenu'
 import { WORKSPACES } from './workspaces'
 import { TourControl } from '../tours/TourControl'
@@ -50,12 +50,10 @@ export function AppShell() {
         </div>
       </header>
       <main className="workspace-body">
-        {/* The context strip (ADR-0058): the lens, and in time the other
-            surface-level context controls, on one line above every
-            Workspace. The surface below it scrolls; the strip does not. */}
-        <div className="context-strip">
-          <LensControl />
-        </div>
+        {/* The context strip (ADR-0058, ADR-0062): the lens and the
+            ambient standing readings, on one line above every Workspace.
+            The surface below it scrolls; the strip does not. */}
+        <ContextStrip />
         <div className="workspace-surface">
           <Outlet />
         </div>
