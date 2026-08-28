@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { api } from '../api/client'
 import { buttonClass } from '../ui/Button'
+import { BrandMark } from '../ui/BrandMark'
 
 /**
  * The sign-in surface (REQ-017, ADR-0019 §1): rendered by the auth gate
@@ -45,7 +46,10 @@ export function Login() {
   return (
     <main className="login">
       <section className="login-card" data-testid="login">
-        <h1 className="brand">Telecraft</h1>
+        <h1 className="brand">
+          <BrandMark />
+          Telecraft
+        </h1>
         <p className="login-lede">Sign in to your estate.</p>
         {password && (
           <form className="login-form" onSubmit={submit}>

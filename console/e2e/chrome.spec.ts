@@ -194,6 +194,37 @@ test('the context strip holds one row, giving way before it wraps', async ({ pag
   }
 })
 
+test('the mark sits beside the word, and is themed rather than pinned to one ground', async ({
+  page,
+}) => {
+  await page.goto('/estate')
+
+  // Wordmark-first: the mark supports the word and does not replace it, so
+  // both are in the corner and only the word is read out.
+  const brand = page.locator('.brand')
+  await expect(brand).toHaveText('Telecraft')
+  const mark = page.getByTestId('brand-mark')
+  await expect(mark).toBeVisible()
+  await expect(mark).toHaveAttribute('aria-hidden', 'true')
+
+  // Never below the height at which the datum blurs into the first band.
+  expect((await mark.boundingBox())!.height).toBeGreaterThanOrEqual(12)
+
+  // The pack draws one file per ground; this one is drawn from the tokens,
+  // which is the whole reason it can follow a reader who switches theme
+  // without a second copy of the artwork shipping beside it.
+  const datum = async () =>
+    await mark.locator('rect').first().evaluate((el) => getComputedStyle(el).fill)
+
+  await page.getByTestId('profile-trigger').click()
+  const theme = page.getByTestId('theme-control')
+  await theme.selectOption('dark')
+  const onDark = await datum()
+  await theme.selectOption('light')
+  const onLight = await datum()
+  expect(onDark).not.toBe(onLight)
+})
+
 test('nothing in the chrome wraps, overlaps, or is printed over', async ({ page }) => {
   // Two regressions live here, one after the other. First the theme
   // control pushed the demo's chrome to 1749px inside 1600px and

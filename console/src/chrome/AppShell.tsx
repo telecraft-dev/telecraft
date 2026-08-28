@@ -2,6 +2,7 @@ import { Link, Outlet } from '@tanstack/react-router'
 import { ContextStrip } from './ContextStrip'
 import { JumpToObject } from './JumpToObject'
 import { ProfileMenu } from './ProfileMenu'
+import { BrandMark } from '../ui/BrandMark'
 import { WORKSPACES } from './workspaces'
 import { TourControl } from '../tours/TourControl'
 import { TourRunner } from '../tours/TourRunner'
@@ -18,7 +19,10 @@ export function AppShell() {
   return (
     <div className="shell">
       <header className="chrome">
-        <span className="brand">Telecraft</span>
+        <span className="brand">
+          <BrandMark />
+          Telecraft
+        </span>
         <nav className="workspaces" aria-label="Workspaces">
           {WORKSPACES.map((ws) => (
             <Link

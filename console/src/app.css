@@ -204,12 +204,32 @@
 }
 
 /* Wordmark-first: the mark supports the word, it does not replace it
-   (docs/branding/identity.md). Set wide, in the way a stamped plate is. */
+   (docs/branding/identity.md). Set wide, in the way a stamped plate is.
+   One lockup, in the chrome and on the sign-in card, so the two surfaces
+   that carry the name carry it the same way. */
 .brand {
+  display: flex;
+  align-items: center;
+  /* Like every other cluster in the bar: it gives up no width, because a
+     squeezed lockup breaks the word across two lines and the bar grows. */
+  flex-shrink: 0;
+  /* Clear space around the mark is two reading bands, three-eighths of its
+     height (docs/branding/pack/README.md). At 14px that is 5.25px, and the
+     scale's next step up is 8; the padding and gaps of both surfaces it
+     sits on cover the other three sides. */
+  gap: var(--space-2);
   font-weight: var(--weight-bold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: var(--text-s);
+}
+
+/* A mark below its minimum height is a blur rather than a smaller mark
+   (docs/branding/pack/README.md), so it is drawn at one size and never
+   fitted to what is left. */
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
 }
 
 .workspaces {

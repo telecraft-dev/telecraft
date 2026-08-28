@@ -126,9 +126,17 @@ already means advisory.
 On `telecraft.dev` it is the wordmark's first syllable and the pulse line's
 stroke, both on `--colour-bg`: 12.76:1 on dark, 5.40:1 on light, so it clears
 the text floor as text and the graphic floor as a stroke. It is listed in the
-palette check's `TEXT_ON` table for that ground. Until the marketing site used
-it, it was in neither table and therefore unchecked, which is the failure
-mode described under "Accessibility floors", found by walking into it.
+palette check's `TEXT_ON` table for that ground. Until the marketing site
+used it, it was in neither table and therefore unchecked, which is the
+failure mode described under "Accessibility floors", found by walking into
+it.
+
+In the console it is the mark's datum, on the chrome and on the sign-in
+card, measured as a graphic: 12.12:1 and 11.62:1 on dark, 5.91:1 on both
+light grounds. The mark's three bands are the text tones on those same
+grounds, and the faintest of them is listed beside the amber in
+`GRAPHIC_ON` for the chrome, which is the one ground it had never been
+measured against.
 
 ## Typography
 
