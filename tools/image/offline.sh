@@ -60,20 +60,35 @@ USERS
 
 docker pull --quiet "$checker" >/dev/null
 
+# There is no network here and so nothing terminating TLS in front, and the
+# image serves on 0.0.0.0, which the fail-closed guard of ADR-0067 §5 reads
+# as a plain HTTP URL on a host something could sit between. Plain HTTP is
+# what this check means, so it says so rather than being handed a loopback
+# external URL that would leave the guard untested against the image's own
+# default address.
 echo "offline: starting $image with no network"
 container=$(docker run -d --network none \
   --volume "$estate:/estate:ro" \
-  "$image" serve -estate /estate)
+  "$image" serve -estate /estate -insecure-http)
 
 probe() {
   docker run --rm --network "container:$container" "$checker" \
     --silent --show-error --max-time 5 "$@"
 }
 
+# A container that refused to start answers nothing, and waiting the full
+# thirty seconds for that buries the one line that says why in a timeout.
+# So each turn of the loop asks whether the process is still there, and the
+# first turn that finds it gone reports with its log.
 status=""
 for _ in $(seq 1 30); do
   status=$(probe --output /dev/null --write-out '%{http_code}' http://127.0.0.1:4321/readyz || true)
   [ "$status" = "200" ] && break
+  if [ "$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null)" != "true" ]; then
+    echo "offline: the container stopped before it answered /readyz" >&2
+    docker logs "$container" >&2 || true
+    exit 1
+  fi
   sleep 1
 done
 if [ "$status" != "200" ]; then
