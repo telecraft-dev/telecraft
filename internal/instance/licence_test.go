@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/telecraft-dev/telecraft/internal/licence"
 	"github.com/telecraft-dev/telecraft/internal/serving"
+	"github.com/telecraft-dev/telecraft/pkg/licence"
 )
 
 // startWithLicence runs one server over a checkout with a licence file
@@ -116,7 +116,7 @@ func TestALicenceFileThatIsNotThereStopsNothing(t *testing.T) {
 
 // What a licensed Instance reports. The keys a build ships decide what
 // verifies, so the standing is placed here rather than signed: what a
-// signature means is internal/licence's to hold, and what this endpoint
+// signature means is pkg/licence's to hold, and what this endpoint
 // says about a standing is this package's.
 func TestALicensedInstanceNamesItsLicenseeAndDates(t *testing.T) {
 	srv, base := start(t, estateCheckout(t))

@@ -16,7 +16,7 @@ import (
 
 const (
 	module     = "github.com/telecraft-dev/telecraft"
-	licencePkg = module + "/internal/licence"
+	licencePkg = module + "/pkg/licence"
 )
 
 // dialling is every standard-library package that reaches beyond this
@@ -34,7 +34,7 @@ var dialling = map[string]string{
 func deps(t *testing.T, pkg string) []string {
 	t.Helper()
 	cmd := exec.Command("go", "list", "-f", `{{join .Deps " "}}`, pkg)
-	cmd.Dir = "../.." // the module root, from internal/licence
+	cmd.Dir = "../.." // the module root, from pkg/licence
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("go list %s: %v", pkg, err)
