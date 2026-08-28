@@ -1,0 +1,229 @@
+# Telecraft, on Kubernetes.
+#
+# One Deployment of one process: the console, the platform API and the
+# OpAMP endpoint over one estate. Nothing here holds a secret value. Where
+# Telecraft needs secret material you name a Secret you created, and the
+# deployment projects it as a file, so this file is safe to commit.
+
+# The image. Set image.tag to the release you want, or image.digest to pin
+# the bytes. A digest wins over a tag.
+image:
+  repository: ghcr.io/telecraft-dev/telecraft
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+# Names of Secrets that hold registry credentials, for a mirror that needs
+# them.
+imagePullSecrets: []
+
+# One replica, and the chart refuses more. One Instance runs one server:
+# the reading of served collectors counts the connections one process
+# holds, so a second replica behind one address reports the half it holds
+# as though it were the whole estate.
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # Left empty, the name is the release's.
+  name: ""
+  annotations: {}
+
+# The estate the Instance serves.
+#
+# The image carries no git, so the checkout lives in a volume and something
+# else keeps it current. Two shapes, and you pick one:
+#
+#   - estate.sync on. An init container clones the estate into a shared
+#     volume before the server starts, and a sidecar pulls it on an
+#     interval. You name the image the two containers run, because a git
+#     image is one your registry already holds.
+#   - estate.sync off. You supply the volume in estate.volume, already
+#     holding a checkout, and whatever fills it keeps it current.
+#
+# Either way the server re-reads the directory on every poll, so a pull
+# that lands between polls is picked up by the next one.
+estate:
+  # Where both containers see the checkout.
+  mountPath: /estate
+
+  sync:
+    enabled: true
+
+    # Any image with git and a POSIX shell on its path. The chart names
+    # none, so nothing is pulled from a registry you did not choose.
+    image:
+      repository: ""
+      tag: ""
+      pullPolicy: IfNotPresent
+
+    # The estate repository, and the branch or tag to serve.
+    repo: ""
+    ref: main
+
+    # How often the sidecar pulls, in seconds. A plain number, because
+    # the shell in a git image is not always one that reads a suffix.
+    intervalSeconds: 30
+
+    # The credential git needs, as a Secret you created, projected
+    # read-only for these containers alone. Leave it empty for a repository
+    # that reads without one.
+    #
+    # For HTTPS, the Secret holds `password`, and `username` where the
+    # forge wants one other than `x-access-token`. For SSH, it holds
+    # `ssh-privatekey`, and `known_hosts` where you pin the host key.
+    credentialSecret: ""
+    credentialPath: /etc/telecraft/estate-credential
+
+    # Replace the clone and the pull with your own. Set both, or neither:
+    # command runs in the init container and the sidecar alike, and the
+    # sidecar is the one that has to loop.
+    command: []
+    args: []
+
+    env: []
+    resources: {}
+    extraVolumeMounts: []
+
+  # The volume the checkout lives in, as a Kubernetes volume, without its
+  # name. Empty is an emptyDir, which is what a sync sidecar wants. Name a
+  # persistentVolumeClaim or anything else here to bring your own checkout.
+  volume: {}
+
+server:
+  # The URL a browser reaches this Instance at. It decides whether the
+  # session cookie is marked Secure and it is the address an identity
+  # provider returns to, so set it whenever anything sits in front of the
+  # pod. Left empty with an ingress host below, the chart derives it from
+  # that host.
+  externalUrl: ""
+
+  # Admit an external URL that names a host other than localhost over plain
+  # HTTP. The server refuses to start without this, because a password
+  # crossing a network in clear text is not a default.
+  insecureHttp: false
+
+  # How often the server re-reads the estate directory.
+  fetchInterval: 30s
+
+  # The OpAMP endpoint, which serves collectors. Turning it off closes the
+  # address rather than firewalling it, which is the shape of an Instance
+  # whose collectors all reach their own vendor's control plane and are
+  # read from there.
+  opamp:
+    enabled: true
+
+  # The trailing window the arrival readings cover. Empty keeps the
+  # server's own default.
+  window: ""
+
+  # The directory the deployment fills with the secrets the estate names,
+  # as a Secret you created, projected read-only. Every key in it becomes a
+  # file of that name, which is what the estate resolves against.
+  #
+  # The server's own two secrets live here under documented names:
+  # `session-key`, without which a restart signs everybody out, and
+  # `telemetry-key` where a telemetry endpoint is set below.
+  secrets:
+    secretName: ""
+    mountPath: /etc/telecraft/secrets
+
+  # The Enterprise Edition licence. None named runs Standard Edition, which
+  # is the whole free product and warns about nothing.
+  #
+  # A licence is signed and grants whoever reads it nothing, so a ConfigMap
+  # holds it as readily as a Secret. Name one or the other, not both.
+  licence:
+    secretName: ""
+    configMapName: ""
+    key: licence
+    mountPath: /etc/telecraft/licence
+
+  # The telemetry backend the arrival readings come from. Empty takes no
+  # arrival reading. The credential is the `telemetry-key` file in the
+  # secret directory above.
+  telemetry:
+    endpoint: ""
+
+  # Arguments and environment appended to the ones the chart sets.
+  extraArgs: []
+  extraEnv: []
+
+  resources: {}
+  extraVolumeMounts: []
+
+service:
+  type: ClusterIP
+  annotations: {}
+  # The console, the platform API and the probes.
+  httpPort: 80
+  # Collectors, at /v1/opamp.
+  opampPort: 4320
+
+# TLS terminates here or in whatever else sits in front. The process holds
+# no certificate in any deployment shape.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # The host the console and the API answer on.
+  host: ""
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: true
+    # A Secret holding the certificate and its key. Empty leaves the
+    # ingress controller to find one.
+    secretName: ""
+
+  # Collectors reach /v1/opamp, on a host of its own. Nothing in Telecraft
+  # authenticates a collector: it matches the attributes a collector
+  # reports and serves what they match. So this stays off until you have
+  # decided what may reach it, and an estate whose collectors are all
+  # reached through a vendor's own control plane never turns it on.
+  opamp:
+    enabled: false
+    className: ""
+    annotations: {}
+    host: ""
+    tls:
+      enabled: true
+      secretName: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# The estate containers write a git configuration and a checkout, so their
+# root filesystem is not read-only. Nothing here asks them to run as a
+# non-root user, because most git images run as root and one that refused
+# to start would be a puzzle rather than a hardening. Add `runAsNonRoot`
+# and `runAsUser` here where the image you named supports them.
+syncSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+terminationGracePeriodSeconds: 30
+
+# Volumes added to the pod, beside the ones the chart creates.
+extraVolumes: []

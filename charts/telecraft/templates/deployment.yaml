@@ -1,0 +1,325 @@
+{{/*
+One Instance is one Instance server (ADR-0067 §2): the reading of Served
+collectors is the reading of the connections this process holds, so two
+servers behind one address each report half an estate as though it were
+whole. The chart refuses a second replica rather than letting an operator
+discover that from a console (ADR-0068 §5), and the strategy is Recreate
+because a rolling update puts two of them on one address for the length of
+the rollout.
+*/}}
+{{- if ne (int .Values.replicaCount) 1 }}
+{{- fail "replicaCount is 1. One Instance runs one server: a second replica behind the same address reports the collectors it holds as though they were the whole estate. Run a second Instance over its own estate instead." }}
+{{- end }}
+{{- if and .Values.server.licence.secretName .Values.server.licence.configMapName }}
+{{- fail "server.licence names a Secret or a ConfigMap, not both." }}
+{{- end }}
+{{/*
+The server fails closed on an external URL that names a network host over
+plain HTTP (ADR-0067 §5), and with none named it defaults to its own listen
+address, which is one. Both cases are therefore a pod that starts, refuses
+and restarts, with the reason in a log nobody is reading yet. The same two
+refusals here are a template error the operator reads at install, in the
+same words and with the same remedy.
+*/}}
+{{- $external := include "telecraft.externalURL" . }}
+{{- if not $external }}
+{{- fail "Set server.externalUrl to the URL a browser reaches this Instance at, or turn on the ingress and give it a host. That URL decides whether the session cookie is marked Secure and it is the address an identity provider returns to, so the server does not guess it." }}
+{{- end }}
+{{- $loopback := regexMatch "^http://(localhost|127(\\.[0-9]{1,3}){3}|\\[::1\\])(:[0-9]+)?(/.*)?$" $external }}
+{{- if and (not .Values.server.insecureHttp) (not (hasPrefix "https://" $external)) (not $loopback) }}
+{{- fail "The external URL is plain HTTP over a network host, so passwords and sessions would cross it in clear text and the server refuses to start. Terminate TLS in front of the pod and name the https URL, or set server.insecureHttp to say that plain HTTP is meant here." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "telecraft.fullname" . }}
+  labels:
+    {{- include "telecraft.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "telecraft.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "telecraft.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "telecraft.serviceAccountName" . }}
+      # The Instance server reads no Kubernetes API, so nothing in this pod
+      # needs a token for one.
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.estate.sync.enabled }}
+      initContainers:
+        # The first clone runs to completion, so the estate is on disk
+        # before the server reads it. Without it the server refuses to
+        # start over an empty directory and the pod restarts until the
+        # sidecar wins the race, which is a working deployment that looks
+        # broken for as long as it takes.
+        - name: estate-clone
+          image: {{ include "telecraft.syncImage" . }}
+          imagePullPolicy: {{ .Values.estate.sync.image.pullPolicy }}
+          {{- if .Values.estate.sync.command }}
+          command:
+            {{- toYaml .Values.estate.sync.command | nindent 12 }}
+          {{- with .Values.estate.sync.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- else }}
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              {{- include "telecraft.syncCredential" . | nindent 14 }}
+              if [ -d "$TELECRAFT_ESTATE_DIR/.git" ]; then
+                exit 0
+              fi
+              git clone --quiet --branch "$TELECRAFT_ESTATE_REF" --depth 1 \
+                "$TELECRAFT_ESTATE_REPO" "$TELECRAFT_ESTATE_DIR"
+          {{- end }}
+          env:
+            {{- include "telecraft.syncEnv" . | nindent 12 }}
+          volumeMounts:
+            {{- include "telecraft.syncMounts" . | nindent 12 }}
+          {{- with .Values.syncSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.estate.sync.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- end }}
+      containers:
+        - name: telecraft
+          image: {{ include "telecraft.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The image's entrypoint is the binary and its default command is
+          # `serve`, which these arguments replace, so `serve` is named
+          # again here. Both addresses are set rather than inherited: what
+          # this pod listens on is the chart's statement, and the lint
+          # checks the ports against the command's own flag defaults.
+          args:
+            - serve
+            - -estate
+            - {{ .Values.estate.mountPath | quote }}
+            - -http
+            - 0.0.0.0:{{ include "telecraft.httpPort" . }}
+            - -listen
+            {{- if .Values.server.opamp.enabled }}
+            - 0.0.0.0:{{ include "telecraft.opampPort" . }}
+            {{- else }}
+            - ""
+            {{- end }}
+            - -fetch-interval
+            - {{ .Values.server.fetchInterval | quote }}
+            {{- with include "telecraft.externalURL" . }}
+            - -external-url
+            - {{ . | quote }}
+            {{- end }}
+            {{- if .Values.server.insecureHttp }}
+            - -insecure-http
+            {{- end }}
+            {{- with .Values.server.window }}
+            - -window
+            - {{ . | quote }}
+            {{- end }}
+            {{- if .Values.server.secrets.secretName }}
+            - -secrets-dir
+            - {{ .Values.server.secrets.mountPath | quote }}
+            {{- end }}
+            {{- if or .Values.server.licence.secretName .Values.server.licence.configMapName }}
+            - -licence-file
+            - {{ printf "%s/%s" .Values.server.licence.mountPath .Values.server.licence.key | quote }}
+            {{- end }}
+            {{- with .Values.server.telemetry.endpoint }}
+            - -telemetry-endpoint
+            - {{ . | quote }}
+            {{- end }}
+            {{- with .Values.server.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.server.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ include "telecraft.httpPort" . }}
+              protocol: TCP
+            {{- if .Values.server.opamp.enabled }}
+            - name: opamp
+              containerPort: {{ include "telecraft.opampPort" . }}
+              protocol: TCP
+            {{- end }}
+          # Two probes and no third. The HTTP endpoint carries both, and
+          # the OpAMP endpoint gets none of its own: it is up when the
+          # process is (ADR-0067 §6).
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 60
+          volumeMounts:
+            - name: estate
+              mountPath: {{ .Values.estate.mountPath | quote }}
+              readOnly: true
+            # The root filesystem is read-only, so the process is given the
+            # one writable directory the Go runtime and its dependencies
+            # reach for.
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.server.secrets.secretName }}
+            - name: secrets
+              mountPath: {{ .Values.server.secrets.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+            {{- if or .Values.server.licence.secretName .Values.server.licence.configMapName }}
+            - name: licence
+              mountPath: {{ .Values.server.licence.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+            {{- with .Values.server.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.server.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- if .Values.estate.sync.enabled }}
+        # The sidecar keeps the checkout current. The server re-reads the
+        # directory on every poll, so a pull that lands between polls is
+        # picked up by the next one.
+        - name: estate-sync
+          image: {{ include "telecraft.syncImage" . }}
+          imagePullPolicy: {{ .Values.estate.sync.image.pullPolicy }}
+          {{- if .Values.estate.sync.command }}
+          command:
+            {{- toYaml .Values.estate.sync.command | nindent 12 }}
+          {{- with .Values.estate.sync.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- else }}
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              {{- include "telecraft.syncCredential" . | nindent 14 }}
+              while :; do
+                sleep "$TELECRAFT_ESTATE_INTERVAL"
+                git -C "$TELECRAFT_ESTATE_DIR" fetch --quiet --depth 1 \
+                  origin "$TELECRAFT_ESTATE_REF" || continue
+                git -C "$TELECRAFT_ESTATE_DIR" checkout --quiet --detach FETCH_HEAD || continue
+              done
+          {{- end }}
+          env:
+            {{- include "telecraft.syncEnv" . | nindent 12 }}
+          volumeMounts:
+            {{- include "telecraft.syncMounts" . | nindent 12 }}
+          {{- with .Values.syncSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.estate.sync.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        # A checkout the sidecar keeps is rebuildable, so it never outlives
+        # the pod: a volume that did would be the first durable thing this
+        # product keeps (ADR-0032 §1). A checkout the operator supplies is
+        # theirs, and they say what it lives in.
+        - name: estate
+          {{- if .Values.estate.volume }}
+          {{- toYaml .Values.estate.volume | nindent 10 }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.estate.sync.enabled }}
+        - name: git-home
+          emptyDir: {}
+        {{- if .Values.estate.sync.credentialSecret }}
+        - name: estate-credential
+          secret:
+            secretName: {{ .Values.estate.sync.credentialSecret | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.server.secrets.secretName }}
+        - name: secrets
+          secret:
+            secretName: {{ .Values.server.secrets.secretName | quote }}
+        {{- end }}
+        {{- if .Values.server.licence.secretName }}
+        - name: licence
+          secret:
+            secretName: {{ .Values.server.licence.secretName | quote }}
+        {{- else if .Values.server.licence.configMapName }}
+        - name: licence
+          configMap:
+            name: {{ .Values.server.licence.configMapName | quote }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

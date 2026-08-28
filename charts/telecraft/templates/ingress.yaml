@@ -1,0 +1,92 @@
+{{/*
+TLS terminates here, or in whatever else the operator puts in front. The
+process holds no certificate in any deployment shape (ADR-0067 §5), and
+`-external-url` is set from this host so the two cannot drift into a
+redirect that returns nowhere (ADR-0068 §5).
+
+The OpAMP endpoint gets an Ingress of its own or none at all. Nothing in
+Telecraft authenticates a collector (OQ-20): it matches the attributes a
+collector reports and serves what they match, so an endpoint on the public
+internet serves a rendered configuration, and that configuration names an
+adopter's Tiers and destinations. It is off until an operator turns it on.
+*/}}
+{{- if .Values.ingress.enabled }}
+{{- if not .Values.ingress.host }}
+{{- fail "ingress.host is the host the console and the API answer on. Set it, or turn the ingress off." }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "telecraft.fullname" . }}
+  labels:
+    {{- include "telecraft.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      {{- with .Values.ingress.tls.secretName }}
+      secretName: {{ . | quote }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "telecraft.fullname" . }}
+                port:
+                  name: http
+{{- end }}
+{{- if .Values.ingress.opamp.enabled }}
+{{- if not .Values.server.opamp.enabled }}
+{{- fail "ingress.opamp routes an endpoint the server is not listening on. Turn server.opamp on, or turn ingress.opamp off." }}
+{{- end }}
+{{- if not .Values.ingress.opamp.host }}
+{{- fail "ingress.opamp.host is the host collectors reach. Set it, or turn ingress.opamp off." }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "telecraft.fullname" . }}-opamp
+  labels:
+    {{- include "telecraft.labels" . | nindent 4 }}
+  {{- with .Values.ingress.opamp.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with (default .Values.ingress.className .Values.ingress.opamp.className) }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.ingress.opamp.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.opamp.host | quote }}
+      {{- with .Values.ingress.opamp.tls.secretName }}
+      secretName: {{ . | quote }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.opamp.host | quote }}
+      http:
+        paths:
+          - path: /v1/opamp
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "telecraft.fullname" . }}
+                port:
+                  name: opamp
+{{- end }}

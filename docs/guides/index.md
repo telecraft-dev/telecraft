@@ -67,7 +67,10 @@ keeps flowing.
    as an image you pull, configure, and carry across an air gap.
 5. [Deploy with Compose](deploy-with-compose.md) puts that image on one host
    behind a terminator, over an estate the host keeps current.
-6. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
+6. [Deploy on Kubernetes](deploy-on-kubernetes.md) installs that image from a
+   chart, with the estate checkout kept current beside it and TLS terminated
+   in front.
+7. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
    Blueprint version in cohorts, advancing and aborting by pull request.
 
 ## See it running first

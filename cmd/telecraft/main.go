@@ -108,7 +108,7 @@ func usage(stderr io.Writer) {
 	fmt.Fprintln(stderr, "       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]")
 	fmt.Fprintln(stderr, "       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>")
 	fmt.Fprintln(stderr, "       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]")
-	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-fetch-interval 30s] [-session-key-file path] [-telemetry-endpoint URL] [-licence-file path] [-secret name=value]")
+	fmt.Fprintln(stderr, "       telecraft serve   (-estate <dir> | -repo <url> [-cache dir]) [-http host:port] [-listen host:port] [-external-url URL] [-insecure-http] [-fetch-interval 30s] [-window 15m] [-secrets-dir path] [-session-key-file path] [-telemetry-endpoint URL] [-telemetry-key-file path] [-licence-file path]")
 	fmt.Fprintln(stderr, "       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]")
 	fmt.Fprintln(stderr, "       telecraft delivery -intended <file> -effective <file> -path (served|git)")
 	fmt.Fprintln(stderr, "       telecraft activate -estate <dir> -substrate (catalogue|schema-registry) -version <ref> [-artefacts dir] [-confirm -by <owner>]")

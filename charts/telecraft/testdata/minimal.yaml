@@ -1,0 +1,14 @@
+# The smallest install that runs: an estate cloned into the pod, and the URL
+# a browser reaches the Instance at. Nothing sits in front, so plain HTTP is
+# admitted deliberately.
+image:
+  tag: v0.7.0
+estate:
+  sync:
+    image:
+      repository: registry.example/git
+      tag: "2.45"
+    repo: https://forge.example/acme/estate.git
+server:
+  externalUrl: http://telecraft.internal.example
+  insecureHttp: true

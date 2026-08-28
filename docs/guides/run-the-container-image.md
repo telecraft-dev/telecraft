@@ -80,7 +80,9 @@ The image carries no `git`, so `-repo` has nothing to fetch an estate with.
 Serve a directory instead, and keep that directory current from outside the
 container: a job on the host that pulls, or a container beside this one that
 syncs the repository into a volume both of them mount. Each poll re-reads the
-directory, so a merge arrives without a restart.
+directory, so a merge arrives without a restart. On Kubernetes that second
+container is what the chart installs, and
+[Deploy on Kubernetes](deploy-on-kubernetes.md) sets it up.
 
 On a host that has `git`, `-repo` works as
 [Run an Instance](run-an-instance.md) describes.
@@ -204,6 +206,8 @@ image with networking disabled and requires it to serve.
 
 - [Deploy with Compose](deploy-with-compose.md) puts this image on one host
   behind a terminator, with the secrets and the estate around it.
+- [Deploy on Kubernetes](deploy-on-kubernetes.md) installs this image from a
+  chart, with the checkout kept current beside it.
 - [Run an Instance](run-an-instance.md) is the same server as a host process,
   with the whole flag surface.
 - [Activate a version](activate-a-version.md) moves the estate onto a new

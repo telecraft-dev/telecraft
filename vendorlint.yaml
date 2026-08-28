@@ -124,17 +124,24 @@ scopes:
   # section is the only place that points into the corpus, through the
   # decisions page, so it is not in this scope.
   #
-  # The last two entries are not pages on the site. One is the README
+  # The last three entries are not pages on the site. One is the README
   # shipped inside telecraft-design-<tag>.tar.gz, which
-  # .github/workflows/release.yml copies verbatim into the archive; the
-  # other is the deployment compose file and everything beside it, which an
-  # adopter copies out of the tree and reads while running it. Both are here
-  # because the reader is the same reader: prose that leaves this repository
-  # is held to the same rule wherever it is served from. The archive README
-  # reached consumers with two ADR numbers in it for as long as it was
-  # written inside the workflow, where no scope could reach it.
+  # .github/workflows/release.yml copies verbatim into the archive; one is
+  # the deployment compose file and everything beside it, which an adopter
+  # copies out of the tree and reads while running it; and one is the
+  # chart's three operator-facing files. `values.yaml` is the configuration
+  # surface: an operator reads it, copies it and commits their own, so its
+  # comments are documentation wherever they live, and `Chart.yaml` and
+  # `NOTES.txt` are what `helm show chart` and `helm install` print. All of
+  # them are here because the reader is the same reader: prose that leaves
+  # this repository is held to the same rule wherever it is served from. The
+  # archive README reached consumers with two ADR numbers in it for as long
+  # as it was written inside the workflow, where no scope could reach it.
+  #
+  # The chart's templates are not in scope: they are code, and like every
+  # other comment in the tree they may cite the decision they implement.
   - name: published
-    include: [README.md, SECURITY.md, docs/index.md, docs/glossary.md, docs/terminology.html, docs/concepts/**, docs/guides/**, docs/reference/**, docs/branding/design-artefact-readme.md, deploy/**]
+    include: [README.md, SECURITY.md, docs/index.md, docs/glossary.md, docs/terminology.html, docs/concepts/**, docs/guides/**, docs/reference/**, docs/branding/design-artefact-readme.md, deploy/**, charts/*/Chart.yaml, charts/*/values.yaml, charts/*/templates/NOTES.txt]
     rules:
       - pattern: ADR-\d{4}|REQ-\d{3}|\bOQ-\d+|§|docs/(adr|requirements|research|prototypes)/
         message: a decision-corpus reference on a published page; give the reason in plain words or leave it out (docs/contributing/documentation.md)

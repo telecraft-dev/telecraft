@@ -25,14 +25,15 @@ built by the repositories that own them, from a ref this one publishes.
 ## What decides which jobs run
 
 `ci.yml` opens with a `changes` job that diffs the pull request against its
-base and sets two outputs. Every other job carries an `if:` naming one of
-them.
+base and sets the outputs below. Every other job carries an `if:` naming one
+of them.
 
 | Output | True when the change touches |
 |---|---|
 | `code` | anything that is not `docs/**`, `README.md`, or `docs-dispatch.yml` |
 | `console` | `console/**`, `internal/console/**`, or `ci.yml` itself, and otherwise inherits `code` |
 | `image` | `Dockerfile`, `.dockerignore`, `tools/image/**`, or `ci.yml` itself |
+| `chart` | `charts/**`, `tools/chartlint/**`, `tools/chart/**`, `cmd/telecraft/serve.go`, `internal/instance/api.go`, or `ci.yml` itself |
 
 The reason is cost rather than tidiness. The live suites stand up a real
 Elasticsearch and open real pull requests against a fixture repository;
@@ -80,6 +81,7 @@ Two details worth knowing before you rely on this:
 | Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the site can read, the contract between this repository and the site built from it |
 | No tracked binaries (issue #122) | `go run ./tools/binlint` | No tracked file is a compiled executable. Build artefacts are built, never committed, and never shipped in a clone or a source tarball |
 | Go formatting (issue #146) | `go run ./tools/fmtlint` | Every tracked Go file is `gofmt` clean, and the ones that are not are named |
+| Helm chart (ADR-0068) | `helm lint`, `go run ./tools/chartlint`, `tools/chart/golden.sh`, then `tools/chart/kind.sh` over the image the image job built | The chart still matches the command it deploys, the rendered manifests are the ones in the goldens, and both estate shapes install on a stock cluster and serve a console and an OpAMP endpoint |
 | Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests, with no Docker and no network |
 | TelemetryProvider live | the `Live` suite against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only a test double |
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
@@ -87,7 +89,7 @@ Two details worth knowing before you rely on this:
 | Demo snapshot and bundle | `build:demo`, `check:zero-cdn`, `telecraft snapshot`, the entry-document check | The public demo's two halves keep working: the snapshot the real evaluators produce, and the console bundle that reads it |
 | Container image (ADR-0068) | `tools/image/stage.sh`, a two-architecture `docker buildx build`, then `tools/image/offline.sh` over the loaded image | The image assembles for both architectures, and the one it built serves the console and the OpAMP endpoint with networking disabled |
 
-Seven of those guard rules that are otherwise unenforceable in review.
+Nine of those guard rules that are otherwise unenforceable in review.
 
 **The vendor-word lint** exists because ADR-0001's neutral core is a
 property of the whole tree, and no reviewer reads the whole tree.
@@ -129,6 +131,37 @@ fixtures; the vendored upstream fixtures under
 `internal/catalogue/testdata` are `go.mod` and `metadata.yaml` files and
 carry no Go at all. The exemption list would be empty, and an empty
 exemption is a door held open for the next file that wants through.
+
+**The chart check** exists because the chart is a copy of a contract:
+its whole surface is one binary's flag set, and a flag that moves under it
+fails silently, first for an adopter. `chartlint` reads
+`cmd/telecraft/serve.go` and `internal/instance/api.go` rather than
+repeating what they say, so a flag the chart passes that the command no
+longer defines, a listen port that moved, or a probe path the server stopped
+serving is a failure here. Its self-test runs the check over this
+repository's own chart, so the drift fails `go test ./...` on your machine
+before it reaches a runner.
+
+`tools/chart/golden.sh` renders the three documented shapes and compares
+them with the manifests in `charts/telecraft/testdata/golden/`, so a change
+to a template shows up in review as the change it makes to what an operator
+installs. It then renders the combinations the decisions refuse and requires
+each to fail with the phrase an operator needs to read. It is a shell script
+rather than a Go test for a reason worth knowing before somebody moves it:
+the platform runs no toolchain from Go, Helm is one, and
+`TestNoToolchainBinaryIsInvoked` holds every tracked Go file to that. What
+`chartlint` checks needs no renderer, which is why it runs in `go test`
+and this does not.
+
+Neither of those runs a manifest, so `tools/chart/kind.sh` installs the
+chart on a kind cluster twice, once in each estate shape, over a bare
+repository and a checkout mounted into the node rather than anything on a
+network. It requires both installs to answer `/readyz`, serve the console
+document and answer on the OpAMP port through the Service the chart created,
+then lands a commit in the repository and requires the sidecar to pull it
+and the pod not to restart. What it catches is the half a renderer cannot
+see: an image the pod cannot pull, a probe on the wrong port, a mount two
+containers disagree about, a security context the kubelet refuses.
 
 **`check:zero-cdn`** runs over the *built bundle*, not the source, because
 the air-gap rule is about what the browser fetches and a bundler can
