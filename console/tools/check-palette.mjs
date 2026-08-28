@@ -181,6 +181,13 @@ const TEXT_ON = {
 
 // Marks, lane edges, focus rings: non-text graphics.
 const GRAPHIC_ON = {
+  // The brand mark (src/ui/brand.ts) is a datum in the amber and three
+  // bands in the text tones. It is drawn on the chrome and on the sign-in
+  // card, so both grounds are measured. The amber is a graphic here rather
+  // than the text it is on the marketing site, and the faintest band is the
+  // one tone the chrome had never been measured against.
+  '--brand': ['--colour-chrome', '--colour-surface'],
+  '--colour-text-faint': ['--colour-chrome'],
   '--severity-advisory': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
   '--signal-traces': ['--colour-bg', '--colour-surface'],
   '--signal-logs': ['--colour-bg', '--colour-surface'],

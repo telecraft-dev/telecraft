@@ -39,6 +39,14 @@ are the mark's use of `--brand`, which never appears on a data surface
 | `png/telecraft-icon-{180,192,512}.png` | Renders at the sizes other services demand; regenerate with [`tools/render.sh`](tools/render.sh) |
 | `console/public/favicon.{svg,ico}`, `icon-{192,512}.png`, `apple-touch-icon.png` | The browser icon set the console ships, written by the same script. Not in this directory, because it is shipped rather than published. These five are also what the release archive carries in `icons/` |
 
+The console draws the mark in its chrome and on its sign-in card from
+`console/src/ui/brand.ts` rather than from a file here. It resolves its
+theme at runtime, so a file drawn for one ground would be the wrong one
+half the time; that module carries this pack's geometry and names the
+token each fill was rendered from, and `console/tests/brand-mark.test.ts`
+fails if either drifts from `telecraft-mark-on-dark.svg` or its light
+twin. Nothing there is a second drawing of the artwork.
+
 `-on-dark` and `-on-light` name the ground the file is drawn for, not the
 file's own colour. The grounds are `--colour-bg`: `#0f1518` and `#f3f5f4`.
 
