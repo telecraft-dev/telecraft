@@ -163,6 +163,15 @@ the address flags it mirrors. It carries a self-test over this repository's
 own Dockerfile, so `go test ./...` fails on the drift before a runner does,
 and it needs no job of its own.
 
+**The deployment compose file** is checked the same way. `go run
+./tools/composelint` reads `deploy/compose/`, and reports an estate mounted
+writable, a secret carried as a value rather than placed as a file, an image
+reference a mirror cannot replace, a published port nothing listens on, and a
+variable the compose file reads that `.env.example` never names. Proving the
+deployment end to end needs a container runtime, a certificate and an estate;
+these are the properties that need none of them. It carries the same
+self-test, so it needs no job of its own either.
+
 **`check:bundle-budget`** exists because a code split is easy to undo by
 accident. The console loads each Workspace's code on navigation (issue
 #125), and an ordinary-looking import in the wrong file pulls a Workspace
@@ -202,6 +211,7 @@ go run ./tools/docslint
 go run ./tools/binlint
 go run ./tools/fmtlint
 go run ./tools/imagelint
+go run ./tools/composelint
 
 cd console
 npm ci

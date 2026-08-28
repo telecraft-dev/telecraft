@@ -1,0 +1,93 @@
+# A Telecraft deployment on one host: the Instance server from the published
+# image, over an estate checkout, with an optional reverse proxy terminating
+# TLS in front of it.
+#
+# This is not devenv/compose.yaml. That file starts collectors to develop
+# against and runs the platform from a host process. This one runs the
+# product and starts no collector.
+#
+# Copy .env.example to .env and fill it in first. The steps around this file,
+# from creating the estate repository to the first sign-in, are in
+# docs/guides/deploy-with-compose.md.
+#
+#   docker compose up -d                  the console and the OpAMP endpoint
+#   docker compose --profile tls up -d    the same, reached through TLS
+
+name: telecraft
+
+services:
+  # One process: the console, the platform API behind it, and the OpAMP
+  # endpoint collectors connect to.
+  telecraft:
+    image: ${TELECRAFT_IMAGE}
+    command:
+      - serve
+      - -estate=/estate
+      - -secrets-dir=/run/secrets
+    environment:
+      # What a browser reaches this Instance at. The scheme decides whether
+      # session cookies are marked Secure, and it is the address a redirect
+      # sign-in returns to. Naming a host that is not a loopback address over
+      # plain HTTP stops the start.
+      TELECRAFT_EXTERNAL_URL: ${TELECRAFT_EXTERNAL_URL}
+      # How often the estate directory is read again.
+      TELECRAFT_FETCH_INTERVAL: ${TELECRAFT_FETCH_INTERVAL}
+      # The telemetry backend the arrival readings are taken from. Empty
+      # takes none, and every Outcome that needs one reads as unknown.
+      TELECRAFT_TELEMETRY_ENDPOINT: ${TELECRAFT_TELEMETRY_ENDPOINT}
+    volumes:
+      # The estate, read only. The image carries no git, so this directory
+      # is kept current from outside the container; each poll reads it again.
+      - ${ESTATE_DIR}:/estate:ro
+      # An Enterprise Edition licence file, if you hold one. It is not a
+      # secret. Uncomment the line and add -licence-file=/etc/telecraft/licence
+      # to the command above.
+      # - /srv/telecraft/acme.licence:/etc/telecraft/licence:ro
+    secrets:
+      - session-key
+    ports:
+      # 4321 carries the console, the API and the two probes. 4320 carries
+      # the OpAMP endpoint, at /v1/opamp.
+      - "${CONSOLE_ADDRESS}:4321"
+      - "${OPAMP_ADDRESS}:4320"
+    # No healthcheck: the image carries no shell and no HTTP client, so there
+    # is nothing inside it for one to run. Read /healthz and /readyz from the
+    # host, or from whatever sits in front.
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  # The Instance server holds no certificate, so TLS terminates here. This
+  # service sits behind a profile: a first run needs no certificate at all,
+  # and --profile tls adds the terminator once TLS_DIR holds one.
+  #
+  # Any terminator you already run does the same job. What this one shows is
+  # the two things the Instance needs from one: the console on 443, and the
+  # OpAMP endpoint at /v1/opamp with its WebSocket upgrade carried through.
+  proxy:
+    profiles: [tls]
+    image: ${PROXY_IMAGE}
+    depends_on:
+      - telecraft
+    volumes:
+      - ./proxy/telecraft.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${TLS_DIR}:/etc/nginx/tls:ro
+    ports:
+      - "${HTTPS_ADDRESS}:443"
+      - "${HTTP_ADDRESS}:80"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+secrets:
+  # The session signing key, at least 32 bytes. Compose presents each entry
+  # at /run/secrets/NAME, which is the directory the command above reads.
+  # The file has to be readable by user 65532, the user the image runs as.
+  #
+  # An estate that names a provider secret in auth.yaml needs an entry of
+  # that name here, and the name listed under the service's secrets:
+  #
+  #   staff-oidc:
+  #     file: ${SECRETS_DIR}/staff-oidc
+  session-key:
+    file: ${SECRETS_DIR}/session-key
