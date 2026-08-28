@@ -167,3 +167,101 @@ test('a one-click suggestion add discharges a requirement and stamps the claim',
   await expect(page.getByTestId('lane-traces')).toContainText('infosec/pii-redaction@3')
   await expect(page.getByTestId('lane-logs')).toContainText('infosec/pii-redaction@3')
 })
+
+// The Compose landing (ADR-0064): the reader's Blueprints with their
+// governance-relevant facts, the Requirement claims they stamp, and a rail
+// carrying the palette and Catalogue readings, every reading a door. The
+// one verdict-shaped column is the Allow-list standing, derived through
+// the same module the Effective palette view reads, because only an
+// Allow-list violation blocks a save (ADR-0022 §3).
+
+test('the landing table reports each Blueprint: lanes, claims, Tier, Allow-list standing', async ({
+  page,
+}) => {
+  await page.goto('/compose')
+  await expect(page.getByTestId('landing-table')).toBeVisible()
+
+  const gateway = page.getByTestId('landing-row-data-flow/gateway-standard')
+  await expect(gateway).toContainText('traces · logs · metrics')
+  await expect(gateway).toContainText('req-pii-redaction@3')
+  await expect(gateway).toContainText('req-payment-completeness@2')
+  // The save gate, read from the Allow-list alone: the same judgement
+  // that disables Save in the composer, with the fact beside it.
+  await expect(page.getByTestId('landing-standing-data-flow/gateway-standard')).toHaveText(
+    'save disabled',
+  )
+  await expect(gateway.locator('.landing-fact')).toHaveText(
+    "debug-tap (exporter/debug) is outside this team's effective Allow-list",
+  )
+
+  await expect(page.getByTestId('landing-standing-data-flow/edge-standard')).toHaveText('clear')
+
+  // A Blueprint bound to no Tier says so plainly; its Allow-list is
+  // default-allow on a chain with no declared list, so it reads clear.
+  const audit = page.getByTestId('landing-row-infosec/audit-standard')
+  await expect(audit).toContainText('not used by a Tier')
+  await expect(page.getByTestId('landing-standing-infosec/audit-standard')).toHaveText('clear')
+})
+
+test('a landing row opens the composer exactly as the cards did', async ({ page }) => {
+  await page.goto('/compose')
+  await page.getByTestId('blueprint-data-flow/gateway-standard').click()
+  await expect(page.getByTestId('compose-detail')).toBeVisible()
+  await expect(page.getByTestId('compose-detail')).toContainText('gateway-standard')
+  expect(decodeURIComponent(page.url())).toContain('object=blueprint:data-flow/gateway-standard')
+})
+
+test('the used-by door lands on the Estate shelf with that card selected', async ({ page }) => {
+  await page.goto('/compose')
+  await page.getByTestId('landing-used-by-data-flow/gateway-standard').click()
+  await page.waitForURL(/\/estate/)
+  expect(decodeURIComponent(page.url())).toContain('object=tier:data-flow/gateway')
+  await expect(page.getByTestId('card-data-flow/gateway')).toHaveClass(/selected/)
+})
+
+test('the Requirements section lists each claim per claiming Blueprint, doors to the verdict', async ({
+  page,
+}) => {
+  await page.goto('/compose')
+  await expect(page.locator('.landing-claim')).toHaveCount(3)
+  const row = page.getByTestId('landing-claim-data-flow/edge-standard-req-pii-redaction@3')
+  await expect(row).toContainText('claimed by edge-standard')
+  // The door lands on the engine's verdict for that Blueprint: intent and
+  // fact side by side, never blended (REQ-031).
+  await page
+    .getByTestId('landing-claim-verdict-data-flow/edge-standard-req-pii-redaction@3')
+    .click()
+  await expect(page).toHaveURL(/surface=requirements/)
+  await expect(page.getByTestId('claimed-req-pii-redaction')).toHaveText('claimed @3')
+  await expect(page.getByTestId('verdict-req-pii-redaction')).toHaveText('not met')
+})
+
+test('the rail reads the effective palette with its Grants, and doors to the palette view', async ({
+  page,
+}) => {
+  await page.goto('/compose')
+  await expect(page.getByTestId('landing-palette-summary')).toHaveText(
+    'Data Flow: 8 of 13 Catalogue entries allowed · judged against v0.158.0 (active)',
+  )
+  await expect(page.getByTestId('landing-grant-kafka-egress-for-data-flow')).toHaveText(
+    'Grant kafka-egress-for-data-flow allows receiver/kafka, exporter/kafka.',
+  )
+  await page.getByTestId('landing-open-palette').click()
+  await page.waitForURL(/view=palette/)
+  await expect(page.getByTestId('palette-summary')).toContainText('8 of 13')
+})
+
+test('the rail repeats the impact report behind the version on offer, and doors to Activation', async ({
+  page,
+}) => {
+  await page.goto('/compose')
+  await expect(page.getByTestId('landing-catalogue-active')).toHaveText(
+    'Active: v0.158.0 · v0.155.0 on offer',
+  )
+  const lines = page.getByTestId('landing-offer-line')
+  await expect(lines).toHaveCount(2)
+  await expect(lines.first()).toContainText('processor/transform is removed')
+  await page.getByTestId('landing-open-activation').click()
+  await page.waitForURL(/view=activation/)
+  await expect(page.getByTestId('candidate-v0.155.0')).toBeVisible()
+})

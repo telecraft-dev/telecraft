@@ -162,9 +162,22 @@ Rollout](stage-a-rollout.md) and run the renders yourself.
 
 ## Compose
 
-The Blueprint authoring Workspace. A list on the left holds the estate's five
-Blueprints. Picking one opens three surfaces, **Composer**, **Requirement-first**,
-and **Node canvas**, plus a **YAML** toggle.
+The Blueprint authoring Workspace. The landing is a table of the estate's
+five Blueprints: each row shows the version and owning team, the signal lanes
+the Blueprint declares, its `satisfies` claims, the Tier that uses it, and its
+Allow-list standing. A Blueprint whose lanes use a component outside its
+team's effective Allow-list reads **save disabled**, with the offending
+reference named beside it; a Blueprint bound to no Tier says so. A
+Requirements section beneath lists each claim with the Blueprint that makes
+it, and **→ verdict** opens the judgement on the Requirement-first surface.
+
+A rail on the right carries what you would check before composing: your
+team's effective palette summary with any Grants in force, and the active
+Catalogue version with the impact report behind any version on offer. Each
+reading is a door into Catalogue & Governance.
+
+Picking a Blueprint opens three surfaces, **Composer**, **Requirement-first**,
+and **Node canvas**, plus a **YAML** toggle, with the list beside them.
 
 The Composer shows the palette and the lanes side by side. The palette is what
 this team can use, and it says why each entry is offered:

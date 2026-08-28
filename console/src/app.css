@@ -2907,6 +2907,169 @@
   margin-top: var(--space-2);
 }
 
+/* The Compose landing (ADR-0064). Styles land here; the marker keeps
+   parallel edits apart. */
+
+.compose-landing {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  overflow: auto;
+}
+
+.compose-landing h1 {
+  font-size: var(--text-xl);
+  margin: 0;
+}
+
+.compose-landing-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.compose-landing-body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.compose-landing-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.landing-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--colour-rule);
+  padding-bottom: var(--space-1);
+}
+
+.landing-section-head h2 {
+  font-size: var(--text-m);
+  margin: 0;
+}
+
+.landing-table {
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--colour-surface);
+}
+
+.landing-table th,
+.landing-table td {
+  border: 1px solid var(--colour-rule);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  font-size: var(--text-s);
+}
+
+.landing-table th {
+  color: var(--colour-text-muted);
+  font-weight: 500;
+}
+
+.landing-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: var(--text-s);
+  color: var(--colour-fill);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+
+.landing-name-cell,
+.landing-lanes {
+  white-space: nowrap;
+}
+
+.landing-satisfies {
+  margin: 0 var(--space-1) var(--space-1) 0;
+}
+
+.landing-fact {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--colour-text-muted);
+}
+
+.landing-claims {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.landing-claim {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
+.landing-claim-door {
+  margin-left: auto;
+}
+
+.compose-rail {
+  flex: none;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-left: 1px solid var(--colour-rule);
+  padding-left: var(--space-4);
+}
+
+.rail-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.rail-section h2 {
+  font-size: var(--text-m);
+  margin: 0;
+  border-bottom: 1px solid var(--colour-rule);
+  padding-bottom: var(--space-1);
+  align-self: stretch;
+}
+
+.rail-reading {
+  margin: 0;
+  font-size: var(--text-s);
+}
+
+.rail-advisory {
+  margin: 0;
+  font-size: var(--text-s);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-rule);
+  border-radius: var(--radius-1);
+  background: var(--colour-surface);
+}
+
 /* Add-a-Tier flow (ADR-0060 §1, §2). Styles land here; the marker keeps
    parallel edits apart. */
 

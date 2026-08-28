@@ -16,6 +16,7 @@ import { formatObjectRef, parseObjectRef } from '../../objectref'
 import type { ComposeSurface } from '../../router'
 import { Blueprints } from './Blueprints'
 import { Composer } from './Composer'
+import { Landing } from './Landing'
 import { NodeCanvas } from './NodeCanvas'
 import { Requirements } from './Requirements'
 import { YamlFlyout } from './YamlFlyout'
@@ -81,6 +82,13 @@ export function Compose() {
         satisfies: [],
       }
     : undefined
+
+  // With no Blueprint open, the landing reports the reader's Blueprints
+  // and their standing (ADR-0064). Once one is open, the compact list
+  // stays beside the workspace so switching Blueprints remains one click.
+  if (chosen === undefined && claimDoc === undefined) {
+    return <Landing docs={blueprints.data} me={me.data} />
+  }
 
   return (
     <div className="compose-layout">
