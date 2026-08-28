@@ -17,9 +17,38 @@
 //
 // Who a subject is inside the estate (which Owner they act as, which Team
 // that puts them in) arrives through the users.yaml seam beside teams.yaml
-// (ADR-0017's pattern: reviewable, git-resident, never platform-owned).
-// Group-claim mapping from OIDC/SAML is a later provider behind the same
-// resolution step.
+// (ADR-0017's pattern: reviewable, git-resident, never platform-owned),
+// and, where the estate opts in, through the group mapping in auth.yaml
+// that places a human by the groups their provider asserts (see Groups).
+// Both resolve membership at sign-in and on every request after it;
+// neither writes the tree (ADR-0019 §2).
+//
+// # One dependency, and why (REQ-060)
+//
+// Everything in this package is standard library except the SAML provider,
+// which builds on github.com/russellhaering/gosaml2 and, beneath it,
+// github.com/russellhaering/goxmldsig. The OIDC provider stayed on the
+// standard library because the whole of what it verifies is a JWT: split
+// on dots, one RSA-SHA256 verification, a JSON object of claims. There is
+// nothing there to get subtly wrong that a test does not catch.
+//
+// A SAML assertion is not that. It is signed XML, and verifying signed XML
+// means canonicalisation, reference resolution and the whole family of
+// signature wrapping attacks that live in the gap between the bytes a
+// signature covers and the elements a parser hands back. Writing that here
+// would be building the one thing in the flow whose failure mode is silent
+// acceptance of an attacker's assertion, in a language whose own XML
+// parser has known round-trip weaknesses that the dependency chain guards
+// against explicitly. Reuse over build is the standing rule and this is
+// the case it was written for.
+//
+// gosaml2 was preferred to the other maintained Go implementation because
+// it is the service-provider half alone, which is the whole of this seam:
+// the alternative ships an identity provider and a session middleware of
+// its own that this package would never run and would have to keep out of
+// the build's way. Both delegate signature verification to the same
+// goxmldsig, so the vetted part is identical either way, and gosaml2 costs
+// one module fewer. Neither is alpha, and neither reaches a network.
 package auth
 
 import (
@@ -45,6 +74,13 @@ type Identity struct {
 	// the shared-service-account failure ADR-0014 exists to prevent.
 	Name  string
 	Email string
+
+	// Groups is the membership the provider asserted, verbatim: an OIDC
+	// claim or a SAML attribute, read only where the estate named one.
+	// It carries no authority of its own. What a group means is resolved
+	// against the estate's mapping on every request, so a group is a
+	// claim about the human and never a permission (see Groups, Resolve).
+	Groups []string
 }
 
 // Attribution is the identity as the forge seam consumes it: the acting
@@ -128,6 +164,24 @@ type RedirectProvider interface {
 	// callback carries a provider error, the state does not match, or the
 	// identity assertion does not verify.
 	Complete(ctx context.Context, state, verifier, callbackURL string, params url.Values) (Identity, error)
+}
+
+// PostCallbackProvider is the optional facet a RedirectProvider implements
+// when the identity provider returns the human by a form post rather than
+// by a top-level navigation: SAML's assertion consumer binding, where the
+// browser submits the assertion to this instance from the provider's page.
+//
+// The handler needs to know, because the cookie carrying the attempt is
+// only sent on a cross-site post when it says so, and a cookie that says
+// so is only sent over HTTPS. A provider that answers true therefore
+// requires a deployment behind TLS, and NewHandler says so rather than
+// letting the first sign-in fail in the browser.
+type PostCallbackProvider interface {
+	RedirectProvider
+
+	// PostsCallback reports that this provider's callback arrives as a
+	// cross-site form post.
+	PostsCallback() bool
 }
 
 // ErrBadCredentials is the uniform password-verification failure: wrong

@@ -599,3 +599,231 @@ func TestTheRedirectRoundTripIsBuiltFromTheExternalURL(t *testing.T) {
 		t.Errorf("redirect_uri = %q, want the callback under the declared external URL", got)
 	}
 }
+
+// Acceptance: SAML sign-in end to end through the handler, over the
+// binding a real identity provider uses: a redirect out, and a form post
+// back. Nothing beyond this process is involved (REQ-006).
+func TestSAMLLoginRoundTripsThroughTheHandler(t *testing.T) {
+	idp := newSAMLIdP(t)
+	users := usersWithPassword(t, "correct horse battery")
+
+	// The handler needs the address the browser reaches it on to build
+	// the assertion consumer address, and the server needs the handler,
+	// so the server is started around a pointer to it.
+	var handler http.Handler
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler.ServeHTTP(w, r)
+	}))
+	defer srv.Close()
+
+	saml, err := NewSAML(SAMLConfig{
+		Name:            "saml",
+		Metadata:        idp.metadata(),
+		EntityID:        testSPEntityID,
+		GroupsAttribute: "groups",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := NewHandler(HandlerConfig{
+		Sessions:    testSessions(t),
+		Users:       users,
+		Tree:        testTree(),
+		Providers:   []Provider{Basic{Users: users}, saml},
+		Groups:      Groups{{Group: "platform-engineering", Owner: "pii-guardians"}},
+		Secure:      true,
+		ExternalURL: srv.URL,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler = h
+	acs := srv.URL + "/api/v1/auth/saml/callback"
+
+	c := client(t, srv)
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	// The sign-in surface offers it beside basic auth, as a redirect flow.
+	res, err := c.Get(srv.URL + "/api/v1/auth/providers")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var infos []providerInfo
+	if err := json.NewDecoder(res.Body).Decode(&infos); err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	want := []providerInfo{{Name: "basic", Flow: "password"}, {Name: "saml", Flow: "redirect"}}
+	if !reflect.DeepEqual(infos, want) {
+		t.Fatalf("providers = %+v, want %+v", infos, want)
+	}
+
+	// Start: a 302 to the identity provider, carrying the state as
+	// RelayState, anchored in a cookie that will survive a cross-site post.
+	res, err = c.Get(srv.URL + "/api/v1/auth/saml/start?return_to=%2Fcompose")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("start = %d, want 302", res.StatusCode)
+	}
+	to, err := url.Parse(res.Header.Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if to.Scheme+"://"+to.Host+to.Path != idp.ssoURL {
+		t.Fatalf("start sent the human to %q", res.Header.Get("Location"))
+	}
+	state := to.Query().Get("RelayState")
+	if state == "" {
+		t.Fatal("the redirect carries no RelayState")
+	}
+	var anchor *http.Cookie
+	for _, cookie := range res.Cookies() {
+		if cookie.Name == stateCookie {
+			anchor = cookie
+		}
+	}
+	if anchor == nil {
+		t.Fatal("start set no state cookie")
+	}
+	if anchor.SameSite != http.SameSiteNoneMode || !anchor.Secure {
+		t.Errorf("the state cookie is %v, secure %v; a cross-site post needs None and Secure", anchor.SameSite, anchor.Secure)
+	}
+
+	// The identity provider posts the assertion back, as the browser
+	// submitting its form.
+	a := idp.good()
+	a.recipient = acs
+	a.inResponseTo = requestIDFrom(state)
+	res, err = c.PostForm(acs, url.Values{"SAMLResponse": {idp.respond(t, a)}, "RelayState": {state}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("callback = %d, want 302", res.StatusCode)
+	}
+	if got := res.Header.Get("Location"); got != "/compose" {
+		t.Fatalf("the callback returned the human to %q", got)
+	}
+
+	// Signed in, and placed where users.yaml puts them, not where the
+	// group mapping would have.
+	res, err = c.Get(srv.URL + "/api/v1/me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusOK {
+		res.Body.Close()
+		t.Fatalf("me = %d, want 200", res.StatusCode)
+	}
+	me := decodeMe(t, res)
+	if me.ID != "jo@example.com" || me.Team != "data-flow" {
+		t.Fatalf("me = %+v", me)
+	}
+
+	// A state the cookie does not vouch for is refused, which is what
+	// stops an assertion posted at a browser that never asked for one.
+	res, err = c.PostForm(acs, url.Values{"SAMLResponse": {idp.respond(t, a)}, "RelayState": {"forged"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a forged RelayState = %d, want 400", res.StatusCode)
+	}
+}
+
+// A human nobody wrote into users.yaml signs in through the group mapping,
+// and the team they act in follows the ownership tree exactly as anybody
+// else's does.
+func TestGroupMappingPlacesAHumanNobodyNamed(t *testing.T) {
+	idp := newFakeIdP(t)
+	oidc := idp.provider()
+	oidc.GroupsClaim = "groups"
+	users := usersWithPassword(t, "correct horse battery")
+
+	h, err := NewHandler(HandlerConfig{
+		Sessions:  testSessions(t),
+		Users:     users,
+		Tree:      testTree(),
+		Providers: []Provider{oidc},
+		Groups:    Groups{{Group: "security", Owner: "pii-guardians"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	c := client(t, srv)
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	claims := idp.goodClaims(oidc.ClientID, "")
+	claims["email"] = "unnamed@example.com"
+	claims["name"] = ""
+	claims["groups"] = []string{"everyone", "security"}
+
+	res, err := c.Get(srv.URL + "/api/v1/auth/oidc/start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	to, err := url.Parse(res.Header.Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := to.Query().Get("state")
+	claims["nonce"] = nonceFrom(state)
+	idp.claims = claims
+
+	res, err = c.Get(srv.URL + "/api/v1/auth/oidc/callback?code=c0de&state=" + url.QueryEscape(state))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("callback = %d, want 302", res.StatusCode)
+	}
+
+	res, err = c.Get(srv.URL + "/api/v1/me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusOK {
+		res.Body.Close()
+		t.Fatalf("me = %d, want 200", res.StatusCode)
+	}
+	me := decodeMe(t, res)
+	if me.ID != "unnamed@example.com" || me.Team != "infosec" {
+		t.Fatalf("me = %+v", me)
+	}
+	// Nobody named them, so the address authors their changes.
+	if me.Name != "unnamed@example.com" {
+		t.Errorf("name = %q", me.Name)
+	}
+	// The edit horizon is the mapped team's subtree and nothing wider.
+	if !reflect.DeepEqual(me.EditableTeams, []string{"infosec"}) {
+		t.Errorf("editableTeams = %v", me.EditableTeams)
+	}
+}
+
+// A provider whose callback arrives as a cross-site post cannot be served
+// without TLS, because the cookie that carries the attempt across it would
+// never be sent. The refusal happens at start rather than in a browser.
+func TestNewHandlerRefusesAPostCallbackProviderWithoutTLS(t *testing.T) {
+	users := writeUsers(t, goodUsers)
+	saml, err := NewSAML(SAMLConfig{Metadata: newSAMLIdP(t).metadata(), EntityID: testSPEntityID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := HandlerConfig{Sessions: testSessions(t), Users: users, Tree: testTree(), Providers: []Provider{saml}}
+	if _, err := NewHandler(cfg); err == nil || !strings.Contains(err.Error(), "HTTPS") {
+		t.Fatalf("NewHandler = %v, want a refusal naming the fix", err)
+	}
+	cfg.Secure = true
+	if _, err := NewHandler(cfg); err != nil {
+		t.Fatalf("NewHandler refused a provider behind TLS: %v", err)
+	}
+}

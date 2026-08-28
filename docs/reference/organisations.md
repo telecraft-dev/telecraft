@@ -1,7 +1,7 @@
 ---
 title: Organisation register format
 description: "The register a deployment reads to run several Organisations: one record per Organisation, its fields, the rules the loader applies, and register-check."
-order: 10
+order: 11
 ---
 
 # Organisation register format

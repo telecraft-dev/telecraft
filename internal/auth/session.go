@@ -48,11 +48,18 @@ func NewSessions(key []byte, ttl time.Duration) (Sessions, error) {
 }
 
 // sessionClaims is the token payload: the identity, verbatim, plus expiry.
+//
+// The groups are the estate-named ones alone (Groups.Known), and they are
+// the provider's assertion rather than a decision made from it. Carrying
+// the assertion and re-resolving it on every request is what keeps
+// authority out of the token: repoint a group in auth.yaml, or move an
+// Owner in the tree, and the next request answers differently.
 type sessionClaims struct {
-	Subject string `json:"sub"`
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Expires int64  `json:"exp"`
+	Subject string   `json:"sub"`
+	Name    string   `json:"name"`
+	Email   string   `json:"email"`
+	Groups  []string `json:"groups,omitempty"`
+	Expires int64    `json:"exp"`
 }
 
 // Issue signs a token for one authenticated identity.
@@ -64,6 +71,7 @@ func (s Sessions) Issue(id Identity) (string, error) {
 		Subject: id.Subject,
 		Name:    id.Name,
 		Email:   id.Email,
+		Groups:  id.Groups,
 		Expires: s.now().Add(s.ttl).Unix(),
 	})
 	if err != nil {
@@ -94,7 +102,7 @@ func (s Sessions) Verify(token string) (Identity, error) {
 	if s.now().Unix() >= claims.Expires {
 		return Identity{}, errBadSession
 	}
-	id := Identity{Subject: claims.Subject, Name: claims.Name, Email: claims.Email}
+	id := Identity{Subject: claims.Subject, Name: claims.Name, Email: claims.Email, Groups: claims.Groups}
 	if err := id.valid(); err != nil {
 		return Identity{}, errBadSession
 	}

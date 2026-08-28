@@ -12,9 +12,10 @@ import { BrandMark } from '../ui/BrandMark'
  *
  * What it renders is the instance's own answer to /api/v1/auth/providers:
  * a credential form for a password provider (basic auth), a link through
- * `/api/v1/auth/{name}/start` for each redirect provider (OIDC, and SAML
- * when it lands). An air-gapped instance lists only what it runs; no
- * external host is ever involved (REQ-006).
+ * `/api/v1/auth/{name}/start` for each redirect provider (OIDC and SAML).
+ * Both redirect shapes are one control here, because the instance answers
+ * the flow and never the protocol. An air-gapped instance lists only what
+ * it runs; no external host is ever involved (REQ-006).
  */
 export function Login() {
   const providers = useQuery({ queryKey: ['auth-providers'], queryFn: api.authProviders })

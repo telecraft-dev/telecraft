@@ -17,9 +17,12 @@ import (
 // directory: the reviewable, git-resident mapping from authenticated
 // identities to the Owner each acts as (ADR-0019; the ADR-0017 seam
 // pattern). Air-gap first-class: the whole membership story lives in the
-// estate repo, no directory service required. Group-claim mapping from
-// OIDC/SAML is a later provider that would replace this file, not the
-// resolution step behind it.
+// estate repo, no directory service required.
+//
+// The group mapping in auth.yaml (see Groups) stands beside this file
+// rather than replacing it. Both feed one resolution step, and this file
+// wins wherever it names an email: a bulk rule must never quietly override
+// a person somebody wrote down on purpose.
 const UsersFile = "users.yaml"
 
 // User is one signed-in human the estate knows: the email their provider

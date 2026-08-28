@@ -40,6 +40,11 @@ Authored formats
   and [Exemptions](exemptions.md) each document one file format: every field,
   its type, whether it's required, its default, and what the loader rejects.
 
+Sign-in
+: [Sign-in](sign-in.md) covers `auth.yaml`: the providers an Instance offers,
+  how each is configured, how a secret is named rather than carried, and the
+  mapping from identity provider groups to Owners.
+
 Running several Organisations
 : [Organisation register format](organisations.md) covers the register a
   deployment reads to run several Organisations: the record, the rules the

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +18,9 @@ func testSessions(t *testing.T) Sessions {
 
 func TestSessionRoundTrip(t *testing.T) {
 	s := testSessions(t)
-	id := Identity{Subject: "sub-1", Name: "Jo Author", Email: "jo@example.com"}
+	// The groups ride along verbatim: the token carries the provider's
+	// assertion, and what it means is resolved again on every request.
+	id := Identity{Subject: "sub-1", Name: "Jo Author", Email: "jo@example.com", Groups: []string{"platform-engineering"}}
 	token, err := s.Issue(id)
 	if err != nil {
 		t.Fatal(err)
@@ -26,7 +29,7 @@ func TestSessionRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != id {
+	if !reflect.DeepEqual(got, id) {
 		t.Fatalf("Verify returned %+v, want %+v", got, id)
 	}
 }
