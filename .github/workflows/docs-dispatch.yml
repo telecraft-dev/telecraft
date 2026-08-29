@@ -20,15 +20,17 @@ jobs:
   notify-site:
     name: Notify telecraft.dev
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      # The same App the forge adapter uses (ADR-0014). It needs read
-      # access to telecraft.dev in its installation; without that the
-      # token request fails and this job goes red, which is the point:
-      # a documentation change that never reaches the site should be
+      # The same App the forge adapter uses (ADR-0014). It needs contents
+      # write on telecraft.dev in its installation, because a repository
+      # dispatch is a write; without that the token request or the
+      # dispatch fails and this job goes red, which is the point: a
+      # documentation change that never reaches the site should be
       # visible, not silent.
       - name: Mint an App token for telecraft.dev
         id: token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.FORGE_APP_ID }}
           private-key: ${{ secrets.FORGE_APP_PRIVATE_KEY }}

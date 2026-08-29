@@ -36,16 +36,24 @@ permissions:
   id-token: write
   attestations: write
 
+# One release run at a time, and never cancelled: two tags pushed close
+# together would otherwise interleave their registry pushes, and the
+# `release` tag would name whichever finished last.
+concurrency:
+  group: release
+
 jobs:
   publish:
     name: Publish the release
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       # Full history, because the guard below asks whether this tag sits on
       # main and a shallow checkout cannot answer that.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       # Two guards, both for the same footgun: a tag is a push, and a push
       # has no review. Nothing else stands between a typed command and a
@@ -84,15 +92,44 @@ jobs:
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
           echo "$TAG is on main; prerelease=$prerelease"
 
-      - uses: actions/setup-go@v7
+      # The third guard, and it runs here rather than beside the publish
+      # step for a reason a failed run makes obvious: everything below
+      # pushes something. A tag whose annotation cannot open the notes
+      # used to fail after the image and the chart were already in the
+      # registry, leaving a version the registry names and the releases
+      # page does not. Missing is fatal, and `Breaking: none` is a normal
+      # answer that takes two seconds to write; a tag cannot be corrected
+      # afterwards.
+      - name: Take the headline from the tag
+        id: headline
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          message=$(git tag -l --format='%(contents)' "$TAG")
+          breaking=$(printf '%s\n' "$message" | grep -m1 '^Breaking:' || true)
+          new=$(printf '%s\n' "$message" | grep -m1 '^New:' || true)
+          if [ -z "$breaking" ] || [ -z "$new" ]; then
+            echo "The annotation on $TAG must carry a Breaking: line and a New: line." >&2
+            echo "Either may say none. What it says now:" >&2
+            printf '%s\n' "$message" >&2
+            exit 1
+          fi
+          {
+            echo "text<<HEADLINE_EOF"
+            printf '%s\n\n%s\n' "**$breaking**" "**$new**"
+            echo "HEADLINE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: stable
-      - uses: actions/setup-node@v7
+          go-version-file: go.mod
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: console/package-lock.json
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       # The console is built once and both binaries are cross-compiled from
       # it, so the bytes attached below and the bytes inside the image are one
@@ -112,7 +149,7 @@ jobs:
           STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
           tools/image/offline.sh "telecraft:$VERSION"
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -121,6 +158,12 @@ jobs:
       # Two tags and no third (ADR-0068 §3). A pre-release publishes its
       # version tag and moves nothing the world follows, which is ADR-0049 §6
       # in the registry.
+      #
+      # The registry's `release` tag obeys the same rule as the git pointer
+      # demo-dispatch.yml moves: only the newest stable version takes it. A
+      # v0.5.7 cut after v0.7.1 is a fix on an older line, and dragging the
+      # registry pointer backwards would hand anyone deploying by that tag a
+      # silent downgrade while the demo stayed current.
       - name: Push the image index
         id: image
         env:
@@ -129,7 +172,15 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$PRERELEASE" = "false" ]; then
-            export TAGS=release
+            # No `head` in this pipeline: with `pipefail` a reader that
+            # closes early can fail the step for no reason.
+            stable=$(git tag --list 'v*' --sort=-v:refname | grep -v -- '-' || true)
+            newest=$(printf '%s\n' "$stable" | sed -n '1p')
+            if [ "$newest" = "$VERSION" ]; then
+              export TAGS=release
+            else
+              echo "$VERSION is older than $newest: the registry pointer stays on $newest."
+            fi
           fi
           STAGED=1 PUSH=1 tools/image/build.sh
           digest=$(docker buildx imagetools inspect \
@@ -138,7 +189,7 @@ jobs:
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "ghcr.io/telecraft-dev/telecraft@$digest"
 
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-name: ghcr.io/telecraft-dev/telecraft
           subject-digest: ${{ steps.image.outputs.digest }}
@@ -153,7 +204,7 @@ jobs:
       # The chart is checked before it is pushed, over the values that
       # install the published image, because a chart that renders wrong is
       # published in one command and corrected only by the next release.
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
       - name: Package and push the chart
         id: chart
         env:
@@ -176,7 +227,7 @@ jobs:
           helm push "$package" oci://ghcr.io/telecraft-dev/charts
           echo "package=$package" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-path: ${{ steps.chart.outputs.package }}
 
@@ -314,7 +365,7 @@ jobs:
           echo "out=$out" >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/attest-build-provenance@v3
+      - uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-path: |
             ${{ steps.pack.outputs.out }}/telecraft-*-linux-*
@@ -328,36 +379,13 @@ jobs:
       # reader arriving from another repository needs. House style applies
       # to release notes like any other prose
       # (docs/contributing/documentation.md).
-      # The two lines the notes open with, taken from the tag's own
-      # annotation. A release is a tag, so the sentence about what the
-      # release asks of a consumer belongs on the tag rather than in a file
-      # that a later commit could edit out from under it.
       #
-      # Missing is fatal. `Breaking: none` is a normal answer and takes two
-      # seconds to write; a release whose notes cannot be audited against
-      # its number is the thing docs/contributing/releases.md exists to
-      # prevent, and a tag cannot be corrected afterwards.
-      - name: Take the headline from the tag
-        id: headline
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          message=$(git tag -l --format='%(contents)' "$TAG")
-          breaking=$(printf '%s\n' "$message" | grep -m1 '^Breaking:' || true)
-          new=$(printf '%s\n' "$message" | grep -m1 '^New:' || true)
-          if [ -z "$breaking" ] || [ -z "$new" ]; then
-            echo "The annotation on $TAG must carry a Breaking: line and a New: line." >&2
-            echo "Either may say none. What it says now:" >&2
-            printf '%s\n' "$message" >&2
-            exit 1
-          fi
-          {
-            echo "text<<HEADLINE_EOF"
-            printf '%s\n\n%s\n' "**$breaking**" "**$new**"
-            echo "HEADLINE_EOF"
-          } >> "$GITHUB_OUTPUT"
-
+      # The two lines the notes open with come from the tag's own
+      # annotation, validated by the headline guard at the top of this job
+      # before anything was built or pushed. A release is a tag, so the
+      # sentence about what the release asks of a consumer belongs on the
+      # tag rather than in a file that a later commit could edit out from
+      # under it.
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}

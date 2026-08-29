@@ -4,6 +4,24 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A weekly run over an unchanged tree. Two things only a schedule
+  # catches: a live credential that expired since the last code change,
+  # and an advisory published against a dependency nobody has bumped.
+  # On this event the forge suite is required to run rather than skip;
+  # the guard is in that job.
+  schedule:
+    - cron: '17 6 * * 1'
+
+# Read-only. Nothing in this workflow publishes; the release workflow
+# carries its own grants.
+permissions:
+  contents: read
+
+# One run per ref. A superseded push to a pull request cancels the run it
+# replaced; a run on main or on the schedule is never cancelled mid-flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # What changed decides what runs. A documentation-only pull request has no
@@ -16,15 +34,17 @@ jobs:
   changes:
     name: What changed
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       code: ${{ steps.filter.outputs.code }}
       console: ${{ steps.filter.outputs.console }}
       image: ${{ steps.filter.outputs.image }}
       chart: ${{ steps.filter.outputs.chart }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: filter
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
@@ -82,11 +102,14 @@ jobs:
   vendor-word-lint:
     name: Vendor-word lint (ADR-0001)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - run: go run ./tools/vendorlint
 
   # The documentation front-matter check. Ungated for the same reason the
@@ -100,11 +123,14 @@ jobs:
   docs-lint:
     name: Documentation front matter
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - run: go run ./tools/docslint
 
   # The tracked-executable check (issue #122). Ungated for a third reason:
@@ -123,13 +149,18 @@ jobs:
   # `git ls-files` needs only the index, so the default shallow checkout is
   # enough.
   binary-lint:
-    name: No tracked binaries (issue #122)
+    # Quoted, because an unquoted `#` starts a YAML comment and the check
+    # would register under a truncated name no protection rule could match.
+    name: 'No tracked binaries (issue #122)'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - run: go run ./tools/binlint
 
   # The Go formatting check (issue #146). Ungated for a fourth reason: the
@@ -154,28 +185,65 @@ jobs:
   # self-test that makes `go test ./...` fail on the next drift before it
   # ever reaches a runner.
   format-lint:
-    name: Go formatting (issue #146)
+    name: 'Go formatting (issue #146)'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - run: go run ./tools/fmtlint
+
+  # The workflow files themselves. They are load-bearing YAML that nothing
+  # else reads before an event does, so a syntax slip, a wrong context
+  # expression or an unquoted interpolation is otherwise discovered by the
+  # push that needed the workflow. Ungated for the same reason as the four
+  # checks above: a change anywhere can be a change to a workflow.
+  workflow-lint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Style-level shellcheck findings stay a matter for review; what
+      # this job exists to fail on is a script or expression that is
+      # wrong, not one that could be tidier.
+      - run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+        env:
+          SHELLCHECK_OPTS: --severity=warning
 
   test:
     name: Build and test
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - run: go build ./...
       - run: go vet ./...
-      - run: go test ./...
+      # `-race` because the instance server serves the console, OpAMP and
+      # the probes concurrently, and a data race is exactly the bug a plain
+      # run goes green on. `-shuffle=on` so an order-dependent test fails
+      # here rather than on somebody's machine.
+      - run: go test -race -shuffle=on ./...
+      # Known advisories, resolved call-graph aware: an advisory against a
+      # function nothing here reaches is a note rather than a failure.
+      - name: Known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
   # The live TelemetryProvider verification (issue #10): the same gated
   # suite demo.sh runs locally, against a real single-node Elasticsearch.
@@ -185,6 +253,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:9.1.0
@@ -200,10 +269,12 @@ jobs:
           --health-timeout 5s
           --health-retries 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - run: go test ./internal/provider/telemetry/ -run Live -v -count=1
         env:
           TELECRAFT_TELEMETRY_LIVE_ENDPOINT: http://localhost:9200
@@ -219,11 +290,27 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # The skip-on-absent-credentials discipline reads as a pass, so a
+      # credential that quietly dies would stay green forever. The weekly
+      # scheduled run is the backstop: on that event, absent secrets are
+      # the finding, not a reason to skip.
+      - name: A scheduled run does not accept a skip
+        if: github.event_name == 'schedule'
+        env:
+          FORGE_APP_ID: ${{ secrets.FORGE_APP_ID }}
+        run: |
+          if [ -z "$FORGE_APP_ID" ]; then
+            echo "::error::The FORGE_* secrets are absent, so the weekly live run would skip. On a schedule that is a dead credential, not a pass."
+            exit 1
+          fi
       - run: go test ./internal/provider/forge/ -run Live -v -count=1
         env:
           FORGE_APP_ID: ${{ secrets.FORGE_APP_ID }}
@@ -244,12 +331,15 @@ jobs:
     needs: changes
     if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: console
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -275,7 +365,7 @@ jobs:
       # containers and self-hosted runners, which this is not. If that ever
       # stops being true the next step fails immediately and says which
       # library is missing, which is a better failure than a hang.
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: playwright
         with:
           path: ~/.cache/ms-playwright
@@ -283,6 +373,16 @@ jobs:
       - if: steps.playwright.outputs.cache-hit != 'true'
         run: npx playwright install chromium
       - run: npm run e2e
+      # The traces and screenshots Playwright writes on a failure, kept
+      # where the reader debugging it can fetch them. On a green run there
+      # is nothing to keep and the step uploads nothing.
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: failure()
+        with:
+          name: playwright-output
+          path: console/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   # The container image (ADR-0068). It builds and never pushes: a pull request
   # cannot publish, and what is worth catching before a tag is whether the
@@ -296,20 +396,23 @@ jobs:
     needs: changes
     if: needs.changes.outputs.image == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       IMAGE: telecraft
       VERSION: ci
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
-      - uses: actions/setup-node@v7
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: console/package-lock.json
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - run: go run ./tools/imagelint
       - name: Stage the build context
         run: tools/image/stage.sh
@@ -321,11 +424,12 @@ jobs:
           STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
           tools/image/offline.sh "$IMAGE:$VERSION"
 
-  # The three platforms a release attaches that nothing else in this
-  # repository builds (ADR-0081 §1). The image job covers linux/amd64 and
-  # linux/arm64 because it needs them; these three exist only on the release
-  # page, and without this job a broken cross-compile is discovered by a tag
-  # push, which is the one moment there is no way back.
+  # Every platform a release attaches, minus the one the test job compiles
+  # natively (ADR-0081 §1). The image job also builds both Linux
+  # architectures, but it runs only when the image's own files change, so
+  # on an ordinary Go change this loop is the only cross-compile there is.
+  # Without it a broken build constraint or a platform-specific import is
+  # discovered by a tag push, which is the one moment there is no way back.
   #
   # Compiled and thrown away. Running them is not possible here and is not
   # the point: what breaks a cross-compile is a build constraint or a
@@ -335,15 +439,18 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
       - name: Every platform a release attaches still cross-compiles
         run: |
           set -euo pipefail
-          for target in darwin/arm64 darwin/amd64 windows/amd64; do
+          for target in darwin/arm64 darwin/amd64 windows/amd64 linux/arm64; do
             echo "building $target"
             CGO_ENABLED=0 GOOS="${target%/*}" GOARCH="${target#*/}" \
               go build -trimpath -o /dev/null ./cmd/telecraft
@@ -367,21 +474,24 @@ jobs:
     needs: changes
     if: needs.changes.outputs.chart == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       IMAGE: telecraft
       VERSION: ci
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
-      - uses: actions/setup-node@v7
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: console/package-lock.json
-      - uses: docker/setup-buildx-action@v3
-      - uses: azure/setup-helm@v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
       - run: go run ./tools/chartlint
       - run: helm lint charts/telecraft --values charts/telecraft/testdata/minimal.yaml
       - run: tools/chart/golden.sh
@@ -389,7 +499,7 @@ jobs:
         run: |
           tools/image/stage.sh
           STAGED=1 PLATFORMS=linux/amd64 LOAD=1 tools/image/build.sh
-      - uses: helm/kind-action@v1
+      - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
           install_only: true
       - name: The chart installs and serves
@@ -402,16 +512,19 @@ jobs:
   # the small one; telecraft-dev/estate-demo runs the same two commands
   # over the curated one on every push and deploys the result.
   demo:
-    name: Demo snapshot and bundle (issue #50)
+    name: 'Demo snapshot and bundle (issue #50)'
     needs: changes
     if: needs.changes.outputs.console == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: stable
-      - uses: actions/setup-node@v7
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
