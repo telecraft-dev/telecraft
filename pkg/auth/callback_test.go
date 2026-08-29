@@ -294,3 +294,80 @@ func TestTheVerifierFromBeginIsWhatCompleteIsGiven(t *testing.T) {
 		t.Error("Complete was given an empty verifier, so the exchange is unbound from the round trip")
 	}
 }
+
+// they are closed already.
+func TestLoginRefusesARequestACrossOriginFormCouldHaveMade(t *testing.T) {
+	srv := httptest.NewServer(testHandler(t))
+	defer srv.Close()
+
+	// What an auto-submitting form on another origin produces: a content
+	// type a form can set, and a body whose trailing separator the JSON
+	// decoder would otherwise ignore.
+	body := `{"provider":"basic","username":"jo@example.com","secret":"correct horse battery"}=` + "\r\n"
+
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/auth/login", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "text/plain;charset=UTF-8")
+
+	res, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", res.StatusCode)
+	}
+	if sessionCookieSet(res) {
+		t.Error("a cross-origin form signed this browser in")
+	}
+}
+
+// Sec-Fetch-Site is the browser saying so directly, and it is believed
+// ahead of the content type.
+func TestLoginRefusesWhatTheBrowserCallsCrossSite(t *testing.T) {
+	srv := httptest.NewServer(testHandler(t))
+	defer srv.Close()
+
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/auth/login",
+		strings.NewReader(`{"provider":"basic","username":"jo@example.com","secret":"correct horse battery"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+
+	res, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", res.StatusCode)
+	}
+	if sessionCookieSet(res) {
+		t.Error("a cross-site request signed this browser in")
+	}
+}
+
+// The console's own call still works, which is the half that makes the
+// refusal above a gate rather than an outage.
+func TestLoginStillWorksFromThisInstance(t *testing.T) {
+	srv := httptest.NewServer(testHandler(t))
+	defer srv.Close()
+
+	c := client(t, srv)
+	res := postJSON(t, c, srv.URL+"/api/v1/auth/login",
+		map[string]string{"provider": "basic", "username": "jo@example.com", "secret": "correct horse battery"})
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", res.StatusCode)
+	}
+	if !sessionCookieSet(res) {
+		t.Error("a same-origin sign-in issued no session")
+	}
+}
