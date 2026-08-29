@@ -59,6 +59,12 @@ func TestServeCommandRefusesAnEmptyHTTPAddress(t *testing.T) {
 // is the shape of an instance whose collectors are all read through a
 // vendor provider. So the command gets past its own checks and fails on
 // the estate it was pointed at, which is the next thing wrong here.
+//
+// What it fails on moved. An empty directory used to be refused for having
+// no Tiers; a new estate is now served rather than refused (issue #243), so
+// what is left wrong with an empty directory is the team tree, without
+// which no finding can reach an owner. The point of the test is unchanged:
+// the flags were accepted and the estate was not.
 func TestServeCommandTakesAnEmptyOpAMPAddressAsAClosedEndpoint(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 
@@ -67,7 +73,10 @@ func TestServeCommandTakesAnEmptyOpAMPAddressAsAClosedEndpoint(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit %d, want 1\nstderr:\n%s", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "initial repo snapshot") {
+	if strings.Contains(stderr.String(), "no HTTP endpoint") {
+		t.Errorf("the flags were refused, so the estate was never reached:\n%s", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "teams.yaml") {
 		t.Errorf("stderr does not name the estate it could not read:\n%s", stderr.String())
 	}
 }

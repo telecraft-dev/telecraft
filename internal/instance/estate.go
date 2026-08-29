@@ -2,6 +2,7 @@ package instance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -120,8 +121,25 @@ func (s *Server) build(ctx context.Context) (console.Bundle, error) {
 	if err != nil {
 		return console.Bundle{}, err
 	}
+	// An estate with no Tiers is new, not broken, and the Instance serves
+	// it. ADR-0060 §1 puts the flow that authors a first Tier in the
+	// console, so refusing to start here would mean the console that fixes
+	// an empty estate is served by the process that will not start over
+	// one. Nothing downstream is fed a guess: the topology is genuinely
+	// empty, every reading over it is empty, and the surfaces say the
+	// estate is new.
+	//
+	// This does not widen what a collector may be served. ADR-0010 and
+	// REQ-002 stand: an artefact is rendered from a Tier, there are none,
+	// so there is nothing to serve and nothing is served.
 	topo, err := renderer.LoadTopology(in.Root)
-	if err != nil {
+	if errors.Is(err, renderer.ErrNoTiers) || errors.Is(err, renderer.ErrNoTeamsTree) {
+		topo = renderer.Topology{
+			Tiers:    map[string]renderer.Tier{},
+			Services: map[string]renderer.Service{},
+			Rollouts: map[string]renderer.Rollout{},
+		}
+	} else if err != nil {
 		return console.Bundle{}, err
 	}
 

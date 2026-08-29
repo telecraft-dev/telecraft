@@ -35,6 +35,23 @@ const (
 // traversed Tier's floor judgement, and under-governed is the failure mode
 // (ADR-0025 §4), so a dangling Path reference is a load error, never a
 // finding.
+// A new estate has neither of these yet, and that is a state rather than a
+// fault. The Tier is the rendering unit (ADR-0025), so a command that
+// renders is right to refuse: pointing `render` at the wrong directory
+// should say so. An Instance server is not rendering, it is serving the
+// console somebody adds their first Tier through (ADR-0060 §1), and
+// refusing there is a circle: the console that fixes an empty estate is
+// served by the process that will not start over one.
+//
+// So the refusal is kept and made recognisable, and each caller decides.
+var (
+	// ErrNoTeamsTree is a root with no teams/ directory at all.
+	ErrNoTeamsTree = errors.New("no teams/ tree")
+
+	// ErrNoTiers is a teams/ tree that authors no Tier.
+	ErrNoTiers = errors.New("no Tiers")
+)
+
 func LoadTopology(roots ...string) (Topology, error) {
 	if len(roots) == 0 {
 		return Topology{}, fmt.Errorf("no source roots: pass at least one estate checkout")
@@ -49,7 +66,7 @@ func LoadTopology(roots ...string) (Topology, error) {
 		teams, err := os.ReadDir(teamsRoot)
 		if err != nil {
 			if os.IsNotExist(err) {
-				return Topology{}, fmt.Errorf("%s has no %s/ tree: the estate layout is %s/<team>/{%s,%s}/<name>.yaml", root, teamsDir, teamsDir, tiersDir, servicesDir)
+				return Topology{}, fmt.Errorf("%s has no %s/ tree: the estate layout is %s/<team>/{%s,%s}/<name>.yaml: %w", root, teamsDir, teamsDir, tiersDir, servicesDir, ErrNoTeamsTree)
 			}
 			return Topology{}, err
 		}
@@ -121,7 +138,7 @@ func LoadTopology(roots ...string) (Topology, error) {
 	if len(topo.Tiers) == 0 {
 		// The Tier is the rendering unit (ADR-0025): a topology with no
 		// Tiers has nothing to render, almost always a mistaken directory.
-		return Topology{}, fmt.Errorf("no Tiers under %s, so there is nothing to render", strings.Join(roots, ", "))
+		return Topology{}, fmt.Errorf("no Tiers under %s, so there is nothing to render: %w", strings.Join(roots, ", "), ErrNoTiers)
 	}
 
 	// Cross-object: every Path step must name an authored Tier. Strictness

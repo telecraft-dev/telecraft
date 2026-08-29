@@ -25,6 +25,7 @@ package serving
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -78,6 +79,19 @@ type entry struct {
 // previous head, which is bounded staleness, never mis-delivery.
 func LoadSnapshot(root, commit string) (*Snapshot, error) {
 	topo, err := renderer.LoadTopology(root)
+	if errors.Is(err, renderer.ErrNoTiers) || errors.Is(err, renderer.ErrNoTeamsTree) {
+		// A new estate. There is nothing to serve, so this is a snapshot
+		// that serves nothing: no entries, and no Unmatched artefact
+		// because no render has produced one.
+		//
+		// Nothing empty reaches a collector. Match returns a nil artefact,
+		// remoteConfig refuses it, and the handler logs the refusal and
+		// sends no remote config, which is ADR-0010 rule 6 arriving at its
+		// one enforceable place rather than a second rule added here.
+		// A collector that connects to a brand-new estate is told nothing,
+		// loudly, which is the visible failure REQ-042 asks for.
+		return &Snapshot{Commit: commit}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
