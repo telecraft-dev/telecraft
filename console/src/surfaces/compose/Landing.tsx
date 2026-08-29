@@ -192,7 +192,16 @@ export function Landing({ docs, me }: { docs: BlueprintDoc[]; me: Me | undefined
                       <span className="item-meta">v{bp.version}</span>
                     </td>
                     <td>{bp.team}</td>
-                    <td className="mono landing-lanes">{laneOrder(bp).join(' · ')}</td>
+                    <td className="mono landing-lanes">
+                      {laneOrder(bp).map((signal, i) => (
+                        <span key={signal}>
+                          {i > 0 && ' · '}
+                          <span className="lane-name" data-signal={signal}>
+                            {signal}
+                          </span>
+                        </span>
+                      ))}
+                    </td>
                     <td>
                       {bp.satisfies.length === 0 ? (
                         <span className="item-meta">no claims</span>

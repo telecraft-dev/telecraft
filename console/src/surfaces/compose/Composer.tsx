@@ -62,7 +62,15 @@ export function Palette({
                   <>
                     <span className="palette-label">{entry.label}</span>
                     <span className="palette-meta">
-                      {entry.class}/{entry.type} · {entry.signals.join(' ')}
+                      {entry.class}/{entry.type} ·{' '}
+                      {entry.signals.map((signal, i) => (
+                        <span key={signal}>
+                          {i > 0 && ' '}
+                          <span className="lane-name" data-signal={signal}>
+                            {signal}
+                          </span>
+                        </span>
+                      ))}
                     </span>
                     {entry.origin === 'grant' && entry.grant && (
                       <span className="palette-grant" data-testid={`palette-grant-${entry.key}`}>
@@ -140,7 +148,11 @@ function FindingsStrip({ findings }: { findings: ComposeFinding[] }) {
             >
               <p className="finding-head">
                 <span className="finding-kind">{finding.kind}</span>
-                {finding.lane && <span className="finding-lane">{finding.lane}</span>}
+                {finding.lane && (
+                  <span className="finding-lane lane-name" data-signal={finding.lane}>
+                    {finding.lane}
+                  </span>
+                )}
                 <span className="finding-summary">{finding.summary}</span>
               </p>
               <p className="finding-remediation">{finding.remediation}</p>
@@ -214,6 +226,7 @@ export function Composer({
             <div
               key={signal}
               className={signal === offendingLane ? 'signal-lane offending' : 'signal-lane'}
+              data-signal={signal}
               data-testid={`lane-${signal}`}
               onDragOver={editable ? (event) => event.preventDefault() : undefined}
               onDrop={
@@ -228,7 +241,7 @@ export function Composer({
               }
             >
               <header className="lane-head">
-                <h3>{signal}</h3>
+                <h3 className="lane-name">{signal}</h3>
                 {verdict?.context.floor && (
                   <Chip className="floor-chip" data-testid={`floor-chip-${signal}`}>
                     floor {verdict.context.floor} ({verdict.context.serviceClass} ·{' '}
@@ -284,7 +297,11 @@ export function Composer({
               </ol>
               {editable && (
                 <label className="lane-add">
-                  + add to «{signal}»
+                  + add to «
+                  <span className="lane-name" data-signal={signal}>
+                    {signal}
+                  </span>
+                  »
                   <select
                     data-testid={`lane-add-${signal}`}
                     value=""

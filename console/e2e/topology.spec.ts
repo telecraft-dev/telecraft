@@ -28,6 +28,11 @@ test('edges derive from the model; no gesture draws or redraws one', async ({ pa
   // A Hop carries the lanes its source Tier wires and no others, so the
   // two governed sources carry two each; neither wires a metrics lane.
   await expect(canvas.locator('.canvas-edge')).toHaveCount(7)
+  // The corridors are told apart by their lane colour, so the legend that
+  // names the lanes is what lets them take one (ADR-0047 §5). It names
+  // every lane the Hops carry, in the lanes' reading order, and no other.
+  const legend = page.getByTestId('signal-legend')
+  await expect(legend.locator('[data-signal]')).toHaveText(['traces', 'logs', 'metrics'])
   // Nothing is connectable: there is no handle a drag could start an
   // edge from (ADR-0044 §3).
   await expect(canvas.locator('.react-flow__handle.connectable')).toHaveCount(0)

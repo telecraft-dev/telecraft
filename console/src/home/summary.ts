@@ -224,14 +224,30 @@ export function summarise(
 }
 
 /**
+ * One segment of a Tier row's second line. A segment that reads a lane
+ * names it, and the name is carried apart from the words around it so the
+ * row can set it in the lane's colour without tinting the reading it sits
+ * in: an error count is a severity reading and must not take a lane hue
+ * (ADR-0047 §5, ADR-0041 §2).
+ */
+export interface TierSegment {
+  /** The words before the lane's name, or the whole segment where it reads none. */
+  lead: string
+  /** The lane the segment reads, where it reads one. */
+  signal?: string
+  /** The words after the lane's name. */
+  trail?: string
+}
+
+/**
  * A Tier row's second line, from card-face fields alone (ADR-0056 §2): the
  * worst finding band's face label where the face carries one, then the
  * per-lane facts the card's own matrix shows. No drawer is fetched, and the
  * lane facts read through `estate/readings.ts`, the module the matrix
  * itself reads through, so this line and the card cannot disagree.
  */
-export function tierDetail(card: CardFace): string[] {
-  const segments: string[] = []
+export function tierDetail(card: CardFace): TierSegment[] {
+  const segments: TierSegment[] = []
 
   let lead: BandName | undefined
   for (const kind of BAND_ORDER) {
@@ -245,26 +261,34 @@ export function tierDetail(card: CardFace): string[] {
     }
   }
   if (lead !== undefined) {
-    segments.push(card.bands[lead].worstFinding ?? `${KIND_LABEL[lead]}: finding`)
+    segments.push({ lead: card.bands[lead].worstFinding ?? `${KIND_LABEL[lead]}: finding` })
   }
 
   for (const row of card.signals) {
     if (!laneReads(row)) {
-      segments.push(`no ${row.signal} lane on this Tier`)
+      segments.push({ lead: 'no ', signal: row.signal, trail: ' lane on this Tier' })
       continue
     }
     // A wired lane's readings can still be absent outright on a card no
     // collector has reported for, so each is read only where it exists.
     const { volume, freshness, shape } = row as SignalRow
     if (freshness !== undefined && readingState(freshness) === 'silent') {
-      segments.push(`${row.signal} silent`)
+      segments.push({ lead: '', signal: row.signal, trail: ' silent' })
     }
     if (shape?.known === true && shape.missing > 0) {
-      segments.push(`${shape.missing} of ${shape.required} ${row.signal} missing`)
+      segments.push({
+        lead: `${shape.missing} of ${shape.required} `,
+        signal: row.signal,
+        trail: ' missing',
+      })
     }
     if (volume !== undefined) {
       for (const error of errorReadings(volume)) {
-        segments.push(`${formatItems(error.items)} ${row.signal} ${error.label}`)
+        segments.push({
+          lead: `${formatItems(error.items)} `,
+          signal: row.signal,
+          trail: ` ${error.label}`,
+        })
       }
     }
   }

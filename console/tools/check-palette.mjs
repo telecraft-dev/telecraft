@@ -177,6 +177,17 @@ const TEXT_ON = {
   // in neither table until the marketing site used it, which is exactly the
   // quiet regression design-system.md warns an unlisted colour makes possible.
   '--brand': ['--colour-bg'],
+  // The four lanes carry their own names now: the matrix row heads, the
+  // Composer lane headings, a finding's lane, the Compose band labels, and
+  // the lane names inside Home's Tier line. They were measured as graphics
+  // alone while the only things drawn in them were an edge and a dot, which
+  // is the same quiet regression the brand amber made possible above. The
+  // chip ground is measured too, because the legend and the stability chips
+  // sit on the raised surface.
+  '--signal-traces': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
+  '--signal-logs': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
+  '--signal-metrics': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
+  '--signal-profiles': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
 }
 
 // Marks, lane edges, focus rings: non-text graphics.
@@ -189,10 +200,8 @@ const GRAPHIC_ON = {
   '--brand': ['--colour-chrome', '--colour-surface'],
   '--colour-text-faint': ['--colour-chrome'],
   '--severity-advisory': ['--colour-bg', '--colour-surface', '--colour-surface-raised'],
-  '--signal-traces': ['--colour-bg', '--colour-surface'],
-  '--signal-logs': ['--colour-bg', '--colour-surface'],
-  '--signal-metrics': ['--colour-bg', '--colour-surface'],
-  '--signal-profiles': ['--colour-bg', '--colour-surface'],
+  // The four signal lanes moved to TEXT_ON: they are set as words as well
+  // as drawn as edges, and the text floor is the stricter of the two.
   '--path-0': ['--colour-bg', '--colour-surface'],
   '--path-1': ['--colour-bg', '--colour-surface'],
   '--path-2': ['--colour-bg', '--colour-surface'],

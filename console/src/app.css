@@ -22,6 +22,49 @@
   vertical-align: -0.15em;
 }
 
+/* ---- The signal lanes, in one map (ADR-0047 §5) ----
+   `data-signal` on an element resolves `--lane` to that lane's colour, and
+   every surface that spends a lane colour reads `--lane`. One map rather
+   than one rule per surface: a lane that gains a colour gains it
+   everywhere, which is how the `profiles` lane came to be coloured on the
+   Compose canvas and left grey on the simulate dots.
+
+   The signal vocabulary is open: `api/types.ts` names four lanes, the
+   estate reads three, and the Catalogue carries whatever the upstream
+   artefact declares. An unmatched name is therefore ordinary, not an
+   error, and resolves to the muted ink every other word takes.
+
+   ADR-0047 §5 is one-directional: a lane colour never appears without the
+   lane's name, but a named lane need not take colour. So `data-signal`
+   goes on the element carrying the name, or on an ancestor that contains
+   it, and nowhere else. */
+
+[data-signal] {
+  --lane: var(--colour-text-muted);
+}
+
+[data-signal='traces'] {
+  --lane: var(--signal-traces);
+}
+
+[data-signal='logs'] {
+  --lane: var(--signal-logs);
+}
+
+[data-signal='metrics'] {
+  --lane: var(--signal-metrics);
+}
+
+[data-signal='profiles'] {
+  --lane: var(--signal-profiles);
+}
+
+/* The lane's name itself, wherever a surface sets one in its lane colour.
+   The fallback covers a name drawn outside any `data-signal` scope. */
+.lane-name {
+  color: var(--lane, var(--colour-text-muted));
+}
+
 /* ---- The button, in three tones (ADR-0047 §4) ----
    Tones are structural, not chromatic: the accent is contrast, so a primary
    button is a solid fill of the ink and a quiet one is underlined text.
@@ -1395,16 +1438,28 @@
   background: var(--colour-ungoverned);
 }
 
+/* A Compose band is a signal lane, and its label is the lane's name. The
+   edges inside it already carried the lane colour; the band that names
+   the lane now carries it too. The dash stays: the band is a drop target
+   and that is what the dash says. */
+.canvas-band[data-signal] {
+  border-color: var(--lane);
+}
+
+/* A Topology band is named for an Environment and takes the muted ink; a
+   Compose band is named for a signal lane and takes the lane's colour. */
 .canvas-band-label {
   position: absolute;
   top: var(--space-1);
   left: var(--space-2);
   font-size: var(--text-xs);
-  color: var(--colour-text-muted);
+  color: var(--lane, var(--colour-text-muted));
 }
 
+/* An edge takes its lane's colour from the group that wraps it, and the
+   muted ink where it carries no lane. */
 .canvas-edge {
-  stroke: var(--colour-text-muted);
+  stroke: var(--lane, var(--colour-text-muted));
   stroke-width: 1.5;
   fill: none;
 }
@@ -1439,11 +1494,26 @@
   stroke: var(--path-3);
 }
 
-.trace-legend {
+.trace-legend,
+.signal-legend {
   display: flex;
+  align-items: baseline;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
   flex-wrap: wrap;
+}
+
+.legend-label {
+  color: var(--colour-text-muted);
+  font-size: var(--text-s);
+}
+
+/* The lane's colour on the chip's edge, the lane's name in the chip: the
+   shape the Traced-Path chip already uses, so the two legends over one
+   canvas read as one thing. */
+.signal-legend-chip {
+  border-left-width: 4px;
+  border-left-color: var(--lane);
 }
 
 .trace-path-chip {
@@ -1472,22 +1542,14 @@
   border-left-color: var(--path-3);
 }
 
-/* Simulate dots (ADR-0044 §5): cosmetic, per-journey, signal-staggered. */
+/* Simulate dots (ADR-0044 §5): cosmetic, per-journey, signal-staggered.
+   They read through the one lane map, which is what the signal legend
+   above the canvas names. Three hardcoded rules stood here and `profiles`
+   was not among them, so a profiles dot fell back to the base fill while
+   the other three were coloured (ADR-0047 §5). */
 
 .journey-dot {
-  fill: var(--colour-text-muted);
-}
-
-.journey-dot.signal-traces {
-  fill: var(--signal-traces);
-}
-
-.journey-dot.signal-logs {
-  fill: var(--signal-logs);
-}
-
-.journey-dot.signal-metrics {
-  fill: var(--signal-metrics);
+  fill: var(--lane, var(--colour-text-muted));
 }
 
 /* Compose */
@@ -1833,9 +1895,10 @@
   gap: var(--space-2);
 }
 
+/* The element is the lane's name, so it takes the lane's colour from
+   `.lane-name` rather than the muted ink it used to. */
 .finding-lane {
   font-family: var(--font-mono);
-  color: var(--colour-text-muted);
 }
 
 /* B · Requirement-first */
@@ -1912,22 +1975,6 @@
 
 .canvas-node.compose.flagged {
   outline: 1px solid var(--severity-advisory);
-}
-
-.canvas-edge.signal-traces {
-  stroke: var(--signal-traces);
-}
-
-.canvas-edge.signal-logs {
-  stroke: var(--signal-logs);
-}
-
-.canvas-edge.signal-metrics {
-  stroke: var(--signal-metrics);
-}
-
-.canvas-edge.signal-profiles {
-  stroke: var(--signal-profiles);
 }
 
 /* Catalogue & Governance */
@@ -2019,6 +2066,17 @@
 
 .stability-chip.stability-stable {
   color: var(--severity-ok);
+}
+
+/* A stability chip already spends hue on the level, so the lane takes the
+   chip's edge and the level keeps the words: one channel carries one
+   meaning, and the two never argue inside one chip. It follows the level
+   rules because `deprecated` sets the whole border. The collapsed "all
+   signals" chip names no lane and carries no `data-signal`, so it keeps
+   the plain border (ADR-0047 §5). */
+.stability-chip[data-signal] {
+  border-left-width: 4px;
+  border-left-color: var(--lane);
 }
 
 .entry-description {

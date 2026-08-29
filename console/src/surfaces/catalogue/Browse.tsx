@@ -175,6 +175,7 @@ export function Browse() {
                             mono: true,
                             extra: `stability-chip stability-${chip.level}`,
                           })}
+                          data-signal={chip.signal}
                           title={STABILITY_TITLE[chip.level]}
                         >
                           {chip.label}

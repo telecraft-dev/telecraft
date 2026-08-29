@@ -20,6 +20,12 @@ export interface StabilityChip {
   key: string
   label: string
   level: StabilityLevel
+  /**
+   * The one signal the chip speaks for, where it speaks for one. The
+   * collapsed "all signals" chip names no lane and so carries none: it
+   * must not take a lane colour (ADR-0047 §5).
+   */
+  signal?: string
 }
 
 /**
@@ -36,5 +42,10 @@ export function stabilityChips(stability: Record<string, StabilityLevel>): Stabi
   if (signals.length > 1 && levels.length === 1 && level !== undefined) {
     return [{ key: 'all-signals', label: `all signals: ${level}`, level }]
   }
-  return signals.map(([signal, level]) => ({ key: signal, label: `${signal}: ${level}`, level }))
+  return signals.map(([signal, level]) => ({
+    key: signal,
+    label: `${signal}: ${level}`,
+    level,
+    signal,
+  }))
 }

@@ -251,7 +251,18 @@ function Summary({ summary }: { summary: HomeSummary }) {
                         className="home-tier-detail"
                         data-testid={`home-tier-detail-${card.tier}`}
                       >
-                        {detail.join(' · ')}
+                        {detail.map((segment, i) => (
+                          <span key={`${segment.lead}${segment.signal ?? ''}${i}`}>
+                            {i > 0 && ' · '}
+                            {segment.lead}
+                            {segment.signal !== undefined && (
+                              <span className="lane-name" data-signal={segment.signal}>
+                                {segment.signal}
+                              </span>
+                            )}
+                            {segment.trail}
+                          </span>
+                        ))}
                       </span>
                     )}
                   </li>
