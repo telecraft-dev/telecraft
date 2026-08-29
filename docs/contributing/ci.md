@@ -6,16 +6,24 @@ order: 4
 
 # Continuous integration
 
-Four workflows live in `.github/workflows/`. One guards changes, one
+Five workflows live in `.github/workflows/`. Two guard changes, one
 publishes releases, and two tell downstream repositories that something
 they build from has moved.
 
 | Workflow | Fires on | Does |
 |---|---|---|
-| `ci.yml` | every pull request, and every push to `main` | Builds, tests and lints: the checks review waits for |
+| `ci.yml` | every pull request, every push to `main`, and a weekly schedule | Builds, tests and lints: the checks review waits for |
+| `codeql.yml` | every pull request, every push to `main`, and a weekly schedule | Static analysis over the Go, the console's TypeScript and the workflow files |
 | `release.yml` | a `v*` tag | Publishes the release: the image, the chart, the CLI for every platform, and the design artefacts |
-| `demo-dispatch.yml` | a `v*` tag, or a manual run | Moves the `release` pointer and asks the demo to rebuild |
+| `demo-dispatch.yml` | a successful release, or a manual run | Moves the `release` pointer and asks the demo to rebuild |
 | `docs-dispatch.yml` | a push to `main` touching `docs/**` | Asks telecraft.dev to rebuild the documentation |
+
+The weekly runs exist for what changes when nothing here does: an advisory
+published against a dependency nobody has bumped, a query pack that learnt
+a new analysis, and a live credential that quietly expired. The last of
+those is the one `ci.yml`'s schedule is strict about; the
+[live suites section](#the-live-suites-and-why-they-can-be-green-without-credentials)
+has the detail.
 
 Nothing here deploys the product. Telecraft has no hosted instance to
 deploy to: an adopter runs it themselves, and the two public surfaces,
@@ -41,7 +49,7 @@ running them because someone fixed a typo in a guide spends a service
 container and leaves external side effects behind for no reading. When the
 runners are slow, that wait is the whole review latency.
 
-**Four checks are the deliberate exception.** All four run on
+**Five checks are the deliberate exception.** All five run on
 everything, always, because none of them reads only code, which makes a
 documentation-only change exactly the change that can break them. The
 vendor-word lint reads code and prose alike, and a vendor word arrives as
@@ -58,7 +66,10 @@ guide is as much a hit as one committed beside a Go file. The formatting
 check reads the index too, and the tree holds Go that `code` counts as
 documentation: `docs/prototypes/normaliser-spike` is a module of its own,
 so a branch touching only it sets `code` false, and `go build ./...` never
-compiles it either.
+compiles it either. The workflow lint reads `.github/workflows/`, which
+`code` also counts as code, but the file that defines a gate is the one
+file whose own errors the gate cannot be trusted to catch, so it runs
+ungated beside the other four.
 
 Two details worth knowing before you rely on this:
 
@@ -81,16 +92,17 @@ Two details worth knowing before you rely on this:
 | Documentation front matter | `go run ./tools/docslint` | Every published page carries front matter the site can read, the contract between this repository and the site built from it |
 | No tracked binaries (issue #122) | `go run ./tools/binlint` | No tracked file is a compiled executable. Build artefacts are built, never committed, and never shipped in a clone or a source tarball |
 | Go formatting (issue #146) | `go run ./tools/fmtlint` | Every tracked Go file is `gofmt` clean, and the ones that are not are named |
-| Helm chart (ADR-0068) | `helm lint`, `go run ./tools/chartlint`, `tools/chart/golden.sh`, then `tools/chart/kind.sh` over the image the image job built | The chart still matches the command it deploys, the rendered manifests are the ones in the goldens, and both estate shapes install on a stock cluster and serve a console and an OpAMP endpoint |
-| Build and test | `go build ./...`, `go vet ./...`, `go test ./...` | The core compiles, vets and passes its unit tests, with no Docker and no network |
+| Workflow lint | `actionlint` over `.github/workflows/` | The workflow files parse, their expressions resolve, and their scripts clear shellcheck at warning level; a broken gate fails here rather than on the event that needed it |
+| Helm chart (ADR-0068) | `helm lint`, `go run ./tools/chartlint`, `tools/chart/golden.sh`, then `tools/chart/kind.sh` over an image the job builds from the same commit | The chart still matches the command it deploys, the rendered manifests are the ones in the goldens, and both estate shapes install on a stock cluster and serve a console and an OpAMP endpoint |
+| Build and test | `go build ./...`, `go vet ./...`, `go test -race -shuffle=on ./...`, `govulncheck` | The core compiles, vets and passes its unit tests under the race detector, and its dependency tree carries no known advisory the code reaches, with no Docker and no network |
 | TelemetryProvider live | the `Live` suite against a single-node Elasticsearch service container | The telemetry queries work against a real backend, not only a test double |
 | Forge adapter live | the `Live` suite against the GitHub App and `estate-fixture` | The pull-request flow works against the real forge API |
-| Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling |
+| Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `bundle` and its staging assertion, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, its entry chunk stays within its gzipped ceiling, and the bundle lands under `internal/consoleassets/` where `go build` embeds it. A failed Playwright run uploads its traces and screenshots as a `playwright-output` artifact |
 | Demo snapshot and bundle | `build:demo`, `check:zero-cdn`, `telecraft snapshot`, the entry-document check | The public demo's two halves keep working: the snapshot the real evaluators produce, and the console bundle that reads it |
 | Container image (ADR-0068) | `tools/image/stage.sh`, a two-architecture `docker buildx build`, then `tools/image/offline.sh` over the loaded image | The image assembles for both architectures, and the one it built serves the console and the OpAMP endpoint with networking disabled |
-| Workstation binaries (ADR-0081) | `go build` for `darwin/arm64`, `darwin/amd64` and `windows/amd64`, output discarded | The three platforms a release attaches that nothing else here builds still cross-compile. Without it a build constraint or a platform-specific import is discovered by a tag push, which is the one moment there is no way back |
+| Workstation binaries (ADR-0081) | `go build` for `darwin/arm64`, `darwin/amd64`, `windows/amd64` and `linux/arm64`, output discarded | Every platform a release attaches, minus the one the test job compiles natively, still cross-compiles. The image job also builds both Linux architectures, but only when the image's own files change, so on an ordinary Go change this loop is the only cross-compile there is. Without it a build constraint or a platform-specific import is discovered by a tag push, which is the one moment there is no way back |
 
-Nine of those guard rules that are otherwise unenforceable in review.
+Ten of those guard rules that are otherwise unenforceable in review.
 
 **The vendor-word lint** exists because ADR-0001's neutral core is a
 property of the whole tree, and no reviewer reads the whole tree.
@@ -229,6 +241,12 @@ working reads as a pass, so the log is the only place that says the suite
 skipped. When you change provider code, read it rather than trusting the
 tick.
 
+The weekly scheduled run is the backstop for that trade. On the schedule
+event, and only on it, the forge job refuses to skip: absent secrets fail
+the run, because on a quiet Monday over an unchanged tree a skip means a
+dead credential and not a considerate fork. A rotting credential therefore
+surfaces within a week rather than whenever someone next reads a log.
+
 The same suites run locally; the [development page](development.md) has
 the environment variables, and `internal/provider/telemetry/demo.sh` stands up the backend
 the Elasticsearch suite wants.
@@ -239,13 +257,15 @@ Every check is a command you can run yourself: there is nothing CI does
 that the repository cannot.
 
 ```sh
-go build ./... && go vet ./... && go test ./...
+go build ./... && go vet ./... && go test -race -shuffle=on ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 go run ./tools/vendorlint
 go run ./tools/docslint
 go run ./tools/binlint
 go run ./tools/fmtlint
 go run ./tools/imagelint
 go run ./tools/composelint
+go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
 cd console
 npm ci
@@ -283,9 +303,13 @@ here, and both are told when that ref moves.
 `docs/nav.yaml`, so a new page is published by adding it here and nothing
 else (see [writing documentation](documentation.md)).
 
-**The demo.** `demo-dispatch.yml` fires on a `v*` tag, not on a push, so
-the demo builds from a release and a bug on `main` cannot reach it
-(ADR-0049 §4, issue #86). Between releases the demo lags, deliberately:
+**The demo.** `demo-dispatch.yml` runs when `release.yml` finishes and
+acts only when it succeeded, so the demo builds from a release, a bug on
+`main` cannot reach it, and a tag whose release failed its checks moves
+nothing (ADR-0049 §4, issue #86). It repeats the release workflow's shape
+and ancestry guards rather than trusting the ordering, because a guard
+that lives in another file is a guard someone edits away without noticing
+what relied on it. Between releases the demo lags, deliberately:
 there is no staging site, because `ci.yml`'s demo job already builds the
 snapshot and the demo bundle on every pull request that touches them, and
 a staging site would be a second deployment and a second public claim to

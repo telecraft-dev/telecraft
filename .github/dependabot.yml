@@ -2,7 +2,7 @@ version: 2
 
 # Nothing else watches the dependencies (issue #127). The Go module has two
 # direct requirements beyond the standard library, the console has seven at
-# runtime, and the workflows pin their actions by major version. Today
+# runtime, and the workflows pin their actions by full commit. Today
 # `npm audit` is clean and the Go tree carries no known advisory, which is a
 # state to keep rather than one to rediscover in six months, and the tree is
 # small enough that keeping it is cheap.
@@ -95,12 +95,13 @@ updates:
     commit-message:
       prefix: packaging
 
-  # The actions the workflows use. They are pinned by major version, which
-  # moves them within a major on its own and never across one, so this entry
-  # is the only thing that will ever propose the next major. `directory: /`
-  # is not the repository root standing in for something better: it is the
-  # value this ecosystem takes, and Dependabot reads `.github/workflows/`
-  # from it.
+  # The actions the workflows use. They are pinned by full commit with the
+  # release that commit carries in a trailing comment, so nothing moves
+  # them but this entry: Dependabot reads the comment, proposes the next
+  # release as a new pin, and the diff names both the version and the
+  # bytes. `directory: /` is not the repository root standing in for
+  # something better: it is the value this ecosystem takes, and Dependabot
+  # reads `.github/workflows/` from it.
   - package-ecosystem: github-actions
     directory: /
     schedule:
