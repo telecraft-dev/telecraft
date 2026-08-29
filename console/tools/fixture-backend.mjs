@@ -13,7 +13,7 @@
 //
 // Usage: node tools/fixture-backend.mjs [--port 4700] [--dist dist]
 
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
@@ -434,7 +434,43 @@ const readBody = (req) =>
     })
   })
 
+// The response headers the platform binary sends, mirrored here for the
+// same reason the auth handler is: the Playwright suite runs the built
+// console against this server, so a policy this server does not send is a
+// policy nothing proves the console still works under. internal/instance
+// serves the real one, and the two say the same thing.
+//
+// Strict-Transport-Security is absent because this server is plain HTTP on
+// a loopback address, which is exactly when the platform binary omits it
+// too.
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'no-referrer',
+}
+
+// The policy is read off the document it is sent with: every inline script
+// in the built index.html is admitted by its own hash, and inline script is
+// admitted no other way.
+let policy
+async function contentSecurityPolicy() {
+  if (policy) return policy
+  const index = await readFile(join(root, dist, 'index.html'), 'utf8')
+  const inline = [...index.matchAll(/<script(?![^>]*\ssrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)]
+  const hashes = inline.map((m) => `'sha256-${createHash('sha256').update(m[1], 'utf8').digest('base64')}'`)
+  policy = [
+    "default-src 'self'",
+    ["script-src", "'self'", ...hashes].join(' '),
+    "style-src 'self' 'unsafe-inline'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ')
+  return policy
+}
+
 const server = createServer(async (req, res) => {
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value)
   const url = new URL(req.url, `http://${req.headers.host}`)
 
   // The auth slice, open to the signed-out (console/README.md).
@@ -618,13 +654,19 @@ const server = createServer(async (req, res) => {
   try {
     const file = join(root, dist, safePath)
     const data = await readFile(file)
+    const type = MIME[extname(file)] ?? 'application/octet-stream'
     res.writeHead(200, {
-      'content-type': MIME[extname(file)] ?? 'application/octet-stream',
+      'content-type': type,
+      // A document is a document however it was asked for.
+      ...(type === MIME['.html'] ? { 'content-security-policy': await contentSecurityPolicy() } : {}),
     })
     res.end(data)
   } catch {
     const index = await readFile(join(root, dist, 'index.html'))
-    res.writeHead(200, { 'content-type': MIME['.html'] })
+    res.writeHead(200, {
+      'content-type': MIME['.html'],
+      'content-security-policy': await contentSecurityPolicy(),
+    })
     res.end(index)
   }
 })

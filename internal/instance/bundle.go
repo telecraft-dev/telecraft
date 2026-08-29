@@ -28,7 +28,24 @@ func (s *Server) console() http.Handler {
 			_, _ = w.Write([]byte(noConsole))
 		})
 	}
+	return consoleFrom(bundle)
+}
+
+// consoleFrom serves one bundle. It is separate from console so a test can
+// serve a bundle of its own: `go test ./...` runs on a checkout where npm
+// has never run, and the headers a browser is given are not something to
+// leave untested there.
+func consoleFrom(bundle fs.FS) http.Handler {
 	files := http.FileServerFS(bundle)
+	// The policy is a reading of the document it is sent with, so it is
+	// taken once, from the bundle this binary carries, rather than on
+	// every request for a document that cannot change while the process
+	// runs. An unreadable index leaves it empty and the request below
+	// answers what is wrong.
+	var policy string
+	if index, err := fs.ReadFile(bundle, "index.html"); err == nil {
+		policy = contentSecurityPolicy(index)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if name := assetName(r.URL.Path); name != "" && isFile(bundle, name) {
 			files.ServeHTTP(w, r)
@@ -40,6 +57,9 @@ func (s *Server) console() http.Handler {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		// The console document is the one answer a browser executes, so it
+		// is the one that carries the policy.
+		w.Header().Set("Content-Security-Policy", policy)
 		// The document names the chunks by hashed file name, so it is the
 		// one file that must never be held: a reader on an old index would
 		// ask for chunks a new build no longer carries.

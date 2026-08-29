@@ -15,7 +15,8 @@ import (
 
 // routes builds the whole HTTP surface: the two probes, the auth slice open
 // to the signed-out, the rest of the API behind Require, and the console
-// bundle under everything else.
+// bundle under everything else, all of it under the response headers
+// security.go sets.
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 
@@ -56,7 +57,11 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("/api/v1/", s.require(api))
 
 	mux.Handle("/", s.console())
-	return mux
+
+	// Every answer from this address carries the headers that cost
+	// nothing, whether it is a document, an asset, an API answer or a
+	// probe.
+	return s.secure(mux)
 }
 
 // documentRoutes is every read endpoint this server answers, each with the
