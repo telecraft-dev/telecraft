@@ -14,7 +14,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { api } from '../../api/client'
 import { demoMode } from '../../api/demo'
-import type { TopologyPayload, TopologyTier } from '../../api/types'
+import { SIGNAL_ORDER, type TopologyPayload, type TopologyTier } from '../../api/types'
 import {
   MARGIN,
   chainMotionPath,
@@ -59,6 +59,8 @@ type CanvasEdge = Edge<{
   path: string
   dimmed: boolean
   trusted: boolean
+  /** The Hop's signal lane, for the lane colour. Absent on trace overlays. */
+  signal?: string
   /** Set on trace overlays: the Path index the overlay renders. */
   traceIndex?: number
 }>
@@ -135,13 +137,19 @@ function EngineEdgeView({ data }: EdgeProps<CanvasEdge>) {
     data.traceIndex !== undefined
       ? ` trace-overlay trace-path-${data.traceIndex % TRACE_COLOURS}`
       : ''
+  // A Hop draws one edge per lane, so a pair of Tiers carrying three
+  // signals is three parallel corridors. The lane colour is what tells
+  // them apart; the legend above the canvas names them (ADR-0047 §5). A
+  // trace overlay carries no signal and keeps its Path colour.
   return (
-    <BaseEdge
-      path={data.path}
-      className={`canvas-edge${data.dimmed ? ' dimmed' : ''}${
-        data.trusted ? '' : ' untrusted'
-      }${overlay}`}
-    />
+    <g data-signal={data.signal}>
+      <BaseEdge
+        path={data.path}
+        className={`canvas-edge${data.dimmed ? ' dimmed' : ''}${
+          data.trusted ? '' : ' untrusted'
+        }${overlay}`}
+      />
+    </g>
   )
 }
 
@@ -155,7 +163,7 @@ function JourneyEdgeView({ data }: EdgeProps<JourneyEdge>) {
   return (
     <g className="journey">
       {data.signals.map((signal, i) => (
-        <circle key={signal} r="4" className={`journey-dot signal-${signal}`}>
+        <circle key={signal} r="4" className="journey-dot" data-signal={signal}>
           <animateMotion
             dur="4s"
             repeatCount="indefinite"
@@ -274,6 +282,7 @@ export function FlowCanvas() {
         path: edgePath(edge),
         dimmed: tracedPairs !== undefined && !tracedPairs.has(`${edge.from}→${edge.to}`),
         trusted: hop?.trusted ?? false,
+        signal: edge.signal,
       },
     }
   })
@@ -321,6 +330,20 @@ export function FlowCanvas() {
         ]
       })
     : []
+
+  // The lanes the canvas draws, in the lanes' fixed reading order with
+  // anything the payload names beyond it appended. A Hop draws one
+  // corridor per lane, so a pair of Tiers carrying three signals is three
+  // parallel lines and colour is what separates them. The legend is what
+  // makes that colour readable, and ADR-0047 §5 is why the corridors
+  // cannot take it without one.
+  const signalRank = (signal: string) => {
+    const known = (SIGNAL_ORDER as readonly string[]).indexOf(signal)
+    return known === -1 ? SIGNAL_ORDER.length : known
+  }
+  const drawnSignals = [...new Set(geometry.edges.map((edge) => edge.signal))].sort(
+    (a, b) => signalRank(a) - signalRank(b) || a.localeCompare(b),
+  )
 
   const services = [...new Set(payload.paths.map((p) => p.service))]
   const panelCard =
@@ -374,6 +397,24 @@ export function FlowCanvas() {
               Simulate flow
             </button>
           </div>
+          {drawnSignals.length > 0 && (
+            <div className="signal-legend" data-testid="signal-legend">
+              <span className="legend-label">Signal lanes:</span>
+              {drawnSignals.map((signal) => (
+                <span
+                  key={signal}
+                  className={chipClass('neutral', {
+                    mono: true,
+                    extra: 'signal-legend-chip',
+                  })}
+                  data-signal={signal}
+                  data-testid={`signal-legend-${signal}`}
+                >
+                  {signal}
+                </span>
+              ))}
+            </div>
+          )}
           {tracedService && (
             <div className="trace-legend" data-testid="trace-legend">
               {tracedPaths.map((path, i) => (

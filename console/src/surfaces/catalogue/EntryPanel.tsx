@@ -74,6 +74,7 @@ export function EntryPanel({
                   mono: true,
                   extra: `stability-chip stability-${level}`,
                 })}
+                data-signal={signal}
                 title={STABILITY_TITLE[level]}
               >
                 {signal}: {level}
@@ -87,7 +88,10 @@ export function EntryPanel({
             data-testid={`deprecation-${signal}`}
           >
             <strong>
-              {signal} deprecated {formatDate(notice.date)}
+              <span className="lane-name" data-signal={signal}>
+                {signal}
+              </span>{' '}
+              deprecated {formatDate(notice.date)}
             </strong>
             <p>{notice.migration}</p>
           </div>

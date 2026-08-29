@@ -92,8 +92,21 @@ the mark, legibility lives in the text.
 | `--signal-profiles` | `#B295D4` | `#7A4A92` |
 
 The light values are the ones already in `tokens.css`; only the dark twins are
-new. They render as a 2px lane edge down each row of the per-signal matrix and
-as edge colour on both canvases.
+new.
+
+One map spends them: `[data-signal]` in `app.css` resolves `--lane`, and every
+surface that shows a lane colour reads `--lane`. A name the map does not hold
+resolves to `--colour-text-muted`, which is the ordinary case rather than an
+error: `api/types.ts` names four lanes, `estate/readings.ts` reads three, and
+the Catalogue carries whatever the upstream artefact declares. The surfaces
+that spend it are the per-signal matrix row heads, the Composer's lane
+headings and its findings, the Compose bands and both canvases' edges, the
+simulate dots, the stability chips' left edge, the Blueprint list's lanes
+column, and the lane names inside Home's Tier line.
+
+They clear the text floor as well as the graphic floor on both grounds, worst
+case 4.69:1, and they are listed in the palette check's `TEXT_ON` table
+because a lane's name is now set in its lane colour on several surfaces.
 
 **These four do not survive colour-vision deficiency, and cannot be made to.**
 Under tritanopia traces and logs converge at &Delta;E 2.6. A search for a

@@ -139,8 +139,19 @@ function SignalMatrix({ tier, signals }: { tier: string; signals: SignalRow[] })
           const reduction = formatReduction(row.volume)
           const errors = errorReadings(row.volume)
           return (
-            <tr key={row.signal} data-lane={row.lane} data-testid={`matrix-${tier}-${row.signal}`}>
-              <th scope="row">{row.signal}</th>
+            // The lane colour rides the wired rows only. An absent row
+            // recedes behind them, and a colour on a row that carries no
+            // reading reinforces nothing (ADR-0047 §5 permits the name
+            // without the colour, never the colour without the name).
+            <tr
+              key={row.signal}
+              data-lane={row.lane}
+              data-signal={row.signal}
+              data-testid={`matrix-${tier}-${row.signal}`}
+            >
+              <th scope="row" className="lane-name">
+                {row.signal}
+              </th>
               <td className="cell-volume" title={readingTitle(row.volume)}>
                 {formatVolume(row.volume)}
                 {reduction && <span className="cell-note">{reduction}</span>}

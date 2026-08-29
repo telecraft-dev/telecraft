@@ -389,12 +389,12 @@ describe('tierDetail', () => {
         worstFinding: 'checkout misses the C1 floor in production',
       },
     })
-    expect(tierDetail(face)[0]).toBe('checkout misses the C1 floor in production')
+    expect(tierDetail(face)[0]).toEqual({ lead: 'checkout misses the C1 floor in production' })
   })
 
   it('falls back to the kind name when the face carries no label', () => {
     const face = card('data-flow/edge', 'data-flow', 'production', advisory('conformance'))
-    expect(tierDetail(face)).toEqual(['Conformance: finding'])
+    expect(tierDetail(face)).toEqual([{ lead: 'Conformance: finding' }])
   })
 
   it('reads the lane facts off the face, in lane order', () => {
@@ -417,13 +417,29 @@ describe('tierDetail', () => {
         { signal: 'traces', lane: 'not_applicable' },
       ],
     })
+    // Each lane fact keeps its lane's name apart from the words around
+    // it, so the row can colour the name and nothing else (ADR-0047 §5).
     expect(tierDetail(face)).toEqual([
-      'Conformance: finding',
-      'logs silent',
-      '1 of 2 metrics missing',
-      '100 metrics refused',
-      'no traces lane on this Tier',
+      { lead: 'Conformance: finding' },
+      { lead: '', signal: 'logs', trail: ' silent' },
+      { lead: '1 of 2 ', signal: 'metrics', trail: ' missing' },
+      { lead: '100 ', signal: 'metrics', trail: ' refused' },
+      { lead: 'no ', signal: 'traces', trail: ' lane on this Tier' },
     ])
+  })
+
+  it('reads back as the line the row draws', () => {
+    const face = card('data-flow/gateway', 'data-flow', 'production', {}, {
+      signals: [
+        lane('logs', { freshness: { known: true, asOf, silent: true } }),
+        { signal: 'traces', lane: 'not_applicable' },
+      ],
+    })
+    expect(
+      tierDetail(face)
+        .map((segment) => `${segment.lead}${segment.signal ?? ''}${segment.trail ?? ''}`)
+        .join(' · '),
+    ).toBe('logs silent · no traces lane on this Tier')
   })
 
   it('is empty for a healthy card with quiet lanes', () => {

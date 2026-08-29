@@ -68,7 +68,8 @@ function ComposeNodeView({ data }: NodeProps<ComposeNode>) {
 function ComposeBandView({ data }: NodeProps<ComposeBandNode>) {
   return (
     <div
-      className="canvas-band band-environment"
+      className="canvas-band"
+      data-signal={data.signal}
       data-testid={`canvas-band-${data.signal}`}
       onDragOver={(event: DragEvent) => event.preventDefault()}
       onDrop={(event: DragEvent) => {
@@ -85,7 +86,14 @@ function ComposeBandView({ data }: NodeProps<ComposeBandNode>) {
 
 function ComposeEdgeView({ data }: EdgeProps<ComposeEdge>) {
   if (!data) return null
-  return <BaseEdge path={data.path} className={`canvas-edge signal-${data.signal}`} />
+  // The lane colour arrives through `--lane` on the wrapping group, which
+  // is the one map every surface reads. The band this edge runs inside
+  // names the lane (ADR-0047 §5).
+  return (
+    <g data-signal={data.signal}>
+      <BaseEdge path={data.path} className="canvas-edge" />
+    </g>
+  )
 }
 
 const nodeTypes = { composeNode: ComposeNodeView, composeBand: ComposeBandView }
