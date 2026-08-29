@@ -2,8 +2,11 @@ package instance
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -178,6 +181,13 @@ func (s *Server) refreshAuth() error {
 		return err
 	}
 	users, err := auth.LoadUsers(filepath.Join(s.cfg.Root, auth.UsersFile), tree)
+	if errors.Is(err, os.ErrNotExist) {
+		// An estate with nobody in it, reachable only from this machine
+		// (ADR-0082 §1). Off loopback the absence is still fatal, which is
+		// what makes this safe to have at all: what is minted here cannot
+		// be reached from another host.
+		users, err = s.bootstrapUsers(tree)
+	}
 	if err != nil {
 		return err
 	}
@@ -203,4 +213,87 @@ func (s *Server) refreshAuth() error {
 	}
 	s.authz.Store(handler)
 	return nil
+}
+
+// bootstrapUsers mints the one sign-in a loopback Instance gives itself when
+// the estate names nobody (ADR-0082). It is drawn once and held, because
+// refreshAuth runs on every poll and a password that changed every thirty
+// seconds would be no password at all.
+//
+// The estate wins the moment it says anything: this is only ever reached
+// while users.yaml is absent, so a users.yaml appearing at the next poll
+// replaces what this returned and nothing has to be undone.
+func (s *Server) bootstrapUsers(tree ownership.Tree) (auth.Users, error) {
+	if !loopbackAddr(s.cfg.HTTPEndpoint) {
+		return auth.Users{}, fmt.Errorf("open %s: no such file or directory. An Instance reachable from another host needs the estate to name who may sign in", filepath.Join(s.cfg.Root, auth.UsersFile))
+	}
+	owner, err := rootOwner(tree)
+	if err != nil {
+		return auth.Users{}, err
+	}
+	s.bootstrapOnce.Do(func() {
+		s.bootstrapSecret = drawSecret()
+	})
+	users, err := auth.Bootstrap(tree, owner, s.bootstrapSecret)
+	if err != nil {
+		return auth.Users{}, err
+	}
+	s.bootstrapSaid.Do(func() {
+		s.logf("no %s in this estate, so this process minted one sign-in for itself.", auth.UsersFile)
+		s.logf("It is not written anywhere and it dies with the process.")
+		s.logf("  email     %s", auth.BootstrapEmail)
+		s.logf("  password  %s", s.bootstrapSecret)
+		s.logf("Add %s to the estate to replace it.", auth.UsersFile)
+	})
+	return users, nil
+}
+
+// loopbackAddr reports whether host:port names an address only this machine
+// can reach. An empty or missing host is not loopback: `:4321` binds every
+// interface, which is exactly the case this must refuse.
+func loopbackAddr(endpoint string) bool {
+	host, _, err := net.SplitHostPort(endpoint)
+	if err != nil || host == "" {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// rootOwner names an Owner of a root Team: the widest owner the tree has,
+// which is what a first sign-in on an estate nobody has been added to
+// should act as. Deterministic across polls, because the tree is a map and
+// a bootstrap that acted as a different owner each poll would be a
+// different person each poll.
+func rootOwner(tree ownership.Tree) (ownership.OwnerID, error) {
+	var roots []ownership.TeamID
+	for id, team := range tree.Teams {
+		if team.Parent == "" && len(team.Owners) > 0 {
+			roots = append(roots, id)
+		}
+	}
+	if len(roots) == 0 {
+		return "", fmt.Errorf("%s names no root team with an owner, so there is nobody a first sign-in could act as", ownership.TeamsFile)
+	}
+	sort.Slice(roots, func(i, j int) bool { return roots[i] < roots[j] })
+	owners := append([]ownership.OwnerID(nil), tree.Teams[roots[0]].Owners...)
+	sort.Slice(owners, func(i, j int) bool { return owners[i] < owners[j] })
+	return owners[0], nil
+}
+
+// drawSecret draws the bootstrap password. Long enough that it is not worth
+// guessing over loopback, and hex so that reading it off a terminal and
+// typing it into a browser cannot go wrong.
+func drawSecret() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand does not fail on any platform this runs on, and a
+		// server that cannot draw a random number must not fall back to a
+		// predictable one.
+		panic("telecraft: no randomness for the bootstrap sign-in: " + err.Error())
+	}
+	return hex.EncodeToString(b[:])
 }

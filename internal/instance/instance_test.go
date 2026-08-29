@@ -41,6 +41,15 @@ func TestStorageInventoryIsTheClosedList(t *testing.T) {
 		"stopPoll":   true, // poll shutdown
 		"pollDone":   true, // poll shutdown
 		"nudge":      true, // one slot saying somebody asked for a fetch
+
+		// The sign-in a loopback Instance mints for itself when the estate
+		// names nobody (ADR-0082). It is wiring rather than storage: it
+		// holds no collector data and no human's work, it is never written
+		// anywhere, and it dies with the process along with the sessions
+		// it admits.
+		"bootstrapOnce":   true, // draws the secret once, not once per poll
+		"bootstrapSaid":   true, // prints it once, so a log is not a password store
+		"bootstrapSecret": true, // the drawn secret, in memory, for this process
 	}
 	storage := map[string]bool{
 		"head":    true, // the head the source reported; loss is a re-fetch

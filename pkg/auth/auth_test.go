@@ -93,3 +93,45 @@ func TestIdentityAttributionMatchesTheForgeSeam(t *testing.T) {
 		t.Fatalf("Attribution() invented a forge handle %q: a handle is the forge integration's to add", got.Handle)
 	}
 }
+
+// The bootstrap sign-in is a real user: it verifies against the password it
+// was minted with, and against nothing else (ADR-0082 §1).
+func TestBootstrapSignsIn(t *testing.T) {
+	tree := ownership.Tree{
+		Teams:  map[ownership.TeamID]ownership.Team{"root": {ID: "root", Owners: []ownership.OwnerID{"root-owner"}}},
+		Owners: map[ownership.OwnerID]ownership.Owner{"root-owner": {}},
+	}
+	users, err := Bootstrap(tree, "root-owner", "a-drawn-secret")
+	if err != nil {
+		t.Fatalf("Bootstrap: %v", err)
+	}
+	user, ok := users.ByEmail(BootstrapEmail)
+	if !ok {
+		t.Fatalf("ByEmail(%q) not found; emails = %v", BootstrapEmail, users.Emails())
+	}
+	if user.Owner != "root-owner" {
+		t.Errorf("owner = %q, want root-owner", user.Owner)
+	}
+	if user.Password == "a-drawn-secret" {
+		t.Fatal("the secret was stored in the clear")
+	}
+	if !verifySecret(user.Password, "a-drawn-secret") {
+		t.Error("the minted secret does not verify against the stored hash")
+	}
+	if verifySecret(user.Password, "another-secret") {
+		t.Error("a secret it was not minted with verified")
+	}
+}
+
+// An owner the tree does not carry is refused, for the same reason
+// LoadUsers refuses one: a session nobody can attribute is worse than a
+// refusal to start.
+func TestBootstrapRefusesAnUnknownOwner(t *testing.T) {
+	tree := ownership.Tree{
+		Teams:  map[ownership.TeamID]ownership.Team{"root": {ID: "root"}},
+		Owners: map[ownership.OwnerID]ownership.Owner{},
+	}
+	if _, err := Bootstrap(tree, "nobody", "secret"); err == nil {
+		t.Fatal("Bootstrap with an unknown owner = nil, want an error")
+	}
+}
