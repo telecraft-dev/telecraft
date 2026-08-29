@@ -122,6 +122,8 @@ Tell the process what the outside sees:
 
 `-external-url` does two things. Its scheme decides whether session cookies
 are marked Secure, and it is the address a redirect sign-in returns to.
+Moving an Instance from `http` to `https` also renames its session cookie, so
+everybody signs in again once.
 
 It fails closed. An external URL naming a host that is not a loopback
 address, over plain HTTP, is refused:

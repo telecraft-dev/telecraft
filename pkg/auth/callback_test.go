@@ -87,9 +87,12 @@ func begin(t *testing.T, srv *httptest.Server, c *http.Client, provider string) 
 	return state
 }
 
+// sessionCookieSet reports whether a session went out under either of the
+// names a deployment may use, so a test asserting that none did keeps
+// asserting it whichever shape the handler under it was built in.
 func sessionCookieSet(res *http.Response) bool {
 	for _, c := range res.Cookies() {
-		if c.Name == sessionCookie && c.Value != "" {
+		if strings.HasSuffix(c.Name, sessionCookie) && c.Value != "" {
 			return true
 		}
 	}
