@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"net/url"
 	"strings"
@@ -152,7 +153,43 @@ func (h *Handler) providers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// sameOrigin refuses a request a cross-origin page could have made.
+//
+// A browser form can POST to another origin without a preflight, as long as
+// the content type is one a form can produce. It cannot set
+// `application/json`: asking for that content type makes the request
+// non-simple, which sends a preflight this server does not answer. So
+// requiring the header is what makes these routes reachable only by
+// something already running on this origin.
+//
+// The JSON decoder does not enforce it on its own. `Decode` reads one value
+// and ignores what follows, so the `=` and newline a `text/plain` form
+// appends to its body parse as a valid login.
+//
+// SameSite=Lax on the session cookie does not cover this either: SameSite
+// governs when a cookie is sent, never whether a cross-site response may
+// set one.
+func sameOrigin(r *http.Request) bool {
+	// Sec-Fetch-Site is the direct answer where the browser sends it.
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "same-origin", "none":
+		return true
+	case "cross-site", "same-site":
+		return false
+	}
+	// Otherwise the content type is the gate, because a form cannot set it.
+	media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && media == "application/json"
+}
+
 func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
+	if !sameOrigin(r) {
+		// Signing somebody's browser into an account they did not choose
+		// is not a lesser thing than signing in as them: every change they
+		// go on to propose is attributed to whoever owns that account.
+		writeError(w, http.StatusForbidden, "sign-in must come from this instance")
+		return
+	}
 	var req struct {
 		Provider string `json:"provider"`
 		Username string `json:"username"`
@@ -192,6 +229,12 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
+	// Forced sign-out is the same shape of request and is refused the same
+	// way, though it costs the reader only their session.
+	if !sameOrigin(r) {
+		writeError(w, http.StatusForbidden, "sign-out must come from this instance")
+		return
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: "", Path: "/", MaxAge: -1,
 		HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
