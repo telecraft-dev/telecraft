@@ -19,7 +19,9 @@ schema, read the [reference section](../reference/index.md).
 You need `git`, and the CLI, which is one downloaded file with no toolchain
 behind it. Every guide runs against the public demo estate,
 `telecraft-dev/estate-demo`, so you can follow along before you have an estate
-of your own. The [quickstart](quickstart.md) sets up both.
+of your own. The [quickstart](quickstart.md) sets up both, and offers three
+ways in: the hosted service when it opens, an Instance on your own machine,
+and the command line for CI.
 
 ## Choose a starting point
 
