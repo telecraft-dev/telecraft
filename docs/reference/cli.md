@@ -244,7 +244,8 @@ Both endpoints speak plain HTTP, and the process holds no certificate: TLS
 terminates in front. `-external-url` declares the URL the Instance is reached
 at. Its scheme decides whether session cookies are marked Secure, and it is
 the base a redirect sign-in returns to. A non-loopback host over plain HTTP is
-refused unless `-insecure-http` is given.
+refused unless `-insecure-http` is given. Moving an Instance from `http` to
+`https` also renames its session cookie, so everybody signs in again once.
 
 Secret material is read from files, never from a flag or an environment
 variable. `auth.yaml` names a secret; the deployment places a file of that

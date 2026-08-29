@@ -233,6 +233,201 @@ func TestOIDCLoginRoundTripsThroughTheHandler(t *testing.T) {
 	}
 }
 
+// handlerWithSecure is the same wiring as testHandler with the behind-TLS
+// switch under the test's control, which is what decides the session
+// cookie's name.
+func handlerWithSecure(t *testing.T, secure bool, providers ...Provider) *Handler {
+	t.Helper()
+	users := usersWithPassword(t, "correct horse battery")
+	if len(providers) == 0 {
+		providers = []Provider{Basic{Users: users}}
+	}
+	h, err := NewHandler(HandlerConfig{
+		Sessions:  testSessions(t),
+		Users:     users,
+		Tree:      testTree(),
+		Providers: providers,
+		Secure:    secure,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+// issuedSessionCookie is the session cookie a response sets with a value
+// in it, whichever of the two names the deployment uses.
+func issuedSessionCookie(t *testing.T, res *http.Response) *http.Cookie {
+	t.Helper()
+	for _, c := range res.Cookies() {
+		if strings.HasSuffix(c.Name, sessionCookie) && c.Value != "" {
+			return c
+		}
+	}
+	t.Fatal("the response issued no session cookie")
+	return nil
+}
+
+// signIn signs in over basic auth and returns the session cookie. The
+// client carries no jar, because a jar refuses to keep a Secure cookie
+// off an HTTPS origin and these tests read the header the handler wrote.
+func signIn(t *testing.T, srv *httptest.Server) *http.Cookie {
+	t.Helper()
+	res := postJSON(t, srv.Client(), srv.URL+"/api/v1/auth/login",
+		map[string]string{"provider": "basic", "username": "jo@example.com", "secret": "correct horse battery"})
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("login = %d, want 200", res.StatusCode)
+	}
+	return issuedSessionCookie(t, res)
+}
+
+// meStatus asks for the signed-in actor carrying one cookie by hand, which
+// is how a test poses as a neighbouring host that set a cookie of its own.
+func meStatus(t *testing.T, srv *httptest.Server, cookie *http.Cookie) int {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/me", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.AddCookie(cookie)
+	res, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	return res.StatusCode
+}
+
+// The session cookie takes the host prefix exactly where a browser will
+// honour it, and the prefixed form keeps every promise the prefix makes,
+// because a browser drops one that does not and a dropped session cookie
+// is a sign-in that silently never happened.
+func TestTheSessionCookieTakesTheHostPrefixWhereItIsSecure(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		secure bool
+		want   string
+	}{
+		{name: "behind TLS", secure: true, want: "__Host-telecraft_session"},
+		{name: "plain HTTP", secure: false, want: "telecraft_session"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(handlerWithSecure(t, tc.secure))
+			defer srv.Close()
+
+			cookie := signIn(t, srv)
+			if cookie.Name != tc.want {
+				t.Fatalf("session cookie = %q, want %q", cookie.Name, tc.want)
+			}
+			if !cookie.HttpOnly {
+				t.Error("the session cookie is readable by script")
+			}
+			if cookie.Secure != tc.secure {
+				t.Errorf("session cookie secure = %v, want %v", cookie.Secure, tc.secure)
+			}
+			if strings.HasPrefix(cookie.Name, hostPrefix) {
+				// The three a browser checks before it keeps the cookie.
+				if !cookie.Secure {
+					t.Error("a prefixed session cookie went out without Secure, and a browser would drop it")
+				}
+				if cookie.Path != "/" {
+					t.Errorf("a prefixed session cookie is pathed at %q, and a browser would drop it", cookie.Path)
+				}
+				if cookie.Domain != "" {
+					t.Errorf("a prefixed session cookie names domain %q, and a browser would drop it", cookie.Domain)
+				}
+			}
+
+			// Sign-out clears the name it issued, or it clears nothing.
+			req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/auth/logout", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			req.AddCookie(cookie)
+			res, err := srv.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res.Body.Close()
+			if res.StatusCode != http.StatusNoContent {
+				t.Fatalf("logout = %d, want 204", res.StatusCode)
+			}
+			var cleared *http.Cookie
+			for _, c := range res.Cookies() {
+				if c.Name == tc.want {
+					cleared = c
+				}
+			}
+			if cleared == nil {
+				t.Fatalf("sign-out cleared no cookie named %q", tc.want)
+			}
+			if cleared.Value != "" || cleared.MaxAge >= 0 {
+				t.Errorf("sign-out set %q to %q with max-age %d, which does not clear it", cleared.Name, cleared.Value, cleared.MaxAge)
+			}
+		})
+	}
+}
+
+// The point of the prefix: a session offered under the unprefixed name is
+// refused by a deployment that prefixes. That is the cookie a neighbouring
+// host on the same registrable domain is able to set, and reading it would
+// hand back exactly what the prefix took away.
+func TestAPrefixingDeploymentRefusesTheUnprefixedSessionName(t *testing.T) {
+	srv := httptest.NewServer(handlerWithSecure(t, true))
+	defer srv.Close()
+
+	cookie := signIn(t, srv)
+	if got := meStatus(t, srv, cookie); got != http.StatusOK {
+		t.Fatalf("me with the issued cookie = %d, want 200", got)
+	}
+	// The same valid token, under the name a neighbour can shadow.
+	shadow := &http.Cookie{Name: sessionCookie, Value: cookie.Value}
+	if got := meStatus(t, srv, shadow); got != http.StatusUnauthorized {
+		t.Errorf("me with the unprefixed name = %d, want 401", got)
+	}
+}
+
+// The state cookie keeps its narrow path and takes no prefix, which is the
+// trade the other way round: the prefix would require Path=/, and this
+// cookie is signed and verified rather than read as a bearer.
+func TestTheStateCookieKeepsItsNarrowPathAndTakesNoPrefix(t *testing.T) {
+	idp := newFakeIdP(t)
+	srv := httptest.NewServer(handlerWithSecure(t, true, idp.provider()))
+	defer srv.Close()
+	c := srv.Client()
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	res, err := c.Get(srv.URL + "/api/v1/auth/oidc/start")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+
+	var anchor *http.Cookie
+	for _, cookie := range res.Cookies() {
+		if strings.HasSuffix(cookie.Name, stateCookie) {
+			anchor = cookie
+		}
+	}
+	if anchor == nil {
+		t.Fatal("start set no state cookie")
+	}
+	if anchor.Name != stateCookie {
+		t.Errorf("state cookie = %q, want %q", anchor.Name, stateCookie)
+	}
+	if anchor.Path != "/api/v1/auth/" {
+		t.Errorf("state cookie path = %q, want the auth prefix and nothing wider", anchor.Path)
+	}
+	if !anchor.Secure || !anchor.HttpOnly {
+		t.Errorf("state cookie secure = %v, http-only = %v; behind TLS it is both", anchor.Secure, anchor.HttpOnly)
+	}
+	if anchor.Domain != "" {
+		t.Errorf("state cookie names domain %q, which would reach a neighbouring host", anchor.Domain)
+	}
+}
+
 // stateCookieValue reads the state cookie a response sets.
 func stateCookieValue(t *testing.T, res *http.Response) string {
 	t.Helper()

@@ -82,6 +82,10 @@ function me() {
   }
 }
 
+// The session cookie, under the name the real handler uses on a deployment
+// serving plain HTTP. This fixture is one of those, so the name is the bare
+// one: the host-prefixed form only goes out behind TLS, and a browser would
+// refuse it here.
 function sessionOf(req) {
   const cookies = req.headers.cookie ?? ''
   for (const part of cookies.split(';')) {

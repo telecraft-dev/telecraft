@@ -98,7 +98,59 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.mux.Serv
 const (
 	sessionCookie = "telecraft_session"
 	stateCookie   = "telecraft_auth_state"
+
+	// hostPrefix is the browser's own enforcement of host-only. A cookie
+	// named with it is refused unless it carries Secure, names no Domain
+	// and is pathed at "/", and, the part that matters here, no other
+	// host can set one under that name.
+	//
+	// Host-only is already true of what this handler sets, because it
+	// names no Domain. What the prefix adds is that nothing else is held
+	// to it. A deployment may put Instances on sibling hosts of one
+	// registrable domain, and a sibling can set a cookie on the parent
+	// that the browser then sends to every host beneath it. A request can
+	// arrive carrying two cookies of the same name, one this Instance
+	// issued and one a neighbour did, and the server reads whichever the
+	// browser listed first with no way to tell them apart. Signing the
+	// token does not answer that: choosing which of two values gets read
+	// is not forgery. The prefix takes the name away from the neighbour
+	// instead.
+	hostPrefix = "__Host-"
 )
+
+// sessionCookieName is the session cookie's name on this deployment, and
+// the reason there is more than one name.
+//
+// The prefix is only legal on a Secure cookie: a browser drops a __Host-
+// cookie that arrives without the attribute. Secure here follows the
+// external URL's scheme (ADR-0067 §5), so a loopback Instance and a
+// deployment told to serve plain HTTP would both be naming a cookie no
+// browser would keep, and nobody could sign in. One name per shape is the
+// price of not breaking the shape that could not have the defence anyway:
+// a deployment serving plain HTTP has no session confidentiality to lose
+// to a neighbour it is already handing the cookie to in clear text.
+//
+// The two names never coexist on one deployment, and a deployment that
+// gains TLS signs its readers out once as its cookie is renamed. That is
+// worth spending, and it is cheapest the earlier it is spent.
+func (h *Handler) sessionCookieName() string {
+	if h.cfg.Secure {
+		return hostPrefix + sessionCookie
+	}
+	return sessionCookie
+}
+
+// sessionCookieFor builds the session cookie, for issuing it and for
+// clearing it alike. Every attribute the prefixed name requires is decided
+// here and nowhere else, so the name and the attributes that make it legal
+// cannot drift apart: Path is "/", no Domain is named, and Secure is the
+// same switch the name was chosen from.
+func (h *Handler) sessionCookieFor(value string, maxAge int) *http.Cookie {
+	return &http.Cookie{
+		Name: h.sessionCookieName(), Value: value, Path: "/", MaxAge: maxAge,
+		HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
+	}
+}
 
 type actorKey struct{}
 
@@ -114,7 +166,11 @@ func ActorFrom(ctx context.Context) (Actor, bool) {
 // rides the context.
 func (h *Handler) Require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionCookie)
+		// Only this deployment's own name is read. A session offered
+		// under the other one is refused, because accepting both where
+		// the prefix applies would hand straight back what the prefix
+		// was there to take away.
+		cookie, err := r.Cookie(h.sessionCookieName())
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "sign in to use this API")
 			return
@@ -235,10 +291,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "sign-out must come from this instance")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookie, Value: "", Path: "/", MaxAge: -1,
-		HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
-	})
+	http.SetCookie(w, h.sessionCookieFor("", -1))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -283,6 +336,17 @@ func (h *Handler) start(w http.ResponseWriter, r *http.Request) {
 	// a short-lived cookie, nothing stored server-side (ADR-0013 posture).
 	// HttpOnly is what keeps the verifier a secret the browser carries but
 	// no script in it can read.
+	//
+	// This one keeps its narrow path and takes no prefix. __Host- requires
+	// Path=/, and sending the verifier to every path on the Instance to
+	// buy a name is the wrong way round. It also has less to buy: the
+	// value is signed with this Instance's own key and verified before
+	// anything is done with it, so a neighbour shadowing the name gets a
+	// cookie that fails verification rather than one mistaken for ours,
+	// where the session cookie is a bearer whose whole job is to be read.
+	// __Secure- fits the path, but it only enforces the attribute this
+	// cookie already carries and still permits a Domain, so it would buy
+	// a longer name and no defence.
 	blob := stateCookieBlob(state, verifier, returnTo)
 	http.SetCookie(w, &http.Cookie{
 		Name: stateCookie, Value: blob + "." + h.cfg.Sessions.sign(blob), Path: "/api/v1/auth/",
@@ -394,10 +458,7 @@ func (h *Handler) setSession(w http.ResponseWriter, id Identity) error {
 	if err != nil {
 		return err
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookie, Value: token, Path: "/",
-		HttpOnly: true, Secure: h.cfg.Secure, SameSite: http.SameSiteLaxMode,
-	})
+	http.SetCookie(w, h.sessionCookieFor(token, 0))
 	return nil
 }
 
