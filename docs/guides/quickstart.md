@@ -1,68 +1,116 @@
 ---
 title: Quickstart
-description: Download the CLI, point it at an estate, and read your first verdict.
+description: See a console over a real estate in a few minutes, hosted or on your own machine, and get a verdict from the command line when you want one in CI.
 order: 2
 ---
 
 # Quickstart
 
-This guide takes you from nothing to a real conformance verdict over a real
-estate, in about five minutes. You need `git` and nothing else. There is no
-toolchain to install and nothing to compile.
+Three ways in, and they are in the order most people want them. Take the
+first one that fits and stop; none of them is a step towards another.
 
-## 1. Get the CLI
+| | | |
+|---|---|---|
+| [We run it](#1-we-run-it) | Nothing to install | Not open yet |
+| [You run it](#2-you-run-it) | One file and `git` | A console on your machine |
+| [The command line](#3-the-command-line) | One file | A verdict in CI |
+
+## 1. We run it
+
+**This is not open yet.** `cloud.telecraft.dev` does not resolve, there is
+nothing to sign up to, and the rest of this section is what it will be rather
+than what it is. It is written down so that the shape of it can be argued
+with before it exists.
+
+Your Organisation will be one Instance at an address of its own,
+`<your-name>.cloud.telecraft.dev`, with its own estate and its own people. It
+runs the same release you can run yourself; what you are buying is the
+running of it. Signing up will be a request rather than a form that
+provisions: a person reads it and merges it.
+
+[Use the hosted service](hosted.md) is the whole of it.
+
+Until it opens, <https://demo.telecraft.dev> is the real console over a
+public estate, read only and with no sign-in. It shows what the next section
+puts on your own machine.
+
+## 2. You run it
+
+One downloaded file and `git`. No toolchain, no compiling, and nothing to
+configure before you can look at it.
 
 Download the build for your machine from the [latest
-release](https://github.com/telecraft-dev/telecraft/releases/latest). It is one
-file: Telecraft is a single static binary with no runtime dependencies and no
-installer.
+release](https://github.com/telecraft-dev/telecraft/releases/latest). It is
+one static file with no runtime dependencies and no installer.
 
 ```sh
-version=v0.7.1
+version=v0.9.0
 os=$(uname -s | tr '[:upper:]' '[:lower:]')   # linux, or darwin on a Mac
 arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+base=https://github.com/telecraft-dev/telecraft/releases/download/$version
 
-curl -fsSLo telecraft \
-  "https://github.com/telecraft-dev/telecraft/releases/download/$version/telecraft-$version-$os-$arch"
-chmod +x telecraft
+curl -fsSLO "$base/telecraft-$version-$os-$arch"
+curl -fsSLO "$base/SHA256SUMS"
+sha256sum --ignore-missing --check SHA256SUMS
+
+chmod +x "telecraft-$version-$os-$arch"
+mv "telecraft-$version-$os-$arch" telecraft
 ```
+
+Keep the release's own name until the checksum has been checked. `SHA256SUMS`
+lists every binary on the page by that name, and `--ignore-missing` skips the
+ones you did not download, so renaming first leaves it with nothing to check
+and nothing checked.
 
 On Windows, download `telecraft-<version>-windows-amd64.exe` from the same
 page. It is attached and it is not otherwise exercised: nothing in the
 project's CI runs a Windows build, so tell us if it misbehaves.
 
-Check what you downloaded against the release's `SHA256SUMS`, which covers
-every binary on the page:
+Prefer not to place a binary? The container image is the same artefact:
+`docker run --rm -v "$PWD:/w" -w /w ghcr.io/telecraft-dev/telecraft:release`
+wherever this guide says `./telecraft`.
+
+### Serve an estate
+
+An estate is a git repository, not a database. Clone the public demo one and
+serve it:
 
 ```sh
-curl -fsSLO "https://github.com/telecraft-dev/telecraft/releases/download/$version/SHA256SUMS"
-sha256sum --ignore-missing --check SHA256SUMS
+git clone https://github.com/telecraft-dev/estate-demo.git
+./telecraft serve -estate estate-demo
 ```
 
-Prefer not to place a binary at all? The container image runs the same command,
-and the rest of this guide works with `docker run --rm -v "$PWD:/w" -w /w
-ghcr.io/telecraft-dev/telecraft:$version` wherever it says `./telecraft`.
-
-Run it with no arguments to see the subcommands:
+It prints a sign-in it made up for itself:
 
 ```
-usage: telecraft observe -service <service.name> [-environment env] [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]
-       telecraft check -library <dir> -estate <file> [-source <dir> -catalogue <artefact>] [-exemptions dir] [-ownership dir] [-environment env] [-endpoint URL] [-api-key KEY]
-       telecraft palette -team <team-id> -estate <dir> -catalogue <artefact>
-       telecraft render -estate <dir> -catalogue <artefact> -commit <sha> [-out <dir>]
-       telecraft serve (-estate <dir> | -repo <url> [-cache dir]) [-listen host:port] [-fetch-interval 30s]
-       telecraft snapshot -estate <dir> -catalogue <artefact> -library <dir> -rows <file> -readings <file> -commit <sha> -team <team-id> [-catalogues dir] [-exemptions dir] [-out file]
-       telecraft delivery -intended <file> -effective <file> -path (served|git)
-       telecraft passwd   (reads the secret from stdin, prints the users.yaml hash)
+serve: no users.yaml in this estate, so this process minted one sign-in for itself.
+serve: It is not written anywhere and it dies with the process.
+serve:   email     bootstrap@localhost
+serve:   password  1338e8c8e5bcb67c2c093785e286ba73
+serve: Add users.yaml to the estate to replace it.
+console and API on http://127.0.0.1:4321
 ```
 
-The command exits 2 on a usage error, so a script that runs it with no
-arguments fails instead of doing nothing.
+Open <http://127.0.0.1:4321> and sign in with those two. The password is
+drawn fresh each time the process starts, it is written nowhere, and it only
+exists because the console is bound to an address only your machine can
+reach. An Instance anybody else can reach refuses to start without a
+`users.yaml`, and [Run an Instance](run-an-instance.md) is where you write
+one.
 
-## 2. Get an estate
+You are now looking at four Services across six Tiers, with real findings on
+them. [Explore the demo](explore-the-demo.md) walks the surfaces.
 
-An estate is a git repository, not a database. Clone the public demo estate
-beside the binary you just downloaded:
+## 3. The command line
+
+The console is one way to read a verdict. The other is a JSON report and an
+exit code, which is what belongs in CI, in a cron job, or on a laptop. The
+same file does both.
+
+### Get an estate
+
+If you skipped the section above, clone the public demo estate beside the
+binary:
 
 ```sh
 git clone https://github.com/telecraft-dev/estate-demo.git
@@ -73,7 +121,7 @@ Tiers, a requirements library, one Exemption, and the two declared readings a
 repository can't hold for you (which collectors reported, and the running
 configuration each one reports).
 
-## 3. Get a verdict
+### Get a verdict
 
 To get a verdict, run `telecraft check`. It loads the requirements library,
 judges every row of the estate, writes one JSON report to stdout, and sets its
@@ -118,7 +166,7 @@ Not knowing is a normal state, and the report shows it as itself. It never
 rounds `unknown` up to a pass. The command exits 1, so a CI job that can't see
 the backend goes red instead of green.
 
-## 4. Add a backend and get the real cross
+### Add a backend and get the real cross
 
 A verdict built on configuration alone can only tell you what somebody
 intended. Point the check at a telemetry backend and it crosses that intent
