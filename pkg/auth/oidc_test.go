@@ -510,3 +510,47 @@ func TestOIDCReadsTheGroupsClaimTheEstateNames(t *testing.T) {
 		})
 	}
 }
+
+// The email address is the whole of the join into users.yaml, so an
+// address the issuer will not vouch for is an address somebody may have
+// typed. An issuer that says nothing is a different case from one that has
+// looked and said no, and only the second is refused.
+func TestOIDCCompleteRefusesAnEmailTheIssuerSaysIsUnverified(t *testing.T) {
+	idp := newFakeIdP(t)
+	o := idp.provider()
+
+	mutate := func(f func(map[string]any)) map[string]any {
+		c := idp.goodClaims(o.ClientID, "state-1")
+		f(c)
+		return c
+	}
+
+	t.Run("email_verified false is refused", func(t *testing.T) {
+		idp.claims = mutate(func(c map[string]any) { c["email_verified"] = false })
+		_, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
+		if err == nil || !strings.Contains(err.Error(), "not verified") {
+			t.Fatalf("Complete = %v, want a refusal naming the unverified address", err)
+		}
+	})
+
+	t.Run("email_verified true signs in", func(t *testing.T) {
+		idp.claims = mutate(func(c map[string]any) { c["email_verified"] = true })
+		id, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}})
+		if err != nil {
+			t.Fatalf("Complete = %v, want the identity", err)
+		}
+		if id.Email == "" {
+			t.Error("no email on an identity the issuer verified")
+		}
+	})
+
+	// A small or self-hosted issuer that never sends the claim is not
+	// making a negative assertion, and refusing it would break deployments
+	// ADR-0019 §1 supports for a signal they never sent.
+	t.Run("an absent claim is not a refusal", func(t *testing.T) {
+		idp.claims = mutate(func(c map[string]any) { delete(c, "email_verified") })
+		if _, err := o.Complete(context.Background(), "state-1", testVerifier, testCallback, url.Values{"code": {"c0de"}}); err != nil {
+			t.Fatalf("Complete = %v, want an issuer that says nothing to be accepted", err)
+		}
+	})
+}

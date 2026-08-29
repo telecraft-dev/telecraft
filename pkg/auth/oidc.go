@@ -171,6 +171,18 @@ func (o *OIDC) Complete(ctx context.Context, state, verifier, callbackURL string
 	if err := id.valid(); err != nil {
 		return Identity{}, fmt.Errorf("the ID token has no usable subject and email claims. Telecraft needs both to attribute changes")
 	}
+	// The email address is the whole of the join into users.yaml, so an
+	// address the issuer will not vouch for is an address somebody may
+	// have claimed. Refusing an explicit false is the difference between
+	// "this issuer verified it" and "this issuer let them type it".
+	//
+	// An absent claim is not treated as a refusal. It means the issuer
+	// said nothing, which is the shape of a small or self-hosted OIDC
+	// provider, and refusing those would break deployments ADR-0019 §1
+	// supports for a signal they never sent.
+	if claims.EmailVerified != nil && !*claims.EmailVerified {
+		return Identity{}, fmt.Errorf("the issuer %s says the address %q is not verified, so it cannot be the identity a change is attributed to", o.Issuer, id.Email)
+	}
 	return id, nil
 }
 
@@ -186,6 +198,11 @@ type idClaims struct {
 	Name              string   `json:"name"`
 	PreferredUsername string   `json:"preferred_username"`
 	Email             string   `json:"email"`
+
+	// EmailVerified is a pointer so that absent and false are different
+	// things. An issuer that omits it has said nothing, which is not the
+	// same as one that has looked and said no.
+	EmailVerified *bool `json:"email_verified"`
 }
 
 // clockSkew is how far this instance's clock may disagree with the
