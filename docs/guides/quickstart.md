@@ -11,28 +11,28 @@ first one that fits and stop; none of them is a step towards another.
 
 | | | |
 |---|---|---|
-| [We run it](#1-we-run-it) | Nothing to install | Not open yet |
+| [We run it](#1-we-run-it) | Nothing to install | A console we keep running |
 | [You run it](#2-you-run-it) | One file and `git` | A console on your machine |
 | [The command line](#3-the-command-line) | One file | A verdict in CI |
 
 ## 1. We run it
 
-**This is not open yet.** `cloud.telecraft.dev` does not resolve, there is
-nothing to sign up to, and the rest of this section is what it will be rather
-than what it is. It is written down so that the shape of it can be argued
-with before it exists.
+Ask for an Organisation at <https://cloud.telecraft.dev> with a Google or
+Microsoft Entra ID account. You get one Instance at an address of its own,
+`<your-name>.cloud.telecraft.dev`, with its own estate, its own people, and
+nothing shared with anybody else's.
 
-Your Organisation will be one Instance at an address of its own,
-`<your-name>.cloud.telecraft.dev`, with its own estate and its own people. It
-runs the same release you can run yourself; what you are buying is the
-running of it. Signing up will be a request rather than a form that
-provisions: a person reads it and merges it.
+Signing up is a request rather than a form that provisions. A person reads it
+and merges it, so you wait for us rather than for a machine. It is the same
+release you can run yourself, and there is no capability here that a
+deployment on your own hardware does not have: what you are buying is the
+running of it.
 
-[Use the hosted service](hosted.md) is the whole of it.
+[Use the hosted service](hosted.md) covers signing up, connecting a
+repository, signing your people in, and what is promised about keeping it.
 
-Until it opens, <https://demo.telecraft.dev> is the real console over a
-public estate, read only and with no sign-in. It shows what the next section
-puts on your own machine.
+Want to look before you ask? <https://demo.telecraft.dev> is the real console
+over a public estate, read only and with no sign-in.
 
 ## 2. You run it
 
