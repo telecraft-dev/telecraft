@@ -6,6 +6,17 @@ order: 15
 
 # Use the hosted service
 
+**The hosted service is not running yet.** `cloud.telecraft.dev` does not
+resolve, and there is nothing to sign up to. This page describes what it will
+be when it opens, and it is here so that the shape of it can be read and
+argued with before it exists rather than after. Everything below is written in
+the present tense because that is how it is meant to work, not because it
+works today.
+
+Until then, [run it yourself](run-an-instance.md): it is the same release, and
+there is no capability in the hosted service that a deployment on your own
+hardware does not have.
+
 We run Telecraft for you at `cloud.telecraft.dev`. Your Organisation is one
 Instance at an address of your own, `<your-name>.cloud.telecraft.dev`, with its
 own estate, its own people, and nothing shared with anybody else's.

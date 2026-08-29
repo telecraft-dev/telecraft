@@ -16,9 +16,10 @@ schema, read the [reference section](../reference/index.md).
 
 ## Before you start
 
-You need Go 1.26 or later and `git`. Every guide runs against the public demo
-estate, `telecraft-dev/estate-demo`, so you can follow along before you have
-an estate of your own. The [quickstart](quickstart.md) sets up both.
+You need `git`, and the CLI, which is one downloaded file with no toolchain
+behind it. Every guide runs against the public demo estate,
+`telecraft-dev/estate-demo`, so you can follow along before you have an estate
+of your own. The [quickstart](quickstart.md) sets up both.
 
 ## Choose a starting point
 
