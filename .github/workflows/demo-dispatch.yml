@@ -41,14 +41,19 @@ name: Demo
 # moves here or nowhere, and `git rev-parse release` answers what the demo is
 # built from.
 #
-# Nothing orders this against release.yml, which runs on the same push:
-# estate-demo builds the platform from source at the ref, so it needs no
-# artefact that release.yml produces.
+# This runs when release.yml has finished for the tag, and the job below
+# runs only when it succeeded. estate-demo builds the platform from source
+# at the ref, so it needs no artefact release.yml produces; what the
+# ordering buys is narrower and worth having anyway: the public pointer
+# never moves for a tag whose release failed its own checks.
+#
+# On a workflow_run event the tag's name travels as `head_branch` and its
+# commit as `head_sha`; the run's own `github.sha` names main, not the tag.
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -56,16 +61,48 @@ permissions:
   # separately, by the App token minted below.
   contents: write
 
+# One pointer, one mover at a time, never cancelled mid-move.
+concurrency:
+  group: demo-pointer
+
 jobs:
   publish-demo:
     name: Point the demo at this release
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # Every tag, and the history behind them, because the decision below
-      # asks whether this is the newest stable version.
-      - uses: actions/checkout@v7
+      # asks whether this is the newest stable version. Credentials stay
+      # persisted: the move step pushes the pointer with them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      # The same two guards release.yml opens with, for the same footgun:
+      # nothing else stands between a pushed ref and the public demo. They
+      # are repeated here rather than trusted to the ordering above,
+      # because a manual run of the Release workflow is not the only thing
+      # that can complete it, and a guard that lives in another file is a
+      # guard someone edits away without noticing this one relied on it.
+      # A manual run of this workflow carries no tag and moves nothing, so
+      # there is nothing for these to check.
+      - name: The tag is well formed and sits on main
+        if: github.event_name == 'workflow_run'
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::$TAG is not vMAJOR.MINOR.PATCH[-prerelease] (ADR-0049 §1)"
+            exit 1
+          fi
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::$TAG points at $SHA, which is not on main (ADR-0049 §2)"
+            exit 1
+          fi
 
       # Three cases, and only the first one reaches the public site.
       #
@@ -86,7 +123,7 @@ jobs:
       - name: Decide what this event means for the demo
         id: decide
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
           move=false
@@ -122,12 +159,13 @@ jobs:
       - name: Move the release pointer to this tag
         if: steps.decide.outputs.move == 'true'
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          git tag --force release "$GITHUB_SHA"
+          git tag --force release "$SHA"
           git push --force origin refs/tags/release
-          echo "release now names $TAG ($GITHUB_SHA)."
+          echo "release now names $TAG ($SHA)."
 
       # The same App the forge adapter uses (ADR-0014). It needs access to
       # estate-demo in its installation; without that the token request
@@ -137,7 +175,7 @@ jobs:
       - name: Mint an App token for estate-demo
         if: steps.decide.outputs.notify == 'true'
         id: token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.FORGE_APP_ID }}
           private-key: ${{ secrets.FORGE_APP_PRIVATE_KEY }}
@@ -158,10 +196,16 @@ jobs:
         if: steps.decide.outputs.notify == 'true'
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
-          DEMO_SHA: ${{ github.sha }}
-          DEMO_REF: ${{ github.ref_name }}
+          DEMO_SHA: ${{ github.event.workflow_run.head_sha }}
+          DEMO_REF: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
+          # A manual run carries no tag, so the record names what the
+          # pointer already names, which is what the demo will build.
+          if [ -z "$DEMO_REF" ]; then
+            DEMO_SHA=$(git rev-parse release)
+            DEMO_REF=release
+          fi
           jq -n \
             --arg sha "$DEMO_SHA" \
             --arg ref "$DEMO_REF" \

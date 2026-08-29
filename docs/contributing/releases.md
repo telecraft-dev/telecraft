@@ -136,13 +136,14 @@ embedded in, so the image carries it.
    git push origin v0.3.0
    ```
 
-5. **Watch the two workflows the push starts.** `release.yml` validates the
-   tag, builds the console and all five binaries, assembles and pushes the image
-   index, starts the image it has just built with networking disabled and
-   requires it to serve, packs the design artefacts, checks the palette
-   floors over the `tokens.css` it is about to ship, and creates the release.
-   `demo-dispatch.yml` moves the `release` pointer and asks `estate-demo` to
-   rebuild.
+5. **Watch the two workflows.** `release.yml` starts on the push: it
+   validates the tag and its annotation, builds the console and all five
+   binaries, assembles and pushes the image index, starts the image it has
+   just built with networking disabled and requires it to serve, packs the
+   design artefacts, checks the palette floors over the `tokens.css` it is
+   about to ship, and creates the release. When it succeeds,
+   `demo-dispatch.yml` runs, moves the `release` pointer and asks
+   `estate-demo` to rebuild; a release that fails moves nothing.
 6. **Verify.** The release page lists five binaries, the archive and
    `SHA256SUMS`; `docker pull ghcr.io/telecraft-dev/telecraft:<version>`
    resolves to the digest the notes name;
@@ -230,12 +231,22 @@ gh workflow run demo-dispatch.yml
 The version tags are untouched by any of this. `release` is the only ref in
 this repository that moves.
 
-The image carries a tag of the same name, for the same reason, and it moves
-at the same moment: `ghcr.io/telecraft-dev/telecraft:release` is whatever the
-current stable version is. There is no `latest`, and no rolling `v0` or
-`v0.7`: a floating minor tag promises a compatibility surface, and being
+The image carries a tag of the same name, following the same rule:
+`ghcr.io/telecraft-dev/telecraft:release` is whatever the current stable
+version is, and only the newest stable version moves it, so a fix cut on an
+older line moves neither pointer. There is no `latest`, and no rolling `v0`
+or `v0.7`: a floating minor tag promises a compatibility surface, and being
 pre-1.0 is the statement that there is not one yet. A pre-release publishes
 its version tag and moves neither pointer.
+
+The registry pointer rolls back the same way the git pointer does: point it
+at the earlier version and the version tags stay untouched.
+
+```bash
+docker buildx imagetools create \
+  --tag ghcr.io/telecraft-dev/telecraft:release \
+  ghcr.io/telecraft-dev/telecraft:v0.2.4
+```
 
 ## Consuming the design artefacts
 
