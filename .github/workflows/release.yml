@@ -328,12 +328,49 @@ jobs:
       # reader arriving from another repository needs. House style applies
       # to release notes like any other prose
       # (docs/contributing/documentation.md).
+      # The two lines the notes open with, taken from the tag's own
+      # annotation. A release is a tag, so the sentence about what the
+      # release asks of a consumer belongs on the tag rather than in a file
+      # that a later commit could edit out from under it.
+      #
+      # Missing is fatal. `Breaking: none` is a normal answer and takes two
+      # seconds to write; a release whose notes cannot be audited against
+      # its number is the thing docs/contributing/releases.md exists to
+      # prevent, and a tag cannot be corrected afterwards.
+      - name: Take the headline from the tag
+        id: headline
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          message=$(git tag -l --format='%(contents)' "$TAG")
+          breaking=$(printf '%s\n' "$message" | grep -m1 '^Breaking:' || true)
+          new=$(printf '%s\n' "$message" | grep -m1 '^New:' || true)
+          if [ -z "$breaking" ] || [ -z "$new" ]; then
+            echo "The annotation on $TAG must carry a Breaking: line and a New: line." >&2
+            echo "Either may say none. What it says now:" >&2
+            printf '%s\n' "$message" >&2
+            exit 1
+          fi
+          {
+            echo "text<<HEADLINE_EOF"
+            printf '%s\n\n%s\n' "**$breaking**" "**$new**"
+            echo "HEADLINE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           PRERELEASE: ${{ steps.tag.outputs.prerelease }}
           OUT: ${{ steps.pack.outputs.out }}
+          # Two lines the release notes open with, so the version number can
+          # be audited against them (docs/contributing/releases.md). Composed
+          # by hand at the tag rather than derived: what a release asks of a
+          # consumer is a judgement, and a workflow that guessed it would be
+          # guessing the number too. The tag's annotation is where it lives,
+          # and `Breaking: none` is a normal answer.
+          HEADLINE: ${{ steps.headline.outputs.text }}
           ARCHIVE: ${{ steps.pack.outputs.archive }}
           DIGEST: ${{ steps.image.outputs.digest }}
         run: |
@@ -344,10 +381,12 @@ jobs:
             echo "version number means, and what a release is for, is in"
             echo "[Releases](https://github.com/telecraft-dev/telecraft/blob/$TAG/docs/contributing/releases.md)."
             echo
+            echo "$HEADLINE"
+            echo
             echo "**In this release**"
             echo
-            echo "- The source at \`$TAG\`. This is the ref the public demo builds from, and"
-            echo "  the ref to build the CLI from: \`go build -o telecraft ./cmd/telecraft\`."
+            echo "- The source at \`$TAG\`. This is the ref the public demo builds from,"
+            echo "  and the ref a contributor builds from."
             echo "- \`$ARCHIVE\`, the design artefacts: the design tokens, the base sheet once"
             echo "  it exists, the two self-hosted families with their licences, and the"
             echo "  brand mark in the five formats a browser is offered. It carries"
@@ -358,17 +397,14 @@ jobs:
             echo "- \`ghcr.io/telecraft-dev/telecraft:$TAG\`, the container image for"
             echo "  \`linux/amd64\` and \`linux/arm64\`. Pin the digest:"
             echo "  \`ghcr.io/telecraft-dev/telecraft@$DIGEST\`."
-            echo "- \`telecraft-$TAG-linux-amd64\` and \`telecraft-$TAG-linux-arm64\`, the"
-            echo "  same binary the image holds, for a pipeline with neither a container"
-            echo "  runtime nor a Go toolchain."
             echo "- The Helm chart at \`oci://ghcr.io/telecraft-dev/charts/telecraft\`,"
             echo "  version \`${TAG#v}\`, which installs the image above."
-            echo
-            echo "- The CLI for Linux, macOS and Windows, on amd64 and on Apple silicon."
-            echo "  \`SHA256SUMS\` covers every one of them."
-            echo
-            echo "The Windows build is attached and is not otherwise exercised: nothing in"
-            echo "CI runs it."
+            echo "- The CLI, as \`telecraft-$TAG-<os>-<arch>\`, for Linux, macOS and"
+            echo "  Windows on amd64 and on Apple silicon. One static file, no toolchain"
+            echo "  and no installer; the [quickstart](https://github.com/telecraft-dev/telecraft/blob/$TAG/docs/guides/quickstart.md)"
+            echo "  downloads it. \`SHA256SUMS\` covers every one of them. The Windows"
+            echo "  build is attached and is not otherwise exercised: nothing in CI runs"
+            echo "  it."
             echo
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
               -f tag_name="$TAG" --jq .body

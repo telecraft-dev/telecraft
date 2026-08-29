@@ -112,12 +112,23 @@ embedded in, so the image carries it.
 2. **Choose the number** with the two questions above. To see what
    exists, run
    `git tag --sort=-v:refname --list 'v*'`.
-3. **Tag the commit**, annotated, from an up to date `main`:
+3. **Tag the commit**, annotated, from an up to date `main`. The annotation
+   carries the two lines the notes open with, and `release.yml` reads them
+   from it and refuses the tag without them. Either may say `none`.
 
    ```bash
    git checkout main && git pull
-   git tag -a v0.3.0 -m "v0.3.0"
+   git tag -a v0.3.0 -m "v0.3.0
+
+   Breaking: none.
+   New: the CLI is attached for macOS and Windows."
    ```
+
+   They live on the tag rather than in a file because a release is a tag: a
+   sentence about what this release asks of a consumer should not be
+   editable by a later commit. Answer the two sizing questions above, then
+   write the answers down; if `New:` says `none` and `Breaking:` says
+   `none`, the number is a patch.
 
 4. **Push the tag**, which is the act that publishes:
 
