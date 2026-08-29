@@ -126,17 +126,28 @@ embedded in, so the image carries it.
    ```
 
 5. **Watch the two workflows the push starts.** `release.yml` validates the
-   tag, builds the console and both binaries, assembles and pushes the image
+   tag, builds the console and all five binaries, assembles and pushes the image
    index, starts the image it has just built with networking disabled and
    requires it to serve, packs the design artefacts, checks the palette
    floors over the `tokens.css` it is about to ship, and creates the release.
    `demo-dispatch.yml` moves the `release` pointer and asks `estate-demo` to
    rebuild.
-6. **Verify.** The release page lists the binaries, the archive and
+6. **Verify.** The release page lists five binaries, the archive and
    `SHA256SUMS`; `docker pull ghcr.io/telecraft-dev/telecraft:<version>`
    resolves to the digest the notes name;
    `git ls-remote --tags origin release` resolves to the commit you tagged;
    and the demo run in `estate-demo` finishes green.
+
+   Then take the release at its word, from a directory with no checkout in
+   it, on the platform you are sitting at. This is the step the quickstart
+   asks a stranger to perform, so it is the one worth performing:
+
+   ```bash
+   base=https://github.com/telecraft-dev/telecraft/releases/download/v0.3.0
+   curl -fsSLO "$base/telecraft-v0.3.0-darwin-arm64"
+   curl -fsSLO "$base/SHA256SUMS"
+   sha256sum --ignore-missing --check SHA256SUMS
+   ```
 7. **Verify the chart resolves and renders**, from a directory with no
    checkout of this repository in it:
 

@@ -13,7 +13,7 @@ they build from has moved.
 | Workflow | Fires on | Does |
 |---|---|---|
 | `ci.yml` | every pull request, and every push to `main` | Builds, tests and lints: the checks review waits for |
-| `release.yml` | a `v*` tag | Publishes the release: the image, the Linux binaries and the design artefacts |
+| `release.yml` | a `v*` tag | Publishes the release: the image, the chart, the CLI for every platform, and the design artefacts |
 | `demo-dispatch.yml` | a `v*` tag, or a manual run | Moves the `release` pointer and asks the demo to rebuild |
 | `docs-dispatch.yml` | a push to `main` touching `docs/**` | Asks telecraft.dev to rebuild the documentation |
 
@@ -88,6 +88,7 @@ Two details worth knowing before you rely on this:
 | Console (ADR-0045) | `typecheck`, `test`, `check:palette`, `build`, `check:zero-cdn`, `check:bundle-budget`, `e2e` | The console typechecks, its unit and Playwright suites pass, the palette clears its floors, the built bundle reaches no external host, and its entry chunk stays within its gzipped ceiling |
 | Demo snapshot and bundle | `build:demo`, `check:zero-cdn`, `telecraft snapshot`, the entry-document check | The public demo's two halves keep working: the snapshot the real evaluators produce, and the console bundle that reads it |
 | Container image (ADR-0068) | `tools/image/stage.sh`, a two-architecture `docker buildx build`, then `tools/image/offline.sh` over the loaded image | The image assembles for both architectures, and the one it built serves the console and the OpAMP endpoint with networking disabled |
+| Workstation binaries (ADR-0081) | `go build` for `darwin/arm64`, `darwin/amd64` and `windows/amd64`, output discarded | The three platforms a release attaches that nothing else here builds still cross-compile. Without it a build constraint or a platform-specific import is discovered by a tag push, which is the one moment there is no way back |
 
 Nine of those guard rules that are otherwise unenforceable in review.
 

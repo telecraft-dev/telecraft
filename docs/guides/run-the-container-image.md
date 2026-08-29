@@ -127,8 +127,10 @@ examples. Rotating one is rewriting its file.
 
 ## Run the CLI from the same image
 
-The image is the whole CLI, so a pipeline with no Go toolchain runs the same
-commands the Instance runs, from the same artefact:
+The image is the whole CLI, so a pipeline that already pulls it runs the same
+commands the Instance runs from the same artefact, with nothing else to place.
+A pipeline with no container runtime downloads the binary instead, which the
+[quickstart](quickstart.md) does.
 
 ```sh
 docker run --rm --volume "$PWD:/estate:ro" \
