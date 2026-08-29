@@ -74,9 +74,9 @@ release, or hand someone a build to test, without moving what the world sees.
 
 | Artefact | What it is |
 |---|---|
-| The source at the tag | The ref `estate-demo` builds the demo from, and the ref to build the CLI from with `go build -o telecraft ./cmd/telecraft`. GitHub attaches the source archives itself. |
+| The source at the tag | The ref `estate-demo` builds the demo from, and the ref a contributor builds the CLI from. GitHub attaches the source archives itself. |
 | `ghcr.io/telecraft-dev/telecraft:<version>` | The container image (ADR-0068): the `telecraft` binary with the console inside it, the Catalogue baseline and `LICENSE`, as one index over `linux/amd64` and `linux/arm64`. A stable release also moves the `release` tag. |
-| `telecraft-<version>-linux-amd64` and `telecraft-<version>-linux-arm64` | The same binaries the image holds, for a pipeline that has neither a container runtime nor a Go toolchain. |
+| `telecraft-<version>-<os>-<arch>` | The CLI, for every workstation and pipeline the product expects to meet (ADR-0081): `linux-amd64`, `linux-arm64`, `darwin-arm64`, `darwin-amd64` and `windows-amd64.exe`. The two Linux ones are the binaries the image holds; the other three are cross-compiled in the same job. This is what the [quickstart](../guides/quickstart.md) downloads. |
 | `telecraft-design-<version>.tar.gz` | The design system: `tokens.css`, `base.css` once it exists, `fonts/` holding `fonts.css`, the `.woff2` faces and the two OFL licence texts, and `icons/` holding the brand mark in the five formats a browser is offered. `LICENSE`, `VERSION` and a `README.md` describing each file travel with them. |
 | `SHA256SUMS` | The checksums of every file attached above. |
 | The chart, at `oci://ghcr.io/telecraft-dev/charts/telecraft` | The Helm chart in `charts/telecraft`, packaged and pushed on the same tag push. Its `version` is the release version without the leading `v`, because Helm requires SemVer without one, and its `appVersion` is the tag verbatim, so the chart and the image it deploys carry one number. |
@@ -87,12 +87,13 @@ digest, and a deployment pins it.
 
 What is still absent, and why:
 
-- **Every platform but Linux.** ADR-0068 §4 amended ADR-0049 §3 in one
-  direction only. The two Linux binaries are attached because the image pays
-  for building them already; macOS, Windows and any other architecture are
-  built for nothing else, and building them is the platform matrix ADR-0049
-  declined. The [quickstart](../guides/quickstart.md) builds from source in
-  one command, and that stays the way to get the CLI on a workstation.
+- **A package manager, and an installer script.** No Homebrew tap, no Scoop
+  manifest, no `curl | sh` (ADR-0081 §3). Each is a second published surface
+  with its own staleness, and the first two are a claim to keep current in a
+  repository this project does not own. A download and a checksum are two
+  commands and no third party.
+- **Any architecture but amd64 and arm64.** Nothing has asked, and each one
+  added is a build nobody runs.
 - **An SBOM.** The binary carries its own module inventory, which `go version
   -m` prints from the file the release attaches, and the base image
   contributes no package manager to enumerate. Raised as OQ-26 rather than
@@ -125,17 +126,28 @@ embedded in, so the image carries it.
    ```
 
 5. **Watch the two workflows the push starts.** `release.yml` validates the
-   tag, builds the console and both binaries, assembles and pushes the image
+   tag, builds the console and all five binaries, assembles and pushes the image
    index, starts the image it has just built with networking disabled and
    requires it to serve, packs the design artefacts, checks the palette
    floors over the `tokens.css` it is about to ship, and creates the release.
    `demo-dispatch.yml` moves the `release` pointer and asks `estate-demo` to
    rebuild.
-6. **Verify.** The release page lists the binaries, the archive and
+6. **Verify.** The release page lists five binaries, the archive and
    `SHA256SUMS`; `docker pull ghcr.io/telecraft-dev/telecraft:<version>`
    resolves to the digest the notes name;
    `git ls-remote --tags origin release` resolves to the commit you tagged;
    and the demo run in `estate-demo` finishes green.
+
+   Then take the release at its word, from a directory with no checkout in
+   it, on the platform you are sitting at. This is the step the quickstart
+   asks a stranger to perform, so it is the one worth performing:
+
+   ```bash
+   base=https://github.com/telecraft-dev/telecraft/releases/download/v0.3.0
+   curl -fsSLO "$base/telecraft-v0.3.0-darwin-arm64"
+   curl -fsSLO "$base/SHA256SUMS"
+   sha256sum --ignore-missing --check SHA256SUMS
+   ```
 7. **Verify the chart resolves and renders**, from a directory with no
    checkout of this repository in it:
 

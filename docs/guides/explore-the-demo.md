@@ -314,10 +314,11 @@ three are worth a look, because they are the point:
 Everything the site shows is reproducible from the two public repositories:
 
 ```sh
-git clone https://github.com/telecraft-dev/telecraft.git
 git clone https://github.com/telecraft-dev/estate-demo.git
-cd telecraft
-go build -o telecraft ./cmd/telecraft
 ```
+
+Download the CLI from the [latest
+release](https://github.com/telecraft-dev/telecraft/releases/latest) beside it,
+as the [quickstart](quickstart.md) does.
 
 The [quickstart](quickstart.md) takes it from there.

@@ -24,6 +24,10 @@ page is that server with its second address opened.
 The console travels inside the binary, so one artefact is the whole Instance.
 Build it in two steps, from the repository root:
 
+The release binary already carries the console, so downloading it from the
+[latest release](https://github.com/telecraft-dev/telecraft/releases/latest) is
+enough and the rest of this section is for running an unreleased commit.
+
 ```sh
 cd console
 npm ci

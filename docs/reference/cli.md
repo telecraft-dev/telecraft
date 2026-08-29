@@ -10,11 +10,14 @@ Telecraft ships five binaries: `telecraft`, the main command line;
 `catalogue-import` and `schema-registry-import`, the two substrates of the one
 import pipeline; `blueprint-check`, the strict Blueprint and Component
 loader; and `register-check`, the strict loader for the register a deployment
-serving several Organisations reads. All five build from this repository with
-the Go toolchain:
+serving several Organisations reads.
+
+`telecraft` is attached to every release for Linux, macOS and Windows, and the
+[quickstart](../guides/quickstart.md) downloads it. The other four are tools
+for working on an estate's inputs rather than on the estate, and they are not
+attached: build them from this repository with the Go toolchain.
 
 ```sh
-go build ./cmd/telecraft
 go build ./cmd/catalogue-import
 go build ./cmd/schema-registry-import
 go build ./cmd/blueprint-check

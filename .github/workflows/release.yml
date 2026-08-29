@@ -8,14 +8,15 @@ name: Release
 # stopped moving, with the sheets that travel to the second repository
 # attached to it.
 #
-# What this publishes, and what it deliberately does not, is ADR-0049 §3.
-# Go binaries are absent because the documented way to get the CLI is
-# `go build ./cmd/telecraft` (docs/guides/quickstart.md), and publishing a
-# binary buys a platform matrix, checksums per platform and an upgrade path
-# that nothing yet asks for. The console bundle is absent because it is
-# built per deployment (demo mode reads a snapshot beside it, instance mode
-# calls a server, ADR-0045), so a single prebuilt bundle would be the wrong
-# one for at least one consumer.
+# What this publishes is ADR-0049 §3 as ADR-0068 and ADR-0081 amended it:
+# one image, one chart, the design archive, and a CLI binary for every
+# workstation the product expects to meet. The console bundle is not a
+# separate artefact any more; it is inside the binary (ADR-0068 §4).
+#
+# The two Linux binaries come out of the image's staged context, which
+# builds them anyway. The other three are cross-compiled here: the build is
+# CGO_ENABLED=0 with -trimpath, so a platform is a GOOS and GOARCH pair and
+# nothing else.
 #
 # Cutting a release is one push of one annotated tag. Everything below is
 # the machine's half; docs/contributing/releases.md is the human's.
@@ -261,11 +262,37 @@ jobs:
       # date, so re-cutting the same tag produces the same archive and the
       # checksum is a fact about the tag rather than about the runner that
       # happened to build it.
+      # The three the image has no use for. Built here rather than in
+      # `tools/image/stage.sh`, because that script stages a build context
+      # and a macOS binary inside a Linux image's context is a file that
+      # travels for no reason.
+      - name: Build the workstation binaries
+        id: workstations
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/workstations"
+          mkdir -p "$out"
+          for target in darwin/arm64 darwin/amd64 windows/amd64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            name="telecraft-$TAG-$os-$arch"
+            if [ "$os" = "windows" ]; then
+              name="$name.exe"
+            fi
+            echo "building $target"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+              go build -trimpath -o "$out/$name" ./cmd/telecraft
+          done
+          echo "out=$out" >> "$GITHUB_OUTPUT"
+
       - name: Pack and checksum
         id: pack
         env:
           TAG: ${{ github.ref_name }}
           STAGED: ${{ steps.assemble.outputs.staged }}
+          WORKSTATIONS: ${{ steps.workstations.outputs.out }}
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/artefacts"
@@ -278,10 +305,11 @@ jobs:
               -C "$(dirname "$STAGED")" "$(basename "$STAGED")"
           cp dist/image/telecraft-linux-amd64 "$out/telecraft-$TAG-linux-amd64"
           cp dist/image/telecraft-linux-arm64 "$out/telecraft-$TAG-linux-arm64"
+          cp "$WORKSTATIONS"/telecraft-* "$out/"
           cd "$out"
-          sha256sum "$archive" \
-            "telecraft-$TAG-linux-amd64" \
-            "telecraft-$TAG-linux-arm64" > SHA256SUMS
+          # Every binary a reader can download, in one file beside them, so
+          # checking one is the same command as checking all of them.
+          sha256sum "$archive" telecraft-"$TAG"-* > SHA256SUMS
           cat SHA256SUMS
           echo "out=$out" >> "$GITHUB_OUTPUT"
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
@@ -290,6 +318,8 @@ jobs:
         with:
           subject-path: |
             ${{ steps.pack.outputs.out }}/telecraft-*-linux-*
+            ${{ steps.pack.outputs.out }}/telecraft-*-darwin-*
+            ${{ steps.pack.outputs.out }}/telecraft-*-windows-*
             ${{ steps.pack.outputs.out }}/${{ steps.pack.outputs.archive }}
 
       # The notes are composed rather than left to `--generate-notes` alone:
@@ -334,8 +364,11 @@ jobs:
             echo "- The Helm chart at \`oci://ghcr.io/telecraft-dev/charts/telecraft\`,"
             echo "  version \`${TAG#v}\`, which installs the image above."
             echo
-            echo "**Not in this release**: a build for any platform but Linux. Every other"
-            echo "platform builds from source at this tag."
+            echo "- The CLI for Linux, macOS and Windows, on amd64 and on Apple silicon."
+            echo "  \`SHA256SUMS\` covers every one of them."
+            echo
+            echo "The Windows build is attached and is not otherwise exercised: nothing in"
+            echo "CI runs it."
             echo
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
               -f tag_name="$TAG" --jq .body
@@ -349,6 +382,5 @@ jobs:
             --notes-file "$notes" \
             "${flags[@]}" \
             "$OUT/$ARCHIVE" \
-            "$OUT/telecraft-$TAG-linux-amd64" \
-            "$OUT/telecraft-$TAG-linux-arm64" \
+            "$OUT"/telecraft-"$TAG"-* \
             "$OUT/SHA256SUMS"

@@ -1,23 +1,49 @@
 ---
 title: Quickstart
-description: Build the CLI, point it at an estate, and read your first verdict.
+description: Download the CLI, point it at an estate, and read your first verdict.
 order: 2
 ---
 
 # Quickstart
 
 This guide takes you from nothing to a real conformance verdict over a real
-estate, in about five minutes. You need Go 1.26 or later and `git`.
+estate, in about five minutes. You need `git` and nothing else. There is no
+toolchain to install and nothing to compile.
 
-## 1. Build the CLI
+## 1. Get the CLI
+
+Download the build for your machine from the [latest
+release](https://github.com/telecraft-dev/telecraft/releases/latest). It is one
+file: Telecraft is a single static binary with no runtime dependencies and no
+installer.
 
 ```sh
-git clone https://github.com/telecraft-dev/telecraft.git
-cd telecraft
-go build -o telecraft ./cmd/telecraft
+version=v0.7.1
+os=$(uname -s | tr '[:upper:]' '[:lower:]')   # linux, or darwin on a Mac
+arch=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+
+curl -fsSLo telecraft \
+  "https://github.com/telecraft-dev/telecraft/releases/download/$version/telecraft-$version-$os-$arch"
+chmod +x telecraft
 ```
 
-Run the binary with no arguments to see the subcommands:
+On Windows, download `telecraft-<version>-windows-amd64.exe` from the same
+page. It is attached and it is not otherwise exercised: nothing in the
+project's CI runs a Windows build, so tell us if it misbehaves.
+
+Check what you downloaded against the release's `SHA256SUMS`, which covers
+every binary on the page:
+
+```sh
+curl -fsSLO "https://github.com/telecraft-dev/telecraft/releases/download/$version/SHA256SUMS"
+sha256sum --ignore-missing --check SHA256SUMS
+```
+
+Prefer not to place a binary at all? The container image runs the same command,
+and the rest of this guide works with `docker run --rm -v "$PWD:/w" -w /w
+ghcr.io/telecraft-dev/telecraft:$version` wherever it says `./telecraft`.
+
+Run it with no arguments to see the subcommands:
 
 ```
 usage: telecraft observe -service <service.name> [-environment env] [-window 15m] [-endpoint URL] [-api-key KEY] [-attributes a,b,c]
@@ -36,12 +62,10 @@ arguments fails instead of doing nothing.
 ## 2. Get an estate
 
 An estate is a git repository, not a database. Clone the public demo estate
-beside your checkout:
+beside the binary you just downloaded:
 
 ```sh
-cd ..
 git clone https://github.com/telecraft-dev/estate-demo.git
-cd telecraft
 ```
 
 It holds a synthetic retailer's observability estate: four Services, six
@@ -57,9 +81,9 @@ exit code from the result:
 
 ```sh
 ./telecraft check \
-  -library ../estate-demo/requirements \
-  -estate ../estate-demo/demo/rows.yaml \
-  -exemptions ../estate-demo/exemptions \
+  -library estate-demo/requirements \
+  -estate estate-demo/demo/rows.yaml \
+  -exemptions estate-demo/exemptions \
   > report.json
 ```
 
@@ -167,9 +191,9 @@ the command doesn't change:
 
 ```sh
 ./telecraft check \
-  -library ../estate-demo/requirements \
-  -estate ../estate-demo/demo/rows.yaml \
-  -exemptions ../estate-demo/exemptions \
+  -library estate-demo/requirements \
+  -estate estate-demo/demo/rows.yaml \
+  -exemptions estate-demo/exemptions \
   > report.json
 ```
 
@@ -222,6 +246,23 @@ When you are done, remove the container:
 ```sh
 docker rm -f telecraft-quickstart
 ```
+
+## Building it yourself
+
+You do not need this to use Telecraft, and the download above is the supported
+way to get the CLI. Build from source when you are changing it: fixing
+something, adding a subcommand, or running an unreleased commit.
+
+```sh
+git clone https://github.com/telecraft-dev/telecraft.git
+cd telecraft
+go build -o telecraft ./cmd/telecraft
+```
+
+You need Go 1.26 or later. The binary this produces is the same one the
+release attaches, minus the version stamp the release build sets.
+[Contributing](../contributing/index.md) covers the rest of the development
+setup.
 
 ## What next
 
