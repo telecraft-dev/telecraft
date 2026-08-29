@@ -139,3 +139,36 @@ func LoadUsers(path string, tree ownership.Tree) (Users, error) {
 	}
 	return users, nil
 }
+
+// BootstrapEmail is the identity a loopback Instance mints for itself when
+// the estate has no users.yaml (ADR-0082 §1). It is not an address and is
+// not meant to be: it names a sign-in that exists for the life of one
+// process and is never written anywhere.
+const BootstrapEmail = "bootstrap@localhost"
+
+// Bootstrap builds a Users holding exactly one user, acting as owner, with
+// password as its basic-auth secret. It is the loopback case in ADR-0082
+// §1 and nothing else: `serve` is the only caller, it calls this only when
+// users.yaml is absent and only when the console is bound to a loopback
+// address, and the estate replaces what this returns the moment it holds a
+// users.yaml of its own.
+//
+// It validates the owner against the tree for the same reason LoadUsers
+// does: a session nobody can attribute is worse than a refusal to start.
+func Bootstrap(tree ownership.Tree, owner ownership.OwnerID, password string) (Users, error) {
+	if _, known := tree.Owners[owner]; !known {
+		return Users{}, fmt.Errorf("bootstrap sign-in acts as owner %q, which is not in the team tree", owner)
+	}
+	hash, err := HashSecret(password)
+	if err != nil {
+		return Users{}, err
+	}
+	return Users{byEmail: map[string]User{
+		BootstrapEmail: {
+			Email:    BootstrapEmail,
+			Name:     "Bootstrap",
+			Owner:    owner,
+			Password: hash,
+		},
+	}}, nil
+}

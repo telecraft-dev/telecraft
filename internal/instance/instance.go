@@ -38,6 +38,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -168,6 +169,14 @@ type Server struct {
 	composer   *readings.Composer
 	stopPoll   context.CancelFunc
 	pollDone   chan struct{}
+
+	// The sign-in a loopback Instance mints for itself when the estate
+	// names nobody (ADR-0082). Drawn once because refreshAuth runs on
+	// every poll, and said once because a password repeated into a log
+	// every thirty seconds is a password in a log.
+	bootstrapOnce   sync.Once
+	bootstrapSaid   sync.Once
+	bootstrapSecret string
 
 	// nudge asks the poll to run now. It is one buffered slot, so a burst
 	// of asking coalesces into one fetch, and it holds nothing: what is
