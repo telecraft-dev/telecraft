@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/telecraft-dev/telecraft/internal/serving"
 	"github.com/telecraft-dev/telecraft/pkg/auth"
 	"github.com/telecraft-dev/telecraft/pkg/ownership"
 )
@@ -110,5 +111,23 @@ func TestInitRefusesWhatItCannotCreate(t *testing.T) {
 				t.Error("nothing was said about what is wrong")
 			}
 		})
+	}
+}
+
+// The documented first run: init an estate, then serve it. This is the
+// whole of issue #243, and it is a command-level test because that is the
+// level the promise is made at, in the guides and in ADR-0072 §4.
+func TestAnEstateFromInitCanBeServed(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "estate")
+
+	var out, errOut bytes.Buffer
+	if code := run([]string{"init", "-estate", dir, "-email", "a@example.com", "-name", "A"}, &out, &errOut); code != 0 {
+		t.Fatalf("init = %d, want 0: %s", code, errOut.String())
+	}
+
+	// The serving path's own loader is what refused before: it is the
+	// thing behind "initial repo snapshot" when a server starts.
+	if _, err := serving.LoadSnapshot(dir, "head"); err != nil {
+		t.Fatalf("an estate init just wrote cannot be served: %v", err)
 	}
 }

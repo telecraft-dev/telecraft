@@ -105,3 +105,37 @@ func TestDirSourceServesAPlainDirectory(t *testing.T) {
 		t.Errorf("matched %q, want pipelines/gateway", m.Tier)
 	}
 }
+
+// A new estate has no Tiers, and an Instance serves it rather than
+// refusing to start. ADR-0060 §1 puts the flow that authors a first Tier
+// in the console, so refusing here is a circle: the console that fixes an
+// empty estate is served by the process that will not start over one.
+func TestANewEstateLoadsAndServesNothing(t *testing.T) {
+	root := t.TempDir()
+
+	snap, err := LoadSnapshot(root, "head")
+	if err != nil {
+		t.Fatalf("a new estate must load, got %v", err)
+	}
+	if snap == nil {
+		t.Fatal("no snapshot")
+	}
+
+	// Nothing empty reaches a collector: the match carries no artefact, so
+	// the wire path refuses it (REQ-042, ADR-0010 rule 6).
+	m := snap.Match(map[string]string{"host.name": "anything"})
+	if len(m.Artefact) != 0 {
+		t.Errorf("a new estate served %d bytes, want none", len(m.Artefact))
+	}
+	if _, err := remoteConfig(m.Artefact); err == nil {
+		t.Error("an empty artefact was accepted for the wire, and it must never be")
+	}
+}
+
+// The teams/ tree missing entirely is the same state one step earlier, and
+// it is tolerated for the same reason.
+func TestAnEstateWithNoTeamsTreeAlsoLoads(t *testing.T) {
+	if _, err := LoadSnapshot(t.TempDir(), "head"); err != nil {
+		t.Fatalf("an estate with no teams/ tree must load, got %v", err)
+	}
+}
