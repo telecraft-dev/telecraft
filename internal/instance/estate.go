@@ -38,7 +38,24 @@ const (
 // layout names every input one document build reads, from the estate root.
 func layout(root string) (console.Inputs, error) {
 	commit, err := stampedCommit(root)
-	if err != nil {
+	if errors.Is(err, errNoRenderedTree) {
+		// A new estate: `telecraft init` writes the authored files and no
+		// rendered tree, because rendering needs a Tier and the seed
+		// authors none (ADR-0072 §4).
+		//
+		// The documents are computed at the commit the rendered tree
+		// claims, and there is no tree, so there is no commit. An empty
+		// stamp is the honest value: nothing was rendered, so nothing is
+		// being served at any commit, and every document below is empty
+		// rather than wrong.
+		//
+		// Without this the server starts, a reader signs in, and every
+		// estate document answers 503. The console flow that authors a
+		// first Tier is one of those documents (ADR-0060 §1), so the
+		// estate could not be un-freshed from the console, which is the
+		// circle issue #243 set out to break.
+		commit = ""
+	} else if err != nil {
 		return console.Inputs{}, err
 	}
 	catalogues, err := filepath.Glob(filepath.Join(root, cataloguesDir, catalogueGlob))
@@ -71,6 +88,12 @@ func isDir(path string) bool {
 	return err == nil && info.IsDir()
 }
 
+// errNoRenderedTree is a rendered tree that was never written, as opposed
+// to one that is missing when it should be there. Only an estate that also
+// authors no Tier is allowed to be in that state: anything else has lost a
+// tree it had, and refusing is the honest answer.
+var errNoRenderedTree = errors.New("no rendered tree")
+
 // commitStamp matches the SHA an artefact carries. Every rendered artefact
 // stamps itself with the commit it was rendered from (ADR-0013).
 var commitStamp = regexp.MustCompile(`[0-9a-f]{40}`)
@@ -84,6 +107,9 @@ var commitStamp = regexp.MustCompile(`[0-9a-f]{40}`)
 func stampedCommit(root string) (string, error) {
 	path := filepath.Join(root, filepath.FromSlash(renderer.UnmatchedArtefactPath))
 	body, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("%s: %w", path, errNoRenderedTree)
+	}
 	if err != nil {
 		return "", fmt.Errorf("%s: %w. Render the estate and commit the tree", path, err)
 	}
