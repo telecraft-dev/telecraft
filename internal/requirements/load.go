@@ -40,17 +40,7 @@ func Load(dir string, opts ...Option) (Library, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// A directory that is not there is an empty library, on the
-			// same reading that makes an absent exemptions directory the
-			// strictest state there is (ADR-0037). An estate that authors
-			// no Requirement judges nothing, which is what a new estate
-			// is: `telecraft init` writes the authored files and no
-			// library, because Requirements are the estate's own work.
-			//
-			// Only absence. A directory that exists and cannot be read is
-			// still an error, because that is a library somebody wrote and
-			// this process cannot see.
-			return Library{}, nil
+			return Library{}, fmt.Errorf("requirements library directory %s does not exist", dir)
 		}
 		return Library{}, err
 	}
