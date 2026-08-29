@@ -6,21 +6,23 @@ order: 4
 
 # Continuous integration
 
-Five workflows live in `.github/workflows/`. Two guard changes, one
+Four workflows live in `.github/workflows/`. One guards changes, one
 publishes releases, and two tell downstream repositories that something
-they build from has moved.
+they build from has moved. Static analysis runs beside them as GitHub
+code scanning's default setup, configured in the repository settings
+rather than in a workflow file, and reports its findings on the same
+pull requests.
 
 | Workflow | Fires on | Does |
 |---|---|---|
 | `ci.yml` | every pull request, every push to `main`, and a weekly schedule | Builds, tests and lints: the checks review waits for |
-| `codeql.yml` | every pull request, every push to `main`, and a weekly schedule | Static analysis over the Go, the console's TypeScript and the workflow files |
 | `release.yml` | a `v*` tag | Publishes the release: the image, the chart, the CLI for every platform, and the design artefacts |
 | `demo-dispatch.yml` | a successful release, or a manual run | Moves the `release` pointer and asks the demo to rebuild |
 | `docs-dispatch.yml` | a push to `main` touching `docs/**` | Asks telecraft.dev to rebuild the documentation |
 
-The weekly runs exist for what changes when nothing here does: an advisory
-published against a dependency nobody has bumped, a query pack that learnt
-a new analysis, and a live credential that quietly expired. The last of
+The weekly run exists for what changes when nothing here does: an advisory
+published against a dependency nobody has bumped, and a live credential
+that quietly expired. The second of
 those is the one `ci.yml`'s schedule is strict about; the
 [live suites section](#the-live-suites-and-why-they-can-be-green-without-credentials)
 has the detail.
