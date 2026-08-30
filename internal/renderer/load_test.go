@@ -1,6 +1,9 @@
 package renderer
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -241,5 +244,31 @@ min_expected: 12
 	_, err := LoadTopology(root)
 	if err == nil || !strings.Contains(err.Error(), "min_expected but no selector") {
 		t.Fatalf("a floor without a selector loaded: %v", err)
+	}
+}
+
+// The one question every caller that has to tell a new estate from a
+// broken one asks (ADR-0086 §2). It answers yes for both shapes of an
+// estate that authors no Tier, and no for everything else, including the
+// nil that a topology which loaded returns.
+func TestNoTiersAuthoredNamesBothShapesOfANewEstate(t *testing.T) {
+	empty := t.TempDir()
+	if _, err := LoadTopology(empty); !NoTiersAuthored(err) {
+		t.Errorf("a root with no teams/ tree: NoTiersAuthored(%v) = false, want true", err)
+	}
+
+	noTiers := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(noTiers, "teams", "engineering"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadTopology(noTiers); !NoTiersAuthored(err) {
+		t.Errorf("a teams/ tree authoring no Tier: NoTiersAuthored(%v) = false, want true", err)
+	}
+
+	if NoTiersAuthored(nil) {
+		t.Error("NoTiersAuthored(nil) = true: a topology that loaded is not a new estate")
+	}
+	if NoTiersAuthored(errors.New("teams/edge/tiers/gateway.yaml: unknown field")) {
+		t.Error("NoTiersAuthored reported an unreadable object as a new estate")
 	}
 }

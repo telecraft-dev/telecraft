@@ -52,6 +52,18 @@ var (
 	ErrNoTiers = errors.New("no Tiers")
 )
 
+// NoTiersAuthored reports whether a topology load failed because the estate
+// authors no Tier, rather than because something it does author could not
+// be read.
+//
+// It is one question asked in one place. Every caller that has to tell a
+// new estate from a broken one asks it, and spelling the two sentinels out
+// separately at each of them is how the answer drifts: a third state
+// added here would reach the callers that had not been edited.
+func NoTiersAuthored(err error) bool {
+	return errors.Is(err, ErrNoTiers) || errors.Is(err, ErrNoTeamsTree)
+}
+
 func LoadTopology(roots ...string) (Topology, error) {
 	if len(roots) == 0 {
 		return Topology{}, fmt.Errorf("no source roots: pass at least one estate checkout")

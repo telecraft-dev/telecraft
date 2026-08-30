@@ -99,6 +99,23 @@ func stampedCommit(root string) (string, error) {
 // command runs: every judgement in the result is the return value of the
 // package that owns it.
 func (s *Server) build(ctx context.Context) (console.Bundle, error) {
+	// Whether this estate is new is decided once, here, and before an
+	// input is read (ADR-0086). The Tier is what every input below
+	// describes, so an estate that authors none has nothing for them to
+	// describe: none of them is read, and none of their refusals is
+	// reached. An estate that authors one is missing whatever it cannot
+	// produce, and every refusal stands exactly as it did.
+	//
+	// This does not widen what a collector may be served. ADR-0010 and
+	// REQ-002 stand: an artefact is rendered from a Tier, there are none,
+	// so there is nothing to serve and nothing is served.
+	topo, err := renderer.LoadTopology(s.cfg.Root)
+	if renderer.NoTiersAuthored(err) {
+		return s.buildNew(ctx)
+	} else if err != nil {
+		return console.Bundle{}, err
+	}
+
 	in, err := layout(s.cfg.Root)
 	if err != nil {
 		return console.Bundle{}, err
@@ -124,28 +141,6 @@ func (s *Server) build(ctx context.Context) (console.Bundle, error) {
 	if err != nil {
 		return console.Bundle{}, err
 	}
-	// An estate with no Tiers is new, not broken, and the Instance serves
-	// it. ADR-0060 §1 puts the flow that authors a first Tier in the
-	// console, so refusing to start here would mean the console that fixes
-	// an empty estate is served by the process that will not start over
-	// one. Nothing downstream is fed a guess: the topology is genuinely
-	// empty, every reading over it is empty, and the surfaces say the
-	// estate is new.
-	//
-	// This does not widen what a collector may be served. ADR-0010 and
-	// REQ-002 stand: an artefact is rendered from a Tier, there are none,
-	// so there is nothing to serve and nothing is served.
-	topo, err := renderer.LoadTopology(in.Root)
-	if errors.Is(err, renderer.ErrNoTiers) || errors.Is(err, renderer.ErrNoTeamsTree) {
-		topo = renderer.Topology{
-			Tiers:    map[string]renderer.Tier{},
-			Services: map[string]renderer.Service{},
-			Rollouts: map[string]renderer.Rollout{},
-		}
-	} else if err != nil {
-		return console.Bundle{}, err
-	}
-
 	s.composer.Rows = s.composer.Rows[:0]
 	for _, r := range cEstate.Rows {
 		s.composer.Rows = append(s.composer.Rows, readings.Row{Service: r.Service, Environment: r.Environment})
@@ -166,6 +161,28 @@ func (s *Server) build(ctx context.Context) (console.Bundle, error) {
 	}
 	// The populations this build computed become the next one's shortfall
 	// clock: the matcher's own answer, fed back rather than recomputed.
+	s.composer.ObservePopulations(bundle.Estate.Cards, taken.AsOf)
+	return bundle, nil
+}
+
+// buildNew computes the documents of an estate that authors no Tier: the
+// team tree it was created with, and empty everything else (ADR-0086).
+//
+// The readings are still taken. The seams are live whatever the estate
+// holds, and what comes back is an empty reading rather than no reading,
+// which is the difference between an estate with nothing in it and an
+// Instance that has not looked.
+func (s *Server) buildNew(ctx context.Context) (console.Bundle, error) {
+	s.composer.Rows = s.composer.Rows[:0]
+	s.composer.Tiers = s.composer.Tiers[:0]
+	s.composer.Attributes = nil
+	s.composer.SchemaSignals = nil
+
+	taken := s.composer.Compose(ctx)
+	bundle, err := console.BuildNewEstate(console.Inputs{Root: s.cfg.Root, Taken: &taken})
+	if err != nil {
+		return console.Bundle{}, err
+	}
 	s.composer.ObservePopulations(bundle.Estate.Cards, taken.AsOf)
 	return bundle, nil
 }
