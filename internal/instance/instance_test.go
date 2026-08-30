@@ -268,9 +268,11 @@ func start(t *testing.T, root string) (*Server, string) {
 	return startWith(t, root, nil)
 }
 
-// startWith runs one server over a checkout, with or without somewhere for
-// a change proposal to leave through.
-func startWith(t *testing.T, root string, adapter forge.Forge) (*Server, string) {
+// startRefusing runs one server over a checkout and returns as soon as it
+// is accepting, which is before any documents exist and whether or not any
+// ever will. A test about an estate the build refuses cannot wait for a
+// document set that is never coming.
+func startRefusing(t *testing.T, root string, adapter forge.Forge) *Server {
 	t.Helper()
 	srv, err := New(Config{
 		Source:       serving.DirSource{Root: root},
@@ -295,6 +297,14 @@ func startWith(t *testing.T, root string, adapter forge.Forge) (*Server, string)
 		defer cancel()
 		_ = srv.Stop(ctx)
 	})
+	return srv
+}
+
+// startWith runs one server over a checkout, with or without somewhere for
+// a change proposal to leave through.
+func startWith(t *testing.T, root string, adapter forge.Forge) (*Server, string) {
+	t.Helper()
+	srv := startRefusing(t, root, adapter)
 
 	base := "http://" + srv.HTTPAddr()
 	deadline := time.Now().Add(20 * time.Second)

@@ -25,7 +25,6 @@ package serving
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -79,7 +78,7 @@ type entry struct {
 // previous head, which is bounded staleness, never mis-delivery.
 func LoadSnapshot(root, commit string) (*Snapshot, error) {
 	topo, err := renderer.LoadTopology(root)
-	if errors.Is(err, renderer.ErrNoTiers) || errors.Is(err, renderer.ErrNoTeamsTree) {
+	if renderer.NoTiersAuthored(err) {
 		// A new estate. There is nothing to serve, so this is a snapshot
 		// that serves nothing: no entries, and no Unmatched artefact
 		// because no render has produced one.
