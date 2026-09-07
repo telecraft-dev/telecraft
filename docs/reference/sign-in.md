@@ -61,8 +61,7 @@ Nothing else is configured. Production sign-in belongs on `oidc` or `saml`.
 A deployment can refuse basic auth outright, whatever the estate declares, by
 running the server with `-basic-auth=false`. Use it where the people signing
 in are not the people who run the deployment. An estate that declares `basic`
-on such a deployment stops the start and names the entry. The hosted service
-runs this way.
+on such a deployment stops the start and names the entry.
 
 ```yaml
 providers:

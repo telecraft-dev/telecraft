@@ -159,7 +159,7 @@ production while keeping the other Environments on the page.
 
 You can hold them in separate Organisations instead, one for each. An
 Organisation has its own estate, its own people, and its own Instance, and
-nothing one Organisation authors can name anything in another. Three things
+nothing one Organisation authors can name anything in another. Two things
 follow:
 
 - **Two Environments cannot be read beside each other.** No view, roll-up, or
@@ -168,7 +168,6 @@ follow:
 - **Each Organisation carries its own Team tree.** Owners are named in each,
   and compliance rolls up within each, so a Team at the top of one tree sees
   that Organisation's results and nothing of the others.
-- **On the hosted service, each Organisation is its own subscription.**
 
 An Instance for each Environment is supported, and two things need one.
 

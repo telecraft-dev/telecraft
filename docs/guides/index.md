@@ -19,9 +19,8 @@ schema, read the [reference section](../reference/index.md).
 You need `git`, and the CLI, which is one downloaded file with no toolchain
 behind it. Every guide runs against the public demo estate,
 `telecraft-dev/estate-demo`, so you can follow along before you have an estate
-of your own. The [quickstart](quickstart.md) sets up both, and offers three
-ways in: the hosted service when it opens, an Instance on your own machine,
-and the command line for CI.
+of your own. The [quickstart](quickstart.md) sets up both, and offers two
+ways in: an Instance on your own machine, and the command line for CI.
 
 ## Choose a starting point
 
@@ -75,13 +74,6 @@ keeps flowing.
    in front.
 7. [Stage a Rollout](stage-a-rollout.md) moves one Tier's population onto a new
    Blueprint version in cohorts, advancing and aborting by pull request.
-
-## Or let us run it
-
-[Use the hosted service](hosted.md) is Telecraft at an address of your own,
-run by us: you sign up, connect a repository, and sign your people in. It is
-the same product this section describes, so every other guide here still
-applies to it.
 
 ## See it running first
 
