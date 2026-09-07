@@ -1,23 +1,40 @@
 ---
 title: Quickstart
-description: See a console over a real estate on your own machine in a few minutes, and get a verdict from the command line when you want one in CI.
+description: See a console over a real estate in a few minutes, hosted or on your own machine, and get a verdict from the command line when you want one in CI.
 order: 2
 ---
 
 # Quickstart
 
-Two ways in, and they are in the order most people want them. Take the
-first one that fits and stop; neither is a step towards the other.
+Three ways in, and they are in the order most people want them. Take the
+first one that fits and stop; none of them is a step towards another.
 
 | | | |
 |---|---|---|
-| [You run it](#1-you-run-it) | One file and `git` | A console on your machine |
-| [The command line](#2-the-command-line) | One file | A verdict in CI |
+| [We run it](#1-we-run-it) | Nothing to install | A console we keep running |
+| [You run it](#2-you-run-it) | One file and `git` | A console on your machine |
+| [The command line](#3-the-command-line) | One file | A verdict in CI |
 
-Want to look before you build? <https://demo.telecraft.dev> is the real
-console over a public estate, read only and with no sign-in.
+## 1. We run it
 
-## 1. You run it
+Ask for an Organisation at <https://cloud.telecraft.dev> with a Google or
+Microsoft Entra ID account. You get one Instance at an address of its own,
+`<your-name>.cloud.telecraft.dev`, with its own estate, its own people, and
+nothing shared with anybody else's.
+
+Signing up is a request rather than a form that provisions. A person reads it
+and merges it, so you wait for us rather than for a machine. It is the same
+release you can run yourself, and there is no capability here that a
+deployment on your own hardware does not have: what you are buying is the
+running of it.
+
+[Use the hosted service](hosted.md) covers signing up, connecting a
+repository, signing your people in, and what is promised about keeping it.
+
+Want to look before you ask? <https://demo.telecraft.dev> is the real console
+over a public estate, read only and with no sign-in.
+
+## 2. You run it
 
 One downloaded file and `git`. No toolchain, no compiling, and nothing to
 configure before you can look at it.
@@ -84,7 +101,7 @@ one.
 You are now looking at four Services across six Tiers, with real findings on
 them. [Explore the demo](explore-the-demo.md) walks the surfaces.
 
-## 2. The command line
+## 3. The command line
 
 The console is one way to read a verdict. The other is a JSON report and an
 exit code, which is what belongs in CI, in a cron job, or on a laptop. The
