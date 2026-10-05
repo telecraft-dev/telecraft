@@ -69,7 +69,18 @@ arrives.
 | An acknowledgement that a person has read the report | 5 working days |
 | A verdict: accepted, not a vulnerability, or more information needed, with the reasoning either way | 10 working days |
 | An update while a fix is being written, whether or not there is news | 14 days, repeating |
-| The fix itself | No fixed date. The advisory names the release that carries it. |
+| A fix for a critical or high severity finding | 14 days of a confirmed report or published advisory |
+| A fix for a medium or low severity finding | The next release that can carry it. The advisory names that release. |
+
+Severity here follows CVSS v3.1 base scores (critical ≥ 9.0, high ≥ 7.0,
+medium ≥ 4.0, low below that), or the plain-words equivalent when a score is
+not yet assigned: a remote unauthenticated compromise of an instance is
+critical/high; a configuration-gated or local-only issue is usually medium or
+low. The 14-day clock for critical and high starts when the report is accepted
+as a vulnerability, or when an advisory for a dependency we ship is published,
+whichever applies. Air-gapped operators are reached through the advisory
+itself, which names non-upgrade mitigations where they exist; the project
+still cannot push a binary into a deployment that never phones home.
 
 The project asks two things of you in return. Hold public detail until the
 advisory is published or 90 days have passed, whichever comes first, so
@@ -118,8 +129,9 @@ the signature against keys inside the binary, and opens no socket at any
 point. So the maintainers can't see who is running which version, can't
 notify you, and can't shorten the distance between a fix existing and a fix
 reaching an instance behind an air gap. That distance is whatever your change
-process takes, and it is the reason the table above promises a release rather
-than a remediation date.
+process takes. The table above still commits to shipping a critical or high
+severity fix within 14 days; air-gapped operators learn about it through the
+advisory and apply it on their own schedule.
 
 ### If we are running it for you
 
